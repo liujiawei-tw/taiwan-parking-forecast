@@ -11,9 +11,11 @@
 5. [待確認問題](docs/open-questions.md)：尚未決定或需實測的事項。
 6. [路線圖](docs/roadmap.md)：Sprint 0 與後續增量。
 7. [架構草案](docs/architecture.md)、[資料與費率盤點](docs/tdx-data-and-cost.md)：技術設計的依據。
-8. [歷史資料計畫](docs/historical-data-plan.md)：第一份訓練資料的候選、格式、日期與點數風險。
+8. [歷史資料計畫](docs/historical-data-plan.md)：資料候選、格式、日期與點數風險。
+9. [新北市路邊資料概況](docs/new-taipei-data-profile.md)、[桃園機場路外資料概況](docs/airport-data-profile.md)：兩份已取得資料的初步盤點。
 
-原始 CSV 放置位置：`data/raw/tdx/new-taipei/on-street-spot-availability/`；該資料夾的 README 會被追蹤，下載的資料檔不會進 Git。
+新北市路邊原始 ZIP 與 CSV 放置位置：`data/raw/tdx/new-taipei/on-street-spot-availability/`；該資料夾的 README 會被追蹤，下載的資料檔不會進 Git。
+桃園機場路外停車歷史 CSV 放置位置：`data/raw/tdx/taoyuan-airport/off-street-availability/`；首次盤點見 [桃園機場資料概況](docs/airport-data-profile.md)。
 
 ## 協作方式
 
