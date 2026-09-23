@@ -11,7 +11,12 @@ target/
 build/
 __pycache__/
 .ipynb_checkpoints/
-data/raw/
+# 保留原始資料夾的說明文件；大型下載檔留在本機，不提交 Git。
+data/raw/**
+!data/raw/tdx/
+!data/raw/tdx/new-taipei/
+!data/raw/tdx/new-taipei/on-street-spot-availability/
+!data/raw/tdx/new-taipei/on-street-spot-availability/README.md
 data/private/
 *.key
 *.pem
