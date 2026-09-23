@@ -1,0 +1,17 @@
+# 本專案目前不包含應用程式；預留未來本機設定與產物的忽略規則。
+.idea/
+.env
+.env.*
+!.env.example
+application-local.yml
+application-local.yaml
+application-local.properties
+*.log
+target/
+build/
+__pycache__/
+.ipynb_checkpoints/
+data/raw/
+data/private/
+*.key
+*.pem
