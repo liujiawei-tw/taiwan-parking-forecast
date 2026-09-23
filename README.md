@@ -11,6 +11,7 @@
 5. [待確認問題](docs/open-questions.md)：尚未決定或需實測的事項。
 6. [路線圖](docs/roadmap.md)：Sprint 0 與後續增量。
 7. [架構草案](docs/architecture.md)、[資料與費率盤點](docs/tdx-data-and-cost.md)：技術設計的依據。
+8. [歷史資料計畫](docs/historical-data-plan.md)：第一份訓練資料的候選、格式、日期與點數風險。
 
 ## 協作方式
 

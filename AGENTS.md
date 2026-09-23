@@ -23,6 +23,7 @@
 - 尚待決定：`docs/open-questions.md`
 - 目前進度：`docs/current-state.md`
 - TDX 費率與待查資料：`docs/tdx-data-and-cost.md`
+- 歷史資料取得與 ML 試驗：`docs/historical-data-plan.md`
 
 ## When Updating
 
