@@ -450,3 +450,9 @@
 - **原因**：正式 API 路由已收斂，後端需要可轉成 Spring Boot DTO 的請求形狀；同時 Sponsor 已決定 ETA 由 Google Routes 計算，車種與 300 公尺範圍由後端固定。
 - **影響**：`POST /api/v1/parking-queries` Request Body 第一版只接收 `requestToken`、`origin`、`destination`、`departure`。前端不傳 ETA、目前車位、模型機率、車種、半徑、距離算法、Google 交通模式或刷新策略。`NOW` 由後端在建立查詢時取伺服器時間；`SCHEDULED` 必須提供含時區偏移的 `departureAt`。目的地座標同時作 Google Routes 終點與 300 公尺圓心；試點外停止流程且不呼叫上游。
 - **狀態**：Request Body 語意與草案 JSON 已建立；正式 DTO 類名、欄位大小寫、長度限制、`requestToken` TTL、手動座標是否開放給一般使用者與限流細節仍待技術定稿。沒有 coding。
+
+## 2026-09-25：查詢 Response 固定頂層區塊並用狀態解釋可空值
+
+- **原因**：前後端需要一致處理 `null`、空陣列、有效 0、載入中與資料不足；如果每個區塊有時缺失，前端會難以分辨是未完成、失敗、沒有收錄或後端漏欄位。
+- **影響**：查詢回應固定包含 `query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh` 八個頂層區塊。有效 0 必須回數字 0；未知或不適用用 `null` 並搭配狀態或原因碼；清單欄位可為空陣列，但空陣列不等於附近沒有車位。`probability` 只在對應預測 `status=READY` 時有效；來源觀測時間與系統取得時間分開。
+- **狀態**：Response 必填／可空語意已決定；正式 DTO 欄位註解、JSON Schema、OpenAPI required 清單、分頁與錯誤回應格式仍待技術定稿。沒有 coding。

@@ -271,3 +271,5 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 - 已把主系統正式 API 路由收斂為三個查詢端點：`POST /api/v1/parking-queries` 建立非同步查詢、`GET /api/v1/parking-queries/{queryId}` 只讀進度、`POST /api/v1/parking-queries/{queryId}/refresh` 只做路邊／路外受控刷新。HTTP 成功只代表主系統成功處理請求，不代表 Google、政府來源或模型都成功；上游失敗由各區塊狀態表達。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式錯誤碼、請求欄位、驗證細節、TTL 與限流策略待定。沒有 coding。
 
 - 已定義 `POST /api/v1/parking-queries` Request Body 草案：只接收 `requestToken`、`origin`、`destination`、`departure`。前端不傳 ETA、目前車位、模型機率、車種、半徑、距離算法、Google 交通模式或刷新策略；`NOW` 由後端取伺服器時間，`SCHEDULED` 需含時區偏移。目的地座標同時作 Google Routes 終點與 300 公尺圓心；試點外不呼叫上游。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式 DTO 名稱、欄位大小寫、長度限制、`requestToken` TTL 與限流待定。沒有 coding。
+
+- 已定義查詢 Response 必填與可空規則：`query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh` 八個頂層區塊固定存在；有效 0 回數字 0，未知或不適用才用 `null` 並搭配狀態／原因碼。清單可為空陣列，但不能用空陣列直接表示附近沒有車位；機率只在預測 `status=READY` 時有效。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；OpenAPI required 清單、DTO 註解、分頁與錯誤格式待定。沒有 coding。

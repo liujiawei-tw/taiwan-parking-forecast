@@ -381,6 +381,28 @@ Sponsor 已決定：目的地位於新莊 MVP 支援範圍外時，先回明確�
 
 **覆蓋欄位語意**：Sponsor 已同意每種停車類型須區分完整、部分與未知。覆蓋未知時，完整 300 公尺路邊機率暫不顯示；已核實位置與合格路外單場預測可保留，但附近清單的覆蓋狀態須另標明。候選欄位值為 `complete`（經核對，查詢圓完整位於該類型的收錄範圍）、`partial`（已知有一部分未收錄）及 `unknown`（尚無足夠依據判斷）；試點外候選為整筆查詢的 `unsupported_area`，不拿空陣列表示。覆蓋狀態與「目錄是否成功載入」「即時車位是否新鮮」「模型能否預測」分層；完整地理覆蓋不保證每個格位都有有效即時觀測。`complete` 必須有可信覆蓋邊界或同等可核對依據，不能只因目的地地址寫新莊就宣稱完整。英文狀態值及邊界資料仍是設計提案。
 
+### 已決定：Response 必填與可空規則
+
+查詢回應第一版採固定頂層結構：`query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh` 八個區塊都要存在。前端可以依固定區塊渲染畫面，不需要先判斷某個區塊是否缺失。區塊內資料是否可用，由該區塊的 `status`、時間欄位與原因碼說明。
+
+| 區塊 | 固定存在 | 主要不可空欄位 | 可空或可為空集合的欄位 | 規則 |
+| --- | --- | --- | --- | --- |
+| `query` | 是 | `queryId`、`status`、`createdAt`、`serverTime`、`expiresAt`、`hasPendingWork`、`pendingSections`、`finishedSections`、`requiresReplan` | `nextPollAfterSeconds` | `hasPendingWork=false` 時 `nextPollAfterSeconds` 可為 `null` |
+| `destination` | 是 | `displayName`、`latitude`、`longitude`、`selectionSource`、`supportStatus` | `formattedAddress`、`placeId`、`unsupportedReason`、`message` | 目的地支援與否都要保留使用者選定地點；試點外不啟動上游 |
+| `area` | 是 | `centerLatitude`、`centerLongitude`、`radiusMeters`、`distanceMode`、`coverageStatus` | `catalogCounts`、`coverageNotes` | 覆蓋未知時 `catalogCounts` 可為 `null`；不能用 `0` 冒充沒有收錄 |
+| `eta` | 是 | `status`、`provider`、`trafficMode` | `durationSeconds`、`estimatedArrivalAt`、`calculatedAt`、`failureReason`、`message` | 只有 `status=READY` 時才需要有 `durationSeconds` 與 `estimatedArrivalAt` |
+| `roadside` | 是 | `status`、`sourceType` | `snapshotId`、`summary`、`spots`、`sourceObservedAt`、`systemFetchedAt`、`message` | `spots` 可以是空陣列，但空陣列不等於附近沒有車格；要看覆蓋與狀態 |
+| `offStreet` | 是 | `status`、`sourceType` | `snapshotId`、`summary`、`parkingLots`、`sourceObservedAt`、`systemFetchedAt`、`message` | `parkingLots` 可以是空陣列，但空陣列不等於附近沒有停車場；要看覆蓋與目錄狀態 |
+| `predictions` | 是 | `status` | `targetArrivalAt`、`modelVersion`、`trainingDataSummary`、`roadside`、`offStreet`、`reasons`、`message` | ETA 未完成、資料不足或模型不可用時，機率欄位為 `null` 或不出現；不得補假機率 |
+| `refresh` | 是 | `status`、`trigger`、`recalculateEta` | `roadside`、`offStreet`、`message` | 建立查詢與刷新端點都回刷新狀態；`recalculateEta` 第一版固定 false |
+
+數值欄位要區分三種情況：有效 `0`、未知／不適用、尚未完成。有效 `0` 必須回數字 `0`；未知或不適用用 `null`，並搭配 `status` 或原因碼；尚未完成用 `PENDING`／`REFRESHING` 等狀態表達。前端不得只依 `null` 或空陣列判斷顯示文案。
+
+清單欄位第一版採固定存在但可為空陣列的方式，例如 `roadside.spots: []`、`offStreet.parkingLots: []`、`predictions.offStreet: []`。空陣列只表示目前這個區塊沒有可列出的項目；是否代表附近沒有收錄資料，必須再看 `area` 覆蓋狀態、目錄數量與來源狀態。
+
+時間欄位需要保留語意差異：`serverTime` 是主系統回應時間；`createdAt` 是查詢建立時間；`expiresAt` 是 `queryId` 到期時間；`calculatedAt` 是 Google ETA 完成時間；`systemFetchedAt` 是主系統成功取得並發布車位快照時間；`sourceObservedAt` 只有官方來源提供真正觀測時間時才填。不得用系統取得時間偽裝成來源觀測時間。
+
+機率欄位只在 `predictions` 對應項目 `status=READY` 時出現有效數字。若 `status=INSUFFICIENT_DATA`、`BLOCKED`、`FAILED` 或 `EXPIRED`，`probability` 應為 `null` 或省略，並提供 `reasons` 或 `message`。前端顯示「預測資料不足」時，不應把目前車位數轉成機率。
 ## 查詢 API 範例回應（欄位形狀草案）
 
 以下 JSON 是前後端對齊用的草案範例，不代表正式欄位已鎖死。範例中的座標、名稱、ID、時間、數量與機率都是假資料；正式實作前仍需整理欄位命名、大小寫、可空規則、分頁與錯誤碼。
