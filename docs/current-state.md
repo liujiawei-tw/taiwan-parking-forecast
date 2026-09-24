@@ -261,3 +261,5 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 - Sponsor 同意 `roadside` 區塊只描述 300 公尺範圍內的路邊目前觀測、來源狀態與格位明細，不放抵達時區域機率。路邊抵達時「至少一格可停」機率統一放在 `predictions`；`roadside.summary.availableSpotCount` 只代表新鮮快照中的目前觀測。格位外部導航入口僅在目前回報有位、資料新鮮、一般汽車適用、座標有效且品質合格時提供；過期或未知資料不能作目前推薦。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式欄位命名、清單上限、特殊格位排除與座標品質待定。沒有 coding。
 
 - Sponsor 同意 `offStreet` 區塊只描述目的地 300 公尺內已收錄路外停車場的目前觀測、來源狀態與逐場資訊，不放抵達時逐場機率。路外抵達時「該停車場仍有汽車位」機率統一放在 `predictions`；目前剩餘汽車位只代表新鮮快照中的目前觀測。有效 `0`、有效正數與 `AVAILABLE=-9` 類無法提供即時動態的特殊狀態必須分開；過期或未知資料不能作目前有位推薦。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式欄位命名、入口座標、總車位、排序與清單上限待定。沒有 coding。
+
+- Sponsor 同意 `predictions` 區塊是唯一承載抵達時預測的地方，不放目前車位數。路邊預測表示目的地 300 公尺內抵達時至少一個一般汽車路邊格位可停的區域機率；路外預測表示每個合格路外停車場抵達時仍有汽車位的逐場機率。`targetArrivalAt` 必須等於 Google Routes 的 `eta.estimatedArrivalAt`；ETA 缺失、過期、覆蓋不完整、資料不足或模型未驗證時，必須明確標示不可預測或資料不足。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；機率尺度、回測指標、模型版本與原因碼待定。沒有 coding。
