@@ -462,3 +462,9 @@
 - **原因**：前端需要用穩定錯誤碼判斷流程，不應解析中文訊息；同時上游局部失敗與主系統請求錯誤要分開，避免 Google 或政府來源失敗時整頁變成通用 500。
 - **影響**：主系統錯誤回應包含 `error.code`、`error.message`、可選 `error.details`、`error.retryable`、可選 `error.nextAllowedAt` 與 `serverTime`。第一版錯誤碼涵蓋 `INVALID_REQUEST`、`INVALID_COORDINATE`、`INVALID_REQUEST_TOKEN`、`UNSUPPORTED_AREA`、`INVALID_DEPARTURE_TIME`、`RATE_LIMITED`、`QUERY_EXPIRED`、`QUERY_NOT_FOUND`、`SERVICE_TEMPORARILY_UNAVAILABLE`、`INTERNAL_ERROR`。官方來源失敗、冷卻、預算阻擋通常放在 `refresh` 或來源區塊狀態，不作整頁錯誤。
 - **狀態**：錯誤回應格式與候選錯誤碼已決定；正式錯誤碼大小寫、`details` 結構、`traceId` 是否加入、前端文案對照與 Spring Boot 例外類型仍待技術定稿。沒有 coding。
+
+## 2026-09-25：後端 package 分層採 API／application／domain／adapter／infrastructure
+
+- **原因**：查詢 API 契約已收斂，後續開始 coding 前需要讓 Spring Boot 專案有可維護的分層，避免 Controller 直接塞滿 Google、政府 API、Redis、MySQL、模型與 DTO 轉換邏輯。
+- **影響**：第一版後端 package 草案採 `api`、`application`、`domain`、`adapter`、`infrastructure`、`config`。API DTO 只放 Web 契約；application service 負責建立查詢、讀取進度、受控刷新、ETA 與預測協調；domain 放查詢、停車、刷新與預測語意；adapter 放 Google、新北市、TDX 等外部來源；infrastructure 放 JPA 與 Redis。JPA entity 不直接回前端，來源原始欄位不直接進 API response。
+- **狀態**：package 分層與 DTO 命名草案已記錄於 `backend-stack-and-normalization.md`；正式 root package、Maven groupId、Java/Spring Boot 版本、command 物件是否拆出與 package 細節仍待建立專案時定稿。沒有 coding。

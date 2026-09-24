@@ -50,3 +50,52 @@
 - 兩種不同來源的原始 ID 相同時不能誤合併；映射未驗證時各自保留來源身分。
 - 刷新失敗、部分分頁、Redis 清空／重啟時，不發布半套快照或把過期「有位」標成新資料。
 - 待量測：主系統一輪抓取大小／時間、Redis 要快取的最小資料與 TTL、快取命中率、各來源欄位與狀態碼映射、批次寫入速度。
+## Spring Boot package 分層與 DTO 命名草案
+
+第一版後端採 Spring Boot Web／Spring MVC REST，並以 Maven 管理相依。package 分層以「API 契約、應用流程、領域語意、外部介接、資料存取」分開，避免 Controller 直接呼叫政府 API、資料庫 entity 直接回給前端，或把模型推論混進來源 adapter。
+
+建議 root package 先用 `tw.jiawei.parkingforecast`；正式 groupId 可在建立 Maven 專案時再確認。
+
+| package | 責任 | 第一版候選類別 |
+| --- | --- | --- |
+| `api.parkingquery` | 查詢 API Controller、request／response DTO、錯誤 DTO | `ParkingQueryController`、`CreateParkingQueryRequest`、`ParkingQueryResponse`、`RefreshParkingQueryResponse`、`ApiErrorResponse` |
+| `application.query` | 建立查詢、讀取進度、手動刷新等 use case 協調 | `CreateParkingQueryService`、`GetParkingQueryService`、`RefreshParkingQueryService` |
+| `application.refresh` | 來源級共用刷新、冷卻、預算保留、快照發布流程 | `ParkingSourceRefreshService`、`RefreshDecisionService` |
+| `application.eta` | Google ETA 工作協調與結果轉換 | `EtaPlanningService` |
+| `application.prediction` | 抵達時預測協調，呼叫模型或基準規則 | `PredictionService`、`PredictionEligibilityService` |
+| `domain.parking` | 停車位置、車位狀態、車種資格、覆蓋語意 | `ParkingPlace`、`ParkingPlaceType`、`AvailabilityStatus`、`CoverageStatus` |
+| `domain.query` | 查詢生命週期、查詢狀態、區塊狀態與錯誤語意 | `ParkingQuery`、`QueryStatus`、`SectionStatus` |
+| `domain.refresh` | 來源刷新狀態、冷卻、刷新處置、品質判斷 | `RefreshAction`、`SourceState`、`SnapshotQuality` |
+| `domain.prediction` | 預測目標、模型版本、資料不足原因 | `PredictionResult`、`PredictionStatus`、`PredictionReason` |
+| `adapter.google` | Google Routes／Places 相關外部介接；第一版主要由後端呼叫 Routes | `GoogleRoutesClient`、`GoogleRoutesMapper` |
+| `adapter.ntpc` | 新北市路邊與路外官方 API client 與原始欄位轉換 | `NtpcRoadsideClient`、`NtpcOffStreetClient`、`NtpcParkingMapper` |
+| `adapter.tdx` | 日後 TDX 或歷史資料介接；第一版主系統可先保留擴充點 | `TdxParkingClient`、`TdxParkingMapper` |
+| `infrastructure.persistence` | JPA entity、repository、MySQL 對應與查詢 | `ParkingPlaceEntity`、`AvailabilitySnapshotEntity`、`ParkingPlaceRepository` |
+| `infrastructure.redis` | Redis query state、短鎖與快取序列化 | `QueryStateRedisRepository`、`RefreshLockRepository` |
+| `config` | Spring 設定、外部 API properties、WebClient／RestClient 設定 | `GoogleApiProperties`、`NtpcApiProperties`、`RedisConfig` |
+
+DTO 命名原則：API request／response DTO 只放在 `api` 層，名稱貼近 HTTP 契約；JPA entity 只放在 persistence 層，不直接出現在 Controller 回應；domain model 放系統語意，不攜帶 JSON 註解或 JPA 註解。這樣未來欄位名稱、資料表欄位與領域語意可以各自演進。
+
+第一版查詢 API DTO 可對應目前契約：
+
+- `CreateParkingQueryRequest`
+  - `requestToken`
+  - `OriginRequest`
+  - `DestinationRequest`
+  - `DepartureRequest`
+- `ParkingQueryResponse`
+  - `QueryDto`
+  - `DestinationDto`
+  - `AreaDto`
+  - `EtaDto`
+  - `RoadsideDto`
+  - `OffStreetDto`
+  - `PredictionsDto`
+  - `RefreshDto`
+- `ApiErrorResponse`
+  - `ApiErrorDto error`
+  - `serverTime`
+
+Application service 的輸入可以先接收 API DTO 或轉成 command 物件；若實作時邏輯變多，建議在 `application.query` 加 `CreateParkingQueryCommand`，讓 Controller 負責 DTO 驗證與轉換，service 處理流程，不依賴 Web 層。
+
+面試時可說明這個分層的價值：來源 API 格式會變、前端欄位會調整、資料庫也會演進，但核心流程與領域語意要保持穩定。對初階後端工程師而言，這比把所有邏輯寫在 Controller 裡更能展現可維護性。
