@@ -390,3 +390,27 @@
 - **原因**：Sponsor 同意先從 `query` 區塊收斂，因為它會影響 Redis、輪詢、查詢過期、頁面重整恢復及前端何時停止等待。為避免前端混淆，`query` 不應承載目的地、ETA、車位數或模型結果。
 - **影響**：`query` 區塊第一版語意包含 `queryId`、整體 `status`、`createdAt`、`serverTime`、`expiresAt`、`hasPendingWork`、`nextPollAfterSeconds`、`pendingSections`、`finishedSections`、`requiresReplan` 及可選的防重送追蹤。整體 `status` 候選值為 `ACCEPTED`、`RUNNING`、`COMPLETED`、`PARTIAL`、`EXPIRED`、`FAILED`；它只描述整體查詢生命週期，不取代 ETA、路邊、路外、預測或刷新狀態。`queryId` 到期、來源資料過期、背景工作到期與 Google ETA 目標時刻已過是不同概念。
 - **狀態**：`query` 區塊語意已決定；正式欄位命名、大小寫、期限數字、輪詢秒數及 HTTP 表達仍待技術定稿。沒有 coding。
+
+## 2026-09-24：`destination` 區塊只描述選定目的地與支援判定
+
+- **原因**：Sponsor 同意主系統採 Google 類搜尋體驗，目的地座標同時作 Google ETA 終點與 300 公尺停車範圍圓心；因此 API 需要清楚記錄使用者選定的目的地與是否支援，不讓前端或後端再用文字猜另一個座標。
+- **影響**：`destination` 區塊第一版語意包含 `displayName`、可選 `formattedAddress`、可選 `placeId`、`latitude`、`longitude`、`selectionSource`、`supportStatus`、`serviceArea`、`unsupportedReason` 與可讀 `message`。`supportStatus` 候選值為 `SUPPORTED`、`UNSUPPORTED_AREA`、`INVALID_COORDINATE`、`UNKNOWN`。目的地一旦建立查詢即固定；若在新莊 MVP 外，不啟動 Google Routes 或官方車位來源，只保留地點與改搜入口。停車資料覆蓋與是否有收錄選項不放在 `destination`，改由 `area` 與停車資料區塊表達。
+- **狀態**：`destination` 區塊語意已決定；正式欄位命名、是否保存 `placeId`、Google Places 回傳欄位選取、手動座標是否開放給一般使用者仍待技術定稿。沒有 coding。
+
+## 2026-09-24：`area` 區塊描述 300 公尺範圍與資料覆蓋
+
+- **原因**：Sponsor 已決定目的地周圍直線 300 公尺作第一版驗證範圍，且要求不能把未收錄或跨區缺口誤顯示成沒有車位。因此 API 需要獨立區塊描述查詢範圍與覆蓋，而不是把它混在目的地或車位結果內。
+- **影響**：`area` 區塊第一版語意包含圓心座標、`radiusMeters=300`、`distanceMode=STRAIGHT_LINE`、`serviceArea`、整體 `coverageStatus`、路邊／路外各自覆蓋狀態、是否跨出支援區、覆蓋說明與目錄數量摘要。圓心必須等於 `destination` 座標；半徑由後端固定。`coverageStatus` 候選值為 `COMPLETE`、`PARTIAL`、`UNKNOWN`、`UNSUPPORTED`。覆蓋完整必須有可信邊界或可驗證依據；跨出新莊收錄範圍時，已收錄位置可顯示，但完整 300 公尺路邊區域機率不可輸出。
+- **狀態**：`area` 區塊語意已決定；正式欄位命名、邊界資料來源、目錄數量統計方式與跨區判定實作仍待技術定稿。沒有 coding。
+
+## 2026-09-24：`eta` 區塊只描述 Google Routes 行程時間
+
+- **原因**：Sponsor 明確要求直接使用 Google 預測的 ETA 作停車預測目標時刻，不接受系統另創固定抵達時間；同時車位刷新不得增加 Google Routes 呼叫。因此 API 需要把 ETA 與停車資料、模型預測及刷新控制分開。
+- **影響**：`eta` 區塊第一版語意包含 `status`、起點摘要、目的地參照、`departureAt`、`calculatedAt`、`durationSeconds`、`estimatedArrivalAt`、`trafficMode`、`provider`、`requiresReplan`、失敗原因與使用者訊息。`status` 候選值為 `PENDING`、`READY`、`FAILED`、`BLOCKED`、`EXPIRED`、`NOT_REQUESTED`；失敗原因候選包含 `ROUTE_NOT_FOUND`、`GOOGLE_TIMEOUT`、`GOOGLE_ERROR`、`BUDGET_LIMITED`、`INVALID_INPUT`、`UNKNOWN`。`estimatedArrivalAt` 是路邊與路外抵達時預測的共同目標時刻；ETA 失敗或過期時，不可輸出有效抵達時機率。停車資料新鮮度門檻不套用到 ETA。
+- **狀態**：`eta` 區塊語意已決定；正式欄位命名、Google 回應欄位映射、等待期限、錯誤碼與前端文案仍待技術定稿。沒有 coding。
+
+## 2026-09-24：`roadside` 區塊只描述路邊目前觀測與格位明細
+
+- **原因**：Sponsor 希望路邊主要顯示 300 公尺內抵達時至少一格可停的機率，同時可展開目前回報有位的汽車格位；API 需要避免把目前空位誤當抵達時預測。
+- **影響**：`roadside` 區塊保存來源狀態、快照時間、區域目前摘要與格位明細；目前空位數只代表新鮮快照中的觀測結果，抵達時區域機率統一放在 `predictions`。格位外部導航入口只在目前回報有位、資料新鮮、汽車適用、座標有效且品質合格時提供；過期或未知資料不得作目前推薦。
+- **狀態**：`roadside` 區塊語意已決定；正式欄位命名、清單數量上限、特殊格位排除規則、座標品質和官方狀態碼映射仍待技術定稿。沒有 coding。

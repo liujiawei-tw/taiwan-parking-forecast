@@ -251,3 +251,11 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 - Sponsor 同意查詢總回應採固定頂層分層：`query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh`。此分層將行程生命週期、目的地、300 公尺範圍、Google ETA、路邊觀測、路外觀測、抵達時模型預測與來源刷新控制分開，避免前端把目前車位當成抵達時機率，也方便未來接入其他資料來源。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；各區塊內正式欄位仍待定。沒有 coding。
 
 - Sponsor 同意先定 `query` 區塊：它只描述查詢生命週期與前端輪詢控制，不放目的地、ETA、車位數或模型結果。第一版語意包含 `queryId`、整體狀態、建立時間、伺服器時間、查詢到期時間、是否仍有工作、建議輪詢秒數、進行中／已終止區塊、是否需要重新規劃及可選防重送追蹤。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式 JSON 命名、期限數字和 HTTP 表達待定。沒有 coding。
+
+- Sponsor 同意 `destination` 區塊只描述本次選定目的地與主系統支援判定，不放 ETA、停車選項或模型預測。第一版語意包含顯示名稱、可選格式化地址、可選 Google `placeId`、目的地座標、來源種類、支援狀態、MVP 區域、拒絕原因與使用者訊息。目的地座標同時作 Google ETA 終點與 300 公尺搜尋圓心；試點外目的地不啟動 Google Routes 或官方車位來源。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式欄位命名和 `placeId` 保存策略待定。沒有 coding。
+
+- Sponsor 同意 `area` 區塊描述本次停車查詢的 300 公尺地理範圍與資料覆蓋，不放 ETA、即時剩餘位或模型機率。第一版以目的地座標為圓心、直線距離 300 公尺為半徑，並分別標示整體、路邊與路外覆蓋狀態。若查詢圓跨出新莊收錄範圍，可顯示已收錄位置與合格路外單場結果，但不得輸出完整 300 公尺路邊區域機率。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；邊界資料與目錄統計方式待定。沒有 coding。
+
+- Sponsor 同意 `eta` 區塊只描述本次 Google Routes 行程時間，不放車位資料或模型機率。第一版語意包含 ETA 狀態、起點摘要、目的地參照、出發時間、計算時間、行車秒數、預計抵達時間、交通模式、供應者、是否需要重規劃、失敗原因與使用者訊息。`estimatedArrivalAt` 是路邊與路外抵達時預測的共同目標時刻；ETA 失敗或過期時，預測不得輸出有效機率。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；Google 回應欄位映射與錯誤碼細節待定。沒有 coding。
+
+- Sponsor 同意 `roadside` 區塊只描述 300 公尺範圍內的路邊目前觀測、來源狀態與格位明細，不放抵達時區域機率。路邊抵達時「至少一格可停」機率統一放在 `predictions`；`roadside.summary.availableSpotCount` 只代表新鮮快照中的目前觀測。格位外部導航入口僅在目前回報有位、資料新鮮、一般汽車適用、座標有效且品質合格時提供；過期或未知資料不能作目前推薦。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式欄位命名、清單上限、特殊格位排除與座標品質待定。沒有 coding。

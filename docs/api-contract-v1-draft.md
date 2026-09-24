@@ -73,6 +73,96 @@ Sponsor 已同意：使用者從前端 Places (New) 候選選定目的地或手�
 
 `query` 的 `expiresAt`、各背景工作的最後期限、來源資料新鮮度及 Google ETA 目標時刻是不同概念。`queryId` 過期不會讓 MySQL 已發布快照消失；來源資料過期也不會讓 `queryId` 失效。前端讀到 `hasPendingWork=false` 後停止進度輪詢；之後若使用者按「更新車位」，走刷新端點與 `refresh` 區塊，不改變原本 Google ETA。
 
+
+### 已決定：`destination` 區塊欄位語意
+
+`destination` 區塊只描述使用者本次選定的目的地與主系統的支援判定，不放 Google ETA、停車選項或模型預測。第一版語意如下；正式 JSON 名稱可微調，但職責邊界固定。
+
+| 欄位語意 | 建議欄位 | 說明 |
+| --- | --- | --- |
+| 顯示名稱 | `displayName` | 前端 Google Places 候選的短名稱或使用者可辨識名稱；只供顯示，不作地理判定 |
+| 格式化地址 | `formattedAddress` | 可選；若 Google 回傳且前端有需要，可用於結果頁顯示 |
+| Google 地點 ID | `placeId` | 可選；來自 Places 選取結果。後端可記錄作追蹤，但第一版不靠它重新查座標 |
+| 座標 | `latitude`、`longitude` | 本次 Google ETA 終點與 300 公尺搜尋圓心的唯一座標來源；後端檢查有效範圍 |
+| 來源種類 | `selectionSource` | 候選值：`GOOGLE_PLACE`、`MANUAL_COORDINATE`。第一版目的地主要來自 Google Places；手動座標只作開發或測試候選 |
+| 支援狀態 | `supportStatus` | 候選值：`SUPPORTED`、`UNSUPPORTED_AREA`、`INVALID_COORDINATE`、`UNKNOWN` |
+| MVP 區域 | `serviceArea` | 第一版為 `NEW_TAIPEI_XINZHUANG`；若不支援則可為 `null` |
+| 拒絕原因 | `unsupportedReason` | 例如 `OUTSIDE_MVP_AREA`、`INVALID_COORDINATE`、`MISSING_COORDINATE`；只在不支援或無法判定時使用 |
+| 使用者訊息 | `message` | 給前端顯示的簡短狀態，例如「目前尚未支援此地區」 |
+
+目的地座標一旦建立查詢便固定，用於 Google Routes ETA 終點與 `area` 的 300 公尺圓心。前端不得同時傳另一個停車搜尋中心；後端也不得根據純文字名稱自行猜另一個座標。若目的地在新莊 MVP 外，`destination.supportStatus=UNSUPPORTED_AREA`，查詢不啟動 Google Routes 或官方車位來源，前端保留地點並提供改搜入口。
+
+`destination` 的支援判定只回答「這個目的地是否在目前服務範圍內」。它不表示 300 公尺內是否有停車資料；收錄範圍與跨區覆蓋由 `area` 區塊描述。
+
+
+### 已決定：`area` 區塊欄位語意
+
+`area` 區塊描述本次停車查詢的地理範圍與資料覆蓋狀態，不放 ETA、即時剩餘位或模型機率。第一版以目的地座標為圓心、直線距離 300 公尺為查詢範圍；這是產品驗證用的地圖距離，不代表步行距離。
+
+| 欄位語意 | 建議欄位 | 說明 |
+| --- | --- | --- |
+| 圓心 | `centerLatitude`、`centerLongitude` | 必須等於 `destination` 座標；不可另傳停車搜尋中心 |
+| 半徑 | `radiusMeters` | 第一版固定 `300`，由後端決定，不接受前端改寫 |
+| 距離算法 | `distanceMode` | 第一版固定 `STRAIGHT_LINE`；日後若改步行距離再新增模式 |
+| 服務範圍 | `serviceArea` | 第一版為 `NEW_TAIPEI_XINZHUANG`；和 `destination.serviceArea` 保持一致 |
+| 整體覆蓋 | `coverageStatus` | 候選值：`COMPLETE`、`PARTIAL`、`UNKNOWN`、`UNSUPPORTED` |
+| 路邊覆蓋 | `roadsideCoverageStatus` | 路邊格位資料在 300 公尺圓內的覆蓋狀態 |
+| 路外覆蓋 | `offStreetCoverageStatus` | 路外停車場目錄在 300 公尺圓內的覆蓋狀態 |
+| 是否跨出支援區 | `crossesServiceBoundary` | 例如目的地在新莊內，但 300 公尺圓部分跨到鄰區 |
+| 覆蓋說明 | `coverageNotes` | 可選；列出缺口原因，例如 `CROSSES_UNSUPPORTED_AREA`、`CATALOG_UNAVAILABLE` |
+| 已收錄數量摘要 | `catalogCounts` | 只描述目錄中符合一般汽車條件的已收錄路邊格位／路外場站數量；不等於目前有位數 |
+
+`coverageStatus=COMPLETE` 需要可信邊界或同等可驗證依據；不能只因目的地地址在新莊就宣稱完整。若 300 公尺圓部分跨出目前收錄範圍，`coverageStatus=PARTIAL` 且 `crossesServiceBoundary=true`。此時可以顯示已收錄位置及合格路外單場結果，但不得輸出完整 300 公尺路邊「至少一格可停」機率。
+
+`catalogCounts` 的 `0` 只代表「目前收錄目錄中沒有符合條件的項目」，不代表現場沒有停車位。若目錄不可用或覆蓋未知，數量應為未知或可空，不用空陣列冒充查詢完整。
+
+
+### 已決定：`eta` 區塊欄位語意
+
+`eta` 區塊只描述本次明確行程規劃取得的 Google Routes ETA，不放車位資料、來源刷新狀態或模型機率。第一版只有在使用者送出起點、目的地與出發時間後才安排 Google Routes；車位自動刷新與手動更新不重算 ETA。
+
+| 欄位語意 | 建議欄位 | 說明 |
+| --- | --- | --- |
+| ETA 狀態 | `status` | 候選值：`PENDING`、`READY`、`FAILED`、`BLOCKED`、`EXPIRED`、`NOT_REQUESTED` |
+| 起點摘要 | `originSummary` | 不保存完整搜尋文字；可描述目前位置或手動選取起點的顯示名稱／座標摘要 |
+| 目的地參照 | `destinationRef` | 指向 `destination` 區塊；不重複另一套目的地座標 |
+| 出發時間 | `departureAt` | 後端實際送給 Google Routes 的出發時間；`NOW` 由後端建立查詢時決定 |
+| 計算時間 | `calculatedAt` | Google ETA 完成或主系統取得結果的時間；不得拿停車資料時間替代 |
+| 行車秒數 | `durationSeconds` | Google Routes 回傳的估計行車時間，用來換算抵達時刻 |
+| 預計抵達 | `estimatedArrivalAt` | `departureAt + durationSeconds` 的結果，是停車預測共同目標時刻 |
+| 交通模式 | `trafficMode` | 第一版設計為 `TRAFFIC_AWARE_OPTIMAL`；若未來改用其他模式需明示 |
+| 路線供應者 | `provider` | 第一版為 `GOOGLE_ROUTES` |
+| 是否需要重規劃 | `requiresReplan` | 原 ETA 目標時刻已過、查詢過期或使用者改變條件時為 true |
+| 失敗原因 | `failureReason` | 候選值：`ROUTE_NOT_FOUND`、`GOOGLE_TIMEOUT`、`GOOGLE_ERROR`、`BUDGET_LIMITED`、`INVALID_INPUT`、`UNKNOWN` |
+| 使用者訊息 | `message` | 例如「暫時無法估算抵達時間」或「原預計抵達時間已過，請重新規劃」 |
+
+`estimatedArrivalAt` 是路邊與路外抵達時預測的共同目標時刻。若 `eta.status` 不是 `READY`，`predictions` 不能輸出看似有效的抵達時機率，應標示缺 ETA 或資料不足。若 `estimatedArrivalAt` 已過，`eta.status` 可轉為 `EXPIRED` 或 `requiresReplan=true`，保留舊 ETA 作參考，但停止把其預測當作未來結果。
+
+Google ETA 的時間狀態與停車資料 5 分鐘新鮮度門檻分開。停車快照更新後可以在原 ETA 尚未過期時重新推論同一目標時刻；不得默默重算 Google Routes，也不得用固定 10／30／60 分鐘替代 Google ETA。
+
+### 已決定：`roadside` 區塊欄位語意
+
+`roadside` 區塊只描述目的地 300 公尺範圍內的路邊停車目前觀測、來源狀態與可顯示格位明細，不直接放抵達時機率。抵達時「至少一格可停」的機率統一放在 `predictions`，避免把目前空位誤解成到達時仍可停。
+
+| 欄位語意 | 建議欄位 | 說明 |
+| --- | --- | --- |
+| 來源狀態 | `status` | 沿用統一來源狀態：`FRESH`、`STALE`、`REFRESHING`、`FAILED`、`COOLDOWN`、`NO_DATA`、`UNSUPPORTED` |
+| 來源類型 | `sourceType` | 第一版為 `NTPC_ROADSIDE_SPOT`；未來接其他地方政府來源時保留來源辨識 |
+| 快照識別 | `snapshotId` | 指向主系統已發布的完整快照；不可指向未驗證或半套擷取結果 |
+| 來源觀測時間 | `sourceObservedAt` | 若官方資料有提供真正觀測時間才填；沒有則為空，不以系統擷取時間偽裝來源時間 |
+| 系統取得時間 | `systemFetchedAt` | 主系統成功取得並發布快照的時間；5 分鐘新鮮度先以此作試驗門檻 |
+| 是否新鮮 | `isFresh` | 依來源類型與目前試驗門檻判斷；第一版超過 5 分鐘為 false |
+| 區域目前摘要 | `summary` | 只描述目前觀測摘要，例如已收錄汽車適用格位數、已觀測格位數、目前回報空位數、未知數、可顯示導航空位數 |
+| 格位明細 | `spots` | 目前可顯示的格位清單；第一版可限制數量，避免回傳過大 |
+| 使用者訊息 | `message` | 例如「正在更新路邊車格」、「路邊資料已過期」、「目前沒有可確認的路邊空位」 |
+
+`summary.availableSpotCount` 只代表「目前快照中回報可停且仍新鮮的格位數」，不是抵達時預測。若來源過期、失敗、冷卻或覆蓋未知，主要目前可用數應為空或不可用狀態；舊值只能放在附時間的參考欄位，不得當作目前推薦或導航依據。
+
+`spots` 中每筆格位至少需要能表達：系統內格位 ID、來源格位 ID、經緯度、距離目的地幾公尺、目前狀態、是否一般汽車適用、觀測／取得時間、品質狀態、導航資格與不可導航原因。候選狀態可包含 `AVAILABLE`、`OCCUPIED`、`UNKNOWN`、`UNAVAILABLE`、`STALE`；導航資格可包含 `ELIGIBLE`、`NOT_ELIGIBLE`、`UNKNOWN`、`STALE`。
+
+路邊格位可以提供外部地圖導航入口，但必須同時滿足：目前回報有位、快照仍新鮮、一般汽車適用性已確認、座標有效、不是排除中的特殊格位，且資料覆蓋足以支持該格位顯示。若資料已過期，即使曾經回報有位，也不能顯示成「目前可停」或推薦導航；最多保留中性的查看位置，並明確標示車位狀態未確認。
+
+`roadside` 與 `area` 的關係是：`area` 說明 300 公尺範圍和覆蓋是否完整，`roadside` 說明這個範圍內目前路邊觀測能顯示什麼。若 `area.roadsideCoverageStatus` 是 `PARTIAL` 或 `UNKNOWN`，`roadside` 仍可顯示已收錄且品質合格的格位位置，但不得暗示整個 300 公尺圓已完整查過，也不得讓 `predictions` 輸出完整區域機率。
 ### 已決定：查詢總回應頂層結構
 
 查詢總回應第一版採固定頂層分層，讓前端能用穩定區塊渲染，也讓後端將行程、地理範圍、官方即時觀測、模型預測與刷新控制分開演進。頂層候選結構如下；欄位名稱可在實作前微調，但區塊職責先固定。
