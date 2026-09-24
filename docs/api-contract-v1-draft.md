@@ -209,6 +209,28 @@ Google ETA 的時間狀態與停車資料 5 分鐘新鮮度門檻分開。停車
 `predictions` 必須保留「不能預測」的合法結果。若 `eta.status` 不是 `READY`，`targetArrivalAt` 不存在或已過期，整個 `predictions.status` 不得為 `READY`。若車位來源過期，仍可保留已知目前觀測作參考，但模型是否能推論要看資料品質規則；不能因為目前有位就直接產生高機率。
 
 第一版面試展示可以先採簡單基準模型或可解釋規則作為模型候選，但 API 仍要用同一個 `predictions` 契約表示。若尚未通過時間切分回測，前端應顯示「預測資料不足」或「實驗中」，不得把未驗證分數包裝成正式準確預測。之後改成 ML 模型時，只更新模型版本、資料摘要與推論服務，不改前端主要契約。
+### 已決定：`refresh` 區塊欄位語意
+
+`refresh` 區塊只描述路邊與路外官方來源的刷新操作、共用擷取、冷卻、失敗重試與可再試時間，不放目前車位數，也不放抵達時預測。實際目前觀測分別放在 `roadside` 與 `offStreet`；抵達時機率放在 `predictions`。
+
+| 欄位語意 | 建議欄位 | 說明 |
+| --- | --- | --- |
+| 整體刷新狀態 | `status` | 描述本次刷新請求或自動刷新觸發的整體結果；單一來源成功不代表另一來源成功 |
+| 路邊刷新狀態 | `roadside` | 路邊來源的處置結果、是否啟動或加入共用擷取、可再試時間與原因 |
+| 路外刷新狀態 | `offStreet` | 路外來源的處置結果、是否啟動或加入共用擷取、可再試時間與原因 |
+| 觸發方式 | `trigger` | 候選值：`INITIAL_QUERY`、`VISIBLE_AUTO_REFRESH`、`MANUAL_REFRESH`、`BACKGROUND_SAMPLING` |
+| 是否重算 ETA | `recalculateEta` | 第一版固定為 false；車位刷新不重新呼叫 Google Routes |
+| 使用者訊息 | `message` | 例如「正在更新車位」、「資料仍在冷卻中」、「已沿用最新資料」 |
+
+每個來源的刷新處置建議用同一套語意表示：`USED_FRESH_SNAPSHOT`、`JOINED_RUNNING_REFRESH`、`STARTED_REFRESH`、`COOLDOWN`、`BUDGET_BLOCKED`、`FAILED`、`SUCCEEDED`、`NO_DATA`、`UNSUPPORTED`。正式大小寫可在實作前微調，但語意需保留。`USED_FRESH_SNAPSHOT` 表示不呼叫官方 API；`JOINED_RUNNING_REFRESH` 表示已有其他使用者或分頁啟動同來源擷取；`STARTED_REFRESH` 才代表後端允許啟動新一輪官方來源呼叫。
+
+每個來源至少需要能回：`sourceType`、`action`、`refreshInProgress`、`startedAt`、`finishedAt`、`lastSuccessfulFetchedAt`、`nextAllowedRefreshAt`、`canRefreshNow`、`failureReason`、`message`。`nextAllowedRefreshAt` 由後端根據來源最低間隔、失敗冷卻、預算保留量和官方硬限制決定；前端不得用自己的計時器繞過它。
+
+可見頁面自動刷新與手動「更新車位」共用同一套後端來源級刷新控制。頁面可見且資料超過 5 分鐘試驗門檻時，前端可以對過期來源觸發一次受控刷新；頁面隱藏時停止自動刷新與進度輪詢。使用者手動更新可以加入既有工作，但同樣不能突破冷卻、預算或來源限制。
+
+來源擷取失敗後，路邊與路外分開處理。單一來源失敗不抹掉另一來源已成功資料；失敗來源立即結束載入，回最後成功取得時間和可再試時間。冷卻後頁面仍可見時，最多共用自動重試一輪；若仍失敗，停止自動重試，之後只接受使用者手動更新且仍受後端限制。
+
+`refresh` 成功只代表已取得並發布新的官方來源快照。新快照發布後，`roadside`、`offStreet` 可以更新目前觀測；若原 Google ETA 仍有效，`predictions` 可用同一 `eta.estimatedArrivalAt` 重新推論。`refresh` 不重新搜尋地點、不重算 Google ETA、不延長 `queryId` 有效期，也不把舊有位格位變成目前推薦。
 ### 已決定：查詢總回應頂層結構
 
 查詢總回應第一版採固定頂層分層，讓前端能用穩定區塊渲染，也讓後端將行程、地理範圍、官方即時觀測、模型預測與刷新控制分開演進。頂層候選結構如下；欄位名稱可在實作前微調，但區塊職責先固定。
