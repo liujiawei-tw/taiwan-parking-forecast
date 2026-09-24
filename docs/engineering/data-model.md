@@ -173,6 +173,15 @@
 
 日後若需要分析使用者查詢熱區或除錯，可另設低敏感度的查詢事件表，例如只保存模糊化區域、建立時間、來源狀態與錯誤碼，不保存精確起點。
 
+## 快照發布與資料一致性
+
+使用者查詢只能讀取 `source_state.active_snapshot_id` 指向的 `PUBLISHED` 快照。`availability_snapshot` 的 `CANDIDATE` 與 `REJECTED` 狀態只供擷取流程、品質檢查與除錯使用，不可被一般查詢 API 選用。
+
+建議交易邊界：候選快照與觀測資料可以先批次寫入；驗證通過後，用一次短交易更新 `availability_snapshot.snapshot_status=PUBLISHED`、`published_at` 與 `source_state.active_snapshot_id`。交易提交後才更新或失效 Redis 快取。Redis 更新失敗時，MySQL 已發布版本仍是事實來源，後續可從 MySQL 重建快取。
+
+路邊與路外各自有獨立 `source_state` 與啟用快照，因此可以各自成功、失敗或過期。前端不能把路邊的取得時間套用到路外，也不能用一個來源的新快照證明另一來源新鮮。
+
+未發布候選、失敗擷取、品質拒絕資料和模型補值不得當作訓練標籤。訓練匯出應以已發布觀測歷史和快照品質欄位篩選資料。
 ## 保留與歸檔
 
 - 使用者查詢服務需要最新已發布快照與近期歷史。

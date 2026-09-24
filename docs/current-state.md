@@ -279,3 +279,5 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 - 已補上後端 Spring Boot package 分層與 DTO 命名草案：`api` 放 Controller 與 request／response DTO，`application` 放查詢、刷新、ETA、預測 use case 協調，`domain` 放停車、查詢、刷新與預測語意，`adapter` 放 Google／新北市／TDX 外部來源，`infrastructure` 放 JPA 與 Redis，`config` 放設定。JPA entity 不直接回前端，來源原始欄位不直接進 API response。已同步 `backend-stack-and-normalization.md` 與 `decisions.md`；正式 root package、Maven groupId、Java／Spring Boot 版本與 command 物件細節待定。沒有 coding。
 
 - 已新增 `docs/engineering/data-model.md`，定義 MySQL／JPA 資料模型草案：`parking_place`、`source_mapping`、`availability_snapshot`、`availability_observation`、`source_state`、`ingestion_run`，並說明 `parking_query` 第一版不持久化到 MySQL，短期查詢狀態放 Redis。資料庫主要服務使用者查詢，保存觀測歷史供未來訓練為次要用途；有效 0、未知、無即時資料與原始特殊值分開保存。已同步 `backend-stack-and-normalization.md` 與 `decisions.md`；欄位型別、索引、分區、保留期限、原始 response 保存與批次寫入待量測。沒有 coding。
+
+- 已補上快照發布交易流程：來源擷取先建立 `ingestion_run` 與 `CANDIDATE` 快照，批次寫入觀測並完成品質檢查；缺頁或整輪失敗標記拒絕，不切換 `source_state.active_snapshot_id`，也不更新 Redis。驗證通過後，用短交易將快照改為 `PUBLISHED` 並切換啟用版本；交易提交後才更新或失效 Redis。使用者查詢只讀已發布快照，未發布候選、失敗擷取與模型補值不得作訓練標籤。已同步 `snapshot-validation.md`、`engineering/data-model.md` 與 `decisions.md`；交易隔離、批次大小、候選清理與 Redis 補快取待定。沒有 coding。

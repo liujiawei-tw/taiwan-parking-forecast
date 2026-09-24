@@ -474,3 +474,9 @@
 - **原因**：主系統資料庫主要服務使用者查詢，也要保留可追溯歷史供未來訓練；若把位置、來源 ID、快照、觀測、冷卻與查詢狀態混成大表，後續新增來源與排查問題會困難。
 - **影響**：第一版 MySQL／JPA 草案採 `parking_place`、`source_mapping`、`availability_snapshot`、`availability_observation`、`source_state`、`ingestion_run` 等表。路邊與路外共用觀測表但保留不同粒度欄位；有效 0、未知、無即時資料與原始特殊值分開保存。`source_state` 持久保存最後成功取得時間與下一次可刷新時間，Redis 不保存唯一真相。`parking_query` 第一版不持久化到 MySQL，短期查詢狀態放 Redis，避免保存精確行程位置。
 - **狀態**：資料模型草案已記錄於 `docs/engineering/data-model.md`；欄位型別、索引、分區、保留期限、原始 response 保存策略、JPA 批次寫入與 spatial index 是否使用仍待資料量測與實作前定稿。沒有 coding。
+
+## 2026-09-25：快照發布採候選寫入與啟用版本短交易切換
+
+- **原因**：Sponsor 要避免使用者讀到半套資料，同時又要保存可追溯歷史供未來訓練；主系統需要明確定義候選快照、品質驗證、發布交易與 Redis 更新的順序。
+- **影響**：來源擷取先建立 `ingestion_run` 與 `CANDIDATE` 快照，批次寫入觀測並完成品質檢查；失敗或缺頁時標記 `REJECTED`／`FAILED`，不改 `source_state.active_snapshot_id`，也不更新 Redis。驗證通過後，用短交易將快照改為 `PUBLISHED` 並切換 `source_state.active_snapshot_id`；交易提交後才更新或失效 Redis。使用者查詢只讀已發布快照；未發布候選、失敗擷取和模型補值不得作訓練標籤。
+- **狀態**：快照發布交易流程已記錄於 `snapshot-validation.md` 與 `engineering/data-model.md`；實際交易隔離層級、批次大小、候選清理策略、Redis 補快取方式與品質比例門檻仍待實測與實作前定稿。沒有 coding。
