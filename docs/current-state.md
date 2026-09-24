@@ -265,3 +265,5 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 - Sponsor 同意 `predictions` 區塊是唯一承載抵達時預測的地方，不放目前車位數。路邊預測表示目的地 300 公尺內抵達時至少一個一般汽車路邊格位可停的區域機率；路外預測表示每個合格路外停車場抵達時仍有汽車位的逐場機率。`targetArrivalAt` 必須等於 Google Routes 的 `eta.estimatedArrivalAt`；ETA 缺失、過期、覆蓋不完整、資料不足或模型未驗證時，必須明確標示不可預測或資料不足。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；機率尺度、回測指標、模型版本與原因碼待定。沒有 coding。
 
 - Sponsor 同意 `refresh` 區塊只描述路邊與路外官方來源的刷新操作、共用擷取、冷卻、失敗重試與可再試時間，不放目前車位數或抵達時預測。來源處置語意包含沿用新鮮快照、加入既有刷新、啟動新刷新、冷卻、預算阻擋、失敗、成功、無資料與不支援。車位刷新不重新搜尋地點、不重算 Google ETA、不延長 `queryId`，也不能讓前端繞過後端冷卻、預算與來源限制。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；冷卻秒數、等待上限、最低間隔與錯誤碼待定。沒有 coding。
+
+- 已在 `api-contract-v1-draft.md` 補上兩個 API 範例回應草案：建立查詢後快速回應，以及各區塊完成或終止後的查詢回應。範例用假資料示範 `query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh` 如何同時存在，並明確區分目前觀測、抵達時預測與刷新控制。已同步 `decisions.md`；正式欄位命名、大小寫、必填／可空規則、分頁、排序與錯誤碼待定。沒有 coding。

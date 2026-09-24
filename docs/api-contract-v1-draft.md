@@ -231,6 +231,7 @@ Google ETA 的時間狀態與停車資料 5 分鐘新鮮度門檻分開。停車
 來源擷取失敗後，路邊與路外分開處理。單一來源失敗不抹掉另一來源已成功資料；失敗來源立即結束載入，回最後成功取得時間和可再試時間。冷卻後頁面仍可見時，最多共用自動重試一輪；若仍失敗，停止自動重試，之後只接受使用者手動更新且仍受後端限制。
 
 `refresh` 成功只代表已取得並發布新的官方來源快照。新快照發布後，`roadside`、`offStreet` 可以更新目前觀測；若原 Google ETA 仍有效，`predictions` 可用同一 `eta.estimatedArrivalAt` 重新推論。`refresh` 不重新搜尋地點、不重算 Google ETA、不延長 `queryId` 有效期，也不把舊有位格位變成目前推薦。
+
 ### 已決定：查詢總回應頂層結構
 
 查詢總回應第一版採固定頂層分層，讓前端能用穩定區塊渲染，也讓後端將行程、地理範圍、官方即時觀測、模型預測與刷新控制分開演進。頂層候選結構如下；欄位名稱可在實作前微調，但區塊職責先固定。
@@ -304,6 +305,248 @@ Sponsor 已決定：目的地位於新莊 MVP 支援範圍外時，先回明確�
 
 **覆蓋欄位語意**：Sponsor 已同意每種停車類型須區分完整、部分與未知。覆蓋未知時，完整 300 公尺路邊機率暫不顯示；已核實位置與合格路外單場預測可保留，但附近清單的覆蓋狀態須另標明。候選欄位值為 `complete`（經核對，查詢圓完整位於該類型的收錄範圍）、`partial`（已知有一部分未收錄）及 `unknown`（尚無足夠依據判斷）；試點外候選為整筆查詢的 `unsupported_area`，不拿空陣列表示。覆蓋狀態與「目錄是否成功載入」「即時車位是否新鮮」「模型能否預測」分層；完整地理覆蓋不保證每個格位都有有效即時觀測。`complete` 必須有可信覆蓋邊界或同等可核對依據，不能只因目的地地址寫新莊就宣稱完整。英文狀態值及邊界資料仍是設計提案。
 
+## 查詢 API 範例回應（欄位形狀草案）
+
+以下 JSON 是前後端對齊用的草案範例，不代表正式欄位已鎖死。範例中的座標、名稱、ID、時間、數量與機率都是假資料；正式實作前仍需整理欄位命名、大小寫、可空規則、分頁與錯誤碼。
+
+### 範例 1：建立查詢後的快速回應
+
+情境：使用者已選定新莊目的地、起點與出發時間；後端完成輸入檢查與查詢狀態建立後快速回 `202 Accepted`。此時目的地與 300 公尺範圍已可顯示，ETA、來源快照與預測仍在進行中。
+
+```json
+{
+  "query": {
+    "queryId": "pq_20260925_abc123",
+    "status": "RUNNING",
+    "createdAt": "2026-09-25T10:00:00+08:00",
+    "serverTime": "2026-09-25T10:00:01+08:00",
+    "expiresAt": "2026-09-25T12:00:00+08:00",
+    "hasPendingWork": true,
+    "nextPollAfterSeconds": 2,
+    "pendingSections": ["ETA", "ROADSIDE", "OFF_STREET", "PREDICTIONS"],
+    "finishedSections": [],
+    "requiresReplan": false
+  },
+  "destination": {
+    "displayName": "新莊體育館",
+    "formattedAddress": "新北市新莊區中華路一段75號",
+    "placeId": "google-place-id-example",
+    "latitude": 25.0391,
+    "longitude": 121.4529,
+    "selectionSource": "GOOGLE_PLACE",
+    "supportStatus": "SUPPORTED",
+    "serviceArea": "NEW_TAIPEI_XINZHUANG"
+  },
+  "area": {
+    "centerLatitude": 25.0391,
+    "centerLongitude": 121.4529,
+    "radiusMeters": 300,
+    "distanceMode": "STRAIGHT_LINE",
+    "serviceArea": "NEW_TAIPEI_XINZHUANG",
+    "coverageStatus": "UNKNOWN",
+    "roadsideCoverageStatus": "UNKNOWN",
+    "offStreetCoverageStatus": "UNKNOWN",
+    "crossesServiceBoundary": false,
+    "catalogCounts": null
+  },
+  "eta": {
+    "status": "PENDING",
+    "provider": "GOOGLE_ROUTES",
+    "trafficMode": "TRAFFIC_AWARE_OPTIMAL",
+    "message": "正在估算抵達時間"
+  },
+  "roadside": {
+    "status": "REFRESHING",
+    "sourceType": "NTPC_ROADSIDE_SPOT",
+    "summary": null,
+    "spots": [],
+    "message": "正在更新路邊車格"
+  },
+  "offStreet": {
+    "status": "REFRESHING",
+    "sourceType": "NTPC_OFF_STREET_AVAILABILITY",
+    "summary": null,
+    "parkingLots": [],
+    "message": "正在更新路外停車場"
+  },
+  "predictions": {
+    "status": "PENDING",
+    "targetArrivalAt": null,
+    "roadside": { "status": "PENDING" },
+    "offStreet": [],
+    "message": "等待 ETA 與車位資料"
+  },
+  "refresh": {
+    "status": "RUNNING",
+    "trigger": "INITIAL_QUERY",
+    "recalculateEta": false,
+    "roadside": {
+      "sourceType": "NTPC_ROADSIDE_SPOT",
+      "action": "STARTED_REFRESH",
+      "refreshInProgress": true
+    },
+    "offStreet": {
+      "sourceType": "NTPC_OFF_STREET_AVAILABILITY",
+      "action": "STARTED_REFRESH",
+      "refreshInProgress": true
+    }
+  }
+}
+```
+
+### 範例 2：各區塊完成或終止後的查詢回應
+
+情境：Google ETA 已完成；路邊與路外來源有新鮮快照；路邊覆蓋完整且模型可輸出區域機率；其中一個路外停車場可預測，另一個因目前無即時動態而只顯示位置與狀態。
+
+```json
+{
+  "query": {
+    "queryId": "pq_20260925_abc123",
+    "status": "COMPLETED",
+    "createdAt": "2026-09-25T10:00:00+08:00",
+    "serverTime": "2026-09-25T10:00:08+08:00",
+    "expiresAt": "2026-09-25T12:00:00+08:00",
+    "hasPendingWork": false,
+    "nextPollAfterSeconds": null,
+    "pendingSections": [],
+    "finishedSections": ["ETA", "ROADSIDE", "OFF_STREET", "PREDICTIONS"],
+    "requiresReplan": false
+  },
+  "eta": {
+    "status": "READY",
+    "originSummary": "目前位置",
+    "destinationRef": "destination",
+    "departureAt": "2026-09-25T10:00:00+08:00",
+    "calculatedAt": "2026-09-25T10:00:03+08:00",
+    "durationSeconds": 1380,
+    "estimatedArrivalAt": "2026-09-25T10:23:00+08:00",
+    "trafficMode": "TRAFFIC_AWARE_OPTIMAL",
+    "provider": "GOOGLE_ROUTES",
+    "requiresReplan": false
+  },
+  "roadside": {
+    "status": "FRESH",
+    "sourceType": "NTPC_ROADSIDE_SPOT",
+    "snapshotId": "rs_snap_001",
+    "systemFetchedAt": "2026-09-25T10:00:05+08:00",
+    "isFresh": true,
+    "summary": {
+      "eligibleSpotCount": 42,
+      "observedSpotCount": 40,
+      "availableSpotCount": 3,
+      "unknownSpotCount": 2,
+      "displayableAvailableSpotCount": 2
+    },
+    "spots": [
+      {
+        "spotId": "spot_internal_001",
+        "sourceSpotId": "NTPC_CELL_001",
+        "latitude": 25.0398,
+        "longitude": 121.4519,
+        "distanceMeters": 110,
+        "status": "AVAILABLE",
+        "isCarEligible": true,
+        "fetchedAt": "2026-09-25T10:00:05+08:00",
+        "navigationEligibility": "ELIGIBLE"
+      }
+    ]
+  },
+  "offStreet": {
+    "status": "FRESH",
+    "sourceType": "NTPC_OFF_STREET_AVAILABILITY",
+    "snapshotId": "os_snap_001",
+    "systemFetchedAt": "2026-09-25T10:00:06+08:00",
+    "isFresh": true,
+    "summary": {
+      "parkingLotCount": 2,
+      "lotsWithFreshAvailability": 1,
+      "lotsWithAvailableCarSpaces": 1,
+      "lotsWithUnknownAvailability": 1
+    },
+    "parkingLots": [
+      {
+        "parkingLotId": "lot_internal_001",
+        "sourceParkingLotId": "NTPC_LOT_001",
+        "name": "新莊範例停車場",
+        "latitude": 25.0389,
+        "longitude": 121.4538,
+        "distanceMeters": 95,
+        "availableCarSpaces": 12,
+        "totalCarSpaces": 120,
+        "availabilityStatus": "AVAILABLE",
+        "navigationEligibility": "ELIGIBLE"
+      },
+      {
+        "parkingLotId": "lot_internal_002",
+        "sourceParkingLotId": "NTPC_LOT_002",
+        "name": "新莊另一範例停車場",
+        "latitude": 25.0403,
+        "longitude": 121.4541,
+        "distanceMeters": 180,
+        "availableCarSpaces": null,
+        "totalCarSpaces": 80,
+        "availabilityStatus": "NO_REALTIME_AVAILABILITY",
+        "rawAvailabilityHint": "-9",
+        "navigationEligibility": "UNKNOWN"
+      }
+    ]
+  },
+  "predictions": {
+    "status": "READY",
+    "targetArrivalAt": "2026-09-25T10:23:00+08:00",
+    "etaRef": "eta",
+    "modelVersion": "baseline-2026-09-25",
+    "roadside": {
+      "status": "READY",
+      "probability": 0.62,
+      "meaning": "ARRIVAL_TIME_AT_LEAST_ONE_CAR_SPOT_AVAILABLE_WITHIN_300M"
+    },
+    "offStreet": [
+      {
+        "parkingLotId": "lot_internal_001",
+        "status": "READY",
+        "probability": 0.78,
+        "meaning": "ARRIVAL_TIME_HAS_CAR_SPACE"
+      },
+      {
+        "parkingLotId": "lot_internal_002",
+        "status": "INSUFFICIENT_DATA",
+        "probability": null,
+        "reasons": ["NO_REALTIME_AVAILABILITY"]
+      }
+    ]
+  },
+  "refresh": {
+    "status": "IDLE",
+    "trigger": "INITIAL_QUERY",
+    "recalculateEta": false,
+    "roadside": {
+      "sourceType": "NTPC_ROADSIDE_SPOT",
+      "action": "SUCCEEDED",
+      "refreshInProgress": false,
+      "lastSuccessfulFetchedAt": "2026-09-25T10:00:05+08:00",
+      "nextAllowedRefreshAt": "2026-09-25T10:05:05+08:00",
+      "canRefreshNow": false
+    },
+    "offStreet": {
+      "sourceType": "NTPC_OFF_STREET_AVAILABILITY",
+      "action": "SUCCEEDED",
+      "refreshInProgress": false,
+      "lastSuccessfulFetchedAt": "2026-09-25T10:00:06+08:00",
+      "nextAllowedRefreshAt": "2026-09-25T10:05:06+08:00",
+      "canRefreshNow": false
+    }
+  }
+}
+```
+
+### 範例設計重點
+
+- `query` 告訴前端是否還要輪詢，不代表每個上游都成功。
+- `eta.estimatedArrivalAt` 是 `predictions.targetArrivalAt` 的唯一來源。
+- `roadside.summary.availableSpotCount` 和 `offStreet.parkingLots[].availableCarSpaces` 都是目前觀測，不是抵達時承諾。
+- `predictions` 可以對部分項目回機率、部分項目回資料不足。
+- `refresh` 的 `nextAllowedRefreshAt` 是後端保護官方 API 的依據，前端不能自行繞過。
 ## HTTP 與失敗語意（候選）
 
 - 建立查詢若採非同步，成功接受可用 `202 Accepted` 並附 `queryId` 與當時已完成結果；讀取進度成功用 `200 OK`，即使路邊來源失敗，該來源狀態仍在回應本體。HTTP 成功只表示主系統有成功處理這次讀取，不代表所有上游都成功。
