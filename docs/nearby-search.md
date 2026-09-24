@@ -1,6 +1,6 @@
 # 目的地附近停車位置查詢（Sprint 1 設計提案）
 
-> 狀態：待實測與 Sponsor 確認的主系統方案；尚未實作。`parking-data-collector` 僅供離線 ML 訓練，不參與此查詢或即時刷新。
+> 狀態：核心查詢策略已決定，效能與索引仍待實測；尚未實作。`parking-data-collector` 僅供離線 ML 訓練，不參與此查詢或即時刷新。
 
 ## 已確認的產品語意
 
@@ -18,6 +18,20 @@
 
 矩形預篩加精確距離是第一版候選，實際 MySQL 查詢計畫、候選筆數與延遲尚需量測；若普通座標欄位的查詢不足，再評估固定 SRID 的空間欄位及索引。JPA 可用於目錄讀取，毋須為了附近查詢先更換 ORM。
 
+
+## 第一版資料庫查詢策略（已決定）
+
+第一版先採「MySQL 經緯度矩形預篩 + 後端精確距離計算」，不先把 MySQL spatial index 當必要條件。理由是新莊 MVP 的目錄規模可先量測，矩形預篩容易用 JPA／SQL 表達，且邏輯容易用測試案例驗證；若實測候選數或延遲過高，再升級為 `POINT` 欄位與 spatial index。
+
+建議查詢邊界如下：
+
+1. 後端收到目的地 WGS84 經緯度後，先計算 300 公尺外接矩形的緯度／經度上下限。
+2. Repository 只負責依 `service_area`、`place_type`、`active_status`、汽車資格及經緯度上下限取候選位置；不要在 Repository 決定產品文案、資料新鮮度或模型狀態。
+3. Application service 對候選位置計算精確直線距離，保留 `distanceMeters <= 300` 的位置，並把距離寫入 DTO。
+4. Application service 取得路邊與路外各自 `source_state.active_snapshot_id`，再連到該已發布快照的觀測。沒有該快照觀測的位置可保留為位置已收錄但目前車位未知。
+5. Response assembly 依 `area`、`roadside`、`offStreet`、`predictions` 的契約輸出；不得讓前端自行用座標和來源欄位判斷是否在範圍內。
+
+Repository 層可有兩個主要讀取方向：一個查 `parking_place` 取得 300 公尺候選位置，一個依已發布快照與位置 ID 批次查 `availability_observation`。距離排序、數量限制及是否分頁仍待產品與效能實測；若第一版地圖只顯示 300 公尺內全部新莊候選，仍須避免一次回傳過多格位造成前端卡頓。
 ## 座標與邊界品質
 
 - 內部目錄統一儲存 WGS84 經緯度及來源原始座標、座標系與核對狀態。來源若給 TWD97 等座標，於匯入時轉換並抽樣核對；不能把不同座標系直接比較。

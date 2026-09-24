@@ -22,12 +22,12 @@
 16. **預測事件與抵達前刷新**：搜尋結果要以單格位、路段「至少一格」或停車場「至少一位」何者為主要排序依據？接近抵達時的資料更新門檻與顯示方式如何定義？
 17. **主系統即時資料入口**：已確認訓練 collector 不作為用戶即時資料來源。主系統採需求觸發的受控刷新，或再加低頻預熱排程？需量測首筆等待時間、資料年齡、上游呼叫數及來源限制。
 18. **查詢契約與地點搜尋**：已選 Google Place Autocomplete Widget (New)、Google Maps JavaScript API 與 Routes `computeRoutes`；Sponsor 回報停車 Google Cloud 專案、三項 API、帳單連結及預算通知均已完成，帳單規劃本階段先跳過。目的地 Google ETA 終點與停車查詢圓心採同一座標；起點種類、NOW／指定出發時間、防重送、試點外不呼叫上游、快速回查詢狀態、各區塊陸續補齊、來源狀態統一語意、查詢總回應頂層分層、`query` 區塊生命週期語意、`destination` 區塊目的地與支援判定語意、`area` 區塊 300 公尺範圍與覆蓋語意，以及 `eta` 區塊 Google Routes 時間語意、`roadside` 區塊路邊目前觀測與格位明細語意，以及 `offStreet` 區塊路外目前觀測與逐場資訊語意，以及 `predictions` 區塊抵達時預測語意，以及 `refresh` 區塊來源刷新控制語意已定。已補上查詢 API 範例回應草案，收斂三個查詢端點與 HTTP 語意草案，並定義建立查詢 Request Body 草案；已定義各區塊必填／可空規則與主系統錯誤回應格式；具體 JSON 欄位名、防重送期限、`details` 結構、traceId 是否加入、OpenAPI required 清單、分頁／排序、TTL／限流、長度限制與起點操作細節仍待技術定稿。見 `api-contract-v1-draft.md`、`result-states.md`。
-19. **搜尋範圍與時效**：已決定目的地周圍**直線距離** 300 公尺及成功取得後超過 5 分鐘標過期；仍需實測附近查詢索引與延遲、可用汽車格位最低觀測比例及主系統擷取頻率，並處理新莊邊界的來源覆蓋缺口。見 `nearby-search.md`。
+19. **搜尋範圍與時效**：已決定目的地周圍**直線距離** 300 公尺及成功取得後超過 5 分鐘標過期；附近查詢第一版策略已定；仍需實測候選數、索引欄位順序、查詢延遲、可用汽車格位最低觀測比例及主系統擷取頻率，並處理新莊邊界的來源覆蓋缺口。見 `nearby-search.md`。
 20. **Redis 實際配置**：Sponsor 已決定第一版納入 Redis；短期查詢狀態放 Redis、`parking_query` 第一版不持久化到 MySQL 的方向已記錄。待定短期 `queryId` 期限／容量、經驗證結果的快取粒度與 TTL、Redis 失效時的回應，以及多實例刷新鎖是否在本期驗證。MySQL 仍負責完整快照與上游額度／冷卻紀錄；Redis 不代替刷新控制。見 `backend-stack-and-normalization.md`、`engineering/data-model.md`。
 21. **新鮮度服務目標**：Sponsor 已選系統成功取得後超過 5 分鐘先標示過期，並要求查詢時先嘗試受控刷新而非直接把舊「有位」結果交給使用者。來源是否提供真正觀測時間？最低間隔、查詢等待上限、每月預算及失敗降級如何設定？
 22. **過期資料的使用者理解**：5 分鐘是初始測試門檻，尚無證據證明一般使用者可接受。原型需驗證「正在更新」、「暫時無法更新」、最後成功取得時間及舊數值僅供參考的文案，並確認是否需按來源更新頻率分別設定門檻。
 23. **前端服務選型與費用（帳單討論暫跳過）**：Sponsor 已同意 Vue 3＋Vite，後端採 Spring Boot Web／Spring MVC REST；Google 地點搜尋、地圖與路線供應者已選，停車 Cloud 專案、三項 API、有效帳單連結及預算通知已回報完成。帳單與費用規劃由 Sponsor 自行管理，本階段不再追問；金鑰及配額在正式介接前仍須核對。見 `frontend-technology-options.md`、`google-usage-budget.md`、`decisions.md`。
-24. **主系統與模型介面**：查詢 API 欄位、後端 package 分層、MySQL／JPA 資料模型與快照發布交易流程草案已建立；仍需定 300 公尺地理索引實作、模型產物版本及 Java／獨立推論程序的界線。需先以兩類訓練標籤與上游回應實測決定。見 `frontend-backend-review.md`、`backend-stack-and-normalization.md`、`engineering/data-model.md`、`snapshot-validation.md`。
+24. **主系統與模型介面**：查詢 API 欄位、後端 package 分層、MySQL／JPA 資料模型與快照發布交易流程草案已建立；300 公尺地理查詢第一版已決定採矩形預篩與後端精確距離；仍需定模型產物版本及 Java／獨立推論程序的界線。需先以兩類訓練標籤與上游回應實測決定。見 `frontend-backend-review.md`、`backend-stack-and-normalization.md`、`engineering/data-model.md`、`snapshot-validation.md`。
 25. **地圖優先布局的細節**：Sponsor 已看過草圖對照並同意電腦版第一版採地圖優先、固定路邊區域摘要與「查看全部結果」入口；常駐清單只保留為比較基準。仍需驗證停車場能否比較、標記重疊、詳情面板尺寸及鍵盤操作。手機版採上地圖／下清單，具體高度與連動仍待定。見 `ui-wireframe-comparison.md`。
 26. **導航到路邊格位的資格與降級**：Sponsor 已決定標記小資訊卡直接提供外部「查看路線」入口，前提是目前回報有位、一般汽車適用性及位置已核實且資料仍在可接受時效內。來源過期時是否保留中性的路線入口？需核對座標精度、道路可進入側、特殊格位排除及 Google／Apple 選擇方式；不能承諾格位到達時仍空著。見 `ui-layout-proposal.md`。
 27. **遠端 Docker 部署細節**：Docker 映像與可重現部署已是必要交付，不再只做本機展示。目標伺服器作業系統／是否可管理 Docker、單一或多實例、網域與 HTTPS 入口、MySQL volume 備份／還原、憑證供應及實際遠端上線是否在 20 天內，尚待確認。先以單機 Compose 作候選，不把它當已定案。

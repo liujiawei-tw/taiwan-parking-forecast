@@ -480,3 +480,8 @@
 - **原因**：Sponsor 要避免使用者讀到半套資料，同時又要保存可追溯歷史供未來訓練；主系統需要明確定義候選快照、品質驗證、發布交易與 Redis 更新的順序。
 - **影響**：來源擷取先建立 `ingestion_run` 與 `CANDIDATE` 快照，批次寫入觀測並完成品質檢查；失敗或缺頁時標記 `REJECTED`／`FAILED`，不改 `source_state.active_snapshot_id`，也不更新 Redis。驗證通過後，用短交易將快照改為 `PUBLISHED` 並切換 `source_state.active_snapshot_id`；交易提交後才更新或失效 Redis。使用者查詢只讀已發布快照；未發布候選、失敗擷取和模型補值不得作訓練標籤。
 - **狀態**：快照發布交易流程已記錄於 `snapshot-validation.md` 與 `engineering/data-model.md`；實際交易隔離層級、批次大小、候選清理策略、Redis 補快取方式與品質比例門檻仍待實測與實作前定稿。沒有 coding。
+## 2026-09-25：300 公尺附近查詢先採矩形預篩與後端精確距離
+
+- **原因**：新莊 MVP 先追求可理解、可測試且適合 JPA／MySQL 的實作；不在沒有資料量與延遲證據前先導入較複雜的 spatial index。
+- **影響**：`parking_place` 保存 WGS84 經緯度並建立服務區、類型、狀態與經緯度索引；Repository 依外接矩形取得候選，application service 再計算精確直線距離並連接各來源已發布快照。前端只接收後端整理好的距離、覆蓋、目前觀測和預測狀態，不自行判斷 300 公尺範圍。
+- **狀態**：第一版查詢策略已決定；實際索引欄位順序、候選數、查詢延遲、排序／分頁和是否升級 MySQL spatial 仍待實測。沒有 coding。
