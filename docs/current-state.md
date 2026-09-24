@@ -267,3 +267,5 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 - Sponsor 同意 `refresh` 區塊只描述路邊與路外官方來源的刷新操作、共用擷取、冷卻、失敗重試與可再試時間，不放目前車位數或抵達時預測。來源處置語意包含沿用新鮮快照、加入既有刷新、啟動新刷新、冷卻、預算阻擋、失敗、成功、無資料與不支援。車位刷新不重新搜尋地點、不重算 Google ETA、不延長 `queryId`，也不能讓前端繞過後端冷卻、預算與來源限制。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；冷卻秒數、等待上限、最低間隔與錯誤碼待定。沒有 coding。
 
 - 已在 `api-contract-v1-draft.md` 補上兩個 API 範例回應草案：建立查詢後快速回應，以及各區塊完成或終止後的查詢回應。範例用假資料示範 `query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh` 如何同時存在，並明確區分目前觀測、抵達時預測與刷新控制。已同步 `decisions.md`；正式欄位命名、大小寫、必填／可空規則、分頁、排序與錯誤碼待定。沒有 coding。
+
+- 已把主系統正式 API 路由收斂為三個查詢端點：`POST /api/v1/parking-queries` 建立非同步查詢、`GET /api/v1/parking-queries/{queryId}` 只讀進度、`POST /api/v1/parking-queries/{queryId}/refresh` 只做路邊／路外受控刷新。HTTP 成功只代表主系統成功處理請求，不代表 Google、政府來源或模型都成功；上游失敗由各區塊狀態表達。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式錯誤碼、請求欄位、驗證細節、TTL 與限流策略待定。沒有 coding。

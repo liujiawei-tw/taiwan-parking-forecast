@@ -547,6 +547,40 @@ Sponsor 已決定：目的地位於新莊 MVP 支援範圍外時，先回明確�
 - `roadside.summary.availableSpotCount` 和 `offStreet.parkingLots[].availableCarSpaces` 都是目前觀測，不是抵達時承諾。
 - `predictions` 可以對部分項目回機率、部分項目回資料不足。
 - `refresh` 的 `nextAllowedRefreshAt` 是後端保護官方 API 的依據，前端不能自行繞過。
+## 已決定：正式 API 路由與 HTTP 語意草案
+
+第一版主系統只需要三個對外查詢端點。地點搜尋候選與地圖顯示由前端 Google Maps／Places 處理；主後端只接收已選定的起點、目的地座標與出發時間。後端不接收前端自算 ETA、目前車位數或模型機率。
+
+| 端點 | 用途 | 主要副作用 | 成功 HTTP |
+| --- | --- | --- | --- |
+| `POST /api/v1/parking-queries` | 建立一次明確行程查詢 | 建立短期 `queryId`，安排 Google ETA，依需要安排路邊／路外受控刷新 | `202 Accepted` |
+| `GET /api/v1/parking-queries/{queryId}` | 讀取同一次查詢目前狀態 | 無上游副作用；不得呼叫 Google 或官方車位來源 | `200 OK` |
+| `POST /api/v1/parking-queries/{queryId}/refresh` | 使用者手動更新或可見頁面受控刷新車位 | 只檢查路邊／路外來源級刷新控制；可能沿用、加入、啟動或拒絕刷新 | `202 Accepted` 或 `200 OK` |
+
+`POST /api/v1/parking-queries` 使用非同步語意。後端完成輸入驗證、試點範圍判定與短期查詢狀態建立後快速回應，不等待 Google Routes 或官方車位來源全部完成。若已能立刻判斷目的地在新莊 MVP 外，回穩定的輸入範圍錯誤，不啟動 Google Routes 或車位來源。
+
+`GET /api/v1/parking-queries/{queryId}` 是純讀取。它可以把過期背景工作轉成終止狀態，避免前端無限等待；但不得因為讀取進度而新增 Google Routes 或官方車位來源請求。前端只在 `query.hasPendingWork=true` 且頁面可見時有限輪詢。
+
+`POST /api/v1/parking-queries/{queryId}/refresh` 不重新搜尋地點、不重算 ETA、不延長 `queryId`，也不重送搜尋文字。它只針對本次查詢已知範圍內的路邊與路外來源檢查是否可刷新。若快照仍新鮮，回 `USED_FRESH_SNAPSHOT`；若已有來源級刷新進行中，回 `JOINED_RUNNING_REFRESH`；若冷卻、預算或來源限制中，回 `COOLDOWN` 或 `BUDGET_BLOCKED` 與可再試時間。
+
+HTTP 狀態只表示主系統是否成功處理這次 API 請求，不代表 Google、政府來源或模型都成功。Google ETA 失敗、路邊來源失敗、路外來源冷卻、模型資料不足，應放在 `eta`、`roadside`、`offStreet`、`predictions`、`refresh` 的區塊狀態中；只要主系統能正常回應查詢狀態，HTTP 仍可為 `200` 或 `202`。
+
+| 情境 | 建議 HTTP | 回應重點 |
+| --- | --- | --- |
+| 建立查詢已接受 | `202 Accepted` | 回 `queryId`、目的地、範圍與各區塊初始狀態 |
+| 讀取查詢成功 | `200 OK` | 回完整分層狀態；部分區塊失敗仍用區塊狀態表達 |
+| 手動刷新已接受或已處置 | `202 Accepted` 或 `200 OK` | 已啟動／加入刷新可用 `202`；只沿用新鮮快照或冷卻拒絕可用 `200` |
+| 欄位缺漏、格式錯誤、經緯度不合法 | `400 Bad Request` | 固定錯誤碼，例如 `INVALID_REQUEST`、`INVALID_COORDINATE` |
+| 目的地不在新莊 MVP | `422 Unprocessable Entity` | 固定錯誤碼 `UNSUPPORTED_AREA`；不啟動 Google Routes 或車位來源 |
+| 指定出發時間在過去或超出可支援範圍 | `422 Unprocessable Entity` | 固定錯誤碼 `INVALID_DEPARTURE_TIME` |
+| 同一使用者或同一來源請求過於頻繁 | `429 Too Many Requests` | 回可再試時間；不得因此呼叫上游 |
+| `queryId` 已過期 | `410 Gone` | 提示重新規劃；不自動建立新查詢 |
+| `queryId` 不存在或不應揭露 | `404 Not Found` | 不透露是否曾存在；前端提示重新查詢 |
+| 主系統自身錯誤 | `500` 或 `503` | 只在主系統無法建立或讀取查詢時使用；上游單一來源失敗不用整頁 500 |
+
+錯誤回應也應使用穩定格式，方便 Vue 統一顯示。例如：`error.code`、`error.message`、`error.details`、`serverTime`。錯誤訊息給使用者看，錯誤碼給前端判斷流程；不可要求前端解析中文訊息決定行為。
+
+第一版端點不提供「公開分享查詢」或「長期監控到未來出發時間」。`queryId` 是短期互動狀態 ID，不是預約，也不是可公開分享的永久連結。若使用者更改起點、目的地或出發時間，必須建立新的查詢，而不是在原 `queryId` 上偷偷改條件。
 ## HTTP 與失敗語意（候選）
 
 - 建立查詢若採非同步，成功接受可用 `202 Accepted` 並附 `queryId` 與當時已完成結果；讀取進度成功用 `200 OK`，即使路邊來源失敗，該來源狀態仍在回應本體。HTTP 成功只表示主系統有成功處理這次讀取，不代表所有上游都成功。
