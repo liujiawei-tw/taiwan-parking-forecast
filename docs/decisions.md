@@ -456,3 +456,9 @@
 - **原因**：前後端需要一致處理 `null`、空陣列、有效 0、載入中與資料不足；如果每個區塊有時缺失，前端會難以分辨是未完成、失敗、沒有收錄或後端漏欄位。
 - **影響**：查詢回應固定包含 `query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh` 八個頂層區塊。有效 0 必須回數字 0；未知或不適用用 `null` 並搭配狀態或原因碼；清單欄位可為空陣列，但空陣列不等於附近沒有車位。`probability` 只在對應預測 `status=READY` 時有效；來源觀測時間與系統取得時間分開。
 - **狀態**：Response 必填／可空語意已決定；正式 DTO 欄位註解、JSON Schema、OpenAPI required 清單、分頁與錯誤回應格式仍待技術定稿。沒有 coding。
+
+## 2026-09-25：主系統錯誤回應採固定 `error` 物件與穩定錯誤碼
+
+- **原因**：前端需要用穩定錯誤碼判斷流程，不應解析中文訊息；同時上游局部失敗與主系統請求錯誤要分開，避免 Google 或政府來源失敗時整頁變成通用 500。
+- **影響**：主系統錯誤回應包含 `error.code`、`error.message`、可選 `error.details`、`error.retryable`、可選 `error.nextAllowedAt` 與 `serverTime`。第一版錯誤碼涵蓋 `INVALID_REQUEST`、`INVALID_COORDINATE`、`INVALID_REQUEST_TOKEN`、`UNSUPPORTED_AREA`、`INVALID_DEPARTURE_TIME`、`RATE_LIMITED`、`QUERY_EXPIRED`、`QUERY_NOT_FOUND`、`SERVICE_TEMPORARILY_UNAVAILABLE`、`INTERNAL_ERROR`。官方來源失敗、冷卻、預算阻擋通常放在 `refresh` 或來源區塊狀態，不作整頁錯誤。
+- **狀態**：錯誤回應格式與候選錯誤碼已決定；正式錯誤碼大小寫、`details` 結構、`traceId` 是否加入、前端文案對照與 Spring Boot 例外類型仍待技術定稿。沒有 coding。

@@ -273,3 +273,5 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 - 已定義 `POST /api/v1/parking-queries` Request Body 草案：只接收 `requestToken`、`origin`、`destination`、`departure`。前端不傳 ETA、目前車位、模型機率、車種、半徑、距離算法、Google 交通模式或刷新策略；`NOW` 由後端取伺服器時間，`SCHEDULED` 需含時區偏移。目的地座標同時作 Google Routes 終點與 300 公尺圓心；試點外不呼叫上游。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式 DTO 名稱、欄位大小寫、長度限制、`requestToken` TTL 與限流待定。沒有 coding。
 
 - 已定義查詢 Response 必填與可空規則：`query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh` 八個頂層區塊固定存在；有效 0 回數字 0，未知或不適用才用 `null` 並搭配狀態／原因碼。清單可為空陣列，但不能用空陣列直接表示附近沒有車位；機率只在預測 `status=READY` 時有效。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；OpenAPI required 清單、DTO 註解、分頁與錯誤格式待定。沒有 coding。
+
+- 已定義主系統錯誤回應格式與候選錯誤碼：錯誤回應固定含 `error.code`、`error.message`、`error.retryable` 與 `serverTime`，並可帶 `details`、`nextAllowedAt`。第一版錯誤碼涵蓋輸入錯誤、座標錯誤、requestToken 錯誤、試點外、出發時間錯誤、限流、查詢過期、查詢不存在、服務暫不可用與主系統內部錯誤。上游來源失敗、冷卻或預算阻擋通常放在區塊狀態，不作整頁錯誤。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；`details` 結構、traceId、前端文案與 Spring Boot 例外類型待定。沒有 coding。
