@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>停車預測專案｜進度與待辦</title>
+  <style>
+    :root { color-scheme: light; --bg:#f5f7fb; --ink:#172333; --muted:#516276; --line:#d8e0e9; --panel:#fff; --done:#19745e; --design:#275dab; --pending:#975b16; --future:#687386; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,"Noto Sans TC",sans-serif; }
+    main { max-width:1120px; margin:auto; padding:32px 20px 64px; }
+    h1,h2,h3 { line-height:1.3; margin:0; }
+    h1 { font-size:clamp(1.8rem,4vw,2.6rem); }
+    h2 { font-size:1.35rem; margin:40px 0 16px; }
+    h3 { font-size:1.05rem; margin:0 0 10px; }
+    p { margin:8px 0 0; }
+    a { color:#174e96; }
+    .lede { max-width:780px; color:var(--muted); }
+    .meta { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
+    .tag { display:inline-block; padding:3px 10px; border-radius:999px; font-size:.83rem; font-weight:700; background:#e9edf3; color:var(--ink); }
+    .tag.done { background:#dcf3eb; color:#105b49; }
+    .tag.design { background:#e2edfd; color:#194b90; }
+    .tag.pending { background:#fff0d9; color:#795010; }
+    .tag.future { background:#eaedf1; color:#4d5868; }
+    .notice { margin-top:22px; padding:15px 18px; background:#e9f1ff; border-left:4px solid var(--design); }
+    .summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin-top:24px; }
+    .summary article,.work article { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; }
+    .summary strong { display:block; font-size:1.1rem; margin-top:8px; }
+    .summary small { display:block; color:var(--muted); margin-top:4px; font-size:.9rem; }
+    .timeline-wrap { overflow-x:auto; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; }
+    .timeline { min-width:720px; display:grid; grid-template-columns:190px repeat(20,minmax(22px,1fr)); gap:7px 3px; align-items:center; }
+    .timeline .head { text-align:center; color:var(--muted); font-size:.75rem; }
+    .timeline .label { grid-column:1; font-size:.88rem; font-weight:700; }
+    .bar { height:26px; border-radius:6px; display:flex; align-items:center; padding-left:8px; color:white; font-size:.75rem; font-weight:700; white-space:nowrap; }
+    .bar.pending { background:var(--pending); }
+    .bar.future { background:var(--future); }
+    .timeline-note { color:var(--muted); font-size:.9rem; margin-top:12px; }
+    .work { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
+    .work ul { padding-left:20px; margin:10px 0 0; }
+    .work li { margin:5px 0; }
+    .work .tag { margin-bottom:10px; }
+    .next { padding:18px 20px; background:var(--panel); border:1px solid var(--line); border-radius:12px; }
+    .next ol { margin:8px 0 0; padding-left:22px; }
+    footer { margin-top:38px; color:var(--muted); font-size:.9rem; }
+    @media (max-width:620px) { main { padding:24px 14px 48px; } .summary { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>停車預測專案｜進度與待辦</h1>
+    <p class="lede">新莊區 MVP：搜尋目的地、計算抵達時間，顯示目的地方圓 300 公尺內收錄的汽車停車選項，以及抵達時有位的預測。</p>
+    <div class="meta"><span class="tag design">目前：Sprint 1 前後端 API 契約討論</span><span class="tag">更新：2026-09-24</span><span class="tag">20 天為開發啟動後的目標時間盒</span></div>
+    <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統的前端、後端與兩類預測均尚未實作；訓練 collector 雖有排程，Sponsor 回報匯出資料不完整，相關盤點與模型驗證暫緩。</div>
+  </header>
+
+  <section aria-labelledby="overview"><h2 id="overview">一眼看目前進度</h2>
+    <div class="summary">
+      <article><span class="tag pending">資料待修</span><strong>訓練資料收集器</strong><small>獨立 repo 有排程；Sponsor 回報匯出不完整，原因待查。資料盤點暫緩，不供使用者即時查詢。</small></article>
+      <article><span class="tag design">設計中</span><strong>主系統需求與資料流</strong><small>首查已定先顯示 ETA 與已收錄位置，車位完成後自動補上；正式 API 與刷新數值未定。</small></article>
+      <article><span class="tag future">未開始</span><strong>使用者介面與主後端</strong><small>尚未 coding；搜尋、ETA、即時查詢和畫面尚無可運作版本。</small></article>
+      <article><span class="tag pending">資料依賴暫緩</span><strong>兩類抵達時預測</strong><small>預測目標與樣本方法已定；collector 匯出不完整，標籤、回測與模型尚無可信成果。</small></article>
+    </div>
+  </section>
+
+  <section aria-labelledby="schedule"><h2 id="schedule">20 天目標時間盒</h2>
+    <div class="timeline-wrap"><div class="timeline" role="img" aria-label="20 天目標：第 1 至 3 天確認資料與設計；第 4 至 8 天即時資料後端；第 9 至 12 天搜尋、預計抵達時間與畫面；第 13 至 17 天兩類預測與回測；第 18 至 20 天整合驗收與面試展示。目前尚未開始計算開發日。">
+      <div class="label">工作／天數</div>
+      <div class="head" style="grid-column:2 / span 3">1–3</div><div class="head" style="grid-column:5 / span 5">4–8</div><div class="head" style="grid-column:10 / span 4">9–12</div><div class="head" style="grid-column:14 / span 5">13–17</div><div class="head" style="grid-column:19 / span 3">18–20</div>
+      <div class="label">資料與設計定稿</div><div class="bar pending" style="grid-column:2 / span 3">待完成</div>
+      <div class="label">即時資料後端</div><div class="bar future" style="grid-column:5 / span 5">未開始</div>
+      <div class="label">搜尋、ETA、前端</div><div class="bar future" style="grid-column:10 / span 4">未開始</div>
+      <div class="label">兩類預測與回測</div><div class="bar future" style="grid-column:14 / span 5">未開始</div>
+      <div class="label">整合與面試展示</div><div class="bar future" style="grid-column:19 / span 3">未開始</div>
+    </div><p class="timeline-note">這是計畫甘特圖，不是實際完成比例或已承諾日期。實際啟動日、阻礙與驗收結果須在後續更新。</p></div>
+  </section>
+
+  <section aria-labelledby="streams"><h2 id="streams">各工作線：已確定與未完成</h2>
+    <div class="work">
+      <article><span class="tag design">前端：Vue 3＋Vite 已定，尚未實作</span><h3>搜尋與結果畫面</h3><ul><li>已定：Google Maps JavaScript 地圖與 Places API (New) 搜尋、起點兩種方式、出發時間、300 公尺結果；電腦版地圖優先、固定區域摘要與「查看全部結果」，手機版上地圖／下清單。路邊格位小卡提供資料時間及外部「查看路線」。</li><li>待定：格位資格與座標驗證、Google 實際用量、面板尺寸、無障礙操作。</li><li>待定：載入中、0 位、無資料、過期、ETA 失敗及預測不足的完整互動原型。</li></ul></article>
+      <article><span class="tag design">後端：Spring Boot Web、MySQL、Redis 已定，契約待細化</span><h3>即時查詢與儲存</h3><ul><li>已定：Spring Boot Web／Spring MVC REST 模組化單體；MySQL／JPA 保存啟用快照與可追溯歷史，供未來離線訓練；Redis 保存短期查詢進度及經驗證結果快取。使用者查詢優先，低頻定時取樣與查詢共用受控刷新，預算不足可略過背景取樣；訓練 collector 不參與用戶查詢。</li><li>討論中：主查詢的輸入／輸出語意、Google Routes 與 Places 的責任分工。</li><li>待定：正式 API、背景取樣間隔與歷史保留／歸檔、最低刷新間隔、Redis 快取粒度與 TTL、前景等待與輪詢上限、請求預算與模型介面。</li></ul></article>
+      <article><span class="tag pending">資料：共同欄位方向已定，映射待驗證</span><h3>來源與統一化</h3><ul><li>已定：新北市路邊／路外來源各由 adapter 轉成共同位置、來源對應及動態觀測欄位；未來新增政府或業者來源沿用此契約。訓練 collector 與主系統即時查詢分離。</li><li>待驗：格位狀態碼與汽車適用性、來源 ID／座標、缺值與覆蓋率、來源觀測時間、路外有效剩餘位欄位。</li><li>待驗：新莊邊界資料是否覆蓋完整，如何標示未收錄的鄰區。</li></ul></article>
+      <article><span class="tag pending">預測：資料盤點暫緩，模型未開始</span><h3>抵達時有位機率</h3><ul><li>路邊：目的地 300 公尺內至少一個適用汽車格位可停的機率；訓練標籤須對齊實際 300 公尺圓。</li><li>路外：範圍內各停車場抵達時仍有汽車位的機率。</li><li>待處理：collector 匯出不完整；恢復後才驗證標籤、樣本品質、時間與街區切分、基準及模型部署。資料不足時不編造機率。</li></ul></article>
+      <article><span class="tag design">服務整合：雲端專案與 API 已開通，未介接</span><h3>Google 與外部地圖</h3><ul><li>已定：Google Maps 用於地圖、Places (New) 用於搜尋、Routes 的交通感知 ETA 直接作預測時刻；外部地圖負責導航。Sponsor 回報停車專案 Taiwan Parking Forecast（ID taiwan-parking-forecast）已建立，三項 API 已啟用、帳單連結有效，預算通知已設定。</li><li>帳單規劃由 Sponsor 自行管理，本階段跳過；網頁／後端金鑰限制及配額在正式介接前仍須核對。主系統尚未呼叫服務。</li></ul></article>
+      <article><span class="tag pending">部署／驗收：方向已定，未實作</span><h3>Docker 與品質證據</h3><ul><li>已定：Docker 可部署到其他伺服器是必要交付；面試仍可本機展示，兩類預測都列入 20 天目標。</li><li>待做：容器建置與乾淨主機啟動、MySQL 持久化／備份驗證、遠端 HTTPS 與金鑰設定、並發刷新測試、資料年齡及 API 用量量測、兩類模型與基準比較。</li><li>待確認：實際主機、網域與遠端上線是否納入 20 天時程。</li></ul></article>
+    </div>
+  </section>
+
+  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>定主系統查詢輸入、ETA／停車結果分層及前後端 API 契約。</li><li>確認主系統即時來源刷新控制與上游請求量測方式。</li><li>確認遠端 Docker 部署目標；訓練資料盤點待 collector 問題釐清後恢復。</li></ol></div></section>
+  <footer>本頁是人工維護的進度快照。詳細需求、決策與最新狀態以 <a href="requirements.md">requirements.md</a>、<a href="decisions.md">decisions.md</a>、<a href="current-state.md">current-state.md</a> 為準。</footer>
+</main>
+</body>
+</html>

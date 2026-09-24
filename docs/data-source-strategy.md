@@ -32,4 +32,4 @@ TDX 申請頁顯示新北市 2026-08-01 至 08-31 的完整歷史檔已產製，
 
 新北市官方資料開放平臺：[路邊停車空位查詢](https://data.ntpc.gov.tw/datasets/54A507C4-C038-41B5-BF60-BBECB9D052C6)標示每 2 分鐘更新；[公有路外停車場即時剩餘位數](https://data.ntpc.gov.tw/datasets/e09b35a5-a738-48cc-b0f5-570b67ad9c78)標示每 3 分鐘更新；[開發指引](https://data.ntpc.gov.tw/applications)提供 API 格式與大量、高頻介接提醒。資料集免費不等於可以無限制高頻擷取。正式採用前核對使用條款、欄位對應、錯誤處理與實際更新品質。
 
-Sponsor 已選新莊區。獨立 `parking-data-collector` repo 的 `feature/collect-parking-data` 分支已實作本機收集器；2026-09-23 首次實測取得路邊 2,124 格、路外 149 場，原始狀態碼與系統取得時間分別保存。資料收集仍依賴本機程序與電腦運作，尚未部署成全天候服務。
+Sponsor 已選新莊區。獨立 `parking-data-collector` repo 已轉為 GitHub Actions 定時擷取，將路邊格位與公有路外停車場觀測寫入每日 CSV 並上傳 Google Drive；Sponsor 確認排程已運作。2026-09-23 首次實測取得路邊 2,124 格、路外 149 場。收集器不再提供即時 API；主專案需另設最新觀測資料流，並監測排程延遲與資料缺口。

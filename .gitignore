@@ -17,6 +17,8 @@ data/raw/**
 !data/raw/tdx/new-taipei/
 !data/raw/tdx/new-taipei/on-street-spot-availability/
 !data/raw/tdx/new-taipei/on-street-spot-availability/README.md
+!data/raw/tdx/new-taipei/on-street-segment-availability/
+!data/raw/tdx/new-taipei/on-street-segment-availability/README.md
 !data/raw/tdx/taoyuan-airport/
 !data/raw/tdx/taoyuan-airport/off-street-availability/
 !data/raw/tdx/taoyuan-airport/off-street-availability/README.md
