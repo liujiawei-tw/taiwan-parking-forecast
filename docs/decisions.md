@@ -468,3 +468,9 @@
 - **原因**：查詢 API 契約已收斂，後續開始 coding 前需要讓 Spring Boot 專案有可維護的分層，避免 Controller 直接塞滿 Google、政府 API、Redis、MySQL、模型與 DTO 轉換邏輯。
 - **影響**：第一版後端 package 草案採 `api`、`application`、`domain`、`adapter`、`infrastructure`、`config`。API DTO 只放 Web 契約；application service 負責建立查詢、讀取進度、受控刷新、ETA 與預測協調；domain 放查詢、停車、刷新與預測語意；adapter 放 Google、新北市、TDX 等外部來源；infrastructure 放 JPA 與 Redis。JPA entity 不直接回前端，來源原始欄位不直接進 API response。
 - **狀態**：package 分層與 DTO 命名草案已記錄於 `backend-stack-and-normalization.md`；正式 root package、Maven groupId、Java/Spring Boot 版本、command 物件是否拆出與 package 細節仍待建立專案時定稿。沒有 coding。
+
+## 2026-09-25：MySQL／JPA 資料模型以目錄、來源映射、快照、觀測與來源狀態分表
+
+- **原因**：主系統資料庫主要服務使用者查詢，也要保留可追溯歷史供未來訓練；若把位置、來源 ID、快照、觀測、冷卻與查詢狀態混成大表，後續新增來源與排查問題會困難。
+- **影響**：第一版 MySQL／JPA 草案採 `parking_place`、`source_mapping`、`availability_snapshot`、`availability_observation`、`source_state`、`ingestion_run` 等表。路邊與路外共用觀測表但保留不同粒度欄位；有效 0、未知、無即時資料與原始特殊值分開保存。`source_state` 持久保存最後成功取得時間與下一次可刷新時間，Redis 不保存唯一真相。`parking_query` 第一版不持久化到 MySQL，短期查詢狀態放 Redis，避免保存精確行程位置。
+- **狀態**：資料模型草案已記錄於 `docs/engineering/data-model.md`；欄位型別、索引、分區、保留期限、原始 response 保存策略、JPA 批次寫入與 spatial index 是否使用仍待資料量測與實作前定稿。沒有 coding。

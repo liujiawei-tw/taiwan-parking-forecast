@@ -37,6 +37,8 @@
 
 例如新北市路邊 `cellid` 和 TDX 格位 ID 要先經 `source_mapping` 核對才可能指向同一 `parking_place`；路外官方 `-9` 映射為未知並保留原值，不轉成 0。`null`、有效 0、過期及未收錄各自有狀態。原始欄位或原始回應的保存形式與期限待資料量量測，不把來源獨有欄位硬塞進共同表的每一列。
 
+本文件的表格只描述邏輯分工；MySQL／JPA entity、候選欄位、索引與 parking_query 是否持久化，另見 docs/engineering/data-model.md。
+
 ## Redis 的使用規則
 
 - MySQL 成功發布完整快照後，才允許更新或失效對應 Redis 快取；快取鍵需含來源／資料集與快照版本。半套新資料不能進快取。

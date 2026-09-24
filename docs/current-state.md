@@ -277,3 +277,5 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 - 已定義主系統錯誤回應格式與候選錯誤碼：錯誤回應固定含 `error.code`、`error.message`、`error.retryable` 與 `serverTime`，並可帶 `details`、`nextAllowedAt`。第一版錯誤碼涵蓋輸入錯誤、座標錯誤、requestToken 錯誤、試點外、出發時間錯誤、限流、查詢過期、查詢不存在、服務暫不可用與主系統內部錯誤。上游來源失敗、冷卻或預算阻擋通常放在區塊狀態，不作整頁錯誤。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；`details` 結構、traceId、前端文案與 Spring Boot 例外類型待定。沒有 coding。
 
 - 已補上後端 Spring Boot package 分層與 DTO 命名草案：`api` 放 Controller 與 request／response DTO，`application` 放查詢、刷新、ETA、預測 use case 協調，`domain` 放停車、查詢、刷新與預測語意，`adapter` 放 Google／新北市／TDX 外部來源，`infrastructure` 放 JPA 與 Redis，`config` 放設定。JPA entity 不直接回前端，來源原始欄位不直接進 API response。已同步 `backend-stack-and-normalization.md` 與 `decisions.md`；正式 root package、Maven groupId、Java／Spring Boot 版本與 command 物件細節待定。沒有 coding。
+
+- 已新增 `docs/engineering/data-model.md`，定義 MySQL／JPA 資料模型草案：`parking_place`、`source_mapping`、`availability_snapshot`、`availability_observation`、`source_state`、`ingestion_run`，並說明 `parking_query` 第一版不持久化到 MySQL，短期查詢狀態放 Redis。資料庫主要服務使用者查詢，保存觀測歷史供未來訓練為次要用途；有效 0、未知、無即時資料與原始特殊值分開保存。已同步 `backend-stack-and-normalization.md` 與 `decisions.md`；欄位型別、索引、分區、保留期限、原始 response 保存與批次寫入待量測。沒有 coding。
