@@ -444,3 +444,9 @@
 - **原因**：主系統 API 區塊語意與範例已建立，接下來需要讓後端可依 REST 契約實作。Sponsor 已決定地點搜尋與 ETA／車位刷新分工，因此端點應避免把讀取進度、重算 ETA、刷新車位混在一起。
 - **影響**：第一版對外查詢端點收斂為 `POST /api/v1/parking-queries`、`GET /api/v1/parking-queries/{queryId}`、`POST /api/v1/parking-queries/{queryId}/refresh`。建立查詢使用 `202 Accepted` 非同步語意；讀取進度用 `200 OK` 且不得新增上游請求；刷新端點只處理路邊／路外來源控制，不重新搜尋地點、不重算 ETA、不延長 `queryId`。HTTP 成功只代表主系統成功處理請求，上游與模型狀態由各區塊表達。
 - **狀態**：路由與 HTTP 語意草案已決定；正式錯誤碼、請求欄位、驗證細節、`queryId` TTL、限流策略與 API 文件格式仍待技術定稿。沒有 coding。
+
+## 2026-09-25：建立查詢 Request Body 只接收行程規劃必要輸入
+
+- **原因**：正式 API 路由已收斂，後端需要可轉成 Spring Boot DTO 的請求形狀；同時 Sponsor 已決定 ETA 由 Google Routes 計算，車種與 300 公尺範圍由後端固定。
+- **影響**：`POST /api/v1/parking-queries` Request Body 第一版只接收 `requestToken`、`origin`、`destination`、`departure`。前端不傳 ETA、目前車位、模型機率、車種、半徑、距離算法、Google 交通模式或刷新策略。`NOW` 由後端在建立查詢時取伺服器時間；`SCHEDULED` 必須提供含時區偏移的 `departureAt`。目的地座標同時作 Google Routes 終點與 300 公尺圓心；試點外停止流程且不呼叫上游。
+- **狀態**：Request Body 語意與草案 JSON 已建立；正式 DTO 類名、欄位大小寫、長度限制、`requestToken` TTL、手動座標是否開放給一般使用者與限流細節仍待技術定稿。沒有 coding。

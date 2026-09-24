@@ -50,6 +50,82 @@ Sponsor 已同意：使用者從前端 Places (New) 候選選定目的地或手�
 - 出發模式預設 NOW，由後端在建立查詢時取當下；使用者可改為指定日期時間，此時傳輸值須含 UTC 偏移或清楚的 UTC 語意。後端用 Google Routes 估計到**目的地**的 ETA。
 - 前端不傳自算 ETA、剩餘位或模型機率；後端固定第一版汽車與 300 公尺範圍。
 
+### 已決定：建立查詢 Request Body 草案
+
+`POST /api/v1/parking-queries` 的 Request Body 只描述一次明確行程規劃所需的輸入。前端不傳 Google ETA、目前剩餘位、模型機率、搜尋半徑或車種；第一版車種固定汽車，搜尋範圍固定目的地直線 300 公尺，由後端決定。
+
+```json
+{
+  "requestToken": "plan_20260925_001",
+  "origin": {
+    "type": "CURRENT_LOCATION",
+    "displayName": "目前位置",
+    "latitude": 25.0478,
+    "longitude": 121.5170,
+    "accuracyMeters": 35
+  },
+  "destination": {
+    "type": "GOOGLE_PLACE",
+    "displayName": "新莊體育館",
+    "formattedAddress": "新北市新莊區中華路一段75號",
+    "placeId": "google-place-id-example",
+    "latitude": 25.0391,
+    "longitude": 121.4529
+  },
+  "departure": {
+    "mode": "NOW"
+  }
+}
+```
+
+若使用者手動選擇起點，`origin.type` 改為 `SEARCH_SELECTION`，可帶 `placeId` 與 `formattedAddress`。若使用者指定未來出發時間，`departure.mode` 改為 `SCHEDULED`，並提供含時區偏移的 `departureAt`。
+
+```json
+{
+  "requestToken": "plan_20260925_002",
+  "origin": {
+    "type": "SEARCH_SELECTION",
+    "displayName": "台北車站",
+    "formattedAddress": "台北市中正區北平西路3號",
+    "placeId": "google-place-id-origin-example",
+    "latitude": 25.0478,
+    "longitude": 121.5170
+  },
+  "destination": {
+    "type": "GOOGLE_PLACE",
+    "displayName": "新莊體育館",
+    "formattedAddress": "新北市新莊區中華路一段75號",
+    "placeId": "google-place-id-destination-example",
+    "latitude": 25.0391,
+    "longitude": 121.4529
+  },
+  "departure": {
+    "mode": "SCHEDULED",
+    "departureAt": "2026-09-25T18:30:00+08:00"
+  }
+}
+```
+
+| 欄位 | 必填 | 語意與驗證 |
+| --- | --- | --- |
+| `requestToken` | 是 | 前端每次明確按「規劃」產生；同一次網路重試或連點重用。長度、字元集與有效期由後端限制 |
+| `origin.type` | 是 | `CURRENT_LOCATION` 或 `SEARCH_SELECTION`；目前位置不得偽裝成 Google 地點 |
+| `origin.latitude`／`origin.longitude` | 是 | 起點座標；緯度 -90 到 90，經度 -180 到 180；起點不限定新莊 |
+| `origin.accuracyMeters` | 否 | 裝置定位精度；只適用 `CURRENT_LOCATION`，可用於提示但不作唯一可信依據 |
+| `origin.displayName` | 否 | 顯示用文字，不作定位依據 |
+| `origin.placeId` | 條件式 | `SEARCH_SELECTION` 可帶；`CURRENT_LOCATION` 不需要 |
+| `destination.type` | 是 | 第一版一般使用者為 `GOOGLE_PLACE`；開發測試可保留 `MANUAL_COORDINATE` 候選，但不作主要流程 |
+| `destination.latitude`／`destination.longitude` | 是 | 目的地座標；同時作 Google Routes 終點與 300 公尺圓心 |
+| `destination.displayName` | 是 | 顯示用短名稱；不作定位依據 |
+| `destination.placeId` | 建議 | Google Places 選取結果建議提供；後端第一版不靠它重新查座標 |
+| `departure.mode` | 是 | `NOW` 或 `SCHEDULED` |
+| `departure.departureAt` | 條件式 | `SCHEDULED` 必填，必須含時區偏移或明確 UTC；`NOW` 不接受前端傳現在時間，由後端建立查詢時取伺服器時間 |
+
+後端驗證順序建議為：JSON 格式與必填欄位、座標範圍、文字長度、`departure` 語意、`requestToken` 防重送、目的地是否在新莊 MVP、建立查詢速率限制。目的地若不在新莊 MVP，停止流程並回 `UNSUPPORTED_AREA`；不得呼叫 Google Routes 或官方車位來源。
+
+`requestToken` 是防止連點與網路重試造成重複 Google ETA 工作的短期識別，不是安全權杖。它只應在同一位使用者或同一瀏覽器短時間內有效；真正重新規劃起點、目的地或出發時間時，前端必須產生新的 `requestToken`。後端仍要搭配使用者／裝置層級限流，不能只靠 `requestToken` 防濫用。
+
+第一版不接受前端覆寫以下產品設定：車種、半徑、距離算法、Google ETA 交通模式、來源刷新策略、模型版本。這些都由後端與系統設定控制，避免前端送出與 MVP 不一致的查詢。
 ## 回應分層，避免把不同狀態混成一個字
 
 ### 已決定：`query` 區塊欄位語意

@@ -269,3 +269,5 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 - 已在 `api-contract-v1-draft.md` 補上兩個 API 範例回應草案：建立查詢後快速回應，以及各區塊完成或終止後的查詢回應。範例用假資料示範 `query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh` 如何同時存在，並明確區分目前觀測、抵達時預測與刷新控制。已同步 `decisions.md`；正式欄位命名、大小寫、必填／可空規則、分頁、排序與錯誤碼待定。沒有 coding。
 
 - 已把主系統正式 API 路由收斂為三個查詢端點：`POST /api/v1/parking-queries` 建立非同步查詢、`GET /api/v1/parking-queries/{queryId}` 只讀進度、`POST /api/v1/parking-queries/{queryId}/refresh` 只做路邊／路外受控刷新。HTTP 成功只代表主系統成功處理請求，不代表 Google、政府來源或模型都成功；上游失敗由各區塊狀態表達。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式錯誤碼、請求欄位、驗證細節、TTL 與限流策略待定。沒有 coding。
+
+- 已定義 `POST /api/v1/parking-queries` Request Body 草案：只接收 `requestToken`、`origin`、`destination`、`departure`。前端不傳 ETA、目前車位、模型機率、車種、半徑、距離算法、Google 交通模式或刷新策略；`NOW` 由後端取伺服器時間，`SCHEDULED` 需含時區偏移。目的地座標同時作 Google Routes 終點與 300 公尺圓心；試點外不呼叫上游。已同步 `api-contract-v1-draft.md` 與 `decisions.md`；正式 DTO 名稱、欄位大小寫、長度限制、`requestToken` TTL 與限流待定。沒有 coding。
