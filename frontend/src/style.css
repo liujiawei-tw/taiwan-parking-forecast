@@ -205,3 +205,31 @@ h1 {
     min-height: 360px;
   }
 }
+.search-row button:disabled,
+.secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.secondary-button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #172333;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.error-message {
+  color: #b42318;
+  font-weight: 700;
+}
+
+.result-card.warning {
+  border-radius: 12px;
+  padding: 14px;
+  background: #fff8e6;
+  border: 1px solid #f4d37d;
+}
