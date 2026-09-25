@@ -302,3 +302,6 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 ## 2026-09-25 S2-001 工作規則補齊
 
 已補上 `.env.example` 作為本機環境變數範本，僅含假值與變數名稱；真實金鑰、密碼與 token 仍由 `.gitignore` 排除並不得提交。`docs/development-workflow.md` 新增 Branch／Issue／PR 規則、金鑰與環境變數規則，以及 Definition of Done 檢查清單。`README.md` 補上 Sprint 2 啟動狀態與 `.env.example` 使用提醒。這些變更用於收尾 S2-001，尚未開始產品程式碼實作。
+## 2026-09-25 S2-002 後端骨架建立
+
+已建立 `backend/` Spring Boot Maven 後端骨架，使用 Java 21、Spring Boot `4.1.1`、Spring Web MVC、Validation、Actuator 與 Maven Wrapper。設定檔採 Sponsor 指定的 YAML：`backend/src/main/resources/application.yml`。目前提供 `/api/health` 與 `/actuator/health`，並保留 `api`、`application`、`domain`、`adapter`、`infrastructure`、`config` package 邊界。執行 `backend/mvnw.cmd test` 通過：2 tests、0 failures。尚未接 MySQL、Redis、Google、新北市 API 或 ML。
