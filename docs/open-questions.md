@@ -47,3 +47,4 @@
 5. **Google 與政府 API 預算**：Google Places／地圖／Routes 的預計展示流量與每月可接受支出；Google Matrix 若用於多候選，須按元素算費用。政府來源與訓練 collector 的合併呼叫量、TDX 3 點預算另列。
 6. **部署與展示**：面試先在本機展示；公開網址僅供日後遠端測試評估。待決：本機展示資料更新方式、重現步驟及 Google 金鑰限制；若開放遠端測試，另設網域、額度和存取範圍。
 34. **測試資料庫與整合測試**：Sponsor 已決定開發端測試使用 H2；仍需定 test profile、schema migration 工具、測試資料建立方式，以及哪些案例必須用 Docker MySQL 驗證，例如索引、批次寫入、交易與 300 公尺範圍查詢效能。
+35. **實作任務拆分**：實作順序已確認；開始 coding 前仍需建立 GitHub Issues／Project 欄位、決定開發分支命名、確認是否先 scaffold 主系統 repo 結構，以及每個增量的驗收測試清單。

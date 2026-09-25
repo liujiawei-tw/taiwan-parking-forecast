@@ -500,3 +500,8 @@
 - **原因**：Sponsor 希望開發端測試可用 H2 快速驗證 JPA repository、service 邏輯與資料映射，降低本機測試成本。
 - **影響**：第一版測試策略可加入 H2 profile；但 H2 不取代 MySQL 的 Docker 整合測試、索引行為、交易隔離、批次寫入效能與資料量測。正式部署仍使用 MySQL，文件與面試說明需清楚區分測試便利與正式環境一致性。
 - **狀態**：已決定；實際 test profile、schema migration 工具、MySQL 整合測試方式與 CI 執行策略待實作前定稿。沒有 coding。
+## 2026-09-25：實作順序先骨架與資料流，再 Google 與預測
+
+- **原因**：專案同時包含前端、後端、Google、政府來源、資料庫、Redis、Docker 與 ML；若先做畫面或模型，容易在資料契約和外部服務整合時返工。
+- **影響**：開始 coding 後先做可啟動與可測的 Spring Boot／Vue／Docker 骨架，再做資料模型、API mock、300 公尺查詢、官方即時來源與快照發布、受控刷新、Google 搜尋與 ETA、前端整合，最後接預測基準／模型。第一個可展示版本可先把預測區塊標示「資料不足」，但不得用假機率。
+- **狀態**：已確認；詳見 `implementation-plan.md`。實際任務拆分、Issue、分支與開發啟動日仍待開始實作前建立。沒有 coding。

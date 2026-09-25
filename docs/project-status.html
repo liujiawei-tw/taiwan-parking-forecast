@@ -98,6 +98,18 @@
   </section>
 
 
+
+  <section aria-labelledby="implementation"><h2 id="implementation">實作順序</h2>
+    <div class="next"><ol>
+      <li>專案骨架與 Docker：Spring Boot、Vue、MySQL、Redis、H2 test profile。</li>
+      <li>資料模型與 API mock：JPA entity、Redis queryId、查詢生命週期與錯誤格式。</li>
+      <li>停車目錄與 300 公尺查詢：先用本地目錄證明附近搜尋與狀態分層。</li>
+      <li>官方即時來源與快照發布：新北市路邊／路外 adapter、品質檢查、受控刷新。</li>
+      <li>Google 搜尋／ETA 與前端結果頁：地圖、Places、Routes、狀態文案與更新按鈕。</li>
+      <li>預測基準與模型：有資料就顯示有依據的機率，資料不足就明確降級。</li>
+    </ol><p class="timeline-note">完整順序與驗收邊界見 implementation-plan.md。此區仍是實作計畫，不代表功能已完成。</p></div>
+  </section>
+
   <section aria-labelledby="uml"><h2 id="uml">UML 架構視圖</h2>
     <div class="uml-grid">
       <article class="uml-card">
