@@ -298,3 +298,7 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 ## 2026-09-25 Sprint 2 實作分支已建立
 
 已從 `main` 建立並推送 Sprint 2 實作分支 `sprint-2-main-system-scaffold`，對應 GitHub Issues 第一組任務。此分支目前只作為 Sprint 2 開發入口，尚未開始主系統產品程式碼實作。下一步可在此分支處理 S2-001 的剩餘工作：確認工作規則、金鑰不進 Git、任務完成檢查與後續 PR／合併流程，再進入 S2-002 後端骨架。
+
+## 2026-09-25 S2-001 工作規則補齊
+
+已補上 `.env.example` 作為本機環境變數範本，僅含假值與變數名稱；真實金鑰、密碼與 token 仍由 `.gitignore` 排除並不得提交。`docs/development-workflow.md` 新增 Branch／Issue／PR 規則、金鑰與環境變數規則，以及 Definition of Done 檢查清單。`README.md` 補上 Sprint 2 啟動狀態與 `.env.example` 使用提醒。這些變更用於收尾 S2-001，尚未開始產品程式碼實作。
