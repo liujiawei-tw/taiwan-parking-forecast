@@ -311,3 +311,6 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 ## 2026-09-25 Sprint 2 Issues 用語調整
 
 依 Sponsor 指示，Sprint 2 第一組 Issues 不再使用「面試官角度」或面試相關詞語。`docs/sprint-2-issue-drafts.md` 已改為「工程審查重點」，相關描述改成對外說明、技術說明、作品集專案或展示等中性用語。正式 GitHub Issues #1 到 #7 也同步更新。
+## 2026-09-25 S2-002 後端骨架驗收完成
+
+S2-002 已完成驗收：`backend/mvnw.cmd test` 通過，結果為 2 tests、0 failures；實際啟動後端後，`GET /api/health` 與 `GET /actuator/health` 均回 `UP`。後端 package 已依 Sponsor 回饋簡化為 `parking.forecast`，並改成 `controller`、`service`、`repository` 三層式可見結構。GitHub Issue #2 已更新並關閉。下一步進入 S2-003 前端骨架。
