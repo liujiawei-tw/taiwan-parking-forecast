@@ -490,3 +490,8 @@
 - **原因**：Sponsor 要第一版納入 Redis，但主系統同時需要可追溯歷史、可靠快照發布與官方來源用量控制；Redis 不適合成為唯一真相。
 - **影響**：Redis 保存 `queryId` 進度、防重送 token、來源刷新短鎖／進度，以及含快照版本的附近結果或摘要快取。MySQL 仍是停車目錄、已發布快照、來源冷卻、用量與訓練歷史的事實來源。Redis 過期或重啟時，短期查詢可失效並提示重新規劃，但已發布車位資料仍可由 MySQL 回答或標示過期。
 - **狀態**：Redis 職責與 key 類型已記錄於 `redis-design.md`；實際 TTL、容量、序列化格式、owner token／心跳、多實例鎖安全性與快取命中率仍待實測。沒有 coding。
+## 2026-09-25：第一版部署採單台伺服器 Docker Compose 候選
+
+- **原因**：Sponsor 指定 Docker 是必要交付且未來會部署到其他 server；目前 MVP 尚不需要 Kubernetes 或多台主機複雜度。
+- **影響**：第一版候選服務為 `web`、`api`、`mysql`、`redis`。`web` 提供 Vue build 後靜態頁並代理 `/api`；`api` 執行 Spring Boot；`mysql` 使用 volume 保存目錄、快照、觀測歷史與來源狀態；`redis` 保存短期查詢進度、刷新協調與可重建快取。對外只開 `web`，機密以環境變數或部署端 `.env` 注入，不寫入 Git 或 image。
+- **狀態**：部署拓樸候選已記錄於 `docker-deployment.md`；實際 Dockerfile、compose、版本、HTTPS 入口、備份流程、目標主機與模型產物放置方式仍待實作前決定。沒有 coding。

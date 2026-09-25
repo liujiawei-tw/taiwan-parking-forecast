@@ -43,7 +43,7 @@ Redis 已由 Sponsor 指定加入第一版，供短期查詢進度與經驗證�
 
 ## 技術方向
 
-Java／Spring Boot Web（Spring MVC REST）單體、MySQL＋Spring Data JPA、Redis、Docker；前端已選 Vue 3＋Vite。Redis 已由 Sponsor 指定納入第一版，負責短期查詢進度與經驗證資料的快取，MySQL 仍是完整快照與呼叫控制的持久真相；細節見 `backend-stack-and-normalization.md`。Jupyter 只用於探索與離線模型實驗。大量快照若 JPA 批次寫入不佳，量測後再局部改用批次 SQL。Google Routes ETA 已列入第一版；地圖與地點搜尋的實際服務仍待選型。本段技術方向不代表應用程式已實作。
+Java／Spring Boot Web（Spring MVC REST）單體、MySQL＋Spring Data JPA、Redis、Docker；前端已選 Vue 3＋Vite。第一版部署候選為單台伺服器 Docker Compose，含 `web`、`api`、`mysql`、`redis`，詳見 `docker-deployment.md`。Redis 已由 Sponsor 指定納入第一版，負責短期查詢進度與經驗證資料的快取，MySQL 仍是完整快照與呼叫控制的持久真相；細節見 `backend-stack-and-normalization.md`。Jupyter 只用於探索與離線模型實驗。大量快照若 JPA 批次寫入不佳，量測後再局部改用批次 SQL。Google Routes ETA 已列入第一版；地圖與地點搜尋的實際服務仍待選型。本段技術方向不代表應用程式已實作。
 
 ## Sprint 1 主系統模組邊界（2026-09-24 討論稿，未實作）
 

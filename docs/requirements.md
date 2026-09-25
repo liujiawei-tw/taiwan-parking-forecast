@@ -50,7 +50,7 @@
 
 ### R7 Docker 與遠端可部署性
 
-主系統須以 Docker 映像及可重現的部署設定在另一台伺服器啟動，包含 Vue 正式建置頁面、Spring Boot API、MySQL 資料持久化與 Redis 短期狀態／快取。本機資料路徑與開發機常駐程序不得是遠端運行的必要條件。資料庫密碼、TDX／Google 憑證不得寫入映像或 repository。遠端透過瀏覽器使用裝置目前位置時，網站須以安全環境（通常為 HTTPS）提供。Docker 交付屬必要範圍；實際遠端上線時點與主機資訊待 Sponsor 提供。
+主系統須以 Docker 映像及可重現的部署設定在另一台伺服器啟動，第一版候選為單台伺服器 Docker Compose，包含 `web` 靜態頁／反向代理、Spring Boot `api`、MySQL 資料持久化與 Redis 短期狀態／快取。本機資料路徑與開發機常駐程序不得是遠端運行的必要條件。資料庫密碼、TDX／Google 憑證不得寫入映像或 repository。遠端透過瀏覽器使用裝置目前位置時，網站須以安全環境（通常為 HTTPS）提供。Docker 交付屬必要範圍；實際遠端上線時點與主機資訊待 Sponsor 提供。
 
 ### R8 運行歷史可供未來模型訓練
 

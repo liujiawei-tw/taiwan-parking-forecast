@@ -13,7 +13,7 @@
 | 持久資料 | MySQL、Spring Data JPA；大量觀測列的批次寫入方式待量測 | 停車目錄、來源 ID 對應、已發布快照及可追溯觀測歷史、刷新冷卻與用量紀錄；資料庫是權威來源，歷史可供未來離線訓練匯出 |
 | 短期狀態與快取 | Redis（第一版納入） | 短期 `queryId` 進度、共用刷新中的協調訊號／短鎖，以及經驗證的近期查詢結果快取；用途與 TTL 按量測收斂。Redis 不保存唯一的停車真相、月度用量或完整性決策 |
 | 預測 | 離線 Jupyter／Anaconda 模型實驗；線上模型產物讀取方式待定 | 訓練 collector 僅產歷史樣本；主系統只載入經時間切分驗證的模型版本來推論，觀測與預測分開 |
-| 交付 | Git／GitHub、Docker 映像與部署設定 | 可在其他伺服器重現；候選為單伺服器 Compose 的應用、MySQL、Redis 及 HTTPS 入口。正式拓樸待主機資訊 |
+| 交付 | Git／GitHub、Docker 映像與部署設定 | 可在其他伺服器重現；第一版候選為單伺服器 Docker Compose，包含 web、api、MySQL、Redis。HTTPS 入口與正式主機待定，見 `docker-deployment.md` |
 
 先前同意的「單實例 `queryId` 暫存於 Spring 記憶體」已由 Sponsor 新增 Redis 決策更新：第一版改以 Redis 保存短期進度，設定期限與容量上限；Redis 重啟或鍵過期時，該次查詢失效，前端提示重新查詢。這不影響 MySQL 內的完整快照與原始取得時間。
 
@@ -48,12 +48,17 @@ Redis 第一版有四個明確用途：短期 `queryId` 查詢進度、防重送
 - 多位使用者同時查詢可共用同一來源的刷新；Redis 短鎖只作協調，不能繞過 MySQL `source_state` 的冷卻、預算與啟用快照狀態。最短刷新間隔、上游用量與重啟後冷卻狀態持久存在 MySQL。
 - Redis 失效時，主系統仍可依 MySQL 完整快照回答目前車位或標示過期；短期查詢進度失效則明確提示重查。快取命中率、記憶體用量與 MySQL 延遲應量測，避免為了使用 Redis 而快取整市全量資料。
 
+## Docker 部署方向
+
+第一版部署候選為單台伺服器 Docker Compose：`web` 提供 Vue build 後靜態檔並代理 `/api`，`api` 執行 Spring Boot，`mysql` 保存持久資料，`redis` 保存短期狀態與可重建快取。對外只暴露 `web`；`api`、`mysql`、`redis` 留在內部 network。機密用環境變數或部署端 `.env` 管理，不提交 Git，也不寫進 image。詳見 `docker-deployment.md`。
+
 ## 第一版驗收與待決
 
 - 同一前端回應可呈現路邊／路外共同的來源、位置、汽車適用性、目前觀測與品質欄位；類型專有欄位仍在各自區塊。
 - 兩種不同來源的原始 ID 相同時不能誤合併；映射未驗證時各自保留來源身分。
 - 刷新失敗、部分分頁、Redis 清空／重啟時，不發布半套快照或把過期「有位」標成新資料。
 - 待量測：主系統一輪抓取大小／時間、Redis 要快取的最小資料與 TTL、快取命中率、各來源欄位與狀態碼映射、批次寫入速度。
+
 ## Spring Boot package 分層與 DTO 命名草案
 
 第一版後端採 Spring Boot Web／Spring MVC REST，並以 Maven 管理相依。package 分層以「API 契約、應用流程、領域語意、外部介接、資料存取」分開，避免 Controller 直接呼叫政府 API、資料庫 entity 直接回給前端，或把模型推論混進來源 adapter。
