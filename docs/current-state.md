@@ -317,3 +317,6 @@ S2-002 已完成驗收：`backend/mvnw.cmd test` 通過，結果為 2 tests、0 
 ## 2026-09-25 S2-003 前端骨架建立
 
 已建立 `frontend/` Vue 3 + Vite 前端骨架，包含目的地搜尋 placeholder、地圖 placeholder、ETA／路邊／路外結果摘要 placeholder，以及 `VITE_API_BASE_URL`、`VITE_GOOGLE_MAPS_BROWSER_API_KEY` 環境變數入口。已新增 `frontend/README.md` 與 `frontend/.env.example`。執行 `npm run build` 通過。尚未接 Google Maps JavaScript API、Places Autocomplete、Routes API 或後端真查詢。
+## 2026-09-25 S2-003 前端骨架驗收完成
+
+Sponsor 確認 S2-003 前端 placeholder 版面可接受。前端骨架目前包含目的地搜尋 placeholder、地圖 placeholder、ETA／路邊／路外結果摘要 placeholder，以及 `frontend/.env.example`。`npm run build` 已通過，GitHub Issue #3 已關閉。下一步進入 S2-004 Docker Compose 本機開發環境。
