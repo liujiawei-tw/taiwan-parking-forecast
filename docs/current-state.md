@@ -292,3 +292,6 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 依 Sponsor 指示，先不要 coding，已改由 PM／Scrum Master／Tech Lead 角度拆 Sprint 2 第一組 GitHub Issues 草案。草案新增於 `docs/sprint-2-issue-drafts.md`，涵蓋實作分支與工作規則、Spring Boot Maven 後端骨架、Vue 3 + Vite 前端骨架、Docker Compose、本機 H2 測試與 MySQL 設定邊界、mock 查詢 API 生命週期，以及文件同步與驗收檢查清單。
 
 此批任務的目的，是在接 Google、新北市官方即時資料與 ML 前，先建立可啟動、可測、可部署、可由 Sponsor 逐張驗收的主系統骨架。草案尚未轉成正式 GitHub Issues，也尚未開始產品程式碼實作。下一步是由 Sponsor 確認 Issue 順序與範圍，再決定是否建立正式 GitHub Issues 並從 S2-001 開始。
+## 2026-09-25 GitHub Issues 已建立
+
+已將 Sprint 2 第一組草案轉成 GitHub Issues：#1 到 #7，對應 S2-001 至 S2-007。GitHub connector 對 private repo 無 Issue 權限，因此改用本機 GitHub 憑證呼叫 GitHub API 建立，過程未輸出 token。`docs/sprint-2-issue-drafts.md` 已補上正式 Issue 連結。下一步可建立 Sprint 2 實作分支，從 S2-001 開始處理；主系統仍尚未 coding。

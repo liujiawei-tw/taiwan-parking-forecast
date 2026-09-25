@@ -8,8 +8,19 @@
 
 Sprint 2 第一組的目標不是完成完整停車預測，而是建立可維護、可測、可部署的主系統骨架，並用 mock API 先跑通查詢生命週期。第一個可展示版本先不等待 ML。
 
-## 第一組 Issues 總覽
 
+## GitHub Issues
+
+| Issue | GitHub 連結 |
+| --- | --- |
+| S2-001 | [#1](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/1) |
+| S2-002 | [#2](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/2) |
+| S2-003 | [#3](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/3) |
+| S2-004 | [#4](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/4) |
+| S2-005 | [#5](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/5) |
+| S2-006 | [#6](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/6) |
+| S2-007 | [#7](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/7) |
+## 第一組 Issues 總覽
 | 建議 Issue | 標題 | 主要角色 | 依賴 | 產出 |
 | --- | --- | --- | --- | --- |
 | S2-001 | 建立 Sprint 2 實作分支與專案工作規則 | PM／Scrum Master | 無 | 分支、Issue 管理規則、環境變數範本規則 |
