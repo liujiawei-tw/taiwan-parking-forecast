@@ -323,3 +323,6 @@ Sponsor 確認 S2-003 前端 placeholder 版面可接受。前端骨架目前包
 ## 2026-09-25 新增 S2-008 CI/CD 基礎檢查 Issue
 
 Sponsor 詢問 CI/CD 對應 Issue。原第一組 Issues 中 S2-007 只涵蓋流程與驗收清單，沒有獨立實作 CI/CD；因此新增 GitHub Issue #8：S2-008 [CI/CD] 建立 GitHub Actions 基礎 CI。第一版範圍為後端 Maven test、前端 npm build，Docker build 視 S2-004 完成狀態加入；不做 Harness、不做遠端部署。
+## 2026-09-25 S2-004 Docker Compose 本機環境建立
+
+已建立 Docker Compose 本機開發環境，包含 `web`、`api`、`mysql`、`redis`。因本機 3306 與 8080 已被占用或受限，host port 調整為：API `18080 -> 8080`、MySQL `3307 -> 3306`、Web `5173 -> 80`、Redis `6379 -> 6379`。驗證結果：`docker compose build` 成功；`docker compose up -d` 後 api/mysql/redis healthy，`GET http://localhost:18080/api/health` 回 `UP`，`http://localhost:5173` 回 HTTP 200。驗證後已執行 `docker compose down` 停止服務。

@@ -30,3 +30,20 @@
 Sprint 2 第一組 GitHub Issues 已建立，實作分支為 `sprint-2-main-system-scaffold`。目前仍在 S2-001 工作規則收尾；主系統產品程式碼尚未開始。任務草案與正式 Issue 連結見 [Sprint 2 第一組 GitHub Issues 草案](docs/sprint-2-issue-drafts.md)。
 
 本機環境變數請從 `.env.example` 複製為 `.env` 後自行填入；真實金鑰與密碼不得提交。
+
+## Docker Compose
+
+Sprint 2 provides a local Docker Compose environment:
+
+```bash
+docker compose up --build
+```
+
+Services:
+
+- `web`: Vue app served by nginx on `http://localhost:5173`
+- `api`: Spring Boot API on `http://localhost:18080`
+- `mysql`: MySQL 8.4 on host port `3307` and container port `3306`, persisted in the `mysql-data` volume
+- `redis`: Redis on port `6379`
+
+Current credentials are local placeholder values for development only. Replace them through deployment environment variables before any shared environment.
