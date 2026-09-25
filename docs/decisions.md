@@ -516,3 +516,10 @@
 - **原因**：第一版主要風險在資料契約、外部 API、快照發布與前後端整合；導入完整 CI/CD 平台會增加前期工具成本。
 - **影響**：第一版先用 GitHub Issues／Projects 管理任務，GitHub Actions 作基本 CI 候選。若日後需要多環境部署、審批流程或更完整 release 管理，再評估 Harness。
 - **狀態**：暫不導入；若 Sponsor 後續明確指定 Harness，需另定 pipeline 範圍與驗收。沒有 coding。
+
+## 2026-09-25：後端 profile 分為 H2 快速開發／測試與 MySQL Docker 部署
+
+- **原因**：Sponsor 指定開發端測試用 H2，同時 Docker 是必要交付且未來會部署到其他 server。
+- **決策**：後端採 `local`、`test`、`docker` 三種 profile。`local` 與 `test` 使用 H2 in memory，方便 IntelliJ 與 Maven 測試快速啟動；`docker` 使用 MySQL，透過環境變數注入連線資訊。
+- **影響**：H2 只作快速回饋，不作正式資料庫行為保證；涉及索引、交易、批次寫入、資料量與 Docker 部署時，仍須用 MySQL 驗證。實際資料表與 repository 尚未建立。
+- **狀態**：已實作；Maven test 已驗證 H2 test profile，Docker Compose 已驗證 docker profile 可連 MySQL 並回應健康端點。

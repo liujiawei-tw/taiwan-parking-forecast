@@ -295,3 +295,65 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 ## 2026-09-25 GitHub Issues 已建立
 
 已將 Sprint 2 第一組草案轉成 GitHub Issues：#1 到 #7，對應 S2-001 至 S2-007。GitHub connector 對 private repo 無 Issue 權限，因此改用本機 GitHub 憑證呼叫 GitHub API 建立，過程未輸出 token。`docs/sprint-2-issue-drafts.md` 已補上正式 Issue 連結。下一步可建立 Sprint 2 實作分支，從 S2-001 開始處理；主系統仍尚未 coding。
+## 2026-09-25 Sprint 2 實作分支已建立
+
+已從 `main` 建立並推送 Sprint 2 實作分支 `sprint-2-main-system-scaffold`，對應 GitHub Issues 第一組任務。此分支目前只作為 Sprint 2 開發入口，尚未開始主系統產品程式碼實作。下一步可在此分支處理 S2-001 的剩餘工作：確認工作規則、金鑰不進 Git、任務完成檢查與後續 PR／合併流程，再進入 S2-002 後端骨架。
+
+## 2026-09-25 S2-001 工作規則補齊
+
+已補上 `.env.example` 作為本機環境變數範本，僅含假值與變數名稱；真實金鑰、密碼與 token 仍由 `.gitignore` 排除並不得提交。`docs/development-workflow.md` 新增 Branch／Issue／PR 規則、金鑰與環境變數規則，以及 Definition of Done 檢查清單。`README.md` 補上 Sprint 2 啟動狀態與 `.env.example` 使用提醒。這些變更用於收尾 S2-001，尚未開始產品程式碼實作。
+## 2026-09-25 S2-002 後端骨架建立
+
+已建立 `backend/` Spring Boot Maven 後端骨架，使用 Java 21、Spring Boot `4.1.1`、Spring Web MVC、Validation、Actuator 與 Maven Wrapper。設定檔採 Sponsor 指定的 YAML：`backend/src/main/resources/application.yml`。目前提供 `/api/health` 與 `/actuator/health`，並保留 `api`、`application`、`domain`、`adapter`、`infrastructure`、`config` package 邊界。執行 `backend/mvnw.cmd test` 通過：2 tests、0 failures。尚未接 MySQL、Redis、Google、新北市 API 或 ML。
+## 2026-09-25 S2-002 package 結構簡化
+
+依 Sponsor 回饋，移除 `tw/jiawei` 反向網域命名層級，後端 root package 改為 `parking.forecast`，主類別改為 `ParkingForecastApplication`。同時將 `api/application/infrastructure` 調整為較直覺的 `controller/service/repository`，保留 `domain`、`adapter`、`config`。目前可見結構為 `controller`、`service`、`repository`、`domain`、`adapter`、`config`。執行 `backend/mvnw.cmd test` 通過：2 tests、0 failures。
+## 2026-09-25 Sprint 2 Issues 用語調整
+
+依 Sponsor 指示，Sprint 2 第一組 Issues 不再使用「面試官角度」或面試相關詞語。`docs/sprint-2-issue-drafts.md` 已改為「工程審查重點」，相關描述改成對外說明、技術說明、作品集專案或展示等中性用語。正式 GitHub Issues #1 到 #7 也同步更新。
+## 2026-09-25 S2-002 後端骨架驗收完成
+
+S2-002 已完成驗收：`backend/mvnw.cmd test` 通過，結果為 2 tests、0 failures；實際啟動後端後，`GET /api/health` 與 `GET /actuator/health` 均回 `UP`。後端 package 已依 Sponsor 回饋簡化為 `parking.forecast`，並改成 `controller`、`service`、`repository` 三層式可見結構。GitHub Issue #2 已更新並關閉。下一步進入 S2-003 前端骨架。
+## 2026-09-25 S2-003 前端骨架建立
+
+已建立 `frontend/` Vue 3 + Vite 前端骨架，包含目的地搜尋 placeholder、地圖 placeholder、ETA／路邊／路外結果摘要 placeholder，以及 `VITE_API_BASE_URL`、`VITE_GOOGLE_MAPS_BROWSER_API_KEY` 環境變數入口。已新增 `frontend/README.md` 與 `frontend/.env.example`。執行 `npm run build` 通過。尚未接 Google Maps JavaScript API、Places Autocomplete、Routes API 或後端真查詢。
+## 2026-09-25 S2-003 前端骨架驗收完成
+
+Sponsor 確認 S2-003 前端 placeholder 版面可接受。前端骨架目前包含目的地搜尋 placeholder、地圖 placeholder、ETA／路邊／路外結果摘要 placeholder，以及 `frontend/.env.example`。`npm run build` 已通過，GitHub Issue #3 已關閉。下一步進入 S2-004 Docker Compose 本機開發環境。
+## 2026-09-25 新增 S2-008 CI/CD 基礎檢查 Issue
+
+Sponsor 詢問 CI/CD 對應 Issue。原第一組 Issues 中 S2-007 只涵蓋流程與驗收清單，沒有獨立實作 CI/CD；因此新增 GitHub Issue #8：S2-008 [CI/CD] 建立 GitHub Actions 基礎 CI。第一版範圍為後端 Maven test、前端 npm build，Docker build 視 S2-004 完成狀態加入；不做 Harness、不做遠端部署。
+## 2026-09-25 S2-004 Docker Compose 本機環境建立
+
+已建立 Docker Compose 本機開發環境，包含 `web`、`api`、`mysql`、`redis`。因本機 3306 與 8080 已被占用或受限，host port 調整為：API `18080 -> 8080`、MySQL `3307 -> 3306`、Web `5173 -> 80`、Redis `6379 -> 6379`。驗證結果：`docker compose build` 成功；`docker compose up -d` 後 api/mysql/redis healthy，`GET http://localhost:18080/api/health` 回 `UP`，`http://localhost:5173` 回 HTTP 200。驗證後已執行 `docker compose down` 停止服務。
+## 2026-09-25 S2-004 Docker Compose 驗收完成
+
+Sponsor 確認 S2-004 可接受。Docker Compose 本機開發環境已完成並驗證，GitHub Issue #4 已關閉。下一步進入 S2-005：後端 profile、H2 測試邊界與 MySQL 連線設定。
+
+## 2026-09-25：S2-005 後端 profiles、H2 與 MySQL 設定進行中
+
+已在後端加入 JPA、MySQL Connector 與 H2 依賴，並建立 `local`、`test`、`docker` 三種 profile。`local` 與 `test` 使用 H2 in memory；`docker` 使用 MySQL 並由 Docker Compose 注入 datasource 環境變數。新增測試確認 `test` profile 實際連到 H2，`backend` Maven 測試 3 個測試全部通過。
+
+此階段只完成資料庫連線邊界與測試設定，尚未建立正式 entity、repository、schema migration、資料表或 API 資料流程。Docker Compose 已以 `docker` profile 驗證 API 可連 MySQL 並回應健康端點；S2-005 尚待 GitHub Issue 回報與 Sponsor 驗收後關閉。
+
+## 2026-09-25：S2-006 mock 查詢 API 生命週期初版完成
+
+已建立 `POST /api/v1/parking-queries`、`GET /api/v1/parking-queries/{queryId}`、`POST /api/v1/parking-queries/{queryId}/refresh` 的 mock/stub 流程。後端以 in-memory mock service 暫存 `queryId`，回應固定包含 `query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh` 八個頂層區塊；預測區塊明確回 `INSUFFICIENT_DATA`，不輸出假機率。前端已可送出 mock 查詢並顯示 queryId、ETA、路邊、路外與預測資料不足狀態。
+
+驗證結果：後端 Maven test 通過 5 個測試；前端 `npm run build` 通過；本機 HTTP 手動驗證三個 mock endpoint 均可用；Docker Compose `api` 與 `web` image build 通過；Docker runtime 已透過 `http://localhost:18080/api/v1/parking-queries` 驗證建立、讀取與刷新 mock 查詢，Web `http://localhost:5173` 回 200。此階段尚未接 Google Places／Routes、新北市官方 API、Redis、MySQL query persistence 或正式預測模型。
+
+## 2026-09-25：S2-006 驗收完成，S2-007 文件同步開始
+
+Sponsor 確認 S2-006 可繼續，GitHub Issue #6 已以 completed 關閉。GitHub connector 已由 Sponsor 重新連線並恢復 private repo Issue 讀寫能力。已建立 `docs/task-completion-checklist.md` 作為每張 Issue 完成前的共同 Definition of Done，涵蓋範圍、功能、測試、文件、Git 與工程說明驗收。`docs/development-workflow.md` 已連結此清單並修正驗收用語；README 已同步 Sprint 2 實際進度，避免仍描述為尚未開始主系統程式碼。
+
+## 2026-09-25：S2-007 Sponsor 回覆
+
+Sponsor 確認任務完成檢查清單不會太繁瑣，並確認 CI/CD 先使用 GitHub Actions，不導入 Harness。已補充文件驗收規則的語意：重要任務若影響需求、架構、API、部署、資料規則、驗收結果或目前進度，需要同步對應文件；小型 typo、樣式微調或不影響理解的小重構可說明無需文件更新。
+
+## 2026-09-25：S2-007 驗收完成
+
+Sponsor 確認小修改可不更新文件，只需在回報中說明原因；重要任務仍需同步必要文件。GitHub Issue #7 已以 completed 關閉。Sprint 2 第一組 #1～#7 已完成，後續可進入 S2-008 GitHub Actions 基礎 CI，或依需要先整理 PR／合併回 main。
+
+## 2026-09-25：Sprint 2 第一組成果 PR 已建立
+
+已將 `sprint-2-main-system-scaffold` 開 PR 到 `main`：https://github.com/liujiawei-tw/taiwan-parking-forecast/pull/9。PR 範圍包含 S2-001～S2-007：後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、文件同步與任務完成檢查清單。PR 前已重新驗證：後端 Maven test 5 tests／0 failures、前端 `npm run build` 通過、Docker Compose `api`／`web` image build 通過。GitHub 回報 PR 可合併且狀態為 clean；尚未合併，等待 Sponsor 最後確認。

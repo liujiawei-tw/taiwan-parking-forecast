@@ -76,7 +76,7 @@ PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始
 
 1. **功能驗收**：使用者或 API 是否得到預期結果。
 2. **工程驗收**：測試、Docker、資料庫、Redis、錯誤處理是否符合設計。
-3. **面試驗收**：是否能說明為什麼這樣設計、如何驗證、還有什麼限制。
+3. **工程說明驗收**：是否能說明為什麼這樣設計、如何驗證、還有什麼限制。
 
 例如第一個端到端版本的高層驗收：
 
@@ -89,7 +89,7 @@ PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始
 
 ## Harness 是否導入
 
-若此處的 Harness 指的是 Harness CI/CD 平台，第一版建議**先不導入**。
+若此處的 Harness 指的是 Harness CI/CD 平台，第一版建議**先不導入**；Sponsor 已確認 CI/CD 先使用 GitHub Actions。
 
 理由：
 
@@ -100,8 +100,41 @@ PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始
 
 如果 Sponsor 之後明確要求使用 Harness，建議放在 Docker 可穩定 build 並有基本測試後，再建立 pipeline；不要放在第一個可展示版本之前。
 
-## 每次任務完成的固定收尾
 
+## Branch、Issue 與 PR 規則
+
+- `main` 保存已確認的文件與可展示成果。
+- Sprint 2 實作分支為 `sprint-2-main-system-scaffold`。
+- 每個實作增量以 GitHub Issue 追蹤；commit 訊息要能對應到 Issue 或清楚說明變更目的。
+- 建議每張 Issue 使用小步 commit；同一張 Issue 可有多個 commit，但每個 commit 要保持可解釋。
+- 合併回 `main` 前，至少要完成該 Issue 的驗收標準、測試方式、文件更新與 Sponsor 需要的 Human-in-the-loop 檢查。
+- 若某張 Issue 尚未完成但需要保存進度，可推到 Sprint 分支，不把它視為 Done。
+
+## 金鑰與環境變數規則
+
+- `.env.example` 只放變數名稱與假值，用來說明需要哪些設定。
+- 真實 `.env`、Google API key、TDX Client ID／Secret、資料庫密碼與 token 不進 Git。
+- 前端只使用受網頁來源限制的 browser key；後端 Routes／政府資料等 server side key 只由後端環境變數讀取。
+- 若文件或範例需要提到外部服務，只記錄服務名稱、用途與變數名稱，不記錄真實憑證。
+- commit 前要檢查 `git diff`，確認沒有 secrets、下載的大型資料檔或本機 IDE 設定。
+
+## Definition of Done 檢查清單
+
+詳細可重複使用版本見 [任務完成檢查清單](task-completion-checklist.md)。
+
+每張 Issue 完成前，至少檢查以下項目：
+
+- [ ] 功能或文件變更符合該 Issue 的範圍。
+- [ ] 範圍外項目沒有被偷偷混入。
+- [ ] 驗收標準逐項可判斷，未完成項目有明確說明。
+- [ ] 必要測試已執行；若未執行，原因已記錄。
+- [ ] 沒有真實金鑰、密碼、token 或大型原始資料進 Git。
+- [ ] 需要更新的 Markdown 已更新。
+- [ ] 影響人類進度視圖時，`docs/project-status.html` 已更新。
+- [ ] Git commit 訊息可讀，且工作樹狀態清楚。
+- [ ] 需要 Sponsor 檢查的項目已提出或已完成。
+
+## 每次任務完成的固定收尾
 - 跑必要測試或明確說明未跑原因。
 - 更新相關 Markdown。
 - 更新 `docs/current-state.md`。

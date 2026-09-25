@@ -1,6 +1,6 @@
 # 全臺停車位抵達預測｜專案記憶
 
-本專案探索：使用者從出發地前往目的地時，周邊停車場在抵達時仍有車位的可能性。第一期以 TDX 停車資料為主，後續再接入地方政府免費 API。這個 repository 目前只保存需求、決策與規劃；尚未開始寫應用程式。
+本專案探索：使用者從出發地前往目的地時，周邊停車場在抵達時仍有車位的可能性。第一期以 TDX 停車資料為主，後續再接入地方政府免費 API。這個 repository 保存需求、決策、規劃與 Sprint 2 主系統骨架。
 
 ## 從這裡開始
 
@@ -24,3 +24,26 @@
 使用 GitHub Issues 表示可執行任務，GitHub Projects 安排 Sprint，Git commit 留下小而完整的變更歷史。重要討論的結論更新相應文件。所有 TDX 金鑰與個人設定只存在本機安全設定中，不提交至 Git。
 
 資料來源：[TDX API 使用指引](https://tdx.transportdata.tw/api-service/swagger)、[TDX 官方範例](https://github.com/tdxmotc/SampleCode)、[TDX 訂閱收費](https://tdx.transportdata.tw/pricing)。
+
+## Sprint 2 啟動狀態
+
+Sprint 2 第一組 GitHub Issues 已建立，實作分支為 `sprint-2-main-system-scaffold`。目前已完成後端骨架、前端骨架、Docker Compose、後端 profiles 與 S2-006 mock 查詢生命週期；正式 Google、新北市官方 API、Redis query state、資料庫正式模型與預測模型尚未接入。任務草案與正式 Issue 連結見 [Sprint 2 第一組 GitHub Issues 草案](docs/sprint-2-issue-drafts.md)。
+
+本機環境變數請從 `.env.example` 複製為 `.env` 後自行填入；真實金鑰與密碼不得提交。每張 Issue 完成前使用 [任務完成檢查清單](docs/task-completion-checklist.md) 做文件、測試、Git 與工程說明驗收。
+
+## Docker Compose
+
+Sprint 2 provides a local Docker Compose environment:
+
+```bash
+docker compose up --build
+```
+
+Services:
+
+- `web`: Vue app served by nginx on `http://localhost:5173`
+- `api`: Spring Boot API on `http://localhost:18080`
+- `mysql`: MySQL 8.4 on host port `3307` and container port `3306`, persisted in the `mysql-data` volume
+- `redis`: Redis on port `6379`
+
+Current credentials are local placeholder values for development only. Replace them through deployment environment variables before any shared environment.

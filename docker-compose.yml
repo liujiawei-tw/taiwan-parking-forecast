@@ -1,0 +1,67 @@
+services:
+  api:
+    build:
+      context: ./backend
+    ports:
+      - "18080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/taiwan_parking_forecast?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Taipei
+      SPRING_DATASOURCE_USERNAME: parking_app
+      SPRING_DATASOURCE_PASSWORD: change-me-locally
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:18080
+        VITE_GOOGLE_MAPS_BROWSER_API_KEY: ""
+    ports:
+      - "5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: taiwan_parking_forecast
+      MYSQL_USER: parking_app
+      MYSQL_PASSWORD: change-me-locally
+      MYSQL_ROOT_PASSWORD: change-root-locally
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pchange-root-locally"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  mysql-data:

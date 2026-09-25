@@ -4,6 +4,7 @@
 .env.*
 !.env.example
 application-local.yml
+!backend/src/main/resources/application-local.yml
 application-local.yaml
 application-local.properties
 *.log
