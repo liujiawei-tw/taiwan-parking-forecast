@@ -505,3 +505,14 @@
 - **原因**：專案同時包含前端、後端、Google、政府來源、資料庫、Redis、Docker 與 ML；若先做畫面或模型，容易在資料契約和外部服務整合時返工。
 - **影響**：開始 coding 後先做可啟動與可測的 Spring Boot／Vue／Docker 骨架，再做資料模型、API mock、300 公尺查詢、官方即時來源與快照發布、受控刷新、Google 搜尋與 ETA、前端整合，最後接預測基準／模型。第一個可展示版本可先把預測區塊標示「資料不足」，但不得用假機率。
 - **狀態**：已確認；詳見 `implementation-plan.md`。實際任務拆分、Issue、分支與開發啟動日仍待開始實作前建立。沒有 coding。
+## 2026-09-25：PM 拆任務，Human-in-the-loop 作關鍵驗收
+
+- **原因**：Sponsor 希望以軟體開發工程流程進行實作，AI 負責實作但保留人工決策與驗收。
+- **影響**：開始 coding 前由 PM 角色拆出任務，每個任務需有範圍、驗收標準、測試方式與 Human-in-the-loop 檢查點。AI 可實作與自檢，Sponsor 在任務範圍、UI 行為、外部服務、部署、預測結果與合併前做關鍵確認。
+- **狀態**：已決定；流程記錄於 `development-workflow.md`。實際 GitHub Issues／Project board 尚待建立。沒有 coding。
+
+## 2026-09-25：Harness 暫不納入第一版必要工具
+
+- **原因**：第一版主要風險在資料契約、外部 API、快照發布與前後端整合；導入完整 CI/CD 平台會增加前期工具成本。
+- **影響**：第一版先用 GitHub Issues／Projects 管理任務，GitHub Actions 作基本 CI 候選。若日後需要多環境部署、審批流程或更完整 release 管理，再評估 Harness。
+- **狀態**：暫不導入；若 Sponsor 後續明確指定 Harness，需另定 pipeline 範圍與驗收。沒有 coding。

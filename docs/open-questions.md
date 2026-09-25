@@ -48,3 +48,4 @@
 6. **部署與展示**：面試先在本機展示；公開網址僅供日後遠端測試評估。待決：本機展示資料更新方式、重現步驟及 Google 金鑰限制；若開放遠端測試，另設網域、額度和存取範圍。
 34. **測試資料庫與整合測試**：Sponsor 已決定開發端測試使用 H2；仍需定 test profile、schema migration 工具、測試資料建立方式，以及哪些案例必須用 Docker MySQL 驗證，例如索引、批次寫入、交易與 300 公尺範圍查詢效能。
 35. **實作任務拆分**：實作順序已確認；開始 coding 前仍需建立 GitHub Issues／Project 欄位、決定開發分支命名、確認是否先 scaffold 主系統 repo 結構，以及每個增量的驗收測試清單。
+36. **GitHub 任務管理與 CI**：PM 拆任務與 Human-in-the-loop 流程已定；仍需建立 GitHub 遠端、Issues／Project board、Issue template、PR template，以及決定第一版 GitHub Actions 的 Maven test、前端 build、Docker build 檢查範圍。Harness 暫不導入，除非後續 Sponsor 明確指定。

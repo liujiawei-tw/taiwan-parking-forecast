@@ -50,6 +50,12 @@ Sponsor 指定 20 天內完成搜尋、Google ETA、即時車位及路邊／路�
 
 擴到新莊以外的地方政府／TDX 來源、跨來源場站對應、改良模型與維運監測。
 
+
+## 實作流程與任務管理
+
+PM 會依 `implementation-plan.md` 拆任務，任務需包含範圍、驗收標準、測試方式與 Human-in-the-loop 檢查點。第一版任務可先維護在 Markdown；GitHub 遠端與 Projects 準備好後，再轉成 Issues／Project board。完整流程見 `development-workflow.md`。
+
+Harness 若指 CI/CD 平台，第一版暫不導入；先以 GitHub Issues／Projects 管理工作，以 GitHub Actions 作基本 CI 候選。等 Docker build、測試與部署需求穩定後，再評估 Harness 是否有價值。
 ## 工作節奏
 
 - GitHub Issue：一件可完成的工作，包含驗收條件。
