@@ -320,3 +320,6 @@ S2-002 已完成驗收：`backend/mvnw.cmd test` 通過，結果為 2 tests、0 
 ## 2026-09-25 S2-003 前端骨架驗收完成
 
 Sponsor 確認 S2-003 前端 placeholder 版面可接受。前端骨架目前包含目的地搜尋 placeholder、地圖 placeholder、ETA／路邊／路外結果摘要 placeholder，以及 `frontend/.env.example`。`npm run build` 已通過，GitHub Issue #3 已關閉。下一步進入 S2-004 Docker Compose 本機開發環境。
+## 2026-09-25 新增 S2-008 CI/CD 基礎檢查 Issue
+
+Sponsor 詢問 CI/CD 對應 Issue。原第一組 Issues 中 S2-007 只涵蓋流程與驗收清單，沒有獨立實作 CI/CD；因此新增 GitHub Issue #8：S2-008 [CI/CD] 建立 GitHub Actions 基礎 CI。第一版範圍為後端 Maven test、前端 npm build，Docker build 視 S2-004 完成狀態加入；不做 Harness、不做遠端部署。

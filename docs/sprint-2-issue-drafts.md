@@ -350,3 +350,48 @@ Docker 是必要需求，因為未來會部署到其他 server。第一組任務
 ## 工程審查重點
 
 這張 Issue 展示你知道作品集專案不只是跑得動，還要能說明設計、驗證與限制。這會比只展示畫面更有說服力。
+
+---
+
+# S2-008 [CI/CD] 建立 GitHub Actions 基礎 CI
+
+## 背景
+
+Sprint 2 第一組 Issues 已建立後端與前端骨架，後續需要基本 CI 來避免每次推送後才發現 Maven 或 Vite build 壞掉。這張 Issue 補上 GitHub Actions 基礎檢查，不導入 Harness，也不做正式部署。
+
+## 範圍
+
+- 建立 GitHub Actions workflow。
+- 後端檢查：執行 `backend/mvnw.cmd test` 或 Linux 等效 Maven Wrapper 測試。
+- 前端檢查：在 `frontend/` 執行 `npm ci` 與 `npm run build`。
+- 若 S2-004 Dockerfile 已完成，加入 Docker build 檢查；若尚未完成，先保留 TODO。
+- workflow 不需要任何真實 API key。
+
+## 不包含
+
+- 不部署到遠端 server。
+- 不導入 Harness CI/CD 平台。
+- 不建立 production release 流程。
+- 不設定雲端主機、網域、HTTPS。
+
+## 驗收標準
+
+- [ ] Pull request 或 push 會觸發 GitHub Actions。
+- [ ] 後端 Maven 測試會執行。
+- [ ] 前端 npm build 會執行。
+- [ ] workflow 不需要真實 Google、TDX、新北市 API key。
+- [ ] CI 失敗時能從 GitHub Actions log 看出是哪一段失敗。
+
+## 測試方式
+
+- GitHub Actions：推送分支後確認 workflow 有執行。
+- 本機對照：確認本機 `backend/mvnw.cmd test` 與 `frontend/npm run build` 仍通過。
+
+## Human-in-the-loop
+
+- Sponsor 確認第一版 CI 只做測試與 build，不做部署。
+- Sponsor 確認 GitHub Actions 用量與 repo 設定可接受。
+
+## 工程審查重點
+
+這張 Issue 用來證明專案有基本自動化品質閘門。第一版先檢查 Maven test 與 Vite build，等 Docker 與部署成熟後再擴充成 Docker build、image push 或正式部署。
