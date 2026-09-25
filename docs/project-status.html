@@ -108,7 +108,7 @@
       <li>S2-003：建立 Vue 3 + Vite 前端骨架與 Google Maps 設定入口（已驗收完成；npm build 通過）。</li>
       <li>S2-004：建立 Docker Compose 本機開發環境（已驗收完成；web/api/mysql/redis 可啟動）。</li>
       <li>S2-005：建立後端 profile、H2 測試邊界與 MySQL 連線設定。</li>
-      <li>S2-006：建立查詢 API 契約與 mock 查詢生命週期（初版完成，待確認）。</li>
+      <li>S2-006：建立查詢 API 契約與 mock 查詢生命週期（Docker runtime 已驗證，待確認）。</li>
       <li>S2-007：建立第一版文件同步與驗收檢查清單。</li>
     </ol><p class="timeline-note">完整範圍、驗收標準、測試方式與 Human-in-the-loop 檢查點見 sprint-2-issue-drafts.md；正式 GitHub Issues 為 #1 至 #7。此區是任務規劃，不代表已開始 coding。</p></div>
   </section>
@@ -227,7 +227,7 @@
   <section>
     <h2>Sprint 2 最新進度：S2-006 mock 查詢生命週期</h2>
     <p>已建立三個 mock endpoint：建立查詢、讀取查詢、刷新車位。前端可送出 mock 查詢並顯示 ETA、路邊、路外與預測資料不足狀態。</p>
-    <p>驗證：後端 Maven test 5 個測試通過、前端 build 通過、本機 HTTP endpoint 驗證通過、Docker api/web image build 通過。尚未接 Google、新北市官方 API、Redis 或正式預測。</p>
+    <p>驗證：後端 Maven test 5 個測試通過、前端 build 通過、本機 HTTP endpoint 驗證通過、Docker api/web image build 通過、Docker runtime endpoint 驗證通過。尚未接 Google、新北市官方 API、Redis 或正式預測。</p>
   </section>
 </body>
 </html>

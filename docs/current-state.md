@@ -340,4 +340,4 @@ Sponsor 確認 S2-004 可接受。Docker Compose 本機開發環境已完成並�
 
 已建立 `POST /api/v1/parking-queries`、`GET /api/v1/parking-queries/{queryId}`、`POST /api/v1/parking-queries/{queryId}/refresh` 的 mock/stub 流程。後端以 in-memory mock service 暫存 `queryId`，回應固定包含 `query`、`destination`、`area`、`eta`、`roadside`、`offStreet`、`predictions`、`refresh` 八個頂層區塊；預測區塊明確回 `INSUFFICIENT_DATA`，不輸出假機率。前端已可送出 mock 查詢並顯示 queryId、ETA、路邊、路外與預測資料不足狀態。
 
-驗證結果：後端 Maven test 通過 5 個測試；前端 `npm run build` 通過；本機 HTTP 手動驗證三個 mock endpoint 均可用；Docker Compose `api` 與 `web` image build 通過。此階段尚未接 Google Places／Routes、新北市官方 API、Redis、MySQL query persistence 或正式預測模型。
+驗證結果：後端 Maven test 通過 5 個測試；前端 `npm run build` 通過；本機 HTTP 手動驗證三個 mock endpoint 均可用；Docker Compose `api` 與 `web` image build 通過；Docker runtime 已透過 `http://localhost:18080/api/v1/parking-queries` 驗證建立、讀取與刷新 mock 查詢，Web `http://localhost:5173` 回 200。此階段尚未接 Google Places／Routes、新北市官方 API、Redis、MySQL query persistence 或正式預測模型。
