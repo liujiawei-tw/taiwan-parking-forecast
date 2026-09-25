@@ -163,7 +163,7 @@
 
 ## `parking_query` 是否持久化
 
-第一版建議：`parking_query` 不先作為 MySQL 核心表，短期查詢狀態放 Redis；MySQL 只保存可重用的停車目錄、快照、觀測與來源狀態。
+第一版建議：`parking_query` 不先作為 MySQL 核心表，短期查詢狀態放 Redis 的 `pf:query:{queryId}`；MySQL 只保存可重用的停車目錄、快照、觀測與來源狀態。Redis 詳細 key 類型見 `redis-design.md`。
 
 理由：
 

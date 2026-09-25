@@ -282,3 +282,4 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 
 - 已補上快照發布交易流程：來源擷取先建立 `ingestion_run` 與 `CANDIDATE` 快照，批次寫入觀測並完成品質檢查；缺頁或整輪失敗標記拒絕，不切換 `source_state.active_snapshot_id`，也不更新 Redis。驗證通過後，用短交易將快照改為 `PUBLISHED` 並切換啟用版本；交易提交後才更新或失效 Redis。使用者查詢只讀已發布快照，未發布候選、失敗擷取與模型補值不得作訓練標籤。已同步 `snapshot-validation.md`、`engineering/data-model.md` 與 `decisions.md`；交易隔離、批次大小、候選清理與 Redis 補快取待定。沒有 coding。
 - 繼續收斂 300 公尺附近查詢的後端落地方式：已決定第一版先用 MySQL 經緯度矩形預篩，再由 Spring application service 計算精確直線距離；Repository 只取候選位置，不決定產品語意。路邊與路外共用位置候選流程，但各自連到自己的已發布快照與來源狀態。MySQL spatial index 暫列效能實測後的升級選項；索引欄位順序、候選數、排序／分頁與延遲待量測。已更新 `nearby-search.md`、`engineering/data-model.md`、`decisions.md` 與 `open-questions.md`；沒有 coding。
+- 繼續收斂 Redis 設計，新增 `redis-design.md`。已決定 Redis 第一版只放短期 `queryId` 進度、防重送 token、來源刷新短鎖／進度，以及含快照版本且可由 MySQL 重建的結果快取；MySQL 仍是已發布快照、來源冷卻、用量和訓練歷史的事實來源。Redis TTL 不代表官方資料新鮮度，Redis 清空只讓短期查詢失效，不會刪除已發布車位資料。實際 TTL、容量、序列化、鎖 owner token／心跳及快取命中率待實測；沒有 coding。
