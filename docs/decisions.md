@@ -495,3 +495,8 @@
 - **原因**：Sponsor 指定 Docker 是必要交付且未來會部署到其他 server；目前 MVP 尚不需要 Kubernetes 或多台主機複雜度。
 - **影響**：第一版候選服務為 `web`、`api`、`mysql`、`redis`。`web` 提供 Vue build 後靜態頁並代理 `/api`；`api` 執行 Spring Boot；`mysql` 使用 volume 保存目錄、快照、觀測歷史與來源狀態；`redis` 保存短期查詢進度、刷新協調與可重建快取。對外只開 `web`，機密以環境變數或部署端 `.env` 注入，不寫入 Git 或 image。
 - **狀態**：部署拓樸候選已記錄於 `docker-deployment.md`；實際 Dockerfile、compose、版本、HTTPS 入口、備份流程、目標主機與模型產物放置方式仍待實作前決定。沒有 coding。
+## 2026-09-25：開發端測試使用 H2，但正式與整合驗證仍以 MySQL 為準
+
+- **原因**：Sponsor 希望開發端測試可用 H2 快速驗證 JPA repository、service 邏輯與資料映射，降低本機測試成本。
+- **影響**：第一版測試策略可加入 H2 profile；但 H2 不取代 MySQL 的 Docker 整合測試、索引行為、交易隔離、批次寫入效能與資料量測。正式部署仍使用 MySQL，文件與面試說明需清楚區分測試便利與正式環境一致性。
+- **狀態**：已決定；實際 test profile、schema migration 工具、MySQL 整合測試方式與 CI 執行策略待實作前定稿。沒有 coding。

@@ -40,6 +40,17 @@
     .work li { margin:5px 0; }
     .work .tag { margin-bottom:10px; }
     .next { padding:18px 20px; background:var(--panel); border:1px solid var(--line); border-radius:12px; }
+    .uml-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
+    .uml-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; overflow-x:auto; }
+    .uml-card svg { width:100%; min-width:520px; height:auto; display:block; }
+    .uml-title { font-weight:800; margin:0 0 8px; }
+    .uml-note { color:var(--muted); font-size:.9rem; margin-top:8px; }
+    .uml-box { fill:#f8fbff; stroke:#9ab3d4; stroke-width:1.2; rx:8; }
+    .uml-db { fill:#fff7e8; stroke:#d0a24d; stroke-width:1.2; }
+    .uml-cache { fill:#eefaf5; stroke:#55a982; stroke-width:1.2; }
+    .uml-text { fill:#172333; font:13px system-ui,"Noto Sans TC",sans-serif; }
+    .uml-small { fill:#516276; font:11px system-ui,"Noto Sans TC",sans-serif; }
+    .uml-line { stroke:#56677b; stroke-width:1.4; fill:none; marker-end:url(#arrow); }
     .next ol { margin:8px 0 0; padding-left:22px; }
     footer { margin-top:38px; color:var(--muted); font-size:.9rem; }
     @media (max-width:620px) { main { padding:24px 14px 48px; } .summary { grid-template-columns:1fr; } }
@@ -50,7 +61,7 @@
   <header>
     <h1>停車預測專案｜進度與待辦</h1>
     <p class="lede">新莊區 MVP：搜尋目的地、計算抵達時間，顯示目的地方圓 300 公尺內收錄的汽車停車選項，以及抵達時有位的預測。</p>
-    <div class="meta"><span class="tag design">目前：Sprint 1 前後端 API 契約討論</span><span class="tag">更新：2026-09-24</span><span class="tag">20 天為開發啟動後的目標時間盒</span></div>
+    <div class="meta"><span class="tag design">目前：Sprint 1 前後端 API 契約討論</span><span class="tag">更新：2026-09-25</span><span class="tag">20 天為開發啟動後的目標時間盒</span></div>
     <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統的前端、後端與兩類預測均尚未實作；訓練 collector 雖有排程，Sponsor 回報匯出資料不完整，相關盤點與模型驗證暫緩。</div>
   </header>
 
@@ -83,6 +94,91 @@
       <article><span class="tag pending">預測：資料盤點暫緩，模型未開始</span><h3>抵達時有位機率</h3><ul><li>路邊：目的地 300 公尺內至少一個適用汽車格位可停的機率；訓練標籤須對齊實際 300 公尺圓。</li><li>路外：範圍內各停車場抵達時仍有汽車位的機率。</li><li>待處理：collector 匯出不完整；恢復後才驗證標籤、樣本品質、時間與街區切分、基準及模型部署。資料不足時不編造機率。</li></ul></article>
       <article><span class="tag design">服務整合：雲端專案與 API 已開通，未介接</span><h3>Google 與外部地圖</h3><ul><li>已定：Google Maps 用於地圖、Places (New) 用於搜尋、Routes 的交通感知 ETA 直接作預測時刻；外部地圖負責導航。Sponsor 回報停車專案 Taiwan Parking Forecast（ID taiwan-parking-forecast）已建立，三項 API 已啟用、帳單連結有效，預算通知已設定。</li><li>帳單規劃由 Sponsor 自行管理，本階段跳過；網頁／後端金鑰限制及配額在正式介接前仍須核對。主系統尚未呼叫服務。</li></ul></article>
       <article><span class="tag pending">部署／驗收：方向已定，未實作</span><h3>Docker 與品質證據</h3><ul><li>已定：Docker 可部署到其他伺服器是必要交付；面試仍可本機展示，兩類預測都列入 20 天目標。</li><li>待做：容器建置與乾淨主機啟動、MySQL 持久化／備份驗證、遠端 HTTPS 與金鑰設定、並發刷新測試、資料年齡及 API 用量量測、兩類模型與基準比較。</li><li>待確認：實際主機、網域與遠端上線是否納入 20 天時程。</li></ul></article>
+    </div>
+  </section>
+
+
+  <section aria-labelledby="uml"><h2 id="uml">UML 架構視圖</h2>
+    <div class="uml-grid">
+      <article class="uml-card">
+        <p class="uml-title">部署圖：第一版 Docker Compose 候選</p>
+        <svg viewBox="0 0 720 360" role="img" aria-label="UML 部署圖：瀏覽器使用 Google Maps JavaScript 與 Places，透過 Web 服務呼叫 API，API 連接 MySQL、Redis、Google Routes 與新北市官方 API。">
+          <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#56677b"/></marker></defs>
+          <rect class="uml-box" x="24" y="40" width="130" height="70"/>
+          <text class="uml-text" x="44" y="72">使用者瀏覽器</text>
+          <text class="uml-small" x="44" y="92">Vue / Google Map</text>
+          <rect class="uml-box" x="224" y="34" width="150" height="82"/>
+          <text class="uml-text" x="248" y="66">web</text>
+          <text class="uml-small" x="248" y="86">靜態頁</text>
+          <text class="uml-small" x="248" y="102">/api 反向代理</text>
+          <rect class="uml-box" x="444" y="34" width="160" height="82"/>
+          <text class="uml-text" x="482" y="66">api</text>
+          <text class="uml-small" x="474" y="86">Spring Boot Web</text>
+          <text class="uml-small" x="474" y="102">REST / 來源協調</text>
+          <rect class="uml-db" x="424" y="180" width="120" height="76"/>
+          <text class="uml-text" x="462" y="212">MySQL</text>
+          <text class="uml-small" x="448" y="232">快照與歷史</text>
+          <rect class="uml-cache" x="584" y="180" width="112" height="76"/>
+          <text class="uml-text" x="622" y="212">Redis</text>
+          <text class="uml-small" x="606" y="232">短期狀態</text>
+          <rect class="uml-box" x="214" y="228" width="150" height="68"/>
+          <text class="uml-text" x="248" y="258">Google Routes</text>
+          <text class="uml-small" x="246" y="278">ETA only</text>
+          <rect class="uml-box" x="24" y="228" width="150" height="68"/>
+          <text class="uml-text" x="50" y="258">新北市官方 API</text>
+          <text class="uml-small" x="54" y="278">路邊／路外即時</text>
+          <path class="uml-line" d="M154 75 L224 75"/>
+          <path class="uml-line" d="M374 75 L444 75"/>
+          <path class="uml-line" d="M504 116 L486 180"/>
+          <path class="uml-line" d="M558 116 L628 180"/>
+          <path class="uml-line" d="M444 104 L174 244"/>
+          <path class="uml-line" d="M486 116 L340 228"/>
+        </svg>
+        <p class="uml-note">重點：對外只暴露 web；api、MySQL、Redis 在內部 network。MySQL 是事實來源，Redis 是短期狀態與快取。</p>
+      </article>
+      <article class="uml-card">
+        <p class="uml-title">類別圖：核心資料模型關係</p>
+        <svg viewBox="0 0 720 390" role="img" aria-label="UML 類別圖：ParkingPlace、SourceMapping、AvailabilitySnapshot、AvailabilityObservation、SourceState、IngestionRun 的關係。">
+          <defs><marker id="arrow2" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#56677b"/></marker></defs>
+          <rect class="uml-box" x="40" y="42" width="190" height="86"/>
+          <text class="uml-text" x="76" y="70">ParkingPlace</text>
+          <text class="uml-small" x="58" y="92">id, type, name</text>
+          <text class="uml-small" x="58" y="110">lat/lng, carEligible</text>
+          <rect class="uml-box" x="280" y="42" width="190" height="86"/>
+          <text class="uml-text" x="314" y="70">SourceMapping</text>
+          <text class="uml-small" x="298" y="92">sourceSystem, dataset</text>
+          <text class="uml-small" x="298" y="110">sourcePlaceId, status</text>
+          <rect class="uml-box" x="40" y="182" width="190" height="94"/>
+          <text class="uml-text" x="72" y="210">AvailabilityObservation</text>
+          <text class="uml-small" x="58" y="232">snapshotId, placeId</text>
+          <text class="uml-small" x="58" y="250">status, availableSpaces</text>
+          <text class="uml-small" x="58" y="268">rawValue, quality</text>
+          <rect class="uml-box" x="280" y="182" width="190" height="94"/>
+          <text class="uml-text" x="314" y="210">AvailabilitySnapshot</text>
+          <text class="uml-small" x="298" y="232">status, publishedAt</text>
+          <text class="uml-small" x="298" y="250">qualityStatus</text>
+          <text class="uml-small" x="298" y="268">sourceObservedAt</text>
+          <rect class="uml-box" x="520" y="42" width="160" height="86"/>
+          <text class="uml-text" x="558" y="70">SourceState</text>
+          <text class="uml-small" x="538" y="92">activeSnapshotId</text>
+          <text class="uml-small" x="538" y="110">nextAllowedRefresh</text>
+          <rect class="uml-box" x="520" y="182" width="160" height="94"/>
+          <text class="uml-text" x="558" y="210">IngestionRun</text>
+          <text class="uml-small" x="538" y="232">trigger, status</text>
+          <text class="uml-small" x="538" y="250">httpCount</text>
+          <text class="uml-small" x="538" y="268">qualitySummary</text>
+          <rect class="uml-db" x="280" y="314" width="190" height="54"/>
+          <text class="uml-text" x="324" y="344">H2 測試 DB</text>
+          <text class="uml-small" x="304" y="362">開發端 repository/service 測試</text>
+          <path class="uml-line" marker-end="url(#arrow2)" d="M280 86 L230 86"/>
+          <path class="uml-line" marker-end="url(#arrow2)" d="M135 128 L135 182"/>
+          <path class="uml-line" marker-end="url(#arrow2)" d="M280 230 L230 230"/>
+          <path class="uml-line" marker-end="url(#arrow2)" d="M520 86 L470 86"/>
+          <path class="uml-line" marker-end="url(#arrow2)" d="M520 222 L470 222"/>
+          <path class="uml-line" marker-end="url(#arrow2)" d="M375 276 L375 314"/>
+        </svg>
+        <p class="uml-note">重點：MySQL/JPA 是正式資料模型；H2 只用於開發端測試，不替代 MySQL 的部署與整合驗證。</p>
+      </article>
     </div>
   </section>
 

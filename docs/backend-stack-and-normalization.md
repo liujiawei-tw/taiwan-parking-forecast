@@ -11,6 +11,7 @@
 | 建置與相依管理 | Maven（Sponsor 已選；在 IntelliJ IDEA 使用） | 管理 Spring Boot 專案的相依套件、建置與測試；實際 Java／Spring Boot 版本於開始實作前核對並固定 |
 | 官方來源介接 | Spring Boot HTTP client；每個來源有獨立 adapter 與欄位映射 | 新北市路邊、路外；日後接 TDX 或其他政府／業者，不把來源欄位直接交給前端 |
 | 持久資料 | MySQL、Spring Data JPA；大量觀測列的批次寫入方式待量測 | 停車目錄、來源 ID 對應、已發布快照及可追溯觀測歷史、刷新冷卻與用量紀錄；資料庫是權威來源，歷史可供未來離線訓練匯出 |
+| 開發端測試資料 | H2 database、Spring Boot test profile | 用於 repository／service 層快速測試與本機自動化測試；不取代 MySQL 的 Docker 整合測試、索引行為與資料量測 |
 | 短期狀態與快取 | Redis（第一版納入） | 短期 `queryId` 進度、共用刷新中的協調訊號／短鎖，以及經驗證的近期查詢結果快取；用途與 TTL 按量測收斂。Redis 不保存唯一的停車真相、月度用量或完整性決策 |
 | 預測 | 離線 Jupyter／Anaconda 模型實驗；線上模型產物讀取方式待定 | 訓練 collector 僅產歷史樣本；主系統只載入經時間切分驗證的模型版本來推論，觀測與預測分開 |
 | 交付 | Git／GitHub、Docker 映像與部署設定 | 可在其他伺服器重現；第一版候選為單伺服器 Docker Compose，包含 web、api、MySQL、Redis。HTTPS 入口與正式主機待定，見 `docker-deployment.md` |
@@ -47,6 +48,10 @@ Redis 第一版有四個明確用途：短期 `queryId` 查詢進度、防重送
 - 回應的新鮮度依 MySQL 記錄的來源觀測時間／系統成功取得時間判斷；Redis TTL 只控制快取壽命，不會把舊資料變新。超過目前 5 分鐘試驗門檻仍須走受控共用刷新。
 - 多位使用者同時查詢可共用同一來源的刷新；Redis 短鎖只作協調，不能繞過 MySQL `source_state` 的冷卻、預算與啟用快照狀態。最短刷新間隔、上游用量與重啟後冷卻狀態持久存在 MySQL。
 - Redis 失效時，主系統仍可依 MySQL 完整快照回答目前車位或標示過期；短期查詢進度失效則明確提示重查。快取命中率、記憶體用量與 MySQL 延遲應量測，避免為了使用 Redis 而快取整市全量資料。
+
+## H2 使用邊界
+
+開發端測試可使用 H2 加快 repository／service 測試回饋，特別是欄位映射、JPA entity 基本關聯、service 邏輯與狀態轉換。H2 不作正式部署資料庫，也不能用來驗證 MySQL 特有的索引、交易隔離、批次寫入效能、經緯度範圍查詢效能或大量觀測資料容量。開始實作後，至少需要一組 Docker MySQL 整合測試或手動驗證流程，避免 H2 通過但 MySQL 失敗。
 
 ## Docker 部署方向
 
