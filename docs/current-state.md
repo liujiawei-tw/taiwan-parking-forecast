@@ -314,3 +314,6 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 ## 2026-09-25 S2-002 後端骨架驗收完成
 
 S2-002 已完成驗收：`backend/mvnw.cmd test` 通過，結果為 2 tests、0 failures；實際啟動後端後，`GET /api/health` 與 `GET /actuator/health` 均回 `UP`。後端 package 已依 Sponsor 回饋簡化為 `parking.forecast`，並改成 `controller`、`service`、`repository` 三層式可見結構。GitHub Issue #2 已更新並關閉。下一步進入 S2-003 前端骨架。
+## 2026-09-25 S2-003 前端骨架建立
+
+已建立 `frontend/` Vue 3 + Vite 前端骨架，包含目的地搜尋 placeholder、地圖 placeholder、ETA／路邊／路外結果摘要 placeholder，以及 `VITE_API_BASE_URL`、`VITE_GOOGLE_MAPS_BROWSER_API_KEY` 環境變數入口。已新增 `frontend/README.md` 與 `frontend/.env.example`。執行 `npm run build` 通過。尚未接 Google Maps JavaScript API、Places Autocomplete、Routes API 或後端真查詢。
