@@ -305,3 +305,6 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 ## 2026-09-25 S2-002 後端骨架建立
 
 已建立 `backend/` Spring Boot Maven 後端骨架，使用 Java 21、Spring Boot `4.1.1`、Spring Web MVC、Validation、Actuator 與 Maven Wrapper。設定檔採 Sponsor 指定的 YAML：`backend/src/main/resources/application.yml`。目前提供 `/api/health` 與 `/actuator/health`，並保留 `api`、`application`、`domain`、`adapter`、`infrastructure`、`config` package 邊界。執行 `backend/mvnw.cmd test` 通過：2 tests、0 failures。尚未接 MySQL、Redis、Google、新北市 API 或 ML。
+## 2026-09-25 S2-002 package 結構簡化
+
+依 Sponsor 回饋，移除 `tw/jiawei` 反向網域命名層級，後端 root package 改為 `parking.forecast`，主類別改為 `ParkingForecastApplication`。同時將 `api/application/infrastructure` 調整為較直覺的 `controller/service/repository`，保留 `domain`、`adapter`、`config`。目前可見結構為 `controller`、`service`、`repository`、`domain`、`adapter`、`config`。執行 `backend/mvnw.cmd test` 通過：2 tests、0 failures。

@@ -1,4 +1,4 @@
-package tw.jiawei.parking.backend.api;
+package parking.forecast.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

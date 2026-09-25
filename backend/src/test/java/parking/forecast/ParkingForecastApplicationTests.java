@@ -1,10 +1,10 @@
-package tw.jiawei.parking.backend;
+package parking.forecast;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class BackendApplicationTests {
+class ParkingForecastApplicationTests {
 
 	@Test
 	void contextLoads() {
