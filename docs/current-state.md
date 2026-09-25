@@ -329,3 +329,9 @@ Sponsor 詢問 CI/CD 對應 Issue。原第一組 Issues 中 S2-007 只涵蓋流�
 ## 2026-09-25 S2-004 Docker Compose 驗收完成
 
 Sponsor 確認 S2-004 可接受。Docker Compose 本機開發環境已完成並驗證，GitHub Issue #4 已關閉。下一步進入 S2-005：後端 profile、H2 測試邊界與 MySQL 連線設定。
+
+## 2026-09-25：S2-005 後端 profiles、H2 與 MySQL 設定進行中
+
+已在後端加入 JPA、MySQL Connector 與 H2 依賴，並建立 `local`、`test`、`docker` 三種 profile。`local` 與 `test` 使用 H2 in memory；`docker` 使用 MySQL 並由 Docker Compose 注入 datasource 環境變數。新增測試確認 `test` profile 實際連到 H2，`backend` Maven 測試 3 個測試全部通過。
+
+此階段只完成資料庫連線邊界與測試設定，尚未建立正式 entity、repository、schema migration、資料表或 API 資料流程。Docker Compose 已以 `docker` profile 驗證 API 可連 MySQL 並回應健康端點；S2-005 尚待 GitHub Issue 回報與 Sponsor 驗收後關閉。

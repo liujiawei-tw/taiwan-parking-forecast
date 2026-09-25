@@ -219,5 +219,10 @@
   <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>定主系統查詢輸入、ETA／停車結果分層及前後端 API 契約。</li><li>確認主系統即時來源刷新控制與上游請求量測方式。</li><li>確認遠端 Docker 部署目標；訓練資料盤點待 collector 問題釐清後恢復。</li></ol></div></section>
   <footer>本頁是人工維護的進度快照。詳細需求、決策與最新狀態以 <a href="requirements.md">requirements.md</a>、<a href="decisions.md">decisions.md</a>、<a href="current-state.md">current-state.md</a> 為準。</footer>
 </main>
+  <section>
+    <h2>Sprint 2 最新進度：S2-005 後端 profiles</h2>
+    <p>已建立 local/test/docker 三種 profile。local/test 使用 H2，docker 使用 MySQL 環境變數。Maven 測試已確認 test profile 使用 H2。</p>
+    <p>驗收狀態：Maven test 已確認 H2 test profile；Docker Compose 已確認 API 使用 MySQL profile 啟動並回應健康端點。剩餘：GitHub Issue 回報、Sponsor 確認後關閉。</p>
+  </section>
 </body>
 </html>
