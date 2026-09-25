@@ -308,3 +308,6 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 ## 2026-09-25 S2-002 package 結構簡化
 
 依 Sponsor 回饋，移除 `tw/jiawei` 反向網域命名層級，後端 root package 改為 `parking.forecast`，主類別改為 `ParkingForecastApplication`。同時將 `api/application/infrastructure` 調整為較直覺的 `controller/service/repository`，保留 `domain`、`adapter`、`config`。目前可見結構為 `controller`、`service`、`repository`、`domain`、`adapter`、`config`。執行 `backend/mvnw.cmd test` 通過：2 tests、0 failures。
+## 2026-09-25 Sprint 2 Issues 用語調整
+
+依 Sponsor 指示，Sprint 2 第一組 Issues 不再使用「面試官角度」或面試相關詞語。`docs/sprint-2-issue-drafts.md` 已改為「工程審查重點」，相關描述改成對外說明、技術說明、作品集專案或展示等中性用語。正式 GitHub Issues #1 到 #7 也同步更新。
