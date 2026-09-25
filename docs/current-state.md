@@ -345,3 +345,7 @@ Sponsor 確認 S2-004 可接受。Docker Compose 本機開發環境已完成並�
 ## 2026-09-25：S2-006 驗收完成，S2-007 文件同步開始
 
 Sponsor 確認 S2-006 可繼續，GitHub Issue #6 已以 completed 關閉。GitHub connector 已由 Sponsor 重新連線並恢復 private repo Issue 讀寫能力。已建立 `docs/task-completion-checklist.md` 作為每張 Issue 完成前的共同 Definition of Done，涵蓋範圍、功能、測試、文件、Git 與工程說明驗收。`docs/development-workflow.md` 已連結此清單並修正驗收用語；README 已同步 Sprint 2 實際進度，避免仍描述為尚未開始主系統程式碼。
+
+## 2026-09-25：S2-007 Sponsor 回覆
+
+Sponsor 確認任務完成檢查清單不會太繁瑣，並確認 CI/CD 先使用 GitHub Actions，不導入 Harness。已補充文件驗收規則的語意：重要任務若影響需求、架構、API、部署、資料規則、驗收結果或目前進度，需要同步對應文件；小型 typo、樣式微調或不影響理解的小重構可說明無需文件更新。

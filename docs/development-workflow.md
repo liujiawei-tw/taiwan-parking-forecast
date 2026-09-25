@@ -89,7 +89,7 @@ PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始
 
 ## Harness 是否導入
 
-若此處的 Harness 指的是 Harness CI/CD 平台，第一版建議**先不導入**。
+若此處的 Harness 指的是 Harness CI/CD 平台，第一版建議**先不導入**；Sponsor 已確認 CI/CD 先使用 GitHub Actions。
 
 理由：
 
