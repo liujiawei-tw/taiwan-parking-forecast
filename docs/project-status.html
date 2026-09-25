@@ -61,15 +61,15 @@
   <header>
     <h1>停車預測專案｜進度與待辦</h1>
     <p class="lede">新莊區 MVP：搜尋目的地、計算抵達時間，顯示目的地方圓 300 公尺內收錄的汽車停車選項，以及抵達時有位的預測。</p>
-    <div class="meta"><span class="tag design">目前：Sprint 2 實作分支已建立</span><span class="tag">更新：2026-09-25</span><span class="tag">20 天為開發啟動後的目標時間盒</span></div>
-    <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統的前端、後端與兩類預測均尚未實作；Sprint 2 第一組 Issues 已建立於 GitHub，實作分支 sprint-2-main-system-scaffold 已建立；訓練 collector 雖有排程，Sponsor 回報匯出資料不完整，相關盤點與模型驗證暫緩。</div>
+    <div class="meta"><span class="tag design">目前：Sprint 2 骨架與 mock 查詢完成，S2-007 文件驗收進行中</span><span class="tag">更新：2026-09-25</span><span class="tag">20 天為開發啟動後的目標時間盒</span></div>
+    <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統已完成後端骨架、前端骨架、Docker Compose、後端 profiles 與 mock 查詢生命週期；Google、新北市官方 API、正式 Redis query state、資料庫正式模型與兩類預測尚未接入；Sprint 2 第一組 Issues 已建立於 GitHub，實作分支 sprint-2-main-system-scaffold 持續使用；訓練 collector 雖有排程，Sponsor 回報匯出資料不完整，相關盤點與模型驗證暫緩。</div>
   </header>
 
   <section aria-labelledby="overview"><h2 id="overview">一眼看目前進度</h2>
     <div class="summary">
       <article><span class="tag pending">資料待修</span><strong>訓練資料收集器</strong><small>獨立 repo 有排程；Sponsor 回報匯出不完整，原因待查。資料盤點暫緩，不供使用者即時查詢。</small></article>
       <article><span class="tag design">設計中</span><strong>主系統需求與資料流</strong><small>首查已定先顯示 ETA 與已收錄位置，車位完成後自動補上；正式 API 與刷新數值未定。</small></article>
-      <article><span class="tag future">未開始</span><strong>使用者介面與主後端</strong><small>尚未 coding；搜尋、ETA、即時查詢和畫面尚無可運作版本。</small></article>
+      <article><span class="tag design">骨架完成</span><strong>使用者介面與主後端</strong><small>Vue 與 Spring Boot 骨架、Docker Compose 與 mock 查詢生命週期已完成；Google、即時資料、正式資料庫模型與預測尚未接入。</small></article>
       <article><span class="tag pending">資料依賴暫緩</span><strong>兩類抵達時預測</strong><small>預測目標與樣本方法已定；collector 匯出不完整，標籤、回測與模型尚無可信成果。</small></article>
     </div>
   </section>
@@ -88,8 +88,8 @@
 
   <section aria-labelledby="streams"><h2 id="streams">各工作線：已確定與未完成</h2>
     <div class="work">
-      <article><span class="tag design">前端：Vue 3＋Vite 已定，尚未實作</span><h3>搜尋與結果畫面</h3><ul><li>已定：Google Maps JavaScript 地圖與 Places API (New) 搜尋、起點兩種方式、出發時間、300 公尺結果；電腦版地圖優先、固定區域摘要與「查看全部結果」，手機版上地圖／下清單。路邊格位小卡提供資料時間及外部「查看路線」。</li><li>待定：格位資格與座標驗證、Google 實際用量、面板尺寸、無障礙操作。</li><li>待定：載入中、0 位、無資料、過期、ETA 失敗及預測不足的完整互動原型。</li></ul></article>
-      <article><span class="tag design">後端：Spring Boot Web、MySQL、Redis 已定，契約待細化</span><h3>即時查詢與儲存</h3><ul><li>已定：Spring Boot Web／Spring MVC REST 模組化單體；MySQL／JPA 保存啟用快照與可追溯歷史，供未來離線訓練；Redis 保存短期查詢進度及經驗證結果快取。使用者查詢優先，低頻定時取樣與查詢共用受控刷新，預算不足可略過背景取樣；訓練 collector 不參與用戶查詢。</li><li>討論中：主查詢的輸入／輸出語意、Google Routes 與 Places 的責任分工。</li><li>待定：正式 API、背景取樣間隔與歷史保留／歸檔、最低刷新間隔、Redis 快取粒度與 TTL、前景等待與輪詢上限、請求預算與模型介面。</li></ul></article>
+      <article><span class="tag design">前端：Vue 3＋Vite 骨架完成，正式 Google 地圖未接入</span><h3>搜尋與結果畫面</h3><ul><li>已定：Google Maps JavaScript 地圖與 Places API (New) 搜尋、起點兩種方式、出發時間、300 公尺結果；電腦版地圖優先、固定區域摘要與「查看全部結果」，手機版上地圖／下清單。路邊格位小卡提供資料時間及外部「查看路線」。</li><li>待定：格位資格與座標驗證、Google 實際用量、面板尺寸、無障礙操作。</li><li>待定：載入中、0 位、無資料、過期、ETA 失敗及預測不足的完整互動原型。</li></ul></article>
+      <article><span class="tag design">後端：Spring Boot 骨架與 mock API 完成，正式資料流待做</span><h3>即時查詢與儲存</h3><ul><li>已定：Spring Boot Web／Spring MVC REST 模組化單體；MySQL／JPA 保存啟用快照與可追溯歷史，供未來離線訓練；Redis 保存短期查詢進度及經驗證結果快取。使用者查詢優先，低頻定時取樣與查詢共用受控刷新，預算不足可略過背景取樣；訓練 collector 不參與用戶查詢。</li><li>討論中：主查詢的輸入／輸出語意、Google Routes 與 Places 的責任分工。</li><li>待定：正式 API、背景取樣間隔與歷史保留／歸檔、最低刷新間隔、Redis 快取粒度與 TTL、前景等待與輪詢上限、請求預算與模型介面。</li></ul></article>
       <article><span class="tag pending">資料：共同欄位方向已定，映射待驗證</span><h3>來源與統一化</h3><ul><li>已定：新北市路邊／路外來源各由 adapter 轉成共同位置、來源對應及動態觀測欄位；未來新增政府或業者來源沿用此契約。訓練 collector 與主系統即時查詢分離。</li><li>待驗：格位狀態碼與汽車適用性、來源 ID／座標、缺值與覆蓋率、來源觀測時間、路外有效剩餘位欄位。</li><li>待驗：新莊邊界資料是否覆蓋完整，如何標示未收錄的鄰區。</li></ul></article>
       <article><span class="tag pending">預測：資料盤點暫緩，模型未開始</span><h3>抵達時有位機率</h3><ul><li>路邊：目的地 300 公尺內至少一個適用汽車格位可停的機率；訓練標籤須對齊實際 300 公尺圓。</li><li>路外：範圍內各停車場抵達時仍有汽車位的機率。</li><li>待處理：collector 匯出不完整；恢復後才驗證標籤、樣本品質、時間與街區切分、基準及模型部署。資料不足時不編造機率。</li></ul></article>
       <article><span class="tag design">服務整合：雲端專案與 API 已開通，未介接</span><h3>Google 與外部地圖</h3><ul><li>已定：Google Maps 用於地圖、Places (New) 用於搜尋、Routes 的交通感知 ETA 直接作預測時刻；外部地圖負責導航。Sponsor 回報停車專案 Taiwan Parking Forecast（ID taiwan-parking-forecast）已建立，三項 API 已啟用、帳單連結有效，預算通知已設定。</li><li>帳單規劃由 Sponsor 自行管理，本階段跳過；網頁／後端金鑰限制及配額在正式介接前仍須核對。主系統尚未呼叫服務。</li></ul></article>
@@ -107,9 +107,9 @@
       <li>S2-002：建立 Spring Boot Maven 後端骨架與健康檢查（已驗收完成；Maven test 與 health endpoint 均通過）。</li>
       <li>S2-003：建立 Vue 3 + Vite 前端骨架與 Google Maps 設定入口（已驗收完成；npm build 通過）。</li>
       <li>S2-004：建立 Docker Compose 本機開發環境（已驗收完成；web/api/mysql/redis 可啟動）。</li>
-      <li>S2-005：建立後端 profile、H2 測試邊界與 MySQL 連線設定。</li>
-      <li>S2-006：建立查詢 API 契約與 mock 查詢生命週期（Docker runtime 已驗證，待確認）。</li>
-      <li>S2-007：建立第一版文件同步與驗收檢查清單。</li>
+      <li>S2-005：建立後端 profile、H2 測試邊界與 MySQL 連線設定（已驗收完成；H2 test profile 與 Docker MySQL profile 均已驗證）。</li>
+      <li>S2-006：建立查詢 API 契約與 mock 查詢生命週期（已驗收完成；GitHub Issue #6 已關閉）。</li>
+      <li>S2-007：建立第一版文件同步與驗收檢查清單（進行中；已新增任務完成檢查清單）。</li>
     </ol><p class="timeline-note">完整範圍、驗收標準、測試方式與 Human-in-the-loop 檢查點見 sprint-2-issue-drafts.md；正式 GitHub Issues 為 #1 至 #7。此區是任務規劃，不代表已開始 coding。</p></div>
   </section>
   <section aria-labelledby="workflow"><h2 id="workflow">實作流程</h2>
@@ -222,12 +222,17 @@
   <section>
     <h2>Sprint 2 最新進度：S2-005 後端 profiles</h2>
     <p>已建立 local/test/docker 三種 profile。local/test 使用 H2，docker 使用 MySQL 環境變數。Maven 測試已確認 test profile 使用 H2。</p>
-    <p>驗收狀態：Maven test 已確認 H2 test profile；Docker Compose 已確認 API 使用 MySQL profile 啟動並回應健康端點。剩餘：GitHub Issue 回報、Sponsor 確認後關閉。</p>
+    <p>驗收狀態：Maven test 已確認 H2 test profile；Docker Compose 已確認 API 使用 MySQL profile 啟動並回應健康端點。Sponsor 已確認，Issue #5 已關閉。</p>
   </section>
   <section>
     <h2>Sprint 2 最新進度：S2-006 mock 查詢生命週期</h2>
     <p>已建立三個 mock endpoint：建立查詢、讀取查詢、刷新車位。前端可送出 mock 查詢並顯示 ETA、路邊、路外與預測資料不足狀態。</p>
-    <p>驗證：後端 Maven test 5 個測試通過、前端 build 通過、本機 HTTP endpoint 驗證通過、Docker api/web image build 通過、Docker runtime endpoint 驗證通過。尚未接 Google、新北市官方 API、Redis 或正式預測。</p>
+    <p>驗證：後端 Maven test 5 個測試通過、前端 build 通過、本機 HTTP endpoint 驗證通過、Docker api/web image build 通過、Docker runtime endpoint 驗證通過。Sponsor 已確認，Issue #6 已關閉；尚未接 Google、新北市官方 API、Redis 或正式預測。</p>
+  </section>
+  <section>
+    <h2>Sprint 2 最新進度：S2-007 文件同步與驗收檢查清單</h2>
+    <p>已新增 docs/task-completion-checklist.md，整理每張 Issue 完成前的範圍、功能、測試、文件、Git 與工程說明驗收項目。</p>
+    <p>README、development-workflow.md、current-state.md 與本頁已同步目前進度。剩餘：Sponsor 確認清單不會太繁瑣，並確認「沒有必要文件更新就不算 Done」的規則。</p>
   </section>
 </body>
 </html>

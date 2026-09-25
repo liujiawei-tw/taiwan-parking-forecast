@@ -76,7 +76,7 @@ PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始
 
 1. **功能驗收**：使用者或 API 是否得到預期結果。
 2. **工程驗收**：測試、Docker、資料庫、Redis、錯誤處理是否符合設計。
-3. **面試驗收**：是否能說明為什麼這樣設計、如何驗證、還有什麼限制。
+3. **工程說明驗收**：是否能說明為什麼這樣設計、如何驗證、還有什麼限制。
 
 例如第一個端到端版本的高層驗收：
 
@@ -119,6 +119,8 @@ PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始
 - commit 前要檢查 `git diff`，確認沒有 secrets、下載的大型資料檔或本機 IDE 設定。
 
 ## Definition of Done 檢查清單
+
+詳細可重複使用版本見 [任務完成檢查清單](task-completion-checklist.md)。
 
 每張 Issue 完成前，至少檢查以下項目：
 

@@ -1,6 +1,6 @@
 # 全臺停車位抵達預測｜專案記憶
 
-本專案探索：使用者從出發地前往目的地時，周邊停車場在抵達時仍有車位的可能性。第一期以 TDX 停車資料為主，後續再接入地方政府免費 API。這個 repository 目前只保存需求、決策與規劃；尚未開始寫應用程式。
+本專案探索：使用者從出發地前往目的地時，周邊停車場在抵達時仍有車位的可能性。第一期以 TDX 停車資料為主，後續再接入地方政府免費 API。這個 repository 保存需求、決策、規劃與 Sprint 2 主系統骨架。
 
 ## 從這裡開始
 
@@ -27,9 +27,9 @@
 
 ## Sprint 2 啟動狀態
 
-Sprint 2 第一組 GitHub Issues 已建立，實作分支為 `sprint-2-main-system-scaffold`。目前仍在 S2-001 工作規則收尾；主系統產品程式碼尚未開始。任務草案與正式 Issue 連結見 [Sprint 2 第一組 GitHub Issues 草案](docs/sprint-2-issue-drafts.md)。
+Sprint 2 第一組 GitHub Issues 已建立，實作分支為 `sprint-2-main-system-scaffold`。目前已完成後端骨架、前端骨架、Docker Compose、後端 profiles 與 S2-006 mock 查詢生命週期；正式 Google、新北市官方 API、Redis query state、資料庫正式模型與預測模型尚未接入。任務草案與正式 Issue 連結見 [Sprint 2 第一組 GitHub Issues 草案](docs/sprint-2-issue-drafts.md)。
 
-本機環境變數請從 `.env.example` 複製為 `.env` 後自行填入；真實金鑰與密碼不得提交。
+本機環境變數請從 `.env.example` 複製為 `.env` 後自行填入；真實金鑰與密碼不得提交。每張 Issue 完成前使用 [任務完成檢查清單](docs/task-completion-checklist.md) 做文件、測試、Git 與工程說明驗收。
 
 ## Docker Compose
 
