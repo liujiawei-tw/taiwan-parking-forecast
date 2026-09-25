@@ -356,4 +356,8 @@ Sponsor 確認小修改可不更新文件，只需在回報中說明原因；重
 
 ## 2026-09-25：Sprint 2 第一組成果 PR 已建立
 
-已將 `sprint-2-main-system-scaffold` 開 PR 到 `main`：https://github.com/liujiawei-tw/taiwan-parking-forecast/pull/9。PR 範圍包含 S2-001～S2-007：後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、文件同步與任務完成檢查清單。PR 前已重新驗證：後端 Maven test 5 tests／0 failures、前端 `npm run build` 通過、Docker Compose `api`／`web` image build 通過。GitHub 回報 PR 可合併且狀態為 clean；尚未合併，等待 Sponsor 最後確認。
+已將 `sprint-2-main-system-scaffold` 開 PR 到 `main`：https://github.com/liujiawei-tw/taiwan-parking-forecast/pull/9。PR 範圍包含 S2-001～S2-007：後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、文件同步與任務完成檢查清單。PR 前已重新驗證：後端 Maven test 5 tests／0 failures、前端 `npm run build` 通過、Docker Compose `api`／`web` image build 通過。GitHub 回報 PR 可合併且狀態為 clean；Sponsor 確認後已合併回 main，merge commit 為 8a6e18b9643cb8cd5d50fc7a573d3c81448af2c3。
+
+## 2026-09-25：S2-008 GitHub Actions 基礎 CI 進行中
+
+已刪除已合併的 `sprint-2-main-system-scaffold` 本機與遠端分支，並從 `main` 建立 `feature/s2-008-github-actions-ci` 作為 Issue #8 工作分支。已新增 `.github/workflows/ci.yml`，第一版 CI 包含後端 Maven test、前端 npm build，以及 Docker Compose 的 api／web image build；此 workflow 不需要 Google、TDX、新北市 API key 或任何真實機密。本機對照驗證已完成：後端 Maven test 5 tests／0 failures、前端 npm run build 通過、Docker Compose api／web image build 通過。由於 `backend/mvnw` 在 Git 中不是可執行權限，workflow 已加入 `chmod +x ./mvnw` 步驟，避免 Linux runner 權限失敗。接下來需推送分支並確認 GitHub Actions 執行結果。
