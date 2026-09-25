@@ -1,6 +1,6 @@
 # 目前狀態
 
-更新日期：2026-09-24。
+更新日期：2026-09-25。
 
 ## 階段與角色
 
@@ -287,3 +287,8 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 - 實作前最後確認時，Sponsor 補充開發端測試希望使用 H2。已更新 `backend-stack-and-normalization.md` 與 `decisions.md`：H2 用於 repository／service 快速測試，不取代正式 MySQL、Docker 整合測試、索引行為或資料量測。另在 `project-status.html` 新增 UML 架構視圖，包含 Docker Compose 部署圖與核心資料模型類別圖，方便實作前與面試回顧；沒有 coding。
 - 實作前最後確認新增 `implementation-plan.md`，確認開始 coding 後的順序：先建 Spring Boot／Vue／Docker／MySQL／Redis／H2 測試骨架，再做 JPA 資料模型與 API mock，接著完成 300 公尺停車目錄查詢、官方即時來源快照發布、受控刷新、Google 搜尋與 ETA、前端結果頁，最後接預測基準與模型。第一個可展示版本先證明主系統資料流與狀態降級，預測可先顯示資料不足原因，不用假機率。已同步 `roadmap.md`、`decisions.md`、`project-status.html`；沒有 coding。
 - 實作前最後確認補上開發流程：新增 `development-workflow.md`，決定由 PM 角色拆任務，任務需有範圍、驗收標準、測試方式與 Human-in-the-loop 檢查點；AI 可負責實作與自檢，Sponsor 在任務範圍、UI、外部服務、部署、預測結果與合併前做關鍵驗收。Harness 若指 CI/CD 平台，第一版暫不導入，先以 GitHub Issues／Projects 與 GitHub Actions 候選支撐 MVP；沒有 coding。
+## 2026-09-25 Sprint 2 第一組 Issues 草案
+
+依 Sponsor 指示，先不要 coding，已改由 PM／Scrum Master／Tech Lead 角度拆 Sprint 2 第一組 GitHub Issues 草案。草案新增於 `docs/sprint-2-issue-drafts.md`，涵蓋實作分支與工作規則、Spring Boot Maven 後端骨架、Vue 3 + Vite 前端骨架、Docker Compose、本機 H2 測試與 MySQL 設定邊界、mock 查詢 API 生命週期，以及文件同步與驗收檢查清單。
+
+此批任務的目的，是在接 Google、新北市官方即時資料與 ML 前，先建立可啟動、可測、可部署、可由 Sponsor 逐張驗收的主系統骨架。草案尚未轉成正式 GitHub Issues，也尚未開始產品程式碼實作。下一步是由 Sponsor 確認 Issue 順序與範圍，再決定是否建立正式 GitHub Issues 並從 S2-001 開始。
