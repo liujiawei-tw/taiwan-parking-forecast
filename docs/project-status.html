@@ -252,5 +252,11 @@
   <section>
     <h2>流程修正：建檔前架構檢查</h2>
     <p>已依 Sponsor 回饋補上工作規則：建立、移動或刪除檔案前，必須先檢查 repo 架構與任務範圍。後端檔案放在 <code>backend/src/...</code>，前端檔案放在 <code>frontend/src/...</code>，避免產生 <code>backend/backend/...</code> 或 <code>frontend/frontend/...</code> 這類錯誤巢狀目錄。</p>
+  </section>  <section>
+    <h2>Sprint 2 最新進度：S2-010 schema migration 與 MySQL/H2 邊界驗證</h2>
+    <p>已建立 Flyway V1 migration，將核心資料表與索引交由 migration 管理，不再依賴 Hibernate 自動建表。</p>
+    <p>驗證：後端 Docker Maven test 通過 6 tests／0 failures；H2 test profile 會套用 Flyway V1 migration。另以臨時 Docker Compose project 驗證 MySQL，API health 通過，MySQL 已建立 flyway_schema_history 與核心資料表。</p>
+    <p>邊界：H2 只作開發端快速測試；MySQL schema、索引、型別與啟動行為仍需 Docker MySQL 驗證。S2-010 不包含 seed、300 公尺查詢、官方即時 API 或預測模型。</p>
   </section></body>
 </html>
+

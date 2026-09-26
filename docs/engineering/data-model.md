@@ -1,6 +1,6 @@
 # 主系統 MySQL／JPA 資料模型草案
 
-更新日期：2026-09-25。狀態：Sprint 1 設計文件；沒有主系統 coding。第一版資料庫以服務使用者查詢為主要目的，保存可追溯歷史供未來模型訓練為次要目的。資料表名稱、欄位名稱、型別與索引需在實作與資料量測後定稿。
+更新日期：2026-09-26。狀態：Sprint 2 資料基礎實作中；S2-009 已建立核心 JPA entity／repository，S2-010 已建立第一版 Flyway schema migration 並通過 H2 與 Docker MySQL 驗證。第一版資料庫以服務使用者查詢為主要目的，保存可追溯歷史供未來模型訓練為次要目的。資料表名稱、欄位名稱、型別與索引後續仍可依資料量測調整。
 
 ## 設計原則
 
@@ -22,6 +22,14 @@
 | `source_state` | `SourceStateEntity` | 每個來源目前啟用快照、冷卻、下一次可刷新時間與失敗狀態 |
 | `ingestion_run` | `IngestionRunEntity` | 每次來源擷取工作的開始、結束、HTTP 次數、錯誤與品質結果 |
 | `api_usage_budget` | `ApiUsageBudgetEntity` | 記錄來源用量、保留量與月／日預算狀態；是否第一版建表待定 |
+
+## Schema migration 狀態
+
+S2-010 採用 Flyway 管理資料庫 schema，第一版 migration 檔為 `backend/src/main/resources/db/migration/V1__create_core_parking_schema.sql`。此 migration 建立 `parking_place`、`source_mapping`、`ingestion_run`、`availability_snapshot`、`availability_observation`、`source_state` 與必要索引。
+
+Spring Boot 4 需要使用 `spring-boot-starter-flyway` 才會載入 Flyway 自動設定；只加入 `flyway-core` 不會保證 application startup 時自動套用 migration。MySQL profile 另保留 `flyway-mysql` runtime 支援。
+
+H2 test profile 用來快速驗證 JPA repository 與 migration 是否能共同啟動；Docker MySQL 驗證用來確認正式資料庫可以套用相同 migration。H2 通過不等於 MySQL 行為完全一致，因此涉及 MySQL 語法、索引、型別或效能的變更仍需 Docker MySQL 驗證。
 
 ## `parking_place`
 
