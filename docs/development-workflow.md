@@ -104,7 +104,7 @@ PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始
 ## Branch、Issue 與 PR 規則
 
 - `main` 保存已確認的文件與可展示成果。
-- Sprint 2 實作分支為 `sprint-2-main-system-scaffold`。
+- Sprint 2 後續以每組或每張 Issue 建立對應 feature 分支，例如 `feature/s2-009-data-model`；已合併的分支合併後清理。
 - 每個實作增量以 GitHub Issue 追蹤；commit 訊息要能對應到 Issue 或清楚說明變更目的。
 - 建議每張 Issue 使用小步 commit；同一張 Issue 可有多個 commit，但每個 commit 要保持可解釋。
 - 合併回 `main` 前，至少要完成該 Issue 的驗收標準、測試方式、文件更新與 Sponsor 需要的 Human-in-the-loop 檢查。

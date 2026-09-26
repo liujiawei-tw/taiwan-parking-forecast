@@ -361,3 +361,9 @@ Sponsor 確認小修改可不更新文件，只需在回報中說明原因；重
 ## 2026-09-25：S2-008 GitHub Actions 基礎 CI 進行中
 
 已刪除已合併的 `sprint-2-main-system-scaffold` 本機與遠端分支，並從 `main` 建立 `feature/s2-008-github-actions-ci` 作為 Issue #8 工作分支。已新增 `.github/workflows/ci.yml`，第一版 CI 包含後端 Maven test、前端 npm build，以及 Docker Compose 的 api／web image build；此 workflow 不需要 Google、TDX、新北市 API key 或任何真實機密。本機對照驗證已完成：後端 Maven test 5 tests／0 failures、前端 npm run build 通過、Docker Compose api／web image build 通過。由於 `backend/mvnw` 在 Git 中不是可執行權限，workflow 已加入 `chmod +x ./mvnw` 步驟，避免 Linux runner 權限失敗。已建立 PR #10：S2-008：建立 GitHub Actions 基礎 CI。第一次遠端 CI 中後端 Maven test 與前端 npm build 通過，但 Docker image build 因 Maven Wrapper 執行權限失敗；已補上 Dockerfile 內的 `chmod +x ./mvnw`，並將 `backend/mvnw` 在 Git 中標記為可執行。重新推送後，GitHub Actions pull_request run 已通過：後端 Maven test、前端 npm build、Docker image build 全部成功。PR #10 目前可作為 Issue #8 的驗收候選，等待 Sponsor 確認是否合併回 main。
+
+## 2026-09-26：S2-008 合併完成，第二組 Issues 已建立
+
+PR #10 已合併回 `main`，merge commit 為 `7e1241c22fbc4c55cac432698ca20e0fb187b6bf`；Issue #8 已透過 `Closes #8` 自動關閉。本機 `main` 已同步，且已刪除 `feature/s2-008-github-actions-ci` 本機與遠端分支。Sprint 2 第一組 #1～#8 到此完成。
+
+已建立 Sprint 2 第二組 GitHub Issues：S2-009 到 S2-013，對應 GitHub Issues #11～#15。第二組目標是建立資料庫模型、schema migration、新莊小樣本、300 公尺查詢服務，最後把本地停車目錄結果接入既有 `parking-queries` 流程。此組尚未開始實作；正式 Google ETA、新北市官方即時 API、Redis query state 與 ML 預測仍不在此組範圍內。
