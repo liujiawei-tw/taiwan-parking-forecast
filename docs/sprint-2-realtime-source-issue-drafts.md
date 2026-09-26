@@ -1,6 +1,6 @@
 # Sprint 2 第三組 GitHub Issues 草案：官方即時來源與快照發布
 
-更新日期：2026-09-26。狀態：草案，尚未建立正式 GitHub Issues，尚未 coding。
+更新日期：2026-09-26。狀態：GitHub Issues 已建立；尚未 coding。
 
 ## 目標
 
@@ -10,15 +10,13 @@
 
 ## 建議 Issue 連結
 
-正式 GitHub Issue 尚未建立。建議編號如下：
-
-| S2 編號 | 主題 | 目的 |
-| --- | --- | --- |
-| S2-014 | 新北市官方即時來源 Client 與原始 DTO | 讓後端能以可測試方式呼叫／解析路邊與路外官方即時資料。 |
-| S2-015 | 即時資料正規化與資料品質規則 | 把不同來源欄位轉成系統統一觀測格式，保留來源原始值與品質原因。 |
-| S2-016 | 候選快照寫入與發布交易 | 成功擷取的一輪資料先進候選快照，通過品質檢查後才發布。 |
-| S2-017 | 查詢 API 讀取最新已發布快照 | `parking-queries` 從最新已發布快照補上目前車位，不把舊資料當新資料。 |
-| S2-018 | 受控刷新與 Redis 協調 | 多人查詢共用同一輪刷新，避免每次查詢都呼叫官方 API。 |
+| S2 編號 | GitHub Issue | 主題 | 目的 |
+| --- | --- | --- | --- |
+| S2-014 | [#21](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/21) | 新北市官方即時來源 Client 與原始 DTO | 讓後端能以可測試方式呼叫／解析路邊與路外官方即時資料。 |
+| S2-015 | [#22](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/22) | 即時資料正規化與資料品質規則 | 把不同來源欄位轉成系統統一觀測格式，保留來源原始值與品質原因。 |
+| S2-016 | [#23](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/23) | 候選快照寫入與發布交易 | 成功擷取的一輪資料先進候選快照，通過品質檢查後才發布。 |
+| S2-017 | [#24](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/24) | 查詢 API 讀取最新已發布快照 | `parking-queries` 從最新已發布快照補上目前車位，不把舊資料當新資料。 |
+| S2-018 | [#25](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/25) | 受控刷新與 Redis 協調 | 多人查詢共用同一輪刷新，避免每次查詢都呼叫官方 API。 |
 
 ## S2-014：新北市官方即時來源 Client 與原始 DTO
 

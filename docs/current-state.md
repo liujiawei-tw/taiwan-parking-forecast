@@ -422,3 +422,10 @@ Sprint 2 S2-013 已開始將本地停車目錄查詢接入既有 `parking-querie
 PR #20 已合併回 `main`，merge commit 為 `ef000d02180794dbf4eb205cf7a4726f44db0680`。本機 `main` 已同步到 `origin/main`，並刪除 `feature/s2-013-integrate-catalog-query` 本機分支。Sprint 2 第二組 S2-009～S2-013 已完成：核心資料模型、Flyway schema、seed 小樣本、300 公尺查詢 service，以及 `parking-queries` 接入本地停車目錄。
 
 目前主查詢仍使用 mock ETA，且只回已收錄停車位置；尚未接 Google ETA、新北市官方即時車位、Redis 查詢狀態、前端地圖整合或 ML 預測。下一組任務應從「官方即時來源與快照發布」開始，並維持既有規則：失敗不覆蓋舊快照、0 位／未知／過期／未收錄要分開、訓練 collector 不參與使用者查詢。
+
+
+## 2026-09-26 S2-014～S2-018 第三組 Issues 建立
+
+已建立 Sprint 2 第三組 GitHub Issues，聚焦官方即時來源與快照發布：#21 S2-014 新北市官方即時來源 Client 與原始 DTO、#22 S2-015 即時資料正規化與資料品質規則、#23 S2-016 候選快照寫入與發布交易、#24 S2-017 `parking-queries` 讀取最新已發布快照、#25 S2-018 受控刷新與 Redis 協調。
+
+此組尚未 coding。目標是讓主系統自行取得新北市官方即時資料，經正規化、品質檢查與快照發布後，讓使用者查詢讀到可信的目前車位狀態，同時避免多人查詢放大官方 API 呼叫。`parking-data-collector` 仍維持暫緩，且不參與使用者查詢。
