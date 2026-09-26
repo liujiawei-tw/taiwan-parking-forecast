@@ -393,6 +393,7 @@ S2-011 已新增可提交的小樣本 seed：`backend/src/main/resources/db/seed
 驗證結果：Docker Maven 後端測試通過 8 tests／0 failures；測試日誌確認 H2 套用 V1 schema migration 與 repeatable seed migration。另以臨時 Docker Compose MySQL 驗證，API container healthy，MySQL 中有 3 筆路邊、2 筆路外、5 筆 source mapping。
 
 邊界：S2-011 不包含完整新北市資料匯入、即時剩餘位、Google Maps 顯示、300 公尺查詢服務或 ML 訓練資料。
+
 ## 2026-09-26 S2-011 人工驗收完成
 
 Sprint 2 S2-011 已完成新莊停車目錄小樣本與 seed 流程。Sponsor 使用 Postman 進行人工驗收並回報測試 OK，Docker 測試環境已由 Sponsor 關閉。AI 另以等同 Postman 的 HTTP 流程驗證 API health、建立查詢、讀取查詢與刷新端點皆可回應；目前查詢端點仍使用 S2-006 mock 查詢生命週期，S2-011 seed 資料已進資料庫，但尚未透過 HTTP 查詢。S2-012 將實作 300 公尺停車位置查詢服務，才會把 seed 目錄轉成可查詢結果。
@@ -406,6 +407,7 @@ Sprint 2 S2-012 已開始實作後端停車目錄查詢 service。新增 `Nearby
 驗證結果：Docker Maven 後端測試通過 12 tests／0 failures；新增 service 測試涵蓋 300 公尺內查詢、距離排序、路邊／路外分流、無結果與非法半徑。另用臨時 MySQL 8.4 容器覆蓋 datasource、載入 V1 migration 與 seed，執行 `NearbyParkingSearchServiceTest` 通過 4 tests／0 failures。第一次 MySQL 驗證曾因 test profile 的 H2 driver 與 MySQL URL 不一致而失敗，修正驗證環境變數後已通過；該失敗不是服務邏輯錯誤。
 
 邊界：S2-012 不包含 HTTP endpoint、前端顯示、即時剩餘位、Google ETA、Redis 或預測模型。300 公尺目前為直線距離，不代表步行距離。
+
 ## 2026-09-26 S2-013 停車目錄查詢接入 parking-queries
 
 Sprint 2 S2-013 已開始將本地停車目錄查詢接入既有 `parking-queries` mock 流程。`POST /api/v1/parking-queries` 仍沿用原查詢生命週期與 mock ETA，但路邊與路外結果改由 `NearbyParkingSearchService` 查詢 S2-011 新莊 seed 目錄產生。回應會依目的地 300 公尺內是否有目錄資料，回傳 `PARTIAL` 或 `NO_CATALOG_RESULTS`；路邊目前可用數與路外可用汽車位仍為 `null`，避免把目錄位置誤認為即時車位。
@@ -413,3 +415,10 @@ Sprint 2 S2-013 已開始將本地停車目錄查詢接入既有 `parking-querie
 驗證結果：Docker Maven 後端測試通過 13 tests／0 failures；新增 controller 測試涵蓋 300 公尺內回傳本地路邊／路外目錄、範圍外無目錄結果、建立後讀取與刷新。另用臨時 MySQL 8.4 容器載入 V1 migration 與 seed，執行 `ParkingQueryControllerTest` 通過 3 tests／0 failures。
 
 邊界：S2-013 不包含 Google ETA、新北市即時來源、Redis 查詢狀態、前端畫面調整或 ML 預測；即時剩餘位仍待後續官方來源與快照發布功能。
+
+
+## 2026-09-26 S2-013 合併完成，第二組資料基礎收尾
+
+PR #20 已合併回 `main`，merge commit 為 `ef000d02180794dbf4eb205cf7a4726f44db0680`。本機 `main` 已同步到 `origin/main`，並刪除 `feature/s2-013-integrate-catalog-query` 本機分支。Sprint 2 第二組 S2-009～S2-013 已完成：核心資料模型、Flyway schema、seed 小樣本、300 公尺查詢 service，以及 `parking-queries` 接入本地停車目錄。
+
+目前主查詢仍使用 mock ETA，且只回已收錄停車位置；尚未接 Google ETA、新北市官方即時車位、Redis 查詢狀態、前端地圖整合或 ML 預測。下一組任務應從「官方即時來源與快照發布」開始，並維持既有規則：失敗不覆蓋舊快照、0 位／未知／過期／未收錄要分開、訓練 collector 不參與使用者查詢。

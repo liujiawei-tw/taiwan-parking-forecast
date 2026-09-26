@@ -61,15 +61,15 @@
   <header>
     <h1>停車預測專案｜進度與待辦</h1>
     <p class="lede">新莊區 MVP：搜尋目的地、計算抵達時間，顯示目的地方圓 300 公尺內收錄的汽車停車選項，以及抵達時有位的預測。</p>
-    <div class="meta"><span class="tag design">目前：Sprint 2 第一組 PR 已建立，等待合併確認</span><span class="tag">更新：2026-09-25</span><span class="tag">20 天為開發啟動後的目標時間盒</span></div>
-    <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統已完成後端骨架、前端骨架、Docker Compose、後端 profiles 與 mock 查詢生命週期；Google、新北市官方 API、正式 Redis query state、資料庫正式模型與兩類預測尚未接入；Sprint 2 第一組 Issues 已建立於 GitHub，實作分支 sprint-2-main-system-scaffold 持續使用；訓練 collector 雖有排程，Sponsor 回報匯出資料不完整，相關盤點與模型驗證暫緩。</div>
+    <div class="meta"><span class="tag done">目前：Sprint 2 第二組已合併完成</span><span class="tag">更新：2026-09-26</span><span class="tag">下一步：官方即時來源與快照發布</span></div>
+    <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統已完成後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、核心資料模型、Flyway schema、新莊 seed、300 公尺查詢 service，以及 parking-queries 接入本地停車目錄。Google ETA、新北市官方即時車位、正式 Redis query state、前端地圖整合與兩類預測尚未接入；訓練 collector 暫緩，不參與使用者查詢。</div>
   </header>
 
   <section aria-labelledby="overview"><h2 id="overview">一眼看目前進度</h2>
     <div class="summary">
       <article><span class="tag pending">資料待修</span><strong>訓練資料收集器</strong><small>獨立 repo 有排程；Sponsor 回報匯出不完整，原因待查。資料盤點暫緩，不供使用者即時查詢。</small></article>
       <article><span class="tag design">設計中</span><strong>主系統需求與資料流</strong><small>首查已定先顯示 ETA 與已收錄位置，車位完成後自動補上；正式 API 與刷新數值未定。</small></article>
-      <article><span class="tag design">骨架完成</span><strong>使用者介面與主後端</strong><small>Vue 與 Spring Boot 骨架、Docker Compose 與 mock 查詢生命週期已完成；Google、即時資料、正式資料庫模型與預測尚未接入。</small></article>
+      <article><span class="tag done">資料基礎完成</span><strong>使用者介面與主後端</strong><small>Vue 與 Spring Boot 骨架、Docker Compose、mock 查詢、JPA/Flyway、seed、300 公尺查詢與本地目錄接入已完成；Google、即時資料、Redis 協調與預測尚未接入。</small></article>
       <article><span class="tag pending">資料依賴暫緩</span><strong>兩類抵達時預測</strong><small>預測目標與樣本方法已定；collector 匯出不完整，標籤、回測與模型尚無可信成果。</small></article>
     </div>
   </section>
@@ -216,7 +216,18 @@
     </div>
   </section>
 
-  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>定主系統查詢輸入、ETA／停車結果分層及前後端 API 契約。</li><li>確認主系統即時來源刷新控制與上游請求量測方式。</li><li>確認遠端 Docker 部署目標；訓練資料盤點待 collector 問題釐清後恢復。</li></ol></div></section>
+
+  <section>
+    <h2>Sprint 2 最新進度：S2-013 已合併，第二組完成</h2>
+    <p>PR #20 已合併回 main，Sprint 2 第二組 S2-009～S2-013 已完成。主系統現在已具備核心資料模型、Flyway schema、新莊停車目錄小樣本、300 公尺查詢 service，以及將本地停車目錄接入 <code>parking-queries</code> 的能力。</p>
+    <p>目前 API 仍使用 mock ETA，且只回已收錄位置；即時剩餘車位、Google ETA、Redis 協調與 ML 預測仍待後續任務。</p>
+  </section>
+  <section>
+    <h2>Sprint 2 下一組草案：官方即時來源與快照發布</h2>
+    <p>已新增 <code>docs/sprint-2-realtime-source-issue-drafts.md</code> 草案，建議拆成 S2-014～S2-018：官方來源 client、資料正規化、候選快照與發布交易、查詢 API 讀最新快照、Redis 受控刷新。</p>
+    <p>這組不使用訓練 collector，也不做 ML 預測；目標是先讓使用者查詢能讀到可信的目前車位狀態，並控制官方 API 呼叫量。</p>
+  </section>
+  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>建立第三組 GitHub Issues：新北市官方即時來源 client、正規化、快照發布、查詢讀取快照、Redis 受控刷新。</li><li>確認官方 API 欄位、分頁、來源觀測時間與初版品質門檻。</li><li>完成後再接 Google ETA、前端地圖結果頁與預測基準。</li></ol></div></section>
   <footer>本頁是人工維護的進度快照。詳細需求、決策與最新狀態以 <a href="requirements.md">requirements.md</a>、<a href="decisions.md">decisions.md</a>、<a href="current-state.md">current-state.md</a> 為準。</footer>
 </main>
   <section>
