@@ -137,7 +137,7 @@ class DataModelRepositoryTest {
 
         assertThat(parkingPlaceRepository.findByServiceAreaAndActiveStatus("NEW_TAIPEI_XINZHUANG", ActiveStatus.ACTIVE))
                 .extracting(ParkingPlaceEntity::getDisplayName)
-                .containsExactly("新莊測試汽車格位 A");
+                .contains("新莊測試汽車格位 A");
 
         assertThat(sourceMappingRepository.findBySourceSystemAndDatasetCodeAndSourcePlaceId(
                 SourceSystem.NTPC_OPEN_DATA,

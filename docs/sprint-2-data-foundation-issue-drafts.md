@@ -1,6 +1,6 @@
 # Sprint 2 第二組 GitHub Issues：資料基礎與 300 公尺查詢
 
-更新日期：2026-09-26。狀態：GitHub Issues 已建立；S2-009 已合併完成，S2-010 已完成本地驗證並準備 PR。
+更新日期：2026-09-26。狀態：GitHub Issues 已建立；S2-009、S2-010 已合併完成，S2-011 已完成本地與 Sponsor Postman 人工驗收，PR #18 待最終合併確認。
 
 ## 目標
 
@@ -21,8 +21,8 @@ Sprint 2 第一組已完成主系統骨架、mock 查詢流程、Docker 與 GitH
 ## 建議實作順序
 
 1. **S2-009**：先建立 entity／repository，讓資料語意落地。已建立核心 Entity／Repository，並以 H2 repository 測試驗證；PR #16 已合併。
-2. **S2-010**：建立 migration，確認 H2 與 MySQL 邊界。已建立 Flyway V1 migration，後端 Maven test 與臨時 Docker MySQL 驗證皆通過；待 PR 審查與合併。
-3. **S2-011**：準備可提交的小樣本，不使用大型原始資料。
+2. **S2-010**：建立 migration，確認 H2 與 MySQL 邊界。已建立 Flyway V1 migration，後端 Maven test 與臨時 Docker MySQL 驗證皆通過；PR #17 已合併。
+3. **S2-011**：準備可提交的小樣本，不使用大型原始資料。已新增 3 筆路邊與 2 筆路外合成 seed，H2、Docker MySQL 與 Sponsor Postman 人工驗收皆通過；PR #18 待最終合併確認。
 4. **S2-012**：完成 300 公尺附近查詢 service。
 5. **S2-013**：把查詢結果接入現有 API 與前端基本顯示。
 
