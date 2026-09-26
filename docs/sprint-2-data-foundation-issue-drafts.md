@@ -1,6 +1,6 @@
 # Sprint 2 第二組 GitHub Issues：資料基礎與 300 公尺查詢
 
-更新日期：2026-09-26。狀態：GitHub Issues 已建立；尚未開始實作。
+更新日期：2026-09-26。狀態：GitHub Issues 已建立；S2-009 已開始實作並通過第一輪後端測試。
 
 ## 目標
 
@@ -20,7 +20,7 @@ Sprint 2 第一組已完成主系統骨架、mock 查詢流程、Docker 與 GitH
 
 ## 建議實作順序
 
-1. **S2-009**：先建立 entity／repository，讓資料語意落地。
+1. **S2-009**：先建立 entity／repository，讓資料語意落地。已在 `feature/s2-009-data-model` 建立核心 Entity／Repository，並以 H2 repository 測試驗證。
 2. **S2-010**：建立 migration，確認 H2 與 MySQL 邊界。
 3. **S2-011**：準備可提交的小樣本，不使用大型原始資料。
 4. **S2-012**：完成 300 公尺附近查詢 service。
