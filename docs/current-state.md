@@ -1,6 +1,6 @@
 # 目前狀態
 
-更新日期：2026-09-25。
+更新日期：2026-09-26。
 
 ## 階段與角色
 
@@ -375,3 +375,11 @@ PR #10 已合併回 `main`，merge commit 為 `7e1241c22fbc4c55cac432698ca20e0fb
 Sponsor 發現曾出現錯誤的 `backend/backend/src` 空目錄。已確認該目錄沒有檔案且未被 Git 追蹤，已刪除；正確後端目錄仍為 `backend/src/...`。為避免重複發生，已更新 `AGENTS.md` 與 `docs/development-workflow.md`：建立、移動或刪除檔案前，必須先檢查 repo 架構與 Issue 範圍，後端檔案只放在 `backend/src/...`，前端檔案只放在 `frontend/src/...`。
 
 驗證結果：因本機沒有獨立 Maven，且 Windows Maven wrapper 在目前 shell 環境有啟動問題，改用 Docker 容器執行 Linux Maven wrapper。`./mvnw test` 通過：6 tests、0 failures、0 errors。測試包含既有 health/mock API 測試，以及新增的 `DataModelRepositoryTest`，確認核心 entity 關聯可在 H2 test profile 中持久化與查詢。
+
+## 2026-09-26 Sprint 2：S2-010 schema migration 驗證
+
+S2-010 已建立第一版 Flyway migration：`backend/src/main/resources/db/migration/V1__create_core_parking_schema.sql`，涵蓋核心資料表與索引。Spring Boot 4 需使用 `spring-boot-starter-flyway` 才會載入 Flyway 自動設定；已由原本只加 `flyway-core` 修正為 starter。
+
+驗證結果：Docker Maven 後端測試通過，6 tests／0 failures；測試日誌確認 H2 test profile 會套用 Flyway V1 migration。另以臨時 Docker Compose project 驗證 MySQL，API container 變成 healthy，MySQL `flyway_schema_history` 顯示 version 1 success，並建立 `parking_place`、`source_mapping`、`ingestion_run`、`availability_snapshot`、`availability_observation`、`source_state`。
+
+邊界：H2 是開發端快速測試；MySQL schema、索引、型別與啟動行為仍需 Docker MySQL 驗證。S2-010 不包含 seed 資料、300 公尺查詢、官方即時 API 或預測模型。

@@ -1,6 +1,6 @@
 # 實作工作流程、任務與驗收（Sprint 2 起）
 
-更新日期：2026-09-25。狀態：實作前流程確認；尚未開始 coding。
+更新日期：2026-09-26。狀態：Sprint 2 實作流程文件；第一組骨架、Docker、CI 與 mock 查詢已完成，第二組資料基礎實作中。
 
 ## 角色分工
 
@@ -86,6 +86,19 @@ PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始
 - 有效 0、未知、過期、無資料不混淆。
 - H2 測試與 MySQL 整合驗證的邊界有說明。
 - 文件與 project status 已更新。
+
+## H2 與 MySQL 驗證邊界
+
+開發端測試可使用 H2，目的是快速確認 Spring profile、JPA repository、service 邏輯與 Flyway migration 可以在測試環境啟動。H2 測試不代表正式 MySQL 的 SQL 方言、索引行為、型別細節或效能都已驗證。
+
+牽涉以下項目時，必須另外用 Docker MySQL 驗證：
+
+- 新增或修改 Flyway migration。
+- 新增索引、外鍵或資料表欄位型別。
+- 修改 JPA mapping、enum 欄位、時間欄位或 decimal 欄位。
+- 涉及 300 公尺查詢、排序、分頁或未來大量資料寫入的 SQL 行為。
+
+S2-010 起，後端資料庫 schema 由 Flyway migration 建立，`spring.jpa.hibernate.ddl-auto` 維持 `none`。測試通過應能說明是「H2 快速測試通過」還是「Docker MySQL migration 驗證通過」，兩者不可混用。
 
 ## Harness 是否導入
 

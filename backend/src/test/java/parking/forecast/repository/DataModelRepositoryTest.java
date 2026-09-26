@@ -29,7 +29,7 @@ import parking.forecast.domain.SourceStateEntity;
 import parking.forecast.domain.SourceSystem;
 import parking.forecast.domain.TriggerType;
 
-@SpringBootTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
+@SpringBootTest
 @ActiveProfiles("test")
 @Transactional
 class DataModelRepositoryTest {
