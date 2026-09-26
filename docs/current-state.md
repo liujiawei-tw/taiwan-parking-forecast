@@ -406,3 +406,10 @@ Sprint 2 S2-012 已開始實作後端停車目錄查詢 service。新增 `Nearby
 驗證結果：Docker Maven 後端測試通過 12 tests／0 failures；新增 service 測試涵蓋 300 公尺內查詢、距離排序、路邊／路外分流、無結果與非法半徑。另用臨時 MySQL 8.4 容器覆蓋 datasource、載入 V1 migration 與 seed，執行 `NearbyParkingSearchServiceTest` 通過 4 tests／0 failures。第一次 MySQL 驗證曾因 test profile 的 H2 driver 與 MySQL URL 不一致而失敗，修正驗證環境變數後已通過；該失敗不是服務邏輯錯誤。
 
 邊界：S2-012 不包含 HTTP endpoint、前端顯示、即時剩餘位、Google ETA、Redis 或預測模型。300 公尺目前為直線距離，不代表步行距離。
+## 2026-09-26 S2-013 停車目錄查詢接入 parking-queries
+
+Sprint 2 S2-013 已開始將本地停車目錄查詢接入既有 `parking-queries` mock 流程。`POST /api/v1/parking-queries` 仍沿用原查詢生命週期與 mock ETA，但路邊與路外結果改由 `NearbyParkingSearchService` 查詢 S2-011 新莊 seed 目錄產生。回應會依目的地 300 公尺內是否有目錄資料，回傳 `PARTIAL` 或 `NO_CATALOG_RESULTS`；路邊目前可用數與路外可用汽車位仍為 `null`，避免把目錄位置誤認為即時車位。
+
+驗證結果：Docker Maven 後端測試通過 13 tests／0 failures；新增 controller 測試涵蓋 300 公尺內回傳本地路邊／路外目錄、範圍外無目錄結果、建立後讀取與刷新。另用臨時 MySQL 8.4 容器載入 V1 migration 與 seed，執行 `ParkingQueryControllerTest` 通過 3 tests／0 failures。
+
+邊界：S2-013 不包含 Google ETA、新北市即時來源、Redis 查詢狀態、前端畫面調整或 ML 預測；即時剩餘位仍待後續官方來源與快照發布功能。
