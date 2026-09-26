@@ -393,3 +393,8 @@ S2-011 已新增可提交的小樣本 seed：`backend/src/main/resources/db/seed
 驗證結果：Docker Maven 後端測試通過 8 tests／0 failures；測試日誌確認 H2 套用 V1 schema migration 與 repeatable seed migration。另以臨時 Docker Compose MySQL 驗證，API container healthy，MySQL 中有 3 筆路邊、2 筆路外、5 筆 source mapping。
 
 邊界：S2-011 不包含完整新北市資料匯入、即時剩餘位、Google Maps 顯示、300 公尺查詢服務或 ML 訓練資料。
+## 2026-09-26 S2-011 人工驗收完成
+
+Sprint 2 S2-011 已完成新莊停車目錄小樣本與 seed 流程。Sponsor 使用 Postman 進行人工驗收並回報測試 OK，Docker 測試環境已由 Sponsor 關閉。AI 另以等同 Postman 的 HTTP 流程驗證 API health、建立查詢、讀取查詢與刷新端點皆可回應；目前查詢端點仍使用 S2-006 mock 查詢生命週期，S2-011 seed 資料已進資料庫，但尚未透過 HTTP 查詢。S2-012 將實作 300 公尺停車位置查詢服務，才會把 seed 目錄轉成可查詢結果。
+
+驗收重點：Docker Maven test 通過 8 tests／0 failures；臨時 Docker MySQL 已驗證 Flyway seed 載入 3 筆路邊、2 筆路外與 5 筆 source mapping；手動測試未發現阻礙。PR #18 目前可進入 Sponsor 最終合併確認。
