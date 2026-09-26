@@ -398,3 +398,11 @@ S2-011 已新增可提交的小樣本 seed：`backend/src/main/resources/db/seed
 Sprint 2 S2-011 已完成新莊停車目錄小樣本與 seed 流程。Sponsor 使用 Postman 進行人工驗收並回報測試 OK，Docker 測試環境已由 Sponsor 關閉。AI 另以等同 Postman 的 HTTP 流程驗證 API health、建立查詢、讀取查詢與刷新端點皆可回應；目前查詢端點仍使用 S2-006 mock 查詢生命週期，S2-011 seed 資料已進資料庫，但尚未透過 HTTP 查詢。S2-012 將實作 300 公尺停車位置查詢服務，才會把 seed 目錄轉成可查詢結果。
 
 驗收重點：Docker Maven test 通過 8 tests／0 failures；臨時 Docker MySQL 已驗證 Flyway seed 載入 3 筆路邊、2 筆路外與 5 筆 source mapping；手動測試未發現阻礙。PR #18 目前可進入 Sponsor 最終合併確認。
+
+## 2026-09-26 S2-012 300 公尺停車位置查詢服務
+
+Sprint 2 S2-012 已開始實作後端停車目錄查詢 service。新增 `NearbyParkingSearchService`，使用 `parking_place` 目錄資料做「目的地直線 300 公尺內」查詢：先以 service area、active status、經緯度矩形範圍向 repository 預篩，再用 Haversine 公式精算直線距離，依距離排序，並回傳路邊與路外數量。此 service 目前只提供後端內部能力，尚未接到 HTTP API 或前端；S2-013 才會接入 `parking-queries` 流程。
+
+驗證結果：Docker Maven 後端測試通過 12 tests／0 failures；新增 service 測試涵蓋 300 公尺內查詢、距離排序、路邊／路外分流、無結果與非法半徑。另用臨時 MySQL 8.4 容器覆蓋 datasource、載入 V1 migration 與 seed，執行 `NearbyParkingSearchServiceTest` 通過 4 tests／0 failures。第一次 MySQL 驗證曾因 test profile 的 H2 driver 與 MySQL URL 不一致而失敗，修正驗證環境變數後已通過；該失敗不是服務邏輯錯誤。
+
+邊界：S2-012 不包含 HTTP endpoint、前端顯示、即時剩餘位、Google ETA、Redis 或預測模型。300 公尺目前為直線距離，不代表步行距離。
