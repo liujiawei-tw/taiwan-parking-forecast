@@ -367,3 +367,11 @@ Sponsor 確認小修改可不更新文件，只需在回報中說明原因；重
 PR #10 已合併回 `main`，merge commit 為 `7e1241c22fbc4c55cac432698ca20e0fb187b6bf`；Issue #8 已透過 `Closes #8` 自動關閉。本機 `main` 已同步，且已刪除 `feature/s2-008-github-actions-ci` 本機與遠端分支。Sprint 2 第一組 #1～#8 到此完成。
 
 已建立 Sprint 2 第二組 GitHub Issues：S2-009 到 S2-013，對應 GitHub Issues #11～#15。第二組目標是建立資料庫模型、schema migration、新莊小樣本、300 公尺查詢服務，最後把本地停車目錄結果接入既有 `parking-queries` 流程。此組尚未開始實作；正式 Google ETA、新北市官方即時 API、Redis query state 與 ML 預測仍不在此組範圍內。
+
+## 2026-09-26：S2-009 核心資料模型第一輪實作完成
+
+已從 `main` 建立 `feature/s2-009-data-model` 分支，開始處理 GitHub Issue #11。新增核心 JPA Entity 與 Repository：`parking_place`、`source_mapping`、`availability_snapshot`、`availability_observation`、`source_state`、`ingestion_run` 對應的 Java 模型與資料存取介面。此階段只建立資料模型與 repository 邊界，尚未建立正式 migration、seed 流程、300 公尺查詢服務、即時來源介接或前端顯示。
+
+Sponsor 發現曾出現錯誤的 `backend/backend/src` 空目錄。已確認該目錄沒有檔案且未被 Git 追蹤，已刪除；正確後端目錄仍為 `backend/src/...`。為避免重複發生，已更新 `AGENTS.md` 與 `docs/development-workflow.md`：建立、移動或刪除檔案前，必須先檢查 repo 架構與 Issue 範圍，後端檔案只放在 `backend/src/...`，前端檔案只放在 `frontend/src/...`。
+
+驗證結果：因本機沒有獨立 Maven，且 Windows Maven wrapper 在目前 shell 環境有啟動問題，改用 Docker 容器執行 Linux Maven wrapper。`./mvnw test` 通過：6 tests、0 failures、0 errors。測試包含既有 health/mock API 測試，以及新增的 `DataModelRepositoryTest`，確認核心 entity 關聯可在 H2 test profile 中持久化與查詢。

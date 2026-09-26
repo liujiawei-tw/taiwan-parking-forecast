@@ -101,6 +101,21 @@ PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始
 如果 Sponsor 之後明確要求使用 Harness，建議放在 Docker 可穩定 build 並有基本測試後，再建立 pipeline；不要放在第一個可展示版本之前。
 
 
+## 建檔前架構檢查
+
+建立、移動或刪除檔案前，先確認目前 repo 架構與任務範圍，避免把檔案放到錯誤層級。
+
+建議檢查順序：
+
+1. 讀取 `AGENTS.md`、本文件與該 Issue 相關文件。
+2. 檢查現有目錄結構，再決定檔案位置。
+3. 後端檔案只放在 `backend/src/...`、`backend/pom.xml`、`backend/Dockerfile` 等後端既有位置。
+4. 前端檔案只放在 `frontend/src/...`、`frontend/package.json`、`frontend/Dockerfile` 等前端既有位置。
+5. 專案文件放在 `docs/...` 或根目錄明確文件，例如 `README.md`、`AGENTS.md`。
+6. 不建立 `backend/backend/...`、`frontend/frontend/...`、或其他重複專案根目錄。若發現這類目錄，先停止實作、檢查是否有檔案需要搬移，再清理空目錄。
+
+這條規則是 Definition of Done 的前置檢查；若檔案位置錯誤，該 Issue 不算完成。
+
 ## Branch、Issue 與 PR 規則
 
 - `main` 保存已確認的文件與可展示成果。

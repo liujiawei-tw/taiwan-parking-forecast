@@ -247,6 +247,10 @@
   <section>
     <h2>Sprint 2 最新進度：第二組 Issues 已建立</h2>
     <p>已建立 S2-009～S2-013，聚焦資料基礎與 300 公尺查詢：核心 JPA Entity、schema migration、H2/MySQL 邊界、新莊停車目錄小樣本、附近查詢服務，以及把本地目錄結果接入既有 parking-queries 流程。</p>
-    <p>此組尚未開始實作；正式 Google ETA、新北市官方即時 API、Redis query state 與 ML 預測仍不在此組範圍內。</p>
+    <p>S2-009 已開始實作。已建立核心 JPA Entity 與 Repository，並新增 H2 repository 測試；Docker 容器中執行後端 Maven 測試通過：6 tests／0 failures。正式 migration、seed、300 公尺查詢、即時來源與預測仍不在 S2-009 範圍內。</p>
+  </section>
+  <section>
+    <h2>流程修正：建檔前架構檢查</h2>
+    <p>已依 Sponsor 回饋補上工作規則：建立、移動或刪除檔案前，必須先檢查 repo 架構與任務範圍。後端檔案放在 <code>backend/src/...</code>，前端檔案放在 <code>frontend/src/...</code>，避免產生 <code>backend/backend/...</code> 或 <code>frontend/frontend/...</code> 這類錯誤巢狀目錄。</p>
   </section></body>
 </html>
