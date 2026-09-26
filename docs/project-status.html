@@ -267,5 +267,9 @@
     <h2>Sprint 2 最新進度：S2-012 300 公尺停車位置查詢服務</h2>
     <p>已新增後端 <code>NearbyParkingSearchService</code>，可用新莊停車目錄 seed 查詢目的地直線 300 公尺內的已收錄路邊與路外停車位置，並依距離排序、回傳路邊與路外數量。</p>
     <p>驗證：Docker Maven 後端測試通過 12 tests／0 failures；臨時 MySQL 8.4 容器載入 V1 migration 與 seed 後，S2-012 service 測試通過 4 tests／0 failures。此階段尚未接 HTTP API 或前端，S2-013 才會接入既有 <code>parking-queries</code> 流程。</p>
+  </section>  <section>
+    <h2>Sprint 2 最新進度：S2-013 停車目錄查詢接入 parking-queries</h2>
+    <p>已將 S2-012 的 300 公尺查詢服務接入既有 <code>POST /api/v1/parking-queries</code> 流程。API 仍使用 mock ETA，但路邊與路外結果已改由新莊 seed 目錄產生。</p>
+    <p>驗證：Docker Maven 後端測試通過 13 tests／0 failures；臨時 MySQL 8.4 容器載入 V1 migration 與 seed 後，controller 測試通過 3 tests／0 failures。此階段仍不宣稱即時剩餘位，路邊目前可用數與路外可用汽車位維持空值。</p>
   </section></body>
 </html>
