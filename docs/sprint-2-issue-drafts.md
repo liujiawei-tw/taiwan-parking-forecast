@@ -1,6 +1,6 @@
 # Sprint 2 第一組 GitHub Issues 草案
 
-更新日期：2026-09-25。狀態：PM／Scrum Master／Tech Lead 草案；尚未建立正式 GitHub Issues，尚未 coding。
+更新日期：2026-09-25。狀態：Sprint 2 第一組 Issues 已建立；#1～#7 已完成並合併，#8 GitHub Actions 基礎 CI 進行中。
 
 ## 使用方式
 
@@ -20,6 +20,7 @@ Sprint 2 第一組的目標不是完成完整停車預測，而是建立可維�
 | S2-005 | [#5](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/5) |
 | S2-006 | [#6](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/6) |
 | S2-007 | [#7](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/7) |
+| S2-008 | [#8](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/8) |
 ## 第一組 Issues 總覽
 | 建議 Issue | 標題 | 主要角色 | 依賴 | 產出 |
 | --- | --- | --- | --- | --- |
@@ -30,6 +31,7 @@ Sprint 2 第一組的目標不是完成完整停車預測，而是建立可維�
 | S2-005 | 建立後端 profile、H2 測試邊界與 MySQL 連線設定 | Backend／QA | S2-002、S2-004 | dev/test/docker profiles、H2 測試規則 |
 | S2-006 | 建立查詢 API 契約與 mock 查詢生命週期 | Backend／Frontend | S2-002、S2-003、S2-005 | POST /parking-queries、GET /parking-queries/{id} mock flow |
 | S2-007 | 建立第一版文件同步與驗收檢查清單 | PM／QA | S2-001 | 任務完成檢查清單、狀態頁更新規則 |
+| S2-008 | 建立 GitHub Actions 基礎 CI | CI/CD／DevOps | S2-002、S2-003、S2-004 | 後端測試、前端 build、Docker build 的 GitHub Actions workflow |
 
 ---
 

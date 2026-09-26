@@ -237,7 +237,12 @@
   <section>
     <h2>Sprint 2 最新進度：PR #9 已建立</h2>
     <p>已建立 PR #9：Sprint 2：建立主系統骨架與 mock 查詢流程。範圍包含 S2-001 至 S2-007 的成果。</p>
-    <p>PR 前驗證：後端 Maven test 5 tests／0 failures、前端 npm run build 通過、Docker Compose api/web image build 通過。GitHub 顯示可合併且狀態 clean；尚未合併，等待 Sponsor 確認。</p>
+    <p>PR 前驗證：後端 Maven test 5 tests／0 failures、前端 npm run build 通過、Docker Compose api/web image build 通過。PR #9 已合併回 main，Sprint 2 第一組 #1～#7 已完成。</p>
+  </section>
+  <section>
+    <h2>Sprint 2 最新進度：S2-008 GitHub Actions CI 進行中</h2>
+    <p>已刪除已合併的 <code>sprint-2-main-system-scaffold</code> 分支，並建立 <code>feature/s2-008-github-actions-ci</code> 作為 CI 工作分支。</p>
+    <p>第一版 GitHub Actions CI 檢查後端 Maven test、前端 npm build，以及 Docker Compose api/web image build；此階段不做部署，也不需要任何真實 API key。本機對照驗證已通過，PR #10 已建立。第一次遠端 CI 中後端與前端通過，Docker image build 因 Maven Wrapper 執行權限失敗；已修正 Linux Docker build 內的執行權限。重新推送後，GitHub Actions 已通過後端 Maven test、前端 npm build 與 Docker image build。PR #10 目前等待 Sponsor 確認是否合併。</p>
   </section>
 </body>
 </html>
