@@ -429,3 +429,12 @@ PR #20 已合併回 `main`，merge commit 為 `ef000d02180794dbf4eb205cf7a4726f4
 已建立 Sprint 2 第三組 GitHub Issues，聚焦官方即時來源與快照發布：#21 S2-014 新北市官方即時來源 Client 與原始 DTO、#22 S2-015 即時資料正規化與資料品質規則、#23 S2-016 候選快照寫入與發布交易、#24 S2-017 `parking-queries` 讀取最新已發布快照、#25 S2-018 受控刷新與 Redis 協調。
 
 此組尚未 coding。目標是讓主系統自行取得新北市官方即時資料，經正規化、品質檢查與快照發布後，讓使用者查詢讀到可信的目前車位狀態，同時避免多人查詢放大官方 API 呼叫。`parking-data-collector` 仍維持暫緩，且不參與使用者查詢。
+
+
+## 2026-09-26 S2-014 新北市官方即時來源 Client 初版完成
+
+已在 `feature/s2-014-ntpc-realtime-client` 實作主系統的新北市官方即時來源 client 初版。新增 `NtpcOpenDataProperties` 與 `NtpcOpenDataClientConfig`，可用 YAML／環境變數設定 base URL、timeout、最大嘗試次數、是否允許外部呼叫，以及路邊／路外 dataset id 與 JSON path。新增 `adapter.ntpc` client 與原始 DTO，分別處理路邊停車空位與公有路外停車場即時剩餘車位。
+
+此階段只做呼叫與解析邊界，不寫入 MySQL、不發布快照、不接前端、不做 ML 訓練資料，也不判斷原始狀態碼代表可停或不可停。失敗時會丟出 `NtpcOpenDataClientException`，讓後續 S2-016／S2-018 決定如何記錄 ingestion run、冷卻與降級。
+
+驗證結果：Docker Maven 後端測試通過 20 tests／0 failures。新增測試涵蓋原始 DTO JSON 解析、路邊／路外 client URL 與分頁參數、`AVAILABLECAR`／`AVAILABLE` alias、HTTP 失敗重試、外部呼叫停用，以及非法 page／size。自動測試使用 fixture 與 mock HTTP，未實際呼叫新北市 API。

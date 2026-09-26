@@ -1,0 +1,21 @@
+[
+  {
+    "id": "1",
+    "cellid": "RA-001",
+    "name": "小型車格",
+    "day": "每日",
+    "hour": "00:00-24:00",
+    "pay": "收費",
+    "paycash": "每小時 20 元",
+    "memo": "示範資料",
+    "roadid": "R001",
+    "roadname": "新莊路",
+    "cellstatus": "0",
+    "isnowcash": "1",
+    "parkingstatus": "0",
+    "latitude": "25.0372",
+    "longitude": "121.4525",
+    "countycode": "65000",
+    "areacode": "65000050"
+  }
+]
