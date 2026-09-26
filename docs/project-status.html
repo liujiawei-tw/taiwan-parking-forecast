@@ -257,6 +257,10 @@
     <p>已建立 Flyway V1 migration，將核心資料表與索引交由 migration 管理，不再依賴 Hibernate 自動建表。</p>
     <p>驗證：後端 Docker Maven test 通過 6 tests／0 failures；H2 test profile 會套用 Flyway V1 migration。另以臨時 Docker Compose project 驗證 MySQL，API health 通過，MySQL 已建立 flyway_schema_history 與核心資料表。</p>
     <p>邊界：H2 只作開發端快速測試；MySQL schema、索引、型別與啟動行為仍需 Docker MySQL 驗證。S2-010 不包含 seed、300 公尺查詢、官方即時 API 或預測模型。</p>
+  </section>  <section>
+    <h2>Sprint 2 最新進度：S2-011 新莊停車目錄小樣本</h2>
+    <p>已建立可提交的小樣本 seed，包含 3 筆新莊路邊示範汽車格位與 2 筆新莊路外示範停車場，並建立對應 source mapping。</p>
+    <p>載入方式：local/test profile 會載入 seed；docker profile 預設不載入 seed，需明確設定 <code>SPRING_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed</code> 才會載入。</p>
+    <p>驗證：Docker Maven test 通過 8 tests／0 failures；臨時 Docker MySQL 驗證 API healthy，MySQL 中有 3 筆路邊、2 筆路外、5 筆 source mapping。此資料只用於流程驗證，不代表新莊完整覆蓋，也不包含即時剩餘位。</p>
   </section></body>
 </html>
-
