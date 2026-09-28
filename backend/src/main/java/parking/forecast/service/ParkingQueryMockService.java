@@ -25,10 +25,14 @@ import parking.forecast.controller.dto.ParkingQueryResponse.RoadsidePrediction;
 import parking.forecast.controller.dto.ParkingQueryResponse.RoadsideSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.RoadsideSpot;
 import parking.forecast.controller.dto.ParkingQueryResponse.SourceRefresh;
+import parking.forecast.domain.AvailabilityStatus;
+import parking.forecast.domain.DatasetCode;
 import parking.forecast.domain.ParkingPlaceType;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingPlace;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchRequest;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchResult;
+import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedAvailabilityView;
+import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedObservation;
 
 @Service
 public class ParkingQueryMockService {
@@ -39,16 +43,25 @@ public class ParkingQueryMockService {
 
     private final Clock clock;
     private final NearbyParkingSearchService nearbyParkingSearchService;
+    private final PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService;
     private final Map<String, ParkingQueryResponse> queries = new ConcurrentHashMap<>();
 
     @Autowired
-    public ParkingQueryMockService(NearbyParkingSearchService nearbyParkingSearchService) {
-        this(Clock.systemUTC(), nearbyParkingSearchService);
+    public ParkingQueryMockService(
+            NearbyParkingSearchService nearbyParkingSearchService,
+            PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService
+    ) {
+        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService);
     }
 
-    ParkingQueryMockService(Clock clock, NearbyParkingSearchService nearbyParkingSearchService) {
+    ParkingQueryMockService(
+            Clock clock,
+            NearbyParkingSearchService nearbyParkingSearchService,
+            PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService
+    ) {
         this.clock = clock;
         this.nearbyParkingSearchService = nearbyParkingSearchService;
+        this.publishedAvailabilitySnapshotService = publishedAvailabilitySnapshotService;
     }
 
     public ParkingQueryResponse create(CreateParkingQueryRequest request) {
@@ -65,6 +78,8 @@ public class ParkingQueryMockService {
                 request.destination().longitude(),
                 SEARCH_RADIUS_METERS
         ));
+        RoadsideSection roadsideSection = buildRoadsideSection(nearby);
+        OffStreetSection offStreetSection = buildOffStreetSection(nearby);
 
         ParkingQueryResponse response = new ParkingQueryResponse(
                 new QuerySection(queryId, "READY", false, now, now, now.plusMinutes(30), "Mock query is ready."),
@@ -87,12 +102,10 @@ public class ParkingQueryMockService {
                         estimatedArrivalAt,
                         18 * 60,
                         "Mock ETA. Google Routes is not connected yet."),
-                buildRoadsideSection(nearby),
-                buildOffStreetSection(nearby),
+                roadsideSection,
+                offStreetSection,
                 buildPredictionsSection(nearby, estimatedArrivalAt),
-                new RefreshSection(
-                        new SourceRefresh("ROADSIDE", "USED_LOCAL_CATALOG", false, null, null, "S2-013 uses local catalog only; official roadside availability is not connected yet."),
-                        new SourceRefresh("OFF_STREET", "USED_LOCAL_CATALOG", false, null, null, "S2-013 uses local catalog only; official off street availability is not connected yet.")));
+                buildRefreshSection(roadsideSection, offStreetSection));
 
         queries.put(queryId, response);
         return response;
@@ -117,68 +130,268 @@ public class ParkingQueryMockService {
                         existing.query().createdAt(),
                         now,
                         existing.query().expiresAt(),
-                        "Mock refresh reused the local catalog query result."),
+                        "Refresh currently reuses the last query result; S2-018 will coordinate new source refreshes."),
                 existing.destination(),
                 existing.area(),
                 existing.eta(),
                 existing.roadside(),
                 existing.offStreet(),
                 existing.predictions(),
-                new RefreshSection(
-                        new SourceRefresh("ROADSIDE", "USED_LOCAL_CATALOG", false, null, null, "Local catalog result is unchanged; official roadside availability is not connected yet."),
-                        new SourceRefresh("OFF_STREET", "USED_LOCAL_CATALOG", false, null, null, "Local catalog result is unchanged; official off street availability is not connected yet.")));
+                buildRefreshSection(existing.roadside(), existing.offStreet()));
         queries.put(queryId, refreshed);
         return refreshed;
     }
 
     private RoadsideSection buildRoadsideSection(NearbyParkingSearchResult nearby) {
-        List<RoadsideSpot> roadsideSpots = nearby.places().stream()
+        List<NearbyParkingPlace> roadsidePlaces = nearby.places().stream()
                 .filter(place -> place.placeType() == ParkingPlaceType.ON_STREET_SPOT)
-                .map(place -> new RoadsideSpot(
-                        place.parkingPlaceId().toString(),
-                        place.displayName(),
-                        place.latitude(),
-                        place.longitude(),
-                        place.distanceMeters(),
-                        true
-                ))
                 .toList();
+        PublishedAvailabilityView availability = publishedAvailabilitySnapshotService.findLatest(
+                DatasetCode.NTPC_ROADSIDE_SPOT,
+                roadsidePlaces.stream().map(NearbyParkingPlace::parkingPlaceId).toList()
+        );
+
+        if (roadsidePlaces.isEmpty()) {
+            return new RoadsideSection(
+                    "NO_CATALOG_RESULTS",
+                    "LOCAL_CATALOG_SEED",
+                    null,
+                    null,
+                    List.of(),
+                    "No roadside catalog records were found inside 300 meters."
+            );
+        }
+
+        String status = resolveRoadsideStatus(availability);
+        Integer currentlyAvailableSpaces = resolveRoadsideAvailableCount(availability);
+        List<RoadsideSpot> availableSpots = availability.isFreshReady()
+                ? roadsidePlaces.stream()
+                        .filter(place -> isFreshAvailableRoadsideSpot(availability, place.parkingPlaceId()))
+                        .map(place -> toRoadsideSpot(place, availability))
+                        .toList()
+                : List.of();
 
         return new RoadsideSection(
-                roadsideSpots.isEmpty() ? "NO_CATALOG_RESULTS" : "READY",
-                "LOCAL_CATALOG_SEED",
-                null,
-                null,
-                roadsideSpots,
-                roadsideSpots.isEmpty()
-                        ? "No roadside catalog records were found inside 300 meters."
-                        : "Catalog roadside records inside 300 meters. Real-time availability is not connected yet."
+                status,
+                resolveSource(availability),
+                availability.systemCollectedAt(),
+                currentlyAvailableSpaces,
+                availableSpots,
+                roadsideMessage(status, availability)
         );
     }
 
     private OffStreetSection buildOffStreetSection(NearbyParkingSearchResult nearby) {
-        List<ParkingLot> parkingLots = nearby.places().stream()
+        List<NearbyParkingPlace> offStreetPlaces = nearby.places().stream()
                 .filter(place -> place.placeType() == ParkingPlaceType.OFF_STREET_LOT)
-                .map(place -> new ParkingLot(
-                        place.parkingPlaceId().toString(),
-                        place.displayName(),
-                        place.entranceLatitude() == null ? place.latitude() : place.entranceLatitude(),
-                        place.entranceLongitude() == null ? place.longitude() : place.entranceLongitude(),
-                        place.distanceMeters(),
-                        null,
-                        true
-                ))
+                .toList();
+        PublishedAvailabilityView availability = publishedAvailabilitySnapshotService.findLatest(
+                DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
+                offStreetPlaces.stream().map(NearbyParkingPlace::parkingPlaceId).toList()
+        );
+
+        if (offStreetPlaces.isEmpty()) {
+            return new OffStreetSection(
+                    "NO_CATALOG_RESULTS",
+                    "LOCAL_CATALOG_SEED",
+                    null,
+                    List.of(),
+                    "No off street catalog records were found inside 300 meters."
+            );
+        }
+
+        List<ParkingLot> parkingLots = offStreetPlaces.stream()
+                .map(place -> toParkingLot(place, availability))
                 .toList();
 
         return new OffStreetSection(
-                parkingLots.isEmpty() ? "NO_CATALOG_RESULTS" : "READY",
-                "LOCAL_CATALOG_SEED",
-                null,
+                resolveOffStreetStatus(availability, parkingLots),
+                resolveSource(availability),
+                availability.systemCollectedAt(),
                 parkingLots,
-                parkingLots.isEmpty()
-                        ? "No off street catalog records were found inside 300 meters."
-                        : "Catalog off street parking lots inside 300 meters. Real-time availability is not connected yet."
+                offStreetMessage(availability)
         );
+    }
+
+    private RefreshSection buildRefreshSection(RoadsideSection roadsideSection, OffStreetSection offStreetSection) {
+        return new RefreshSection(
+                new SourceRefresh(
+                        "ROADSIDE",
+                        refreshAction(roadsideSection.status()),
+                        false,
+                        roadsideSection.systemCollectedAt(),
+                        null,
+                        refreshMessage(roadsideSection.status())
+                ),
+                new SourceRefresh(
+                        "OFF_STREET",
+                        refreshAction(offStreetSection.status()),
+                        false,
+                        offStreetSection.systemCollectedAt(),
+                        null,
+                        refreshMessage(offStreetSection.status())
+                ));
+    }
+
+    private String refreshAction(String status) {
+        return switch (status) {
+            case "READY", "UNKNOWN" -> "USED_PUBLISHED_SNAPSHOT";
+            case "STALE" -> "USED_STALE_PUBLISHED_SNAPSHOT";
+            case "NO_REALTIME_SNAPSHOT" -> "NO_PUBLISHED_SNAPSHOT";
+            default -> "USED_LOCAL_CATALOG";
+        };
+    }
+
+    private String refreshMessage(String status) {
+        return switch (status) {
+            case "READY" -> "Published snapshot was used for the query response.";
+            case "STALE" -> "Published snapshot is stale; current available count is intentionally hidden.";
+            case "UNKNOWN" -> "Published snapshot has only unknown nearby observations.";
+            case "NO_REALTIME_SNAPSHOT" -> "No published snapshot is available yet. S2-017 does not trigger official API refresh.";
+            default -> "Local catalog result was used.";
+        };
+    }
+
+    private String resolveRoadsideStatus(PublishedAvailabilityView availability) {
+        if (!availability.isFreshReady()) {
+            return availability.status();
+        }
+        boolean hasOnlyUnknown = !availability.observations().isEmpty()
+                && availability.observations().values().stream()
+                        .allMatch(observation -> observation.availabilityStatus() == AvailabilityStatus.UNKNOWN);
+        return hasOnlyUnknown ? "UNKNOWN" : "READY";
+    }
+
+    private Integer resolveRoadsideAvailableCount(PublishedAvailabilityView availability) {
+        if (!availability.isFreshReady()) {
+            return null;
+        }
+        boolean hasKnownObservation = availability.observations().values().stream()
+                .anyMatch(observation -> observation.availabilityStatus() != AvailabilityStatus.UNKNOWN);
+        if (!hasKnownObservation) {
+            return null;
+        }
+        return (int) availability.observations().values().stream()
+                .filter(this::isAvailableRoadsideObservation)
+                .count();
+    }
+
+    private boolean isFreshAvailableRoadsideSpot(PublishedAvailabilityView availability, Long parkingPlaceId) {
+        PublishedObservation observation = availability.observations().get(parkingPlaceId);
+        return observation != null && isAvailableRoadsideObservation(observation);
+    }
+
+    private boolean isAvailableRoadsideObservation(PublishedObservation observation) {
+        return observation.availabilityStatus() == AvailabilityStatus.AVAILABLE && Boolean.TRUE.equals(observation.availableSpot());
+    }
+
+    private RoadsideSpot toRoadsideSpot(NearbyParkingPlace place, PublishedAvailabilityView availability) {
+        return new RoadsideSpot(
+                place.parkingPlaceId().toString(),
+                place.displayName(),
+                place.latitude(),
+                place.longitude(),
+                place.distanceMeters(),
+                true,
+                AvailabilityStatus.AVAILABLE.name(),
+                availability.systemCollectedAt()
+        );
+    }
+
+    private ParkingLot toParkingLot(NearbyParkingPlace place, PublishedAvailabilityView availability) {
+        PublishedObservation observation = availability.observations().get(place.parkingPlaceId());
+        String availabilityStatus = resolveParkingLotAvailabilityStatus(availability, observation);
+        Integer availableCarSpaces = resolveParkingLotAvailableCarSpaces(availability, observation);
+        return new ParkingLot(
+                place.parkingPlaceId().toString(),
+                place.displayName(),
+                place.entranceLatitude() == null ? place.latitude() : place.entranceLatitude(),
+                place.entranceLongitude() == null ? place.longitude() : place.entranceLongitude(),
+                place.distanceMeters(),
+                availableCarSpaces,
+                true,
+                availabilityStatus,
+                availability.systemCollectedAt(),
+                parkingLotMessage(availabilityStatus)
+        );
+    }
+
+    private String resolveParkingLotAvailabilityStatus(PublishedAvailabilityView availability, PublishedObservation observation) {
+        if ("STALE".equals(availability.status())) {
+            return "STALE";
+        }
+        if ("NO_REALTIME_SNAPSHOT".equals(availability.status())) {
+            return "NO_REALTIME_SNAPSHOT";
+        }
+        if (observation == null) {
+            return "NO_OBSERVATION";
+        }
+        return observation.availabilityStatus().name();
+    }
+
+    private Integer resolveParkingLotAvailableCarSpaces(PublishedAvailabilityView availability, PublishedObservation observation) {
+        if (!availability.isFreshReady() || observation == null) {
+            return null;
+        }
+        if (observation.availabilityStatus() == AvailabilityStatus.AVAILABLE
+                || observation.availabilityStatus() == AvailabilityStatus.FULL) {
+            return observation.availableCarSpaces();
+        }
+        return null;
+    }
+
+    private String resolveOffStreetStatus(PublishedAvailabilityView availability, List<ParkingLot> parkingLots) {
+        if (!availability.isFreshReady()) {
+            return availability.status();
+        }
+        boolean hasUnknown = parkingLots.stream().anyMatch(lot -> "UNKNOWN".equals(lot.availabilityStatus()));
+        boolean hasKnown = parkingLots.stream().anyMatch(lot -> "AVAILABLE".equals(lot.availabilityStatus())
+                || "FULL".equals(lot.availabilityStatus())
+                || "OUT_OF_SERVICE".equals(lot.availabilityStatus()));
+        if (hasKnown && hasUnknown) {
+            return "PARTIAL";
+        }
+        return hasKnown ? "READY" : "UNKNOWN";
+    }
+
+    private String resolveSource(PublishedAvailabilityView availability) {
+        return "NO_REALTIME_SNAPSHOT".equals(availability.status()) || "NO_CATALOG_RESULTS".equals(availability.status())
+                ? "LOCAL_CATALOG_SEED"
+                : "NTPC_OPEN_DATA";
+    }
+
+    private String roadsideMessage(String status, PublishedAvailabilityView availability) {
+        return switch (status) {
+            case "READY" -> "Fresh published roadside snapshot is used. Currently available spots can be shown and navigated.";
+            case "STALE" -> "Roadside snapshot is older than 5 minutes. Current available count and spot navigation are hidden.";
+            case "UNKNOWN" -> "Nearby roadside observations are unknown; current availability cannot be confirmed.";
+            case "NO_OBSERVATION" -> availability.message();
+            case "NO_REALTIME_SNAPSHOT" -> "Roadside catalog records exist, but no published real-time snapshot is available yet.";
+            default -> availability.message();
+        };
+    }
+
+    private String offStreetMessage(PublishedAvailabilityView availability) {
+        return switch (availability.status()) {
+            case "READY" -> "Fresh published off street snapshot is used for nearby parking lots.";
+            case "STALE" -> "Off street snapshot is older than 5 minutes. Current available car spaces are hidden.";
+            case "UNKNOWN" -> "Nearby off street observations are unknown; current availability cannot be confirmed.";
+            case "NO_REALTIME_SNAPSHOT" -> "Off street catalog records exist, but no published real-time snapshot is available yet.";
+            default -> availability.message();
+        };
+    }
+
+    private String parkingLotMessage(String availabilityStatus) {
+        return switch (availabilityStatus) {
+            case "AVAILABLE" -> "Fresh snapshot reports available car spaces.";
+            case "FULL" -> "Fresh snapshot reports 0 available car spaces.";
+            case "STALE" -> "Snapshot is stale; this value is not shown as current availability.";
+            case "UNKNOWN" -> "Source observation is unknown.";
+            case "OUT_OF_SERVICE" -> "Source reports this parking lot is temporarily not providing real-time availability.";
+            case "NO_OBSERVATION" -> "No matching observation was found in the published snapshot.";
+            case "NO_REALTIME_SNAPSHOT" -> "No published real-time snapshot is available yet.";
+            default -> "Availability status is carried from the published snapshot.";
+        };
     }
 
     private PredictionsSection buildPredictionsSection(NearbyParkingSearchResult nearby, OffsetDateTime estimatedArrivalAt) {
@@ -197,7 +410,7 @@ public class ParkingQueryMockService {
                 estimatedArrivalAt,
                 new RoadsidePrediction("INSUFFICIENT_DATA", null, "No validated model or baseline is connected yet."),
                 offStreetPredictions,
-                "Prediction contract is present, but S2-013 does not output probabilities."
+                "Prediction contract is present, but S2-017 does not output probabilities."
         );
     }
 

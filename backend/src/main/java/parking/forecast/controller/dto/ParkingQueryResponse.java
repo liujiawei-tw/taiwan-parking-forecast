@@ -63,7 +63,9 @@ public record ParkingQueryResponse(
             double latitude,
             double longitude,
             int distanceMeters,
-            boolean navigationAvailable) {
+            boolean navigationAvailable,
+            String availabilityStatus,
+            OffsetDateTime systemCollectedAt) {
     }
 
     public record OffStreetSection(
@@ -81,7 +83,10 @@ public record ParkingQueryResponse(
             double longitude,
             int distanceMeters,
             Integer availableCarSpaces,
-            boolean navigationAvailable) {
+            boolean navigationAvailable,
+            String availabilityStatus,
+            OffsetDateTime systemCollectedAt,
+            String message) {
     }
 
     public record PredictionsSection(

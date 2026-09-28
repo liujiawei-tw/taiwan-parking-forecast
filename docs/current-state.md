@@ -457,3 +457,13 @@ PR #20 已合併回 `main`，merge commit 為 `ef000d02180794dbf4eb205cf7a4726f4
 為支援交易狀態更新，補上 `IngestionRunEntity#setRunStatus` 與 `SourceStateEntity#setUpdatedAt`。S2-016 不包含排程、Redis 刷新鎖、前端顯示、官方 API 實際擷取流程或 `parking-queries` 讀取最新快照；下一步 S2-017 才會把已發布快照接回使用者查詢結果。
 
 驗證結果：Docker Maven 後端全測試通過 33 tests／0 failures；新增 `AvailabilitySnapshotPublishingServiceTest` 4 tests 覆蓋成功發布、失敗不覆蓋舊快照、未知觀測保留、空資料拒絕發布。另以臨時 MySQL 8.4 容器載入 V1 migration 與 seed，執行 `AvailabilitySnapshotPublishingServiceTest` 通過 4 tests／0 failures，驗證交易與查詢在 MySQL 上可運作。
+
+## 2026-09-28 S2-017 parking-queries 讀取最新已發布快照初版完成
+
+已在 `feature/s2-017-query-published-snapshot` 實作使用者查詢讀取已發布快照的第一版。新增 `PublishedAvailabilitySnapshotService`，只讀 `source_state.active_snapshot` 指向的 `PUBLISHED` snapshot，並依停車位置 ID 讀取對應 `availability_observation`；`CANDIDATE` 與 `REJECTED` snapshot 不會出現在使用者查詢結果。
+
+`POST /api/v1/parking-queries` 現在會在本地 300 公尺停車目錄結果上補上目前車位狀態。路邊只在新鮮 `READY` 且觀測為 `AVAILABLE`、`availableSpot=true` 時列入可導航格位；快照超過 5 分鐘會回 `STALE`，主要目前可用數為 `null`，不再把舊有位格位當成目前可推薦導航。路外停車場新增 `availabilityStatus`、`systemCollectedAt` 與 `message`，能分開表示 `AVAILABLE`、有效 `FULL/0`、`UNKNOWN`、`STALE`、`NO_OBSERVATION` 與 `NO_REALTIME_SNAPSHOT`。
+
+S2-017 不會觸發新北市官方 API、Google ETA、Redis 刷新鎖或 ML 預測；手動 refresh 仍只回覆目前 query 狀態，真正來源級受控刷新留到 S2-018。現階段 service 名稱仍保留 `ParkingQueryMockService`，避免在本 Issue 混入命名重構；後續可獨立整理。
+
+驗證結果：後端 Maven 測試通過 37 tests／0 failures。新增 controller 測試覆蓋無已發布 snapshot、讀取新鮮路邊／路外已發布快照、有效 0 位、UNKNOWN、STALE，以及既有讀取／刷新與範圍外無目錄結果。另以臨時 MySQL 8.4 容器載入 V1 migration 與 seed，執行 `ParkingQueryControllerTest` 通過 7 tests／0 failures，驗證已發布快照查詢在 MySQL 上可運作。

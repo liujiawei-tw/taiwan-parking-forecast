@@ -776,3 +776,36 @@ HTTP 狀態只表示主系統是否成功處理這次 API 請求，不代表 Goo
 背景工作期限、前端輪詢停止與 `queryId` 期限各自有獨立用途。`expiresAt` 與各區塊 `deadlineAt` 應讓前端知道何時停止等待；若 Spring Boot 重啟而 Redis 仍留 `pending`，讀取時可依已過的工作最後期限轉為失敗。來源刷新到期後才返回的結果不得把已失敗輪次重新發布；需要新的一輪受控刷新。若使用者隔天才出發，當天的 `queryId` 不應保存到隔天；回來時需重新規劃並取得新的 ETA。
 
 **已決定的可見頁面刷新行為**：結果頁可見且某來源完整快照超過 5 分鐘試驗門檻時，Vue 對該來源發起一次受控車位刷新請求；路邊與路外分別判斷。頁面隱藏時暫停自動刷新與進度輪詢。重新顯示時先做一次只讀 `GET`，依最新取得時間、刷新狀態與可再試時間決定是否需要一次 `POST`；頁面重整也先走只讀恢復，不能直接引發上游請求。後端回應需能區分沿用新鮮快照、加入既有刷新、新啟動、冷卻中、預算阻擋與失敗，並在適用時提供 `nextAllowedAt` 候選欄位。冷卻／失敗時不得因前端定時器反覆送 `POST`；日後可再試時要重新檢查最新狀態。多位使用者共用來源級單輪刷新。手動「更新車位」仍可用，但同樣受限制；只讀進度 `GET` 不觸發政府或 Google 呼叫。刷新車位不重算 Google ETA，舊 ETA 仍標示計算時間。`queryId` 已過期時不自動建立新行程查詢。具體去重、最短間隔、錯誤碼與前端節奏待量測後定案。
+
+## 2026-09-28 S2-017 已發布快照查詢欄位
+
+`parking-queries` 目前已能讀取 `source_state.active_snapshot` 指向的 `PUBLISHED` 快照，將最新已發布觀測接回路邊與路外結果。查詢流程不會在 S2-017 重新抓官方 API，也不讀 `CANDIDATE` 或 `REJECTED` snapshot；官方來源擷取與受控刷新由後續 S2-018 處理。
+
+路邊 `roadside` 區塊的主要語意：
+
+| 欄位 | 語意 |
+| --- | --- |
+| `status` | `READY`、`STALE`、`UNKNOWN`、`NO_REALTIME_SNAPSHOT`、`NO_OBSERVATION`、`NO_CATALOG_RESULTS` |
+| `source` | 使用已發布快照時為 `NTPC_OPEN_DATA`；尚無快照或只有本地目錄時為 `LOCAL_CATALOG_SEED` |
+| `systemCollectedAt` | 該已發布快照的系統取得時間；沒有快照時為 `null` |
+| `currentlyAvailableSpaces` | 僅在新鮮 `READY` 且有已知觀測時提供；過期、未知、無快照時為 `null` |
+| `availableSpots[]` | 僅列出新鮮、確認可用且可導航的路邊汽車格位；過期或未知時為空陣列 |
+| `availableSpots[].availabilityStatus` | 目前只會對可推薦格位回 `AVAILABLE` |
+| `availableSpots[].systemCollectedAt` | 該格位所屬快照的系統取得時間 |
+
+路外 `offStreet.parkingLots[]` 新增下列狀態欄位，讓前端不用用 `availableCarSpaces` 猜狀態：
+
+| 欄位 | 語意 |
+| --- | --- |
+| `availabilityStatus` | `AVAILABLE`、`FULL`、`UNKNOWN`、`OUT_OF_SERVICE`、`STALE`、`NO_OBSERVATION`、`NO_REALTIME_SNAPSHOT` |
+| `availableCarSpaces` | 僅在新鮮 `AVAILABLE` 或 `FULL` 時提供；`FULL` 可為有效 `0` |
+| `systemCollectedAt` | 該停車場所屬快照的系統取得時間 |
+| `message` | 給前端或開發階段顯示的狀態說明 |
+
+前端判斷規則：
+
+- `0` 位：`availabilityStatus=FULL` 且 `availableCarSpaces=0`，代表有效觀測，不是未知。
+- 未知：`availabilityStatus=UNKNOWN`，`availableCarSpaces=null`。
+- 過期：`status=STALE` 或停車場 `availabilityStatus=STALE`，主要目前可用數必須視為不可用。
+- 尚未有即時資料：`NO_REALTIME_SNAPSHOT`，代表有目錄位置但還沒有已發布的即時快照。
+- 未收錄：`NO_CATALOG_RESULTS`，代表 300 公尺內沒有本地目錄資料，不能宣稱現場沒有車位。
