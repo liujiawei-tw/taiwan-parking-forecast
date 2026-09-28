@@ -48,3 +48,36 @@ S2-014 已在主系統後端建立新北市官方即時來源 client 邊界。�
 - 自動測試使用 fixture 與 mock HTTP，不會真的呼叫新北市 API。
 - S2-014 的 client 失敗時會丟出明確例外，後續 S2-016／S2-018 才會決定如何記錄 ingestion run、冷卻與 UI 降級。
 - S2-014 不判斷 `cellstatus`、`parkingstatus`、`AVAILABLECAR=-9` 等業務語意；這些留到 S2-015 正規化與資料品質規則。
+
+
+## 2026-09-28 S2-015 正規化規則初版
+
+S2-015 已新增 `NtpcAvailabilityNormalizer`，將 S2-014 的原始 DTO 轉成系統內部的 `NormalizedAvailabilityObservation`。這個物件是後續 S2-016 候選快照寫入的輸入，不是 JPA entity，也不直接回給前端。
+
+### 路邊停車空位正規化
+
+| 原始欄位 | 初版規則 | 統一欄位 |
+| --- | --- | --- |
+| `cellid` | 必填；空白時整筆標為 `UNKNOWN` 並給 `MISSING_ROADSIDE_CELL_ID` | `sourcePlaceId` |
+| `cellstatus=0` | 依新北市資料欄位說明先視為空位 | `availabilityStatus=AVAILABLE`、`availableSpot=true` |
+| `cellstatus=1` | 依新北市資料欄位說明先視為有車 | `availabilityStatus=OCCUPIED`、`availableSpot=false` |
+| 其他 `cellstatus` | 不推論可停或不可停 | `availabilityStatus=UNKNOWN`、`availableSpot=null` |
+| `name`／`memo`／`paycash` | 文字包含「小型車」或「汽車」才視為汽車資格已確認；包含「機車」視為不適用；其他維持未知 | `carEligibleStatus` |
+
+即使路邊格位回報空位，若汽車適用性無法確認，`currentlyRecommendable=false`，避免把未知格位拿去推薦導航。
+
+### 路外停車場剩餘位正規化
+
+| 原始欄位 | 初版規則 | 統一欄位 |
+| --- | --- | --- |
+| `ID` | 必填；空白時整筆標為 `UNKNOWN` 並給 `MISSING_OFF_STREET_ID` | `sourcePlaceId` |
+| `AVAILABLECAR > 0` | 有汽車位 | `availabilityStatus=AVAILABLE`、`availableCarSpaces=原值` |
+| `AVAILABLECAR = 0` | 有效 0 位，不是未知 | `availabilityStatus=FULL`、`availableCarSpaces=0` |
+| `AVAILABLECAR = -9` | 依 Sponsor 提供的新北市欄位說明，代表更換營運廠商暫不提供即時動態 | `availabilityStatus=OUT_OF_SERVICE`、`availableCarSpaces=null` |
+| 其他負數或非數字 | 不推論剩餘位 | `availabilityStatus=UNKNOWN` |
+
+### 邊界
+
+- S2-015 不寫入 MySQL、不發布快照、不處理資料是否過期、不觸發官方 API。
+- S2-015 保留 `rawStatusCode` 與 `rawAvailabilityValue`，讓後續追查能看到來源原值。
+- 目前 `sourceObservedAt` 仍為空，因現有 DTO 尚未確認可靠來源觀測時間；S2-016／S2-017 仍需分開保存系統取得時間與來源觀測時間。

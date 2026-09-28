@@ -6,5 +6,6 @@ public enum AvailabilityStatus {
     FULL,
     UNKNOWN,
     NO_REALTIME_AVAILABILITY,
+    OUT_OF_SERVICE,
     STALE
 }
