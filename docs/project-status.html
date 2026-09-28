@@ -61,7 +61,7 @@
   <header>
     <h1>停車預測專案｜進度與待辦</h1>
     <p class="lede">新莊區 MVP：搜尋目的地、計算抵達時間，顯示目的地方圓 300 公尺內收錄的汽車停車選項，以及抵達時有位的預測。</p>
-    <div class="meta"><span class="tag design">目前：S2-014 官方即時來源 client 初版完成</span><span class="tag">更新：2026-09-26</span><span class="tag">下一步：S2-015 資料正規化</span></div>
+    <div class="meta"><span class="tag design">目前：S2-015 即時資料正規化初版完成</span><span class="tag">更新：2026-09-28</span><span class="tag">下一步：S2-016 候選快照與發布交易</span></div>
     <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統已完成後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、核心資料模型、Flyway schema、新莊 seed、300 公尺查詢 service，以及 parking-queries 接入本地停車目錄。Google ETA、新北市官方即時車位、正式 Redis query state、前端地圖整合與兩類預測尚未接入；訓練 collector 暫緩，不參與使用者查詢。</div>
   </header>
 
@@ -232,6 +232,12 @@
     <h2>Sprint 2 最新進度：S2-014 官方即時來源 Client 初版</h2>
     <p>已建立新北市官方即時來源 client 與原始 DTO，可解析路邊停車空位與公有路外停車場即時剩餘車位的 JSON 測試資料。設定可由 YAML／環境變數覆蓋，並支援 timeout、最大嘗試次數與停用外部呼叫。</p>
     <p>驗證：Docker Maven 後端測試通過 20 tests／0 failures。此階段不寫入 MySQL、不發布快照、不接前端，也不判斷可停語意；下一步 S2-015 才做正規化與資料品質規則。</p>
+  </section>
+
+  <section>
+    <h2>Sprint 2 最新進度：S2-015 即時資料正規化初版</h2>
+    <p>已新增統一觀測物件與新北市 normalizer，將路邊與路外原始 DTO 轉成一致狀態。有效 0 位、未知、特殊值與缺值會分開處理；路邊格位若無法確認汽車適用性，不會被標成可推薦導航。</p>
+    <p>驗證：Docker Maven 後端測試通過 29 tests／0 failures。此階段仍不寫入 MySQL、不發布快照、不接前端；下一步 S2-016 將處理候選快照寫入與發布交易。</p>
   </section>
   <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>建立第三組 GitHub Issues：新北市官方即時來源 client、正規化、快照發布、查詢讀取快照、Redis 受控刷新。</li><li>確認官方 API 欄位、分頁、來源觀測時間與初版品質門檻。</li><li>完成後再接 Google ETA、前端地圖結果頁與預測基準。</li></ol></div></section>
   <footer>本頁是人工維護的進度快照。詳細需求、決策與最新狀態以 <a href="requirements.md">requirements.md</a>、<a href="decisions.md">decisions.md</a>、<a href="current-state.md">current-state.md</a> 為準。</footer>

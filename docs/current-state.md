@@ -438,3 +438,12 @@ PR #20 已合併回 `main`，merge commit 為 `ef000d02180794dbf4eb205cf7a4726f4
 此階段只做呼叫與解析邊界，不寫入 MySQL、不發布快照、不接前端、不做 ML 訓練資料，也不判斷原始狀態碼代表可停或不可停。失敗時會丟出 `NtpcOpenDataClientException`，讓後續 S2-016／S2-018 決定如何記錄 ingestion run、冷卻與降級。
 
 驗證結果：Docker Maven 後端測試通過 20 tests／0 failures。新增測試涵蓋原始 DTO JSON 解析、路邊／路外 client URL 與分頁參數、`AVAILABLECAR`／`AVAILABLE` alias、HTTP 失敗重試、外部呼叫停用，以及非法 page／size。自動測試使用 fixture 與 mock HTTP，未實際呼叫新北市 API。
+
+
+## 2026-09-28 S2-015 即時資料正規化初版完成
+
+已在 `feature/s2-015-ntpc-normalization` 實作新北市即時資料正規化初版。新增 `NormalizedAvailabilityObservation` 作為來源 DTO 與後續快照寫入之間的統一觀測物件，並新增 `NtpcAvailabilityNormalizer` 將新北市路邊與路外原始資料轉成統一狀態。
+
+初版規則：路邊 `cellstatus=0` 轉為 `AVAILABLE`，`cellstatus=1` 轉為 `OCCUPIED`，未知或缺值不推論；路邊格位只有在文字可確認為「小型車」或「汽車」時才可成為目前可推薦格位。路外 `AVAILABLECAR > 0` 轉為 `AVAILABLE`，`0` 轉為 `FULL`，`-9` 轉為 `OUT_OF_SERVICE` 並保留空的 `availableCarSpaces`，非數字或缺值轉為 `UNKNOWN` 或 `FAIL`。
+
+此階段不寫入 MySQL、不發布快照、不判斷資料過期、不接前端、不觸發官方 API。驗證結果：Docker Maven 後端測試通過 29 tests／0 failures；新增 9 個 normalizer 測試涵蓋有效值、有效 0 位、缺值、特殊值、未知狀態碼、非數字與汽車資格未知時不可推薦。
