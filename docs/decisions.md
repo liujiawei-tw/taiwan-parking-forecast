@@ -523,3 +523,10 @@
 - **決策**：後端採 `local`、`test`、`docker` 三種 profile。`local` 與 `test` 使用 H2 in memory，方便 IntelliJ 與 Maven 測試快速啟動；`docker` 使用 MySQL，透過環境變數注入連線資訊。
 - **影響**：H2 只作快速回饋，不作正式資料庫行為保證；涉及索引、交易、批次寫入、資料量與 Docker 部署時，仍須用 MySQL 驗證。實際資料表與 repository 尚未建立。
 - **狀態**：已實作；Maven test 已驗證 H2 test profile，Docker Compose 已驗證 docker profile 可連 MySQL 並回應健康端點。
+
+## 2026-09-28：候選快照發布以整批品質閘門保護 active snapshot
+
+- **原因**：使用者查詢不能讀到半套或失敗擷取的資料；同時資料庫要保留可追溯觀測，支援未來模型訓練與問題排查。
+- **決策**：正規化後的觀測先寫入候選快照。整批沒有資料、來源不一致、或沒有任何觀測能對應已驗證停車位置時，該輪標記為拒絕，不更新 `source_state.active_snapshot`。個別資料若已被正規化為 `UNKNOWN`／`FAIL` 且能對應停車位置，仍保留在觀測表，整體品質標為 `PARTIAL_PASS`。
+- **影響**：使用者查詢只讀已發布快照；失敗擷取只增加 `ingestion_run` 與 failure reason，不覆蓋上一版可用資料。未來 S2-017 讀取最新快照時，需要依 `quality_status`、觀測時間與資料年齡決定前端顯示。
+- **狀態**：已於 S2-016 初版實作並通過 H2 與 MySQL Docker 測試；排程、Redis 協調、候選清理策略與批次大量寫入效能仍待後續任務驗證。

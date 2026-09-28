@@ -447,3 +447,13 @@ PR #20 已合併回 `main`，merge commit 為 `ef000d02180794dbf4eb205cf7a4726f4
 初版規則：路邊 `cellstatus=0` 轉為 `AVAILABLE`，`cellstatus=1` 轉為 `OCCUPIED`，未知或缺值不推論；路邊格位只有在文字可確認為「小型車」或「汽車」時才可成為目前可推薦格位。路外 `AVAILABLECAR > 0` 轉為 `AVAILABLE`，`0` 轉為 `FULL`，`-9` 轉為 `OUT_OF_SERVICE` 並保留空的 `availableCarSpaces`，非數字或缺值轉為 `UNKNOWN` 或 `FAIL`。
 
 此階段不寫入 MySQL、不發布快照、不判斷資料過期、不接前端、不觸發官方 API。驗證結果：Docker Maven 後端測試通過 29 tests／0 failures；新增 9 個 normalizer 測試涵蓋有效值、有效 0 位、缺值、特殊值、未知狀態碼、非數字與汽車資格未知時不可推薦。
+
+## 2026-09-28 S2-016 候選快照寫入與發布交易初版完成
+
+已在 `feature/s2-016-snapshot-publishing` 實作 `AvailabilitySnapshotPublishingService`，作為來源資料正規化後、使用者查詢讀取已發布快照前的內部發布交易。此 service 會建立 `ingestion_run`、候選 `availability_snapshot`，依 `source_mapping` 將正規化觀測寫入 `availability_observation`，品質通過後才把快照切為 `PUBLISHED` 並更新 `source_state.active_snapshot`。
+
+初版品質規則：整批沒有資料、來源不一致、或沒有任何觀測能對應到已驗證停車位置時，不發布新快照；已存在的 active snapshot 不會被覆蓋。個別資料若已被正規化為 `UNKNOWN`／`FAIL`，且能對應到停車位置，會保留為觀測資料並讓整批快照成為 `PARTIAL_PASS`，避免把未知值誤當成 0 或可停。
+
+為支援交易狀態更新，補上 `IngestionRunEntity#setRunStatus` 與 `SourceStateEntity#setUpdatedAt`。S2-016 不包含排程、Redis 刷新鎖、前端顯示、官方 API 實際擷取流程或 `parking-queries` 讀取最新快照；下一步 S2-017 才會把已發布快照接回使用者查詢結果。
+
+驗證結果：Docker Maven 後端全測試通過 33 tests／0 failures；新增 `AvailabilitySnapshotPublishingServiceTest` 4 tests 覆蓋成功發布、失敗不覆蓋舊快照、未知觀測保留、空資料拒絕發布。另以臨時 MySQL 8.4 容器載入 V1 migration 與 seed，執行 `AvailabilitySnapshotPublishingServiceTest` 通過 4 tests／0 failures，驗證交易與查詢在 MySQL 上可運作。

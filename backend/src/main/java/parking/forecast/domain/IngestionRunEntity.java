@@ -98,6 +98,10 @@ public class IngestionRunEntity {
         return runStatus;
     }
 
+    public void setRunStatus(IngestionRunStatus runStatus) {
+        this.runStatus = runStatus;
+    }
+
     public Instant getStartedAt() {
         return startedAt;
     }
