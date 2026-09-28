@@ -16,3 +16,18 @@ management:
     health:
       probes:
         enabled: true
+
+
+parking:
+  sources:
+    ntpc:
+      base-url: ${NTPC_OPEN_DATA_BASE_URL:https://data.ntpc.gov.tw}
+      timeout: ${NTPC_OPEN_DATA_TIMEOUT:10s}
+      max-attempts: ${NTPC_OPEN_DATA_MAX_ATTEMPTS:1}
+      external-calls-enabled: ${NTPC_OPEN_DATA_EXTERNAL_CALLS_ENABLED:true}
+      roadside:
+        dataset-id: ${NTPC_ROADSIDE_AVAILABILITY_DATASET_ID:54A507C4-C038-41B5-BF60-BBECB9D052C6}
+        json-path: ${NTPC_ROADSIDE_AVAILABILITY_JSON_PATH:/api/datasets/{datasetId}/json}
+      off-street:
+        dataset-id: ${NTPC_OFF_STREET_AVAILABILITY_DATASET_ID:e09b35a5-a738-48cc-b0f5-570b67ad9c78}
+        json-path: ${NTPC_OFF_STREET_AVAILABILITY_JSON_PATH:/api/datasets/{datasetId}/json}
