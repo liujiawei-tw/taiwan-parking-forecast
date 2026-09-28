@@ -15,7 +15,7 @@
 - 不將 TDX Client ID、Client Secret 或其他金鑰寫進 repository、Issue、Notebook 輸出或截圖。
 - 區分來源觀測值、模型估計值與沒有資料；模型估計不得冒充官方即時車位。
 - `parking-data-collector` 是獨立的離線 ML 訓練資料收集器，只產出歷史訓練／回測素材；不服務使用者、不提供主系統即時快照或 API，也不決定主系統刷新頻率。主系統須獨立介接官方即時來源。兩者只可能在日後透過經驗證的模型產物形成離線訓練到線上推論的關係；共用官方平台的流量僅在營運層面合計評估。不要把訓練收集器的程式、CSV、時間戳或排程當成主系統的即時資料契約。
-- 一人 Scrum 實驗：使用者決定產品優先順序並實作，AI 輔助需求、設計、審查、回顧和面試準備。
+- 一人 Scrum 實驗：使用者決定產品優先順序並實作，AI 輔助需求、設計、審查、回顧和面試準備。`n- GitHub Issue、Pull Request、PR 說明、Issue 內容、驗收標準、測試說明與 GitHub 留言一律使用繁體中文撰寫；只有程式碼、API 欄位、commit message 或必要技術名詞可保留英文。
 - 建立、移動或刪除檔案前，必須先讀取或檢查目前 repo 架構與相關文件，確認檔案位於既有架構內。後端程式放在 `backend/src/...`，前端程式放在 `frontend/src/...`，文件放在 `docs/...`；不得產生 `backend/backend/...`、`frontend/frontend/...` 這類巢狀專案目錄。
 
 ## Source of Truth

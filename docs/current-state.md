@@ -467,3 +467,7 @@ PR #20 已合併回 `main`，merge commit 為 `ef000d02180794dbf4eb205cf7a4726f4
 S2-017 不會觸發新北市官方 API、Google ETA、Redis 刷新鎖或 ML 預測；手動 refresh 仍只回覆目前 query 狀態，真正來源級受控刷新留到 S2-018。現階段 service 名稱仍保留 `ParkingQueryMockService`，避免在本 Issue 混入命名重構；後續可獨立整理。
 
 驗證結果：後端 Maven 測試通過 37 tests／0 failures。新增 controller 測試覆蓋無已發布 snapshot、讀取新鮮路邊／路外已發布快照、有效 0 位、UNKNOWN、STALE，以及既有讀取／刷新與範圍外無目錄結果。另以臨時 MySQL 8.4 容器載入 V1 migration 與 seed，執行 `ParkingQueryControllerTest` 通過 7 tests／0 failures，驗證已發布快照查詢在 MySQL 上可運作。
+
+## 2026-09-28 GitHub 文件語言規則更新
+
+Sponsor 指定後續 GitHub Issue、Pull Request、PR 說明、Issue 內容、驗收標準、測試方式與 GitHub 留言都使用繁體中文。已更新 `AGENTS.md` 與 `docs/development-workflow.md`；程式碼、API 欄位、套件名稱、錯誤碼、commit message 或必要技術名詞可保留英文。

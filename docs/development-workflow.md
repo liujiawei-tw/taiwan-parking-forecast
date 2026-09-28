@@ -15,7 +15,7 @@
 
 ## 任務由誰開
 
-PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始實作前至少要有：
+PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始實作前至少要有，並以繁體中文撰寫：
 
 - 任務名稱。
 - 背景與目的。
@@ -28,6 +28,12 @@ PM 會根據 `implementation-plan.md` 拆出任務草案。每個任務在開始
 
 實作時可先在 Markdown 裡維護任務清單；若 GitHub 遠端與 Projects 準備好，再轉成 GitHub Issues。第一版不必為了流程工具而延遲 coding。
 
+
+## GitHub 文字語言規則
+
+GitHub Issue、Pull Request、PR 說明、Issue 內容、驗收標準、測試方式、Human-in-the-loop 檢查點與 GitHub 留言，一律使用繁體中文撰寫。程式碼、API 欄位名稱、套件名稱、錯誤碼、commit message 或必要技術名詞可保留英文。
+
+目的：讓 Sponsor 在審查任務範圍、驗收條件與 PR 內容時不用切換語言，也方便後續回溯專案決策。
 ## 任務模板
 
 ```md
