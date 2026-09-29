@@ -28,11 +28,13 @@ import parking.forecast.controller.dto.ParkingQueryResponse.SourceRefresh;
 import parking.forecast.domain.AvailabilityStatus;
 import parking.forecast.domain.DatasetCode;
 import parking.forecast.domain.ParkingPlaceType;
+import parking.forecast.domain.TriggerType;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingPlace;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchRequest;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchResult;
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedAvailabilityView;
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedObservation;
+import parking.forecast.service.SourceRefreshCoordinationService.SourceRefreshResult;
 
 @Service
 public class ParkingQueryMockService {
@@ -44,24 +46,29 @@ public class ParkingQueryMockService {
     private final Clock clock;
     private final NearbyParkingSearchService nearbyParkingSearchService;
     private final PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService;
+    private final SourceRefreshCoordinationService sourceRefreshCoordinationService;
     private final Map<String, ParkingQueryResponse> queries = new ConcurrentHashMap<>();
+    private final Map<String, QueryContext> queryContexts = new ConcurrentHashMap<>();
 
     @Autowired
     public ParkingQueryMockService(
             NearbyParkingSearchService nearbyParkingSearchService,
-            PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService
+            PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
+            SourceRefreshCoordinationService sourceRefreshCoordinationService
     ) {
-        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService);
+        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService);
     }
 
     ParkingQueryMockService(
             Clock clock,
             NearbyParkingSearchService nearbyParkingSearchService,
-            PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService
+            PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
+            SourceRefreshCoordinationService sourceRefreshCoordinationService
     ) {
         this.clock = clock;
         this.nearbyParkingSearchService = nearbyParkingSearchService;
         this.publishedAvailabilitySnapshotService = publishedAvailabilitySnapshotService;
+        this.sourceRefreshCoordinationService = sourceRefreshCoordinationService;
     }
 
     public ParkingQueryResponse create(CreateParkingQueryRequest request) {
@@ -108,6 +115,7 @@ public class ParkingQueryMockService {
                 buildRefreshSection(roadsideSection, offStreetSection));
 
         queries.put(queryId, response);
+        queryContexts.put(queryId, new QueryContext(request, departureAt, estimatedArrivalAt));
         return response;
     }
 
@@ -121,23 +129,51 @@ public class ParkingQueryMockService {
 
     public ParkingQueryResponse refresh(String queryId) {
         ParkingQueryResponse existing = findById(queryId);
+        QueryContext context = queryContexts.get(queryId);
+        if (context == null) {
+            throw new ParkingQueryNotFoundException(queryId);
+        }
+
+        SourceRefreshResult roadsideRefresh = sourceRefreshCoordinationService.refresh(
+                DatasetCode.NTPC_ROADSIDE_SPOT,
+                TriggerType.MANUAL_REFRESH
+        );
+        SourceRefreshResult offStreetRefresh = sourceRefreshCoordinationService.refresh(
+                DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
+                TriggerType.MANUAL_REFRESH
+        );
+
         OffsetDateTime now = OffsetDateTime.now(clock);
+        NearbyParkingSearchResult nearby = nearbyParkingSearchService.findNearby(new NearbyParkingSearchRequest(
+                MVP_SERVICE_AREA,
+                context.request().destination().latitude(),
+                context.request().destination().longitude(),
+                SEARCH_RADIUS_METERS
+        ));
+        RoadsideSection roadsideSection = buildRoadsideSection(nearby);
+        OffStreetSection offStreetSection = buildOffStreetSection(nearby);
+
         ParkingQueryResponse refreshed = new ParkingQueryResponse(
                 new QuerySection(
                         existing.query().queryId(),
                         existing.query().status(),
-                        false,
+                        roadsideRefresh.refreshInProgress() || offStreetRefresh.refreshInProgress(),
                         existing.query().createdAt(),
                         now,
                         existing.query().expiresAt(),
-                        "Refresh currently reuses the last query result; S2-018 will coordinate new source refreshes."),
+                        "已完成受控刷新檢查；查詢結果只讀取最新已發布快照。"),
                 existing.destination(),
-                existing.area(),
+                new AreaSection(
+                        nearby.radiusMeters(),
+                        nearby.distanceMode(),
+                        MVP_AREA_CODE,
+                        resolveCoverageStatus(nearby),
+                        "Catalog coverage uses the S2-011 Xinzhuang seed sample. It is not complete city coverage."),
                 existing.eta(),
-                existing.roadside(),
-                existing.offStreet(),
-                existing.predictions(),
-                buildRefreshSection(existing.roadside(), existing.offStreet()));
+                roadsideSection,
+                offStreetSection,
+                buildPredictionsSection(nearby, context.estimatedArrivalAt()),
+                buildRefreshSection(roadsideRefresh, offStreetRefresh));
         queries.put(queryId, refreshed);
         return refreshed;
     }
@@ -231,6 +267,24 @@ public class ParkingQueryMockService {
                         null,
                         refreshMessage(offStreetSection.status())
                 ));
+    }
+
+    private RefreshSection buildRefreshSection(SourceRefreshResult roadsideRefresh, SourceRefreshResult offStreetRefresh) {
+        return new RefreshSection(
+                toSourceRefresh("ROADSIDE", roadsideRefresh),
+                toSourceRefresh("OFF_STREET", offStreetRefresh)
+        );
+    }
+
+    private SourceRefresh toSourceRefresh(String sourceType, SourceRefreshResult result) {
+        return new SourceRefresh(
+                sourceType,
+                result.action(),
+                result.refreshInProgress(),
+                result.lastSucceededAt(),
+                result.nextAllowedAt(),
+                result.message()
+        );
     }
 
     private String refreshAction(String status) {
@@ -416,6 +470,13 @@ public class ParkingQueryMockService {
 
     private String resolveCoverageStatus(NearbyParkingSearchResult nearby) {
         return nearby.places().isEmpty() ? "NO_CATALOG_RESULTS" : "PARTIAL";
+    }
+
+    private record QueryContext(
+            CreateParkingQueryRequest request,
+            OffsetDateTime departureAt,
+            OffsetDateTime estimatedArrivalAt
+    ) {
     }
 
     public static class ParkingQueryNotFoundException extends RuntimeException {

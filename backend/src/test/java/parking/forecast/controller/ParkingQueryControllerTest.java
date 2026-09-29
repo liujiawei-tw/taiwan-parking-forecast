@@ -182,7 +182,8 @@ class ParkingQueryControllerTest {
 
         assertThat(read.query().queryId()).isEqualTo(created.query().queryId());
         assertThat(refreshed.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        assertThat(refreshed.getBody().refresh().roadside().action()).isEqualTo("NO_PUBLISHED_SNAPSHOT");
+        assertThat(refreshed.getBody().refresh().roadside().action()).isEqualTo("FAILED_WITH_LOCAL_LOCK");
+        assertThat(refreshed.getBody().refresh().offStreet().action()).isEqualTo("FAILED_WITH_LOCAL_LOCK");
     }
 
     @Test
