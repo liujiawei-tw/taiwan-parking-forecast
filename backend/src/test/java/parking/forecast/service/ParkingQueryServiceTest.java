@@ -18,6 +18,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import parking.forecast.config.ParkingQueryStateProperties;
 import parking.forecast.controller.dto.CreateParkingQueryRequest;
 import parking.forecast.controller.dto.CreateParkingQueryRequest.DepartureInput;
 import parking.forecast.controller.dto.CreateParkingQueryRequest.LocationInput;
@@ -36,12 +37,15 @@ class ParkingQueryServiceTest {
         PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService = mock(PublishedAvailabilitySnapshotService.class);
         SourceRefreshCoordinationService sourceRefreshCoordinationService = mock(SourceRefreshCoordinationService.class);
         GoogleEtaService googleEtaService = mock(GoogleEtaService.class);
+        ParkingQueryStateProperties queryStateProperties = new ParkingQueryStateProperties();
         ParkingQueryService service = new ParkingQueryService(
                 clock,
                 nearbyParkingSearchService,
                 publishedAvailabilitySnapshotService,
                 sourceRefreshCoordinationService,
-                googleEtaService
+                googleEtaService,
+                new InMemoryParkingQueryStateStore(queryStateProperties),
+                queryStateProperties
         );
         OffsetDateTime now = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
         when(googleEtaService.estimate(any(), any(), any(), anyBoolean()))

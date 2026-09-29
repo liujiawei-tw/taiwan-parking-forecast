@@ -26,3 +26,7 @@ parking:
     lock-ttl: 30s
     page-size: 2
     max-pages: 2
+  query-state:
+    store: memory
+    ttl: 30m
+    expired-state-retention: 30m

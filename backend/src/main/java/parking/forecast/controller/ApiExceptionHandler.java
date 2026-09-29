@@ -16,6 +16,7 @@ import parking.forecast.controller.dto.ApiErrorResponse.ErrorBody;
 import parking.forecast.service.ParkingQueryService.ParkingQueryContractException;
 import parking.forecast.service.ParkingQueryService.ParkingQueryExpiredException;
 import parking.forecast.service.ParkingQueryService.ParkingQueryNotFoundException;
+import parking.forecast.service.RedisParkingQueryStateStore.ParkingQueryStateStoreException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -45,6 +46,18 @@ public class ApiExceptionHandler {
     @ExceptionHandler({ MethodArgumentNotValidException.class, HttpMessageNotReadableException.class })
     public ResponseEntity<ApiErrorResponse> handleInvalidRequest(Exception exception) {
         return error(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Request body is missing or invalid.", Map.of(), false, null);
+    }
+
+    @ExceptionHandler(ParkingQueryStateStoreException.class)
+    public ResponseEntity<ApiErrorResponse> handleQueryStateUnavailable(ParkingQueryStateStoreException exception) {
+        return error(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "SERVICE_TEMPORARILY_UNAVAILABLE",
+                "Query state store is temporarily unavailable.",
+                Map.of("component", "redis_query_state"),
+                true,
+                null
+        );
     }
 
     private ResponseEntity<ApiErrorResponse> error(

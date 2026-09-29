@@ -821,7 +821,7 @@ S2-022 已把查詢端點收斂為目前可測的後端契約基線；以下為�
 | 手動刷新 | `POST /api/v1/parking-queries/{queryId}/refresh` 成功回 `202 Accepted`；只檢查路邊／路外來源刷新協調，不重新計算 Google ETA，不延長 `queryId` |
 | 防重送 | 有效且相同的 `requestToken` 會回原本的 `queryId`；`requestToken` 限 120 字元內，允許英數、`.`、`_`、`:`、`-` |
 | MVP 範圍 | 目的地必須在新莊 MVP bounding box 內；區外回 `422 UNSUPPORTED_AREA`，不建立查詢 |
-| 查詢 TTL | 目前單機記憶體 query state 建立後 30 分鐘到期；過期回 `410 QUERY_EXPIRED` |
+| 查詢 TTL | `queryId` 有效 30 分鐘；Redis query payload 預設保留 60 分鐘，超過 response `expiresAt` 但 payload 尚在 retention 內時回 `410 QUERY_EXPIRED`，retention 後或從未存在時回 `404 QUERY_NOT_FOUND` |
 
 錯誤回應固定為：
 
@@ -851,7 +851,8 @@ S2-022 已把查詢端點收斂為目前可測的後端契約基線；以下為�
 | `422` | `INVALID_DEPARTURE_TIME` | `departure.type` 不合法、`NOW` 帶 `departureAt`、`SCHEDULED` 缺少合法未來 offset datetime |
 | `404` | `QUERY_NOT_FOUND` | `queryId` 不存在或不應揭露 |
 | `410` | `QUERY_EXPIRED` | `queryId` 已超過目前 30 分鐘 TTL |
+| `503` | `SERVICE_TEMPORARILY_UNAVAILABLE` | Redis query state 暫不可用，主系統無法可靠建立、讀取或刷新查詢 |
 
-目前 Redis／MySQL 邊界：Redis 已用於來源刷新鎖與 cooldown 協調；S2-022 尚未把 query state 放進 Redis。MySQL 保存停車目錄、來源 mapping、候選／已發布快照、觀測、來源狀態與 ingestion run 量測，不保存使用者短期查詢。若之後要支援多實例查詢恢復或跨重啟保留 `queryId`，需要另設計 Redis query key、requestToken 去重 key、背景工作終止狀態與清除策略。
+目前 Redis／MySQL 邊界：Redis 用於兩類短期協調狀態。來源刷新使用 `parking:refresh-lock:{source}:{dataset}` 短鎖與 MySQL `source_state.next_allowed_refresh_at` cooldown；查詢生命週期使用 `parking:query:{queryId}` 保存短期查詢 response/request，並用 `parking:query-token:{requestToken}` 做防重送索引。`parking:query:{queryId}` 的 TTL 是查詢有效期加 expired retention，目前預設 60 分鐘；`parking:query-token:{requestToken}` 只保留查詢有效期，目前預設 30 分鐘。MySQL 保存停車目錄、來源 mapping、候選／已發布快照、觀測、來源狀態與 ingestion run 量測，不保存使用者短期查詢。Redis query state 不可用時，API 回 `503 SERVICE_TEMPORARILY_UNAVAILABLE`，不降級為單機記憶體狀態。
 
-驗證：`ParkingQueryControllerTest` 與 `ParkingQueryServiceTest` 共 14 tests／0 failures／0 errors，覆蓋成功查詢、讀取、刷新、重複 `requestToken`、非法座標、區外、過去指定出發時間、未知 queryId 與過期 queryId。完整後端 Docker Maven 測試通過 63 tests／0 failures／0 errors。測試未呼叫真實 Google 或新北市官方 API。
+驗證：`ParkingQueryControllerTest`、`ParkingQueryServiceTest` 與 `RedisParkingQueryStateStoreTest` 共 18 tests／0 failures／0 errors，覆蓋成功查詢、讀取、刷新、重複 `requestToken`、非法座標、區外、過去指定出發時間、未知 queryId、過期 queryId、Redis TTL 寫入、Redis JSON 還原與 Redis 失敗包裝。完整後端 Docker Maven 測試通過 67 tests／0 failures／0 errors。測試未呼叫真實 Google 或新北市官方 API。

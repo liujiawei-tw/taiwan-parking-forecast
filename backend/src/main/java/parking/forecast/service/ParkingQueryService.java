@@ -4,13 +4,12 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import parking.forecast.config.ParkingQueryStateProperties;
 import parking.forecast.controller.dto.CreateParkingQueryRequest;
 import parking.forecast.controller.dto.ParkingQueryResponse;
 import parking.forecast.controller.dto.ParkingQueryResponse.AreaSection;
@@ -36,6 +35,7 @@ import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchRe
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedAvailabilityView;
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedObservation;
 import parking.forecast.service.GoogleEtaService.EtaResult;
+import parking.forecast.service.ParkingQueryStateStore.StoredParkingQuery;
 import parking.forecast.service.SourceRefreshCoordinationService.SourceRefreshResult;
 
 @Service
@@ -45,7 +45,6 @@ public class ParkingQueryService {
     private static final String MVP_AREA_CODE = "NEW_TAIPEI_XINZHUANG_MVP";
     private static final String LOCAL_CATALOG_SOURCE = "LOCAL_NTPC_CATALOG";
     private static final int SEARCH_RADIUS_METERS = 300;
-    private static final int QUERY_TTL_MINUTES = 30;
     private static final int MAX_REQUEST_TOKEN_LENGTH = 120;
     private static final double MVP_MIN_LATITUDE = 25.015;
     private static final double MVP_MAX_LATITUDE = 25.075;
@@ -57,18 +56,19 @@ public class ParkingQueryService {
     private final PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService;
     private final SourceRefreshCoordinationService sourceRefreshCoordinationService;
     private final GoogleEtaService googleEtaService;
-    private final Map<String, ParkingQueryResponse> queries = new ConcurrentHashMap<>();
-    private final Map<String, QueryContext> queryContexts = new ConcurrentHashMap<>();
-    private final Map<String, String> requestTokenToQueryId = new ConcurrentHashMap<>();
+    private final ParkingQueryStateStore parkingQueryStateStore;
+    private final ParkingQueryStateProperties queryStateProperties;
 
     @Autowired
     public ParkingQueryService(
             NearbyParkingSearchService nearbyParkingSearchService,
             PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
             SourceRefreshCoordinationService sourceRefreshCoordinationService,
-            GoogleEtaService googleEtaService
+            GoogleEtaService googleEtaService,
+            ParkingQueryStateStore parkingQueryStateStore,
+            ParkingQueryStateProperties queryStateProperties
     ) {
-        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService);
+        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService, parkingQueryStateStore, queryStateProperties);
     }
 
     ParkingQueryService(
@@ -76,24 +76,29 @@ public class ParkingQueryService {
             NearbyParkingSearchService nearbyParkingSearchService,
             PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
             SourceRefreshCoordinationService sourceRefreshCoordinationService,
-            GoogleEtaService googleEtaService
+            GoogleEtaService googleEtaService,
+            ParkingQueryStateStore parkingQueryStateStore,
+            ParkingQueryStateProperties queryStateProperties
     ) {
         this.clock = clock;
         this.nearbyParkingSearchService = nearbyParkingSearchService;
         this.publishedAvailabilitySnapshotService = publishedAvailabilitySnapshotService;
         this.sourceRefreshCoordinationService = sourceRefreshCoordinationService;
         this.googleEtaService = googleEtaService;
+        this.parkingQueryStateStore = parkingQueryStateStore;
+        this.queryStateProperties = queryStateProperties;
     }
 
     public ParkingQueryResponse create(CreateParkingQueryRequest request) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         validateRequest(request, now);
 
-        String existingQueryId = requestTokenToQueryId.get(request.requestToken());
-        if (existingQueryId != null) {
-            return findById(existingQueryId);
-        }
+        return parkingQueryStateStore.findQueryIdByRequestToken(request.requestToken())
+                .map(this::findById)
+                .orElseGet(() -> createNewQuery(request, now));
+    }
 
+    private ParkingQueryResponse createNewQuery(CreateParkingQueryRequest request, OffsetDateTime now) {
         boolean scheduledDeparture = "SCHEDULED".equalsIgnoreCase(request.departure().type())
                 && request.departure().departureAt() != null;
         OffsetDateTime departureAt = scheduledDeparture
@@ -115,7 +120,7 @@ public class ParkingQueryService {
         OffStreetSection offStreetSection = buildOffStreetSection(nearby);
 
         ParkingQueryResponse response = new ParkingQueryResponse(
-                new QuerySection(queryId, "READY", false, now, now, now.plusMinutes(QUERY_TTL_MINUTES), "Parking query is ready."),
+                new QuerySection(queryId, "READY", false, now, now, now.plus(queryStateProperties.getTtl()), "Parking query is ready."),
                 new DestinationSection(
                         request.destination().label(),
                         request.destination().latitude(),
@@ -140,27 +145,21 @@ public class ParkingQueryService {
                 buildPredictionsSection(nearby, eta.estimatedArrivalAt()),
                 buildRefreshSection(roadsideSection, offStreetSection));
 
-        queries.put(queryId, response);
-        queryContexts.put(queryId, new QueryContext(request, eta.departureAt(), eta.estimatedArrivalAt()));
-        requestTokenToQueryId.put(request.requestToken(), queryId);
+        parkingQueryStateStore.save(request.requestToken(), new StoredParkingQuery(response, request));
         return response;
     }
 
     public ParkingQueryResponse findById(String queryId) {
-        ParkingQueryResponse response = queries.get(queryId);
-        if (response == null) {
-            throw new ParkingQueryNotFoundException(queryId);
-        }
+        ParkingQueryResponse response = loadStoredQuery(queryId).response();
         requireNotExpired(response);
         return response;
     }
 
     public ParkingQueryResponse refresh(String queryId) {
-        ParkingQueryResponse existing = findById(queryId);
-        QueryContext context = queryContexts.get(queryId);
-        if (context == null) {
-            throw new ParkingQueryNotFoundException(queryId);
-        }
+        StoredParkingQuery storedQuery = loadStoredQuery(queryId);
+        ParkingQueryResponse existing = storedQuery.response();
+        requireNotExpired(existing);
+        CreateParkingQueryRequest request = storedQuery.request();
 
         SourceRefreshResult roadsideRefresh = sourceRefreshCoordinationService.refresh(
                 DatasetCode.NTPC_ROADSIDE_SPOT,
@@ -174,8 +173,8 @@ public class ParkingQueryService {
         OffsetDateTime now = OffsetDateTime.now(clock);
         NearbyParkingSearchResult nearby = nearbyParkingSearchService.findNearby(new NearbyParkingSearchRequest(
                 MVP_SERVICE_AREA,
-                context.request().destination().latitude(),
-                context.request().destination().longitude(),
+                request.destination().latitude(),
+                request.destination().longitude(),
                 SEARCH_RADIUS_METERS
         ));
         RoadsideSection roadsideSection = buildRoadsideSection(nearby);
@@ -200,10 +199,15 @@ public class ParkingQueryService {
                 existing.eta(),
                 roadsideSection,
                 offStreetSection,
-                buildPredictionsSection(nearby, context.estimatedArrivalAt()),
+                buildPredictionsSection(nearby, existing.eta().estimatedArrivalAt()),
                 buildRefreshSection(roadsideRefresh, offStreetRefresh));
-        queries.put(queryId, refreshed);
+        parkingQueryStateStore.save(request.requestToken(), new StoredParkingQuery(refreshed, request));
         return refreshed;
+    }
+
+    private StoredParkingQuery loadStoredQuery(String queryId) {
+        return parkingQueryStateStore.findByQueryId(queryId)
+                .orElseThrow(() -> new ParkingQueryNotFoundException(queryId));
     }
 
     private void validateRequest(CreateParkingQueryRequest request, OffsetDateTime now) {
@@ -577,13 +581,6 @@ public class ParkingQueryService {
 
     private String resolveCoverageStatus(NearbyParkingSearchResult nearby) {
         return nearby.places().isEmpty() ? "NO_CATALOG_RESULTS" : "PARTIAL";
-    }
-
-    private record QueryContext(
-            CreateParkingQueryRequest request,
-            OffsetDateTime departureAt,
-            OffsetDateTime estimatedArrivalAt
-    ) {
     }
 
     public static class ParkingQueryNotFoundException extends RuntimeException {
