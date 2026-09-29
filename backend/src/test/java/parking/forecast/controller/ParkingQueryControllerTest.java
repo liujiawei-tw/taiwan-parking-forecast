@@ -192,7 +192,7 @@ class ParkingQueryControllerTest {
         var created = controller.create(mockRequestNearSeedCatalog()).getBody();
 
         var read = controller.get(created.query().queryId());
-        var refreshed = controller.refresh(created.query().queryId());
+        var refreshed = controller.refresh(created.query().queryId(), "MANUAL_REFRESH");
 
         assertThat(read.query().queryId()).isEqualTo(created.query().queryId());
         assertThat(refreshed.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
@@ -288,6 +288,17 @@ class ParkingQueryControllerTest {
         mockMvc.perform(post("/api/v1/parking-queries/not-found-query/refresh"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("QUERY_NOT_FOUND"));
+    }
+
+    @Test
+    void refreshRejectsUnsupportedTriggerWithStableError() throws Exception {
+        var created = controller.create(mockRequestNearSeedCatalog()).getBody();
+
+        mockMvc.perform(post("/api/v1/parking-queries/{queryId}/refresh", created.query().queryId())
+                        .queryParam("trigger", "BACKGROUND_SAMPLING"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TRIGGER"))
+                .andExpect(jsonPath("$.error.retryable").value(false));
     }
 
     private void publishRoadsideSnapshot(Instant fetchedAt, List<AvailabilityObservationEntity> observations) {

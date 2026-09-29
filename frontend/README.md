@@ -14,7 +14,9 @@ This module currently provides:
 - Environment variable entry points for the backend API and Google Maps browser key.
 - Query creation / refresh flow wired to the current backend endpoint shape.
 
-The browser UI does not store Google place details in the repository and does not call government parking APIs directly. It submits selected coordinates and departure settings to the backend only. Page-visibility automatic refresh remains future work for Issue #37.
+The browser UI does not store Google place details in the repository and does not call government parking APIs directly. It submits selected coordinates and departure settings to the backend only.
+
+For an active result page, the UI pauses progress polling while the page is hidden. When the page becomes visible again, it first reads the existing query state with `GET /api/v1/parking-queries/{queryId}`. If roadside or off-street data is stale or has no published realtime snapshot, it sends one controlled `POST /api/v1/parking-queries/{queryId}/refresh?trigger=VISIBLE_AUTO_REFRESH` for that query/status combination. Manual refresh still uses the same endpoint with `MANUAL_REFRESH` and remains subject to backend cooldown and source limits.
 
 ## Environment
 

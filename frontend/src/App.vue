@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY || ''
@@ -17,6 +17,8 @@ const defaultOrigin = {
   latitude: 25.04,
   longitude: 121.45,
 }
+const AUTO_REFRESH_SOURCE_STATUSES = new Set(['STALE', 'NO_REALTIME_SNAPSHOT'])
+const POLL_INTERVAL_MS = 5000
 
 const mapElement = ref(null)
 const autocompleteHost = ref(null)
@@ -28,8 +30,10 @@ const queryResult = ref(null)
 const loading = ref(false)
 const locating = ref(false)
 const errorMessage = ref('')
+const refreshMessage = ref('')
 const mapStatus = ref(hasGoogleMapsKey ? '正在載入 Google 地圖' : '未設定瀏覽器 Google Maps key，使用手動座標模式')
 const selectedItemId = ref('')
+const autoRefreshAttemptKey = ref('')
 
 let googleMapsPromise
 let map
@@ -37,11 +41,25 @@ let destinationMarker
 let radiusCircle
 let infoWindow
 let parkingMarkers = []
+let pollTimer
 const markersById = new Map()
 
 const roadsideSpotCount = computed(() => queryResult.value?.roadside?.availableSpots?.length ?? 0)
 const parkingLotCount = computed(() => queryResult.value?.offStreet?.parkingLots?.length ?? 0)
 const resultDestination = computed(() => queryResult.value?.destination ?? selectedDestination.value)
+const refreshInProgress = computed(() => Boolean(
+  queryResult.value?.refresh?.roadside?.refreshInProgress
+    || queryResult.value?.refresh?.offStreet?.refreshInProgress,
+))
+const autoRefreshEligibleSources = computed(() => {
+  if (!queryResult.value || refreshInProgress.value) return []
+  return [
+    ['roadside', queryResult.value.roadside?.status],
+    ['offStreet', queryResult.value.offStreet?.status],
+  ]
+    .filter(([, status]) => AUTO_REFRESH_SOURCE_STATUSES.has(status))
+    .map(([source]) => source)
+})
 const etaMessage = computed(() => {
   const eta = queryResult.value?.eta
   if (!eta) return '送出查詢後由後端 Google Routes 估算'
@@ -86,6 +104,7 @@ const resultItems = computed(() => {
 })
 
 onMounted(async () => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   if (!hasGoogleMapsKey) return
 
   try {
@@ -95,8 +114,18 @@ onMounted(async () => {
   }
 })
 
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  clearProgressPolling()
+})
+
 watch([selectedDestination, queryResult], () => {
   renderMap()
+}, { deep: true })
+
+watch(queryResult, () => {
+  scheduleProgressPolling()
+  maybeAutoRefresh('state-change')
 }, { deep: true })
 
 function buildRequestToken() {
@@ -146,23 +175,28 @@ async function createParkingQuery() {
 
     queryResult.value = await response.json()
     selectedItemId.value = ''
+    refreshMessage.value = ''
     await nextTick()
     renderMap()
   } catch (error) {
     errorMessage.value = `建立查詢失敗：${error.message}`
   } finally {
     loading.value = false
+    await maybeAutoRefresh('created-query')
   }
 }
 
-async function refreshParkingAvailability() {
+async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
   if (!queryResult.value?.query?.queryId) return
 
   loading.value = true
   errorMessage.value = ''
+  refreshMessage.value = trigger === 'VISIBLE_AUTO_REFRESH'
+    ? '頁面可見且資料需更新，正在發起受控自動刷新。'
+    : '正在檢查路邊與路外官方來源刷新狀態。'
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${queryResult.value.query.queryId}/refresh`, {
+    const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${queryResult.value.query.queryId}/refresh?trigger=${encodeURIComponent(trigger)}`, {
       method: 'POST',
     })
 
@@ -171,12 +205,82 @@ async function refreshParkingAvailability() {
     }
 
     queryResult.value = await response.json()
+    refreshMessage.value = trigger === 'VISIBLE_AUTO_REFRESH'
+      ? '已完成可見頁受控自動刷新檢查。'
+      : '已完成手動更新檢查。'
     renderMap()
   } catch (error) {
     errorMessage.value = `更新車位失敗：${error.message}`
+    refreshMessage.value = '本次更新未完成；不會自動密集重試。'
   } finally {
     loading.value = false
   }
+}
+
+async function readParkingQuery() {
+  if (!queryResult.value?.query?.queryId) return
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${queryResult.value.query.queryId}`)
+    if (!response.ok) {
+      throw new Error(await readApiError(response))
+    }
+    queryResult.value = await response.json()
+    refreshMessage.value = '已讀取最新查詢狀態。'
+  } catch (error) {
+    errorMessage.value = `讀取查詢狀態失敗：${error.message}`
+    clearProgressPolling()
+  }
+}
+
+async function handleVisibilityChange() {
+  if (!isPageVisible()) {
+    clearProgressPolling()
+    refreshMessage.value = '頁面已隱藏，暫停自動刷新與進度輪詢。'
+    return
+  }
+  if (!queryResult.value?.query?.queryId) return
+
+  refreshMessage.value = '頁面重新可見，先讀取最新查詢狀態。'
+  await readParkingQuery()
+  await maybeAutoRefresh('visible-again')
+  scheduleProgressPolling()
+}
+
+function scheduleProgressPolling() {
+  clearProgressPolling()
+  if (!queryResult.value?.query?.hasPendingWork || !isPageVisible()) return
+
+  pollTimer = window.setTimeout(async () => {
+    await readParkingQuery()
+    scheduleProgressPolling()
+  }, POLL_INTERVAL_MS)
+}
+
+function clearProgressPolling() {
+  if (!pollTimer) return
+  window.clearTimeout(pollTimer)
+  pollTimer = undefined
+}
+
+async function maybeAutoRefresh(reason) {
+  if (!queryResult.value?.query?.queryId || !isPageVisible() || loading.value) return
+  if (autoRefreshEligibleSources.value.length === 0) return
+
+  const attemptKey = [
+    queryResult.value.query.queryId,
+    queryResult.value.roadside?.status,
+    queryResult.value.offStreet?.status,
+  ].join(':')
+  if (autoRefreshAttemptKey.value === attemptKey) return
+
+  autoRefreshAttemptKey.value = attemptKey
+  refreshMessage.value = `偵測到 ${autoRefreshEligibleSources.value.join('、')} 需要更新，執行一次受控自動刷新。`
+  await refreshParkingAvailability('VISIBLE_AUTO_REFRESH')
+}
+
+function isPageVisible() {
+  return typeof document === 'undefined' || document.visibilityState === 'visible'
 }
 
 async function readApiError(response) {
@@ -487,6 +591,7 @@ function formatDateTime(value) {
       </div>
 
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+      <p v-if="refreshMessage" class="refresh-message">{{ refreshMessage }}</p>
     </section>
 
     <section class="workspace" aria-label="地圖與結果">
@@ -608,6 +713,7 @@ function formatDateTime(value) {
           <strong>設定</strong>
           <span>API：{{ apiBaseUrl }}</span>
           <span>Google Key：{{ hasGoogleMapsKey ? '已設定' : '未設定' }}</span>
+          <span>自動刷新：頁面可見且來源狀態需更新時，每個查詢狀態組合只嘗試一次。</span>
         </article>
       </aside>
     </section>

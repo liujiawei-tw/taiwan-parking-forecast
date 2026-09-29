@@ -9,11 +9,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import parking.forecast.controller.dto.CreateParkingQueryRequest;
 import parking.forecast.controller.dto.ParkingQueryResponse;
+import parking.forecast.domain.TriggerType;
 import parking.forecast.service.ParkingQueryService;
+import parking.forecast.service.ParkingQueryService.ParkingQueryContractException;
 
 @RestController
 @RequestMapping("/api/v1/parking-queries")
@@ -37,7 +40,26 @@ public class ParkingQueryController {
     }
 
     @PostMapping("/{queryId}/refresh")
-    public ResponseEntity<ParkingQueryResponse> refresh(@PathVariable String queryId) {
-        return ResponseEntity.accepted().body(parkingQueryService.refresh(queryId));
+    public ResponseEntity<ParkingQueryResponse> refresh(
+            @PathVariable String queryId,
+            @RequestParam(defaultValue = "MANUAL_REFRESH") String trigger
+    ) {
+        return ResponseEntity.accepted().body(parkingQueryService.refresh(queryId, parseRefreshTrigger(trigger)));
+    }
+
+    private TriggerType parseRefreshTrigger(String trigger) {
+        try {
+            TriggerType triggerType = TriggerType.valueOf(trigger.toUpperCase());
+            if (triggerType == TriggerType.MANUAL_REFRESH || triggerType == TriggerType.VISIBLE_AUTO_REFRESH) {
+                return triggerType;
+            }
+        } catch (IllegalArgumentException exception) {
+            // Fall through to the stable contract error below.
+        }
+        throw new ParkingQueryContractException(
+                "INVALID_REFRESH_TRIGGER",
+                "refresh trigger must be MANUAL_REFRESH or VISIBLE_AUTO_REFRESH.",
+                false
+        );
     }
 }

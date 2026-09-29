@@ -3,7 +3,9 @@ package parking.forecast.service;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -23,6 +25,7 @@ import parking.forecast.controller.dto.CreateParkingQueryRequest;
 import parking.forecast.controller.dto.CreateParkingQueryRequest.DepartureInput;
 import parking.forecast.controller.dto.CreateParkingQueryRequest.LocationInput;
 import parking.forecast.domain.DatasetCode;
+import parking.forecast.domain.TriggerType;
 import parking.forecast.service.GoogleEtaService.EtaResult;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchResult;
 import parking.forecast.service.ParkingQueryService.ParkingQueryExpiredException;
@@ -32,50 +35,34 @@ class ParkingQueryServiceTest {
 
     @Test
     void findByIdRejectsExpiredQuery() {
-        MutableClock clock = new MutableClock(Instant.parse("2026-09-29T01:00:00Z"));
-        NearbyParkingSearchService nearbyParkingSearchService = mock(NearbyParkingSearchService.class);
-        PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService = mock(PublishedAvailabilitySnapshotService.class);
-        SourceRefreshCoordinationService sourceRefreshCoordinationService = mock(SourceRefreshCoordinationService.class);
-        GoogleEtaService googleEtaService = mock(GoogleEtaService.class);
-        ParkingQueryStateProperties queryStateProperties = new ParkingQueryStateProperties();
-        ParkingQueryService service = new ParkingQueryService(
-                clock,
-                nearbyParkingSearchService,
-                publishedAvailabilitySnapshotService,
-                sourceRefreshCoordinationService,
-                googleEtaService,
-                new InMemoryParkingQueryStateStore(queryStateProperties),
-                queryStateProperties
-        );
-        OffsetDateTime now = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
-        when(googleEtaService.estimate(any(), any(), any(), anyBoolean()))
-                .thenReturn(new EtaResult("READY", "GOOGLE_ROUTES", now, now.plusMinutes(20), 1200, "ready"));
-        when(nearbyParkingSearchService.findNearby(any()))
-                .thenReturn(new NearbyParkingSearchResult(
-                        "NEW_TAIPEI_XINZHUANG",
-                        25.0414214,
-                        121.4647633,
-                        300,
-                        "STRAIGHT_LINE",
-                        List.of(),
-                        0,
-                        0
-                ));
-        when(publishedAvailabilitySnapshotService.findLatest(any(), any()))
-                .thenAnswer(invocation -> new PublishedAvailabilityView(
-                        invocation.getArgument(0, DatasetCode.class),
-                        "NO_CATALOG_RESULTS",
-                        null,
-                        null,
-                        Map.of(),
-                        "No catalog records were found inside the query radius."
-                ));
+        TestFixture fixture = new TestFixture();
 
-        var created = service.create(mockRequestNearSeedCatalog());
-        clock.advance(Duration.ofMinutes(31));
+        var created = fixture.service.create(mockRequestNearSeedCatalog());
+        fixture.clock.advance(Duration.ofMinutes(31));
 
-        assertThatThrownBy(() -> service.findById(created.query().queryId()))
+        assertThatThrownBy(() -> fixture.service.findById(created.query().queryId()))
                 .isInstanceOf(ParkingQueryExpiredException.class);
+    }
+
+    @Test
+    void refreshUsesVisibleAutoRefreshTrigger() {
+        TestFixture fixture = new TestFixture();
+        when(fixture.sourceRefreshCoordinationService.refresh(any(), eq(TriggerType.VISIBLE_AUTO_REFRESH)))
+                .thenAnswer(invocation -> SourceRefreshCoordinationService.SourceRefreshResult.failed(
+                        invocation.getArgument(0, DatasetCode.class),
+                        null,
+                        null,
+                        "not available",
+                        true
+                ));
+        var created = fixture.service.create(mockRequestNearSeedCatalog());
+
+        fixture.service.refresh(created.query().queryId(), TriggerType.VISIBLE_AUTO_REFRESH);
+
+        verify(fixture.sourceRefreshCoordinationService)
+                .refresh(DatasetCode.NTPC_ROADSIDE_SPOT, TriggerType.VISIBLE_AUTO_REFRESH);
+        verify(fixture.sourceRefreshCoordinationService)
+                .refresh(DatasetCode.NTPC_OFF_STREET_AVAILABILITY, TriggerType.VISIBLE_AUTO_REFRESH);
     }
 
     private CreateParkingQueryRequest mockRequestNearSeedCatalog() {
@@ -84,6 +71,60 @@ class ParkingQueryServiceTest {
                 new LocationInput("目前位置", 25.04000, 121.45000),
                 new LocationInput("IKEA 新莊", 25.0414214, 121.4647633),
                 new DepartureInput("NOW", null));
+    }
+
+    private static class TestFixture {
+
+        private final MutableClock clock = new MutableClock(Instant.parse("2026-09-29T01:00:00Z"));
+        private final NearbyParkingSearchService nearbyParkingSearchService = mock(NearbyParkingSearchService.class);
+        private final PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService = mock(PublishedAvailabilitySnapshotService.class);
+        private final SourceRefreshCoordinationService sourceRefreshCoordinationService = mock(SourceRefreshCoordinationService.class);
+        private final GoogleEtaService googleEtaService = mock(GoogleEtaService.class);
+        private final ParkingQueryService service;
+
+        private TestFixture() {
+            ParkingQueryStateProperties queryStateProperties = new ParkingQueryStateProperties();
+            OffsetDateTime now = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
+            when(googleEtaService.estimate(any(), any(), any(), anyBoolean()))
+                    .thenReturn(new EtaResult("READY", "GOOGLE_ROUTES", now, now.plusMinutes(20), 1200, "ready"));
+            when(nearbyParkingSearchService.findNearby(any()))
+                    .thenReturn(new NearbyParkingSearchResult(
+                            "NEW_TAIPEI_XINZHUANG",
+                            25.0414214,
+                            121.4647633,
+                            300,
+                            "STRAIGHT_LINE",
+                            List.of(),
+                            0,
+                            0
+                    ));
+            when(publishedAvailabilitySnapshotService.findLatest(any(), any()))
+                    .thenAnswer(invocation -> new PublishedAvailabilityView(
+                            invocation.getArgument(0, DatasetCode.class),
+                            "NO_CATALOG_RESULTS",
+                            null,
+                            null,
+                            Map.of(),
+                            "No catalog records were found inside the query radius."
+                    ));
+            when(sourceRefreshCoordinationService.refresh(any(), eq(TriggerType.MANUAL_REFRESH)))
+                    .thenAnswer(invocation -> SourceRefreshCoordinationService.SourceRefreshResult.failed(
+                            invocation.getArgument(0, DatasetCode.class),
+                            null,
+                            null,
+                            "not available",
+                            true
+                    ));
+            service = new ParkingQueryService(
+                    clock,
+                    nearbyParkingSearchService,
+                    publishedAvailabilitySnapshotService,
+                    sourceRefreshCoordinationService,
+                    googleEtaService,
+                    new InMemoryParkingQueryStateStore(queryStateProperties),
+                    queryStateProperties
+            );
+        }
     }
 
     private static class MutableClock extends Clock {

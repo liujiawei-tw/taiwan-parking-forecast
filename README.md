@@ -27,9 +27,9 @@
 
 ## Sprint 2 目前狀態
 
-更新至 2026-09-29：Sprint 2 的既有工作已完成後端基線、受控刷新能力與前端 Maps／Places 初版：核心資料表與 Flyway、300 公尺目錄查詢、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為、Redis query state、前端 Google Maps／Places 載入路徑與無 key fallback 均已存在。
+更新至 2026-09-29：Sprint 2 的既有工作已完成後端基線、受控刷新能力與前端 Maps／Places 初版：核心資料表與 Flyway、300 公尺目錄查詢、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為、Redis query state、前端 Google Maps／Places 載入路徑、無 key fallback，以及頁面可見時的受控自動刷新接線均已存在。
 
-現階段的目錄已從少量合成種子資料推進為可追溯的新北市官方 Open Data 小樣本與來源 ID 對應，但仍不是完整新莊目錄；前端可在有瀏覽器 Google key 時載入 Maps／Places，無 key 時以手動座標 fallback 驗證主系統契約。因此目前不能把畫面上的資料視為完整正式即時停車資訊，頁面可見自動刷新與預測模型亦尚未進入完成狀態。
+現階段的目錄已從少量合成種子資料推進為可追溯的新北市官方 Open Data 小樣本與來源 ID 對應，但仍不是完整新莊目錄；前端可在有瀏覽器 Google key 時載入 Maps／Places，無 key 時以手動座標 fallback 驗證主系統契約。因此目前不能把畫面上的資料視為完整正式即時停車資訊，可見頁刷新仍需端到端人工驗收，預測模型亦尚未進入完成狀態。
 
 下一個工作序已建立為 GitHub Issues：[#33](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/33) 正式目錄與來源 ID 小樣本基線、[#34](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/34) 官方來源量測、[#35](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/35) 查詢契約、[#36](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/36) Maps/Places 前端、[#37](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/37) 受控刷新驗收，以及 [#38](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/38) 文件基線與 Sprint 3 進入條件。
 

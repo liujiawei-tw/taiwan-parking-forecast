@@ -156,6 +156,10 @@ public class ParkingQueryService {
     }
 
     public ParkingQueryResponse refresh(String queryId) {
+        return refresh(queryId, TriggerType.MANUAL_REFRESH);
+    }
+
+    public ParkingQueryResponse refresh(String queryId, TriggerType triggerType) {
         StoredParkingQuery storedQuery = loadStoredQuery(queryId);
         ParkingQueryResponse existing = storedQuery.response();
         requireNotExpired(existing);
@@ -163,11 +167,11 @@ public class ParkingQueryService {
 
         SourceRefreshResult roadsideRefresh = sourceRefreshCoordinationService.refresh(
                 DatasetCode.NTPC_ROADSIDE_SPOT,
-                TriggerType.MANUAL_REFRESH
+                triggerType
         );
         SourceRefreshResult offStreetRefresh = sourceRefreshCoordinationService.refresh(
                 DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
-                TriggerType.MANUAL_REFRESH
+                triggerType
         );
 
         OffsetDateTime now = OffsetDateTime.now(clock);

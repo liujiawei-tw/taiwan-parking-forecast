@@ -855,4 +855,10 @@ S2-022 已把查詢端點收斂為目前可測的後端契約基線；以下為�
 
 目前 Redis／MySQL 邊界：Redis 用於兩類短期協調狀態。來源刷新使用 `parking:refresh-lock:{source}:{dataset}` 短鎖與 MySQL `source_state.next_allowed_refresh_at` cooldown；查詢生命週期使用 `parking:query:{queryId}` 保存短期查詢 response/request，並用 `parking:query-token:{requestToken}` 做防重送索引。`parking:query:{queryId}` 的 TTL 是查詢有效期加 expired retention，目前預設 60 分鐘；`parking:query-token:{requestToken}` 只保留查詢有效期，目前預設 30 分鐘。MySQL 保存停車目錄、來源 mapping、候選／已發布快照、觀測、來源狀態與 ingestion run 量測，不保存使用者短期查詢。Redis query state 不可用時，API 回 `503 SERVICE_TEMPORARILY_UNAVAILABLE`，不降級為單機記憶體狀態。
 
+## 2026-09-29 S2-024 已實作可見頁受控刷新接線
+
+`POST /api/v1/parking-queries/{queryId}/refresh` 已新增可選 query parameter：`trigger`。預設為 `MANUAL_REFRESH`；前端頁面可見時的受控自動刷新使用 `VISIBLE_AUTO_REFRESH`。目前 HTTP 層只接受這兩個值，其他 trigger 回 `400 INVALID_REFRESH_TRIGGER`。這個限制讓瀏覽器端不能用查詢 API 冒充背景取樣或初始來源擷取；實際來源保護仍由後端 `SourceRefreshCoordinationService`、MySQL cooldown 與 Redis 來源短鎖決定。
+
+前端已實作第一版節奏：頁面隱藏時停止輪詢與自動刷新；重新可見時先 `GET /api/v1/parking-queries/{queryId}` 只讀恢復，不直接 `POST`；若最新回應中 `roadside.status` 或 `offStreet.status` 為 `STALE`／`NO_REALTIME_SNAPSHOT`，且 `refresh.*.refreshInProgress=false`，同一 queryId 與來源狀態組合只送一次 `trigger=VISIBLE_AUTO_REFRESH`。手動「更新車位」仍送 `trigger=MANUAL_REFRESH`，且不重算 Google ETA、不重新搜尋地點、不延長 query TTL。
+
 驗證：`ParkingQueryControllerTest`、`ParkingQueryServiceTest` 與 `RedisParkingQueryStateStoreTest` 共 18 tests／0 failures／0 errors，覆蓋成功查詢、讀取、刷新、重複 `requestToken`、非法座標、區外、過去指定出發時間、未知 queryId、過期 queryId、Redis TTL 寫入、Redis JSON 還原與 Redis 失敗包裝。完整後端 Docker Maven 測試通過 67 tests／0 failures／0 errors。測試未呼叫真實 Google 或新北市官方 API。

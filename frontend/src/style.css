@@ -221,6 +221,17 @@ input {
   font-weight: 800;
 }
 
+.refresh-message {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #c8d7ef;
+  border-radius: 6px;
+  background: #f3f7ff;
+  color: #24476f;
+  font-weight: 700;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 390px;

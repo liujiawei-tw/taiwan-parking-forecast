@@ -603,3 +603,11 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 結果頁改為地圖優先布局：地圖呈現目的地、300 公尺圈、路外停車場標記，以及後端回傳且 `availableSpots` 內的路邊目前有位格位標記；右側結果面板顯示 query／ETA／預測狀態、路邊與路外資料時間、全部結果清單與外部 Google Maps 路線入口。路邊格位文案明確標示只代表目前觀測，不代表抵達時仍有位；抵達時機率仍依後端 `predictions` 區塊呈現資料不足或未完成狀態。
 
 未設定瀏覽器 Google key 時，前端維持手動座標 fallback，CI 與一般本機 build 不會呼叫 Google。此階段尚未接 S2-024 的頁面可見時自動刷新，也尚未做真實 browser key 的人工 Places 查詢驗收；Google 金鑰限制、Places 實際用量與手機真機可用性仍需 Sponsor 在安全本機環境確認。
+
+## 2026-09-29 S2-024 可見頁受控刷新初版
+
+已開始 #37／S2-024 並完成前後端接線。`POST /api/v1/parking-queries/{queryId}/refresh` 新增 `trigger` query parameter，預設維持 `MANUAL_REFRESH`；前端可見頁自動刷新使用 `VISIBLE_AUTO_REFRESH`。Controller 只允許 `MANUAL_REFRESH` 與 `VISIBLE_AUTO_REFRESH`，其他 trigger 會回穩定錯誤 `INVALID_REFRESH_TRIGGER`，避免瀏覽器端繞過主系統來源刷新用途。`ParkingQueryService` 會把 trigger 傳給 `SourceRefreshCoordinationService`，讓 `ingestion_run.trigger_type` 能分辨手動與可見頁自動刷新。
+
+前端在結果頁有 queryId 後監聽 `visibilitychange`：頁面隱藏時停止進度輪詢與自動刷新；頁面重新可見時先用 `GET /api/v1/parking-queries/{queryId}` 只讀恢復狀態，再依最新 `roadside.status`／`offStreet.status` 判斷。若來源狀態為 `STALE` 或 `NO_REALTIME_SNAPSHOT`，且目前沒有 `refreshInProgress`，同一 queryId 與來源狀態組合只送一次 `VISIBLE_AUTO_REFRESH`。冷卻、失敗或仍無 snapshot 時不靠定時器密集重送；使用者手動「更新車位」仍可發起 `MANUAL_REFRESH` 檢查，且同樣受後端 cooldown、Redis 鎖與來源限制。
+
+驗證：前端 `npm run build` 通過；後端精準測試 `ParkingQueryControllerTest`、`ParkingQueryServiceTest` 通過 16 tests／0 failures／0 errors。此階段未做真實官方來源高頻刷新驗收，也未宣稱 5 分鐘門檻已是正式服務承諾；它只是把既有後端受控刷新能力接到前端可見頁生命週期。
