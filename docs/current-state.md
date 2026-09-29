@@ -533,3 +533,9 @@ Sponsor 已在本機 `.env` 設定不同用途的 Google Maps Platform key，並
 PR #32 已合併回 `main`，merge commit 為 `f4612b86b7f48fd9a5c19132deea44d4d1077d04`，並透過 `Closes #31` 關閉 S2-019 Issue。本機 `main` 已同步到 `origin/main`，並已刪除 `feature/s2-019-google-eta` 本機與遠端分支；殘留的本機 `feature/s2-018-refresh-control` 也已清理。
 
 S2-019 完成後，建立查詢已可使用 Google Routes 真實 ETA，並在外部呼叫停用、無 key 或 Google 失敗時明確降級，不再產生固定 18 分鐘 mock ETA。下一步轉向前端 Google Maps／Places 整合、結果頁地圖，以及把 S2-018 已提供的 `TriggerType.VISIBLE_AUTO_REFRESH` 接到前端頁面可見時自動刷新。
+
+## 2026-09-29 S2-019 外部呼叫關閉回歸驗收與狀態頁重整
+
+Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `false`。使用隔離 Docker Compose project `s2019off` 重新啟動 API 驗證：`/actuator/health` 回 `UP`；建立新莊查詢時，即使 `GOOGLE_ROUTES_SERVER_API_KEY` 仍有值，系統仍不呼叫 Google Routes，回應 `eta.status=FAILED`、`eta.provider=GOOGLE_ROUTES`、`estimatedArrivalAt=null`、`durationSeconds=null`，訊息明確指出外部呼叫被設定停用；`predictions.targetArrivalAt` 也維持 `null`。驗收後已執行 `docker compose -p s2019off down -v` 清理資源。
+
+已重整 `docs/project-status.html`，移除原本分散且重複的歷史段落，改成單頁專案進度儀表板：關鍵狀態摘要、開發進度總覽、20 天目標排程視圖、後端／前端／預測三條工作線、Sprint 2 Issue 進度地圖、下一步建議與驗收提醒。此頁目前聚焦高層摘要，詳細歷史仍以 `current-state.md`、`decisions.md`、`implementation-plan.md` 與 `roadmap.md` 為準。

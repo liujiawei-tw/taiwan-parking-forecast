@@ -3,313 +3,543 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>停車預測專案｜進度與待辦</title>
+  <title>台灣停車預測｜專案進度儀表板</title>
   <style>
-    :root { color-scheme: light; --bg:#f5f7fb; --ink:#172333; --muted:#516276; --line:#d8e0e9; --panel:#fff; --done:#19745e; --design:#275dab; --pending:#975b16; --future:#687386; }
-    * { box-sizing:border-box; }
-    body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,"Noto Sans TC",sans-serif; }
-    main { max-width:1120px; margin:auto; padding:32px 20px 64px; }
-    h1,h2,h3 { line-height:1.3; margin:0; }
-    h1 { font-size:clamp(1.8rem,4vw,2.6rem); }
-    h2 { font-size:1.35rem; margin:40px 0 16px; }
-    h3 { font-size:1.05rem; margin:0 0 10px; }
-    p { margin:8px 0 0; }
-    a { color:#174e96; }
-    .lede { max-width:780px; color:var(--muted); }
-    .meta { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
-    .tag { display:inline-block; padding:3px 10px; border-radius:999px; font-size:.83rem; font-weight:700; background:#e9edf3; color:var(--ink); }
-    .tag.done { background:#dcf3eb; color:#105b49; }
-    .tag.design { background:#e2edfd; color:#194b90; }
-    .tag.pending { background:#fff0d9; color:#795010; }
-    .tag.future { background:#eaedf1; color:#4d5868; }
-    .notice { margin-top:22px; padding:15px 18px; background:#e9f1ff; border-left:4px solid var(--design); }
-    .summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin-top:24px; }
-    .summary article,.work article { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; }
-    .summary strong { display:block; font-size:1.1rem; margin-top:8px; }
-    .summary small { display:block; color:var(--muted); margin-top:4px; font-size:.9rem; }
-    .timeline-wrap { overflow-x:auto; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; }
-    .timeline { min-width:720px; display:grid; grid-template-columns:190px repeat(20,minmax(22px,1fr)); gap:7px 3px; align-items:center; }
-    .timeline .head { text-align:center; color:var(--muted); font-size:.75rem; }
-    .timeline .label { grid-column:1; font-size:.88rem; font-weight:700; }
-    .bar { height:26px; border-radius:6px; display:flex; align-items:center; padding-left:8px; color:white; font-size:.75rem; font-weight:700; white-space:nowrap; }
-    .bar.pending { background:var(--pending); }
-    .bar.future { background:var(--future); }
-    .timeline-note { color:var(--muted); font-size:.9rem; margin-top:12px; }
-    .work { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
-    .work ul { padding-left:20px; margin:10px 0 0; }
-    .work li { margin:5px 0; }
-    .work .tag { margin-bottom:10px; }
-    .next { padding:18px 20px; background:var(--panel); border:1px solid var(--line); border-radius:12px; }
-    .uml-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
-    .uml-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; overflow-x:auto; }
-    .uml-card svg { width:100%; min-width:520px; height:auto; display:block; }
-    .uml-title { font-weight:800; margin:0 0 8px; }
-    .uml-note { color:var(--muted); font-size:.9rem; margin-top:8px; }
-    .uml-box { fill:#f8fbff; stroke:#9ab3d4; stroke-width:1.2; rx:8; }
-    .uml-db { fill:#fff7e8; stroke:#d0a24d; stroke-width:1.2; }
-    .uml-cache { fill:#eefaf5; stroke:#55a982; stroke-width:1.2; }
-    .uml-text { fill:#172333; font:13px system-ui,"Noto Sans TC",sans-serif; }
-    .uml-small { fill:#516276; font:11px system-ui,"Noto Sans TC",sans-serif; }
-    .uml-line { stroke:#56677b; stroke-width:1.4; fill:none; marker-end:url(#arrow); }
-    .next ol { margin:8px 0 0; padding-left:22px; }
-    footer { margin-top:38px; color:var(--muted); font-size:.9rem; }
-    @media (max-width:620px) { main { padding:24px 14px 48px; } .summary { grid-template-columns:1fr; } }
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --surface-2: #eef3f7;
+      --ink: #17202c;
+      --muted: #5c6a7b;
+      --line: #d8e0e8;
+      --green: #1f7a5d;
+      --blue: #245da8;
+      --amber: #986c16;
+      --red: #b34a42;
+      --teal: #16727c;
+      --violet: #6658a8;
+      --gray: #697386;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.6 system-ui, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 30px 18px 56px;
+    }
+
+    h1, h2, h3 { margin: 0; line-height: 1.25; }
+    h1 { font-size: clamp(1.9rem, 4vw, 3rem); letter-spacing: 0; }
+    h2 { font-size: 1.35rem; margin-bottom: 14px; }
+    h3 { font-size: 1rem; }
+    p { margin: 8px 0 0; }
+    a { color: #174f93; }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+    header {
+      padding: 28px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    section { margin-top: 22px; }
+
+    .lede {
+      max-width: 850px;
+      color: var(--muted);
+      font-size: 1.02rem;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--ink);
+      font-size: .84rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .done { background: #dff2eb; color: #115944; }
+    .doing { background: #e4eefb; color: #194d8f; }
+    .blocked { background: #fae5e2; color: #84342d; }
+    .pending { background: #fff1d6; color: #76510f; }
+    .risk { background: #efe9ff; color: #53458f; }
+
+    .notice {
+      margin-top: 18px;
+      padding: 14px 16px;
+      background: #fff8e7;
+      border-left: 4px solid var(--amber);
+      color: #433a28;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 118px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: .86rem;
+      font-weight: 700;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 1.55rem;
+      line-height: 1.1;
+    }
+
+    .metric p { color: var(--muted); font-size: .9rem; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .panel + .panel { margin-top: 14px; }
+
+    .progress-list { display: grid; gap: 12px; }
+
+    .progress-row {
+      display: grid;
+      grid-template-columns: 170px 1fr 74px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .progress-label {
+      font-weight: 800;
+      font-size: .93rem;
+    }
+
+    .track {
+      height: 16px;
+      background: #e8edf3;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid #d9e1ea;
+    }
+
+    .fill {
+      height: 100%;
+      min-width: 6px;
+      border-radius: inherit;
+    }
+
+    .fill.green { background: var(--green); }
+    .fill.blue { background: var(--blue); }
+    .fill.amber { background: var(--amber); }
+    .fill.red { background: var(--red); }
+
+    .progress-value {
+      color: var(--muted);
+      font-size: .88rem;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .timeline-grid {
+      min-width: 860px;
+      display: grid;
+      grid-template-columns: 190px repeat(20, 1fr);
+      gap: 5px;
+      align-items: center;
+    }
+
+    .day-head {
+      color: var(--muted);
+      font-size: .78rem;
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .phase-name {
+      font-weight: 800;
+      font-size: .9rem;
+    }
+
+    .bar {
+      min-height: 28px;
+      display: flex;
+      align-items: center;
+      padding: 0 9px;
+      border-radius: 5px;
+      color: #fff;
+      font-size: .8rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .bar.green { background: var(--green); }
+    .bar.blue { background: var(--blue); }
+    .bar.amber { background: var(--amber); }
+    .bar.violet { background: var(--violet); }
+    .bar.gray { background: var(--gray); }
+
+    .swimlanes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .lane {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fbfcfe;
+    }
+
+    .lane ul, .risk-list, .next-list {
+      margin: 10px 0 0;
+      padding-left: 20px;
+    }
+
+    li { margin: 6px 0; }
+
+    .issue-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .92rem;
+    }
+
+    .issue-table th,
+    .issue-table td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .issue-table th {
+      color: var(--muted);
+      font-size: .8rem;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .stack { display: grid; gap: 12px; }
+
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    @media (max-width: 920px) {
+      .dashboard, .swimlanes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      main { padding: 18px 12px 42px; }
+      header, .panel, .metric { padding: 14px; }
+      .dashboard, .swimlanes { grid-template-columns: 1fr; }
+      .progress-row { grid-template-columns: 1fr; gap: 6px; }
+      .progress-value { text-align: left; }
+      .pill { white-space: normal; }
+    }
   </style>
 </head>
 <body>
 <main>
   <header>
-    <h1>停車預測專案｜進度與待辦</h1>
-    <p class="lede">新莊區 MVP：搜尋目的地、計算抵達時間，顯示目的地方圓 300 公尺內收錄的汽車停車選項，以及抵達時有位的預測。</p>
-    <div class="meta"><span class="tag done">目前：S2-019 後端 Google ETA 已合併</span><span class="tag">更新：2026-09-29</span><span class="tag">下一步：前端 Google Maps／Places 整合</span></div>
-    <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統已完成後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、核心資料模型、Flyway schema、新莊 seed、300 公尺查詢 service、官方來源正規化與已發布快照讀取、來源受控刷新，以及後端 Google Routes ETA 初版。前端地圖／Places 整合、頁面可見時自動刷新前端接線與兩類預測尚未接入；訓練 collector 暫緩，不參與使用者查詢。</div>
+    <h1>台灣停車預測｜專案進度儀表板</h1>
+    <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態，並在資料足夠時提供抵達時預測。</p>
+    <div class="meta">
+      <span class="pill done">目前：S2-019 已合併</span>
+      <span class="pill">更新：2026-09-29</span>
+      <span class="pill doing">下一步：前端 Google Maps／Places</span>
+      <span class="pill pending">訓練 collector：暫緩</span>
+    </div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備可信的即時資料快照讀取、受控刷新與 Google Routes ETA。前端尚未接 Google Maps JavaScript API／Places Autocomplete，頁面可見時自動刷新也尚未接線；兩類預測仍等待可用訓練資料與基準模型。</div>
   </header>
 
-  <section aria-labelledby="overview"><h2 id="overview">一眼看目前進度</h2>
-    <div class="summary">
-      <article><span class="tag pending">資料待修</span><strong>訓練資料收集器</strong><small>獨立 repo 有排程；Sponsor 回報匯出不完整，原因待查。資料盤點暫緩，不供使用者即時查詢。</small></article>
-      <article><span class="tag design">設計中</span><strong>主系統需求與資料流</strong><small>首查已定先顯示 ETA 與已收錄位置，車位完成後自動補上；正式 API 與刷新數值未定。</small></article>
-      <article><span class="tag done">資料基礎完成</span><strong>使用者介面與主後端</strong><small>Vue 與 Spring Boot 骨架、Docker Compose、mock 查詢、JPA/Flyway、seed、300 公尺查詢、NTPC client、正規化、候選快照發布、已發布快照讀取、Redis 受控刷新與後端 Google Routes ETA 初版已完成。前端地圖／Places 整合與預測尚未接入。</small></article>
-      <article><span class="tag pending">資料依賴暫緩</span><strong>兩類抵達時預測</strong><small>預測目標與樣本方法已定；collector 匯出不完整，標籤、回測與模型尚無可信成果。</small></article>
+  <section class="dashboard" aria-label="關鍵狀態摘要">
+    <article class="metric">
+      <span>後端測試</span>
+      <strong>53 / 0 / 0</strong>
+      <p>Docker Maven：tests / failures / errors。</p>
+    </article>
+    <article class="metric">
+      <span>Sprint 2 完成項</span>
+      <strong>S2-001 至 S2-019</strong>
+      <p>後端 Google Routes ETA 已合併到 main。</p>
+    </article>
+    <article class="metric">
+      <span>最新 merge</span>
+      <strong>PR #32</strong>
+      <p>S2-019 接入 Google Routes 真實 ETA。</p>
+    </article>
+    <article class="metric">
+      <span>下一個瓶頸</span>
+      <strong>前端整合</strong>
+      <p>地圖、Places、可見頁自動刷新與結果頁狀態。</p>
+    </article>
+  </section>
+
+  <section class="layout" aria-labelledby="progress-title">
+    <div class="panel">
+      <h2 id="progress-title">開發進度總覽</h2>
+      <div class="progress-list">
+        <div class="progress-row">
+          <div class="progress-label">基礎骨架與 Docker</div>
+          <div class="track"><div class="fill green" style="width: 100%"></div></div>
+          <div class="progress-value">完成</div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-label">資料模型與 300 公尺查詢</div>
+          <div class="track"><div class="fill green" style="width: 100%"></div></div>
+          <div class="progress-value">完成</div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-label">官方即時來源與快照</div>
+          <div class="track"><div class="fill green" style="width: 100%"></div></div>
+          <div class="progress-value">完成</div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-label">受控刷新與 Redis 協調</div>
+          <div class="track"><div class="fill green" style="width: 100%"></div></div>
+          <div class="progress-value">完成</div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-label">後端 Google Routes ETA</div>
+          <div class="track"><div class="fill green" style="width: 100%"></div></div>
+          <div class="progress-value">完成</div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-label">前端 Maps／Places 結果頁</div>
+          <div class="track"><div class="fill blue" style="width: 20%"></div></div>
+          <div class="progress-value">待實作</div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-label">頁面可見時自動刷新</div>
+          <div class="track"><div class="fill amber" style="width: 35%"></div></div>
+          <div class="progress-value">後端已備妥</div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-label">預測基準與模型</div>
+          <div class="track"><div class="fill red" style="width: 10%"></div></div>
+          <div class="progress-value">高風險</div>
+        </div>
+      </div>
+      <p class="note">百分比是視覺化狀態，不是精準工時估算。正式進度以 GitHub PR、Issue 與 <a href="current-state.md">current-state.md</a> 為準。</p>
+    </div>
+
+    <aside class="stack">
+      <div class="panel">
+        <h2>目前可展示</h2>
+        <ul class="next-list">
+          <li>API health 與 Docker Compose 可啟動。</li>
+          <li>建立查詢會取得 Google Routes ETA，或明確降級。</li>
+          <li>使用者查詢只讀 PUBLISHED snapshot，不讀 CANDIDATE 或 REJECTED。</li>
+          <li>刷新失敗、品質拒絕或來源不完整時保留舊的已發布快照。</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>目前不可宣稱</h2>
+        <ul class="risk-list">
+          <li>前端 Google 地圖與 Places 尚未完成。</li>
+          <li>頁面可見時自動刷新尚未接前端。</li>
+          <li>路邊／路外抵達時預測尚未有可信模型。</li>
+          <li>訓練 collector 不參與使用者查詢。</li>
+        </ul>
+      </div>
+    </aside>
+  </section>
+
+  <section class="panel" aria-labelledby="schedule-title">
+    <h2 id="schedule-title">20 天目標排程視圖</h2>
+    <div class="timeline">
+      <div class="timeline-grid" aria-label="20 天目標排程">
+        <div class="phase-name">工作／天數</div>
+        <div class="day-head" style="grid-column: 2 / span 3;">1-3</div>
+        <div class="day-head" style="grid-column: 5 / span 5;">4-8</div>
+        <div class="day-head" style="grid-column: 10 / span 4;">9-12</div>
+        <div class="day-head" style="grid-column: 14 / span 5;">13-17</div>
+        <div class="day-head" style="grid-column: 19 / span 3;">18-20</div>
+
+        <div class="phase-name">資料與設計定稿</div>
+        <div class="bar green" style="grid-column: 2 / span 3;">主要決策完成</div>
+
+        <div class="phase-name">即時資料後端</div>
+        <div class="bar green" style="grid-column: 5 / span 5;">S2-014 至 S2-018 完成</div>
+
+        <div class="phase-name">Google ETA 與前端</div>
+        <div class="bar blue" style="grid-column: 10 / span 2;">後端 ETA 完成</div>
+        <div class="bar amber" style="grid-column: 12 / span 2;">前端待做</div>
+
+        <div class="phase-name">預測與回測</div>
+        <div class="bar violet" style="grid-column: 14 / span 5;">資料依賴高風險</div>
+
+        <div class="phase-name">整合驗收與展示</div>
+        <div class="bar gray" style="grid-column: 19 / span 3;">待前端與預測後收斂</div>
+      </div>
+    </div>
+    <p class="note">這是以「20 天目標」重排的工作視圖，不代表實際日曆日期。若訓練資料無法修復，預測階段必須明確降級，不用假機率補畫面。</p>
+  </section>
+
+  <section class="swimlanes" aria-label="工作線狀態">
+    <article class="lane">
+      <h2>後端資料流</h2>
+      <span class="pill done">目前穩定</span>
+      <ul>
+        <li>MySQL 保存來源狀態、快照與觀測。</li>
+        <li>Redis 用於來源刷新短鎖與協調。</li>
+        <li>失敗不覆蓋舊的 PUBLISHED snapshot。</li>
+        <li>Google Routes ETA 已接入並有降級路徑。</li>
+      </ul>
+    </article>
+    <article class="lane">
+      <h2>前端體驗</h2>
+      <span class="pill doing">下一步</span>
+      <ul>
+        <li>接入 <code>GOOGLE_MAPS_BROWSER_API_KEY</code>。</li>
+        <li>使用 Maps JavaScript API 與 Places API (New)。</li>
+        <li>建立結果頁地圖、300 公尺圓與停車清單。</li>
+        <li>接上頁面可見時自動刷新。</li>
+      </ul>
+    </article>
+    <article class="lane">
+      <h2>預測與資料</h2>
+      <span class="pill blocked">阻塞風險</span>
+      <ul>
+        <li>collector 匯出不完整，暫不進主查詢。</li>
+        <li>路邊與路外標籤需分開驗證。</li>
+        <li>先做資料不足狀態，再接基準模型。</li>
+        <li>不可用隨機或假機率作展示。</li>
+      </ul>
+    </article>
+  </section>
+
+  <section class="panel" aria-labelledby="issue-title">
+    <h2 id="issue-title">Sprint 2 Issue 進度地圖</h2>
+    <table class="issue-table">
+      <thead>
+        <tr>
+          <th>範圍</th>
+          <th>Issue</th>
+          <th>狀態</th>
+          <th>重點</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>主系統骨架</td>
+          <td>S2-001 至 S2-008</td>
+          <td><span class="pill done">完成</span></td>
+          <td>Spring Boot、Vue、Docker Compose、profiles、mock 查詢、文件流程與 CI。</td>
+        </tr>
+        <tr>
+          <td>資料基礎</td>
+          <td>S2-009 至 S2-013</td>
+          <td><span class="pill done">完成</span></td>
+          <td>JPA/Flyway、seed、新莊 300 公尺查詢、parking-queries 接入本地停車目錄。</td>
+        </tr>
+        <tr>
+          <td>官方即時來源</td>
+          <td>S2-014 至 S2-018</td>
+          <td><span class="pill done">完成</span></td>
+          <td>NTPC client、正規化、候選快照、發布交易、PUBLISHED snapshot 讀取、Redis 受控刷新。</td>
+        </tr>
+        <tr>
+          <td>Google Routes ETA</td>
+          <td>S2-019 / PR #32</td>
+          <td><span class="pill done">完成</span></td>
+          <td>後端 <code>computeRoutes</code>、真實 ETA、降級行為、NOW 不送 <code>departureTime</code>、Docker Compose 真實驗收。</td>
+        </tr>
+        <tr>
+          <td>前端 Google 整合</td>
+          <td>下一張 Issue</td>
+          <td><span class="pill doing">待建立</span></td>
+          <td>Maps JavaScript API、Places Autocomplete、結果頁地圖、瀏覽器 key 設定與狀態畫面。</td>
+        </tr>
+        <tr>
+          <td>預測基準</td>
+          <td>後續 Issue</td>
+          <td><span class="pill pending">待資料</span></td>
+          <td>路邊區域與路外單場分開建模；資料不足時必須誠實降級。</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="layout" aria-labelledby="next-title">
+    <div class="panel">
+      <h2 id="next-title">下一步建議</h2>
+      <ol class="next-list">
+        <li>建立前端 Google Maps／Places Issue，範圍只放地圖、搜尋、結果頁與 key 設定。</li>
+        <li>確認 `GOOGLE_MAPS_BROWSER_API_KEY` 的 HTTP referrer 限制與 API restriction。</li>
+        <li>結果頁接上後端既有 `parking-queries`，顯示 ETA、地圖、300 公尺圓、路邊與路外清單。</li>
+        <li>再接頁面可見時自動刷新，使用 S2-018 既有刷新協調能力。</li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h2>驗收提醒</h2>
+      <ul class="risk-list">
+        <li>本機 <code>.env</code> 已改回 <code>GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=false</code> 並驗證通過。</li>
+        <li>若要再次驗證真實 Routes，需短暫改回 `true`，測完再關閉。</li>
+        <li>真實 API key 不進 Git；<code>.env</code> 已被 <code>.gitignore</code> 忽略。</li>
+        <li>Windows <code>backend/mvnw.cmd</code> 仍不可靠，後端測試使用 Docker Maven。</li>
+      </ul>
     </div>
   </section>
 
-  <section aria-labelledby="schedule"><h2 id="schedule">20 天目標時間盒</h2>
-    <div class="timeline-wrap"><div class="timeline" role="img" aria-label="20 天目標：第 1 至 3 天確認資料與設計；第 4 至 8 天即時資料後端；第 9 至 12 天搜尋、預計抵達時間與畫面；第 13 至 17 天兩類預測與回測；第 18 至 20 天整合驗收與面試展示。目前尚未開始計算開發日。">
-      <div class="label">工作／天數</div>
-      <div class="head" style="grid-column:2 / span 3">1–3</div><div class="head" style="grid-column:5 / span 5">4–8</div><div class="head" style="grid-column:10 / span 4">9–12</div><div class="head" style="grid-column:14 / span 5">13–17</div><div class="head" style="grid-column:19 / span 3">18–20</div>
-      <div class="label">資料與設計定稿</div><div class="bar pending" style="grid-column:2 / span 3">待完成</div>
-      <div class="label">即時資料後端</div><div class="bar future" style="grid-column:5 / span 5">未開始</div>
-      <div class="label">搜尋、ETA、前端</div><div class="bar future" style="grid-column:10 / span 4">未開始</div>
-      <div class="label">兩類預測與回測</div><div class="bar future" style="grid-column:14 / span 5">未開始</div>
-      <div class="label">整合與面試展示</div><div class="bar future" style="grid-column:19 / span 3">未開始</div>
-    </div><p class="timeline-note">這是計畫甘特圖，不是實際完成比例或已承諾日期。實際啟動日、阻礙與驗收結果須在後續更新。</p></div>
-  </section>
-
-  <section aria-labelledby="streams"><h2 id="streams">各工作線：已確定與未完成</h2>
-    <div class="work">
-      <article><span class="tag design">前端：Vue 3＋Vite 骨架完成，正式 Google 地圖未接入</span><h3>搜尋與結果畫面</h3><ul><li>已定：Google Maps JavaScript 地圖與 Places API (New) 搜尋、起點兩種方式、出發時間、300 公尺結果；電腦版地圖優先、固定區域摘要與「查看全部結果」，手機版上地圖／下清單。路邊格位小卡提供資料時間及外部「查看路線」。</li><li>待定：格位資格與座標驗證、Google 實際用量、面板尺寸、無障礙操作。</li><li>待定：載入中、0 位、無資料、過期、ETA 失敗及預測不足的完整互動原型。</li></ul></article>
-      <article><span class="tag design">後端：查詢已接已發布快照、受控刷新與 Google ETA</span><h3>即時查詢與儲存</h3><ul><li>已定：Spring Boot Web／Spring MVC REST 模組化單體；MySQL／JPA 保存啟用快照與可追溯歷史，供未來離線訓練；候選快照通過品質閘門後才發布，失敗不覆蓋舊快照；Redis 作跨實例短鎖與協調，MySQL 的來源狀態才是事實來源。</li><li>已完成：parking-queries 可讀取最新 PUBLISHED snapshot，分開表示 0 位、UNKNOWN、過期、無即時資料與未收錄；手動／自動刷新可共用來源資料集鎖、cooldown 與降級狀態；建立查詢已改由後端 Google Routes ETA service 產生或明確降級，不再使用固定 18 分鐘 mock ETA。</li><li>待定：前端可見頁自動刷新觸發、背景取樣間隔與歷史保留／歸檔、前景等待與輪詢上限、請求預算與模型介面。</li></ul></article>
-      <article><span class="tag pending">資料：共同欄位方向已定，映射待驗證</span><h3>來源與統一化</h3><ul><li>已定：新北市路邊／路外來源各由 adapter 轉成共同位置、來源對應及動態觀測欄位；未來新增政府或業者來源沿用此契約。訓練 collector 與主系統即時查詢分離。</li><li>待驗：格位狀態碼與汽車適用性、來源 ID／座標、缺值與覆蓋率、來源觀測時間、路外有效剩餘位欄位。</li><li>待驗：新莊邊界資料是否覆蓋完整，如何標示未收錄的鄰區。</li></ul></article>
-      <article><span class="tag pending">預測：資料盤點暫緩，模型未開始</span><h3>抵達時有位機率</h3><ul><li>路邊：目的地 300 公尺內至少一個適用汽車格位可停的機率；訓練標籤須對齊實際 300 公尺圓。</li><li>路外：範圍內各停車場抵達時仍有汽車位的機率。</li><li>待處理：collector 匯出不完整；恢復後才驗證標籤、樣本品質、時間與街區切分、基準及模型部署。資料不足時不編造機率。</li></ul></article>
-      <article><span class="tag design">服務整合：後端 Routes 初版完成，前端 Google 未接入</span><h3>Google 與外部地圖</h3><ul><li>已定：Google Maps 用於地圖、Places (New) 用於搜尋、Routes 的交通感知 ETA 直接作預測時刻；外部地圖負責導航。Sponsor 回報停車專案 Taiwan Parking Forecast（ID taiwan-parking-forecast）已建立，三項 API 已啟用、帳單連結有效，預算通知已設定。</li><li>已完成：後端 Routes `computeRoutes` client 與 ETA service 初版，預設可停用外部呼叫，無 key 或 Google 失敗時明確回 `eta.status=FAILED`，不產生假抵達時間。</li><li>待定：網頁／後端金鑰限制、真實 server key 小量人工驗收、前端 Google Maps JavaScript API 與 Places Autocomplete Widget 接入。</li></ul></article>
-      <article><span class="tag pending">部署／驗收：方向已定，未實作</span><h3>Docker 與品質證據</h3><ul><li>已定：Docker 可部署到其他伺服器是必要交付；面試仍可本機展示，兩類預測都列入 20 天目標。</li><li>待做：容器建置與乾淨主機啟動、MySQL 持久化／備份驗證、遠端 HTTPS 與金鑰設定、並發刷新測試、資料年齡及 API 用量量測、兩類模型與基準比較。</li><li>待確認：實際主機、網域與遠端上線是否納入 20 天時程。</li></ul></article>
-    </div>
-  </section>
-
-
-
-
-
-  <section aria-labelledby="sprint2-issues"><h2 id="sprint2-issues">Sprint 2 第一組 Issues 草案</h2>
-    <div class="next"><ol>
-      <li>S2-001：建立 Sprint 2 實作分支與專案工作規則（分支、環境變數範本、工作規則與 DoD 已補齊；待 Sponsor 確認）。</li>
-      <li>S2-002：建立 Spring Boot Maven 後端骨架與健康檢查（已驗收完成；Maven test 與 health endpoint 均通過）。</li>
-      <li>S2-003：建立 Vue 3 + Vite 前端骨架與 Google Maps 設定入口（已驗收完成；npm build 通過）。</li>
-      <li>S2-004：建立 Docker Compose 本機開發環境（已驗收完成；web/api/mysql/redis 可啟動）。</li>
-      <li>S2-005：建立後端 profile、H2 測試邊界與 MySQL 連線設定（已驗收完成；H2 test profile 與 Docker MySQL profile 均已驗證）。</li>
-      <li>S2-006：建立查詢 API 契約與 mock 查詢生命週期（已驗收完成；GitHub Issue #6 已關閉）。</li>
-      <li>S2-007：建立第一版文件同步與驗收檢查清單（已驗收完成；Issue #7 已關閉）。</li>
-    </ol><p class="timeline-note">完整範圍、驗收標準、測試方式與 Human-in-the-loop 檢查點見 sprint-2-issue-drafts.md；正式 GitHub Issues 為 #1 至 #7。此區是任務規劃，不代表已開始 coding。</p></div>
-  </section>
-  <section aria-labelledby="workflow"><h2 id="workflow">實作流程</h2>
-    <div class="next"><ol>
-      <li>PM 先拆任務：每個任務都要有範圍、驗收標準、測試方式與 Human-in-the-loop 檢查點。</li>
-      <li>AI 進行實作與自檢：小步提交，必要時更新文件與狀態頁。</li>
-      <li>Sponsor 做關鍵驗收：任務範圍、UI 行為、外部服務、部署、預測結果與合併前確認。</li>
-      <li>Harness 暫不列第一版必要工具；先用 GitHub Issues／Projects 與 GitHub Actions 候選支撐 MVP。</li>
-    </ol><p class="timeline-note">完整流程見 development-workflow.md。這是實作流程規則，不代表已開始 coding。</p></div>
-  </section>
-
-  <section aria-labelledby="implementation"><h2 id="implementation">實作順序</h2>
-    <div class="next"><ol>
-      <li>專案骨架與 Docker：Spring Boot、Vue、MySQL、Redis、H2 test profile。</li>
-      <li>資料模型與 API mock：JPA entity、Redis queryId、查詢生命週期與錯誤格式。</li>
-      <li>停車目錄與 300 公尺查詢：先用本地目錄證明附近搜尋與狀態分層。</li>
-      <li>官方即時來源與快照發布：新北市路邊／路外 adapter、品質檢查、受控刷新。</li>
-      <li>Google 搜尋／前端結果頁：地圖、Places、狀態文案與更新按鈕；後端 Routes ETA 初版已完成，仍待人工驗收與 PR。</li>
-      <li>預測基準與模型：有資料就顯示有依據的機率，資料不足就明確降級。</li>
-    </ol><p class="timeline-note">完整順序與驗收邊界見 implementation-plan.md。此區仍是實作計畫，不代表功能已完成。</p></div>
-  </section>
-
-  <section aria-labelledby="uml"><h2 id="uml">UML 架構視圖</h2>
-    <div class="uml-grid">
-      <article class="uml-card">
-        <p class="uml-title">部署圖：第一版 Docker Compose 候選</p>
-        <svg viewBox="0 0 720 360" role="img" aria-label="UML 部署圖：瀏覽器使用 Google Maps JavaScript 與 Places，透過 Web 服務呼叫 API，API 連接 MySQL、Redis、Google Routes 與新北市官方 API。">
-          <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#56677b"/></marker></defs>
-          <rect class="uml-box" x="24" y="40" width="130" height="70"/>
-          <text class="uml-text" x="44" y="72">使用者瀏覽器</text>
-          <text class="uml-small" x="44" y="92">Vue / Google Map</text>
-          <rect class="uml-box" x="224" y="34" width="150" height="82"/>
-          <text class="uml-text" x="248" y="66">web</text>
-          <text class="uml-small" x="248" y="86">靜態頁</text>
-          <text class="uml-small" x="248" y="102">/api 反向代理</text>
-          <rect class="uml-box" x="444" y="34" width="160" height="82"/>
-          <text class="uml-text" x="482" y="66">api</text>
-          <text class="uml-small" x="474" y="86">Spring Boot Web</text>
-          <text class="uml-small" x="474" y="102">REST / 來源協調</text>
-          <rect class="uml-db" x="424" y="180" width="120" height="76"/>
-          <text class="uml-text" x="462" y="212">MySQL</text>
-          <text class="uml-small" x="448" y="232">快照與歷史</text>
-          <rect class="uml-cache" x="584" y="180" width="112" height="76"/>
-          <text class="uml-text" x="622" y="212">Redis</text>
-          <text class="uml-small" x="606" y="232">短期狀態</text>
-          <rect class="uml-box" x="214" y="228" width="150" height="68"/>
-          <text class="uml-text" x="248" y="258">Google Routes</text>
-          <text class="uml-small" x="246" y="278">ETA only</text>
-          <rect class="uml-box" x="24" y="228" width="150" height="68"/>
-          <text class="uml-text" x="50" y="258">新北市官方 API</text>
-          <text class="uml-small" x="54" y="278">路邊／路外即時</text>
-          <path class="uml-line" d="M154 75 L224 75"/>
-          <path class="uml-line" d="M374 75 L444 75"/>
-          <path class="uml-line" d="M504 116 L486 180"/>
-          <path class="uml-line" d="M558 116 L628 180"/>
-          <path class="uml-line" d="M444 104 L174 244"/>
-          <path class="uml-line" d="M486 116 L340 228"/>
-        </svg>
-        <p class="uml-note">重點：對外只暴露 web；api、MySQL、Redis 在內部 network。MySQL 是事實來源，Redis 是短期狀態與快取。</p>
-      </article>
-      <article class="uml-card">
-        <p class="uml-title">類別圖：核心資料模型關係</p>
-        <svg viewBox="0 0 720 390" role="img" aria-label="UML 類別圖：ParkingPlace、SourceMapping、AvailabilitySnapshot、AvailabilityObservation、SourceState、IngestionRun 的關係。">
-          <defs><marker id="arrow2" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#56677b"/></marker></defs>
-          <rect class="uml-box" x="40" y="42" width="190" height="86"/>
-          <text class="uml-text" x="76" y="70">ParkingPlace</text>
-          <text class="uml-small" x="58" y="92">id, type, name</text>
-          <text class="uml-small" x="58" y="110">lat/lng, carEligible</text>
-          <rect class="uml-box" x="280" y="42" width="190" height="86"/>
-          <text class="uml-text" x="314" y="70">SourceMapping</text>
-          <text class="uml-small" x="298" y="92">sourceSystem, dataset</text>
-          <text class="uml-small" x="298" y="110">sourcePlaceId, status</text>
-          <rect class="uml-box" x="40" y="182" width="190" height="94"/>
-          <text class="uml-text" x="72" y="210">AvailabilityObservation</text>
-          <text class="uml-small" x="58" y="232">snapshotId, placeId</text>
-          <text class="uml-small" x="58" y="250">status, availableSpaces</text>
-          <text class="uml-small" x="58" y="268">rawValue, quality</text>
-          <rect class="uml-box" x="280" y="182" width="190" height="94"/>
-          <text class="uml-text" x="314" y="210">AvailabilitySnapshot</text>
-          <text class="uml-small" x="298" y="232">status, publishedAt</text>
-          <text class="uml-small" x="298" y="250">qualityStatus</text>
-          <text class="uml-small" x="298" y="268">sourceObservedAt</text>
-          <rect class="uml-box" x="520" y="42" width="160" height="86"/>
-          <text class="uml-text" x="558" y="70">SourceState</text>
-          <text class="uml-small" x="538" y="92">activeSnapshotId</text>
-          <text class="uml-small" x="538" y="110">nextAllowedRefresh</text>
-          <rect class="uml-box" x="520" y="182" width="160" height="94"/>
-          <text class="uml-text" x="558" y="210">IngestionRun</text>
-          <text class="uml-small" x="538" y="232">trigger, status</text>
-          <text class="uml-small" x="538" y="250">httpCount</text>
-          <text class="uml-small" x="538" y="268">qualitySummary</text>
-          <rect class="uml-db" x="280" y="314" width="190" height="54"/>
-          <text class="uml-text" x="324" y="344">H2 測試 DB</text>
-          <text class="uml-small" x="304" y="362">開發端 repository/service 測試</text>
-          <path class="uml-line" marker-end="url(#arrow2)" d="M280 86 L230 86"/>
-          <path class="uml-line" marker-end="url(#arrow2)" d="M135 128 L135 182"/>
-          <path class="uml-line" marker-end="url(#arrow2)" d="M280 230 L230 230"/>
-          <path class="uml-line" marker-end="url(#arrow2)" d="M520 86 L470 86"/>
-          <path class="uml-line" marker-end="url(#arrow2)" d="M520 222 L470 222"/>
-          <path class="uml-line" marker-end="url(#arrow2)" d="M375 276 L375 314"/>
-        </svg>
-        <p class="uml-note">重點：MySQL/JPA 是正式資料模型；H2 只用於開發端測試，不替代 MySQL 的部署與整合驗證。</p>
-      </article>
-    </div>
-  </section>
-
-
-  <section>
-    <h2>Sprint 2 最新進度：S2-013 已合併，第二組完成</h2>
-    <p>PR #20 已合併回 main，Sprint 2 第二組 S2-009～S2-013 已完成。主系統現在已具備核心資料模型、Flyway schema、新莊停車目錄小樣本、300 公尺查詢 service，以及將本地停車目錄接入 <code>parking-queries</code> 的能力。</p>
-    <p>此段為 S2-013 歷史狀態：當時 API 仍使用 mock ETA，且只回已收錄位置；後續 S2-017、S2-018 與 S2-019 已分別接入已發布快照、Redis 協調與後端 Google Routes ETA 初版。</p>
-  </section>
-  <section>
-    <h2>Sprint 2 下一組草案：官方即時來源與快照發布</h2>
-    <p>已新增 <code>docs/sprint-2-realtime-source-issue-drafts.md</code>，並建立 GitHub Issues #21～#25：官方來源 client、資料正規化、候選快照與發布交易、查詢 API 讀最新快照、Redis 受控刷新。</p>
-    <p>這組不使用訓練 collector，也不做 ML 預測；目標是先讓使用者查詢能讀到可信的目前車位狀態，並控制官方 API 呼叫量。</p>
-  </section>
-
-  <section>
-    <h2>Sprint 2 最新進度：S2-014 官方即時來源 Client 初版</h2>
-    <p>已建立新北市官方即時來源 client 與原始 DTO，可解析路邊停車空位與公有路外停車場即時剩餘車位的 JSON 測試資料。設定可由 YAML／環境變數覆蓋，並支援 timeout、最大嘗試次數與停用外部呼叫。</p>
-    <p>驗證：Docker Maven 後端測試通過 20 tests／0 failures。此階段不寫入 MySQL、不發布快照、不接前端，也不判斷可停語意；下一步 S2-015 才做正規化與資料品質規則。</p>
-  </section>
-
-  <section>
-    <h2>Sprint 2 最新進度：S2-015 即時資料正規化初版</h2>
-    <p>已新增統一觀測物件與新北市 normalizer，將路邊與路外原始 DTO 轉成一致狀態。有效 0 位、未知、特殊值與缺值會分開處理；路邊格位若無法確認汽車適用性，不會被標成可推薦導航。</p>
-    <p>驗證：Docker Maven 後端測試通過 29 tests／0 failures。此階段仍不寫入 MySQL、不發布快照、不接前端；下一步 S2-016 將處理候選快照寫入與發布交易。</p>
-  </section>
-
-  <section>
-    <h2>Sprint 2 最新進度：S2-017 查詢讀取已發布快照初版</h2>
-    <p>已新增 PublishedAvailabilitySnapshotService，parking-queries 只讀 source_state.active_snapshot 指向的 PUBLISHED snapshot，不讀候選或拒絕快照，也不在查詢時重新呼叫官方 API。</p>
-    <p>路邊會在新鮮 READY 且確認有位時回可導航格位；路外停車場會回 availabilityStatus、systemCollectedAt 與 message，分開表示有效 0 位、UNKNOWN、STALE、NO_OBSERVATION、NO_REALTIME_SNAPSHOT 與未收錄。</p>
-    <p>驗證：後端 Maven 測試通過 37 tests／0 failures；臨時 MySQL 8.4 執行 ParkingQueryControllerTest 通過 7 tests／0 failures。下一步 S2-018 才處理受控刷新、Redis 協調與多人共用官方來源呼叫。</p>
-  </section>
-  <section>
-    <h2>Sprint 2 最新進度：S2-018 受控刷新與 Redis 協調</h2>
-    <p>手動刷新與頁面可見時自動刷新共用同一個來源資料集協調流程。MySQL 保存 cooldown 與來源狀態；Redis 用 SETNX 短鎖避免跨使用者重複呼叫。Redis 不可用時以本機鎖保守降級，回應不會冒充取得新資料。</p>
-    <p>若來源失敗、品質拒絕，或分頁超過安全上限，系統不發布新快照，保留既有 PUBLISHED snapshot。驗證：Docker Maven 後端完整測試 44 tests／0 failures／0 errors；Docker Compose 人工驗收已涵蓋 Redis 正常、cooldown、防止發布不完整／無 mapping 快照，以及 Redis 停止後的 <code>*_WITH_LOCAL_LOCK</code> 降級。前端自動觸發仍待後續任務接入。</p>
-  </section>
-  <section>
-    <h2>Sprint 2 最新進度：S2-019 後端 Google Routes ETA 初版</h2>
-    <p>已新增後端 Google Routes <code>computeRoutes</code> client、ETA service 與設定。建立查詢不再產生固定 18 分鐘 mock ETA；Routes 成功時回 <code>GOOGLE_ROUTES</code> ETA，外部呼叫停用、無 key、Google 失敗或無路線時明確回 <code>eta.status=FAILED</code>，且不填假 <code>estimatedArrivalAt</code>。</p>
-    <p>驗證：Docker Maven 後端完整測試通過 53 tests／0 failures／0 errors。PR #32 已合併回 <code>main</code>；隔離 Docker Compose 已驗證外部呼叫停用、無 server key 降級，以及使用受限 server key 的真實 Google Routes <code>READY</code> 路徑。即時 <code>NOW</code> 查詢不送 <code>departureTime</code> 給 Routes，排程 <code>SCHEDULED</code> 查詢才送指定時間。此階段仍不包含前端 Google Maps／Places 或預測模型。</p>
-  </section>
-  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>規劃並建立前端 Google Maps／Places Issue：接入瀏覽器 key、地點搜尋與結果頁地圖。</li><li>將頁面可見時自動刷新接到 S2-018 已提供的後端刷新協調能力。</li><li>完成 Google 與前端整合後，再規劃預測基準與模型驗證。</li></ol></div></section>
-  <footer>本頁是人工維護的進度快照。詳細需求、決策與最新狀態以 <a href="requirements.md">requirements.md</a>、<a href="decisions.md">decisions.md</a>、<a href="current-state.md">current-state.md</a> 為準。</footer>
+  <footer>
+    詳細需求與歷史紀錄請看 <a href="current-state.md">current-state.md</a>、<a href="decisions.md">decisions.md</a>、<a href="implementation-plan.md">implementation-plan.md</a> 與 <a href="roadmap.md">roadmap.md</a>。本頁是人工維護的高層進度摘要。
+  </footer>
 </main>
-  <section>
-    <h2>Sprint 2 最新進度：S2-005 後端 profiles</h2>
-    <p>已建立 local/test/docker 三種 profile。local/test 使用 H2，docker 使用 MySQL 環境變數。Maven 測試已確認 test profile 使用 H2。</p>
-    <p>驗收狀態：Maven test 已確認 H2 test profile；Docker Compose 已確認 API 使用 MySQL profile 啟動並回應健康端點。Sponsor 已確認，Issue #5 已關閉。</p>
-  </section>
-  <section>
-    <h2>Sprint 2 最新進度：S2-006 mock 查詢生命週期</h2>
-    <p>已建立三個 mock endpoint：建立查詢、讀取查詢、刷新車位。前端可送出 mock 查詢並顯示 ETA、路邊、路外與預測資料不足狀態。</p>
-    <p>驗證：後端 Maven test 5 個測試通過、前端 build 通過、本機 HTTP endpoint 驗證通過、Docker api/web image build 通過、Docker runtime endpoint 驗證通過。Sponsor 已確認，Issue #6 已關閉；尚未接 Google、新北市官方 API、Redis 或正式預測。</p>
-  </section>
-  <section>
-    <h2>Sprint 2 最新進度：S2-007 文件同步與驗收檢查清單</h2>
-    <p>已新增 docs/task-completion-checklist.md，整理每張 Issue 完成前的範圍、功能、測試、文件、Git 與工程說明驗收項目。</p>
-    <p>README、development-workflow.md、current-state.md 與本頁已同步目前進度。Sponsor 已確認清單可接受，Issue #7 已關閉。</p>
-  </section>
-  <section>
-    <h2>Sprint 2 最新進度：PR #9 已建立</h2>
-    <p>已建立 PR #9：Sprint 2：建立主系統骨架與 mock 查詢流程。範圍包含 S2-001 至 S2-007 的成果。</p>
-    <p>PR 前驗證：後端 Maven test 5 tests／0 failures、前端 npm run build 通過、Docker Compose api/web image build 通過。PR #9 已合併回 main，Sprint 2 第一組 #1～#7 已完成。</p>
-  </section>
-  <section>
-    <h2>Sprint 2 最新進度：S2-008 GitHub Actions CI 已完成</h2>
-    <p>已刪除已合併的 <code>sprint-2-main-system-scaffold</code> 分支，並建立 <code>feature/s2-008-github-actions-ci</code> 作為 CI 工作分支。</p>
-    <p>第一版 GitHub Actions CI 檢查後端 Maven test、前端 npm build，以及 Docker Compose api/web image build；此階段不做部署，也不需要任何真實 API key。PR #10 已合併回 main，Issue #8 已關閉。</p>
-  </section>
-  <section>
-    <h2>Sprint 2 最新進度：第二組 Issues 已建立</h2>
-    <p>已建立 S2-009～S2-013，聚焦資料基礎與 300 公尺查詢：核心 JPA Entity、schema migration、H2/MySQL 邊界、新莊停車目錄小樣本、附近查詢服務，以及把本地目錄結果接入既有 parking-queries 流程。</p>
-    <p>S2-009 已開始實作。已建立核心 JPA Entity 與 Repository，並新增 H2 repository 測試；Docker 容器中執行後端 Maven 測試通過：6 tests／0 failures。正式 migration、seed、300 公尺查詢、即時來源與預測仍不在 S2-009 範圍內。</p>
-  </section>
-  <section>
-    <h2>流程修正：建檔前架構檢查</h2>
-    <p>已依 Sponsor 回饋補上工作規則：建立、移動或刪除檔案前，必須先檢查 repo 架構與任務範圍。後端檔案放在 <code>backend/src/...</code>，前端檔案放在 <code>frontend/src/...</code>，避免產生 <code>backend/backend/...</code> 或 <code>frontend/frontend/...</code> 這類錯誤巢狀目錄。</p>
-  </section>  <section>
-    <h2>Sprint 2 最新進度：S2-010 schema migration 與 MySQL/H2 邊界驗證</h2>
-    <p>已建立 Flyway V1 migration，將核心資料表與索引交由 migration 管理，不再依賴 Hibernate 自動建表。</p>
-    <p>驗證：後端 Docker Maven test 通過 6 tests／0 failures；H2 test profile 會套用 Flyway V1 migration。另以臨時 Docker Compose project 驗證 MySQL，API health 通過，MySQL 已建立 flyway_schema_history 與核心資料表。</p>
-    <p>邊界：H2 只作開發端快速測試；MySQL schema、索引、型別與啟動行為仍需 Docker MySQL 驗證。S2-010 不包含 seed、300 公尺查詢、官方即時 API 或預測模型。</p>
-  </section>  <section>
-    <h2>Sprint 2 最新進度：S2-011 新莊停車目錄小樣本</h2>
-    <p>已建立可提交的小樣本 seed，包含 3 筆新莊路邊示範汽車格位與 2 筆新莊路外示範停車場，並建立對應 source mapping。</p>
-    <p>載入方式：local/test profile 會載入 seed；docker profile 預設不載入 seed，需明確設定 <code>SPRING_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/seed</code> 才會載入。</p>
-    <p>驗證：Docker Maven test 通過 8 tests／0 failures；臨時 Docker MySQL 驗證 API healthy，MySQL 中有 3 筆路邊、2 筆路外、5 筆 source mapping。Sponsor 已以 Postman 完成人工驗收並回報 OK，測試用 Docker 已關閉。此資料只用於流程驗證，不代表新莊完整覆蓋，也不包含即時剩餘位。</p>
-  </section>
-  <section>
-    <h2>Sprint 2 最新進度：S2-012 300 公尺停車位置查詢服務</h2>
-    <p>已新增後端 <code>NearbyParkingSearchService</code>，可用新莊停車目錄 seed 查詢目的地直線 300 公尺內的已收錄路邊與路外停車位置，並依距離排序、回傳路邊與路外數量。</p>
-    <p>驗證：Docker Maven 後端測試通過 12 tests／0 failures；臨時 MySQL 8.4 容器載入 V1 migration 與 seed 後，S2-012 service 測試通過 4 tests／0 failures。此階段尚未接 HTTP API 或前端，S2-013 才會接入既有 <code>parking-queries</code> 流程。</p>
-  </section>  <section>
-    <h2>Sprint 2 最新進度：S2-013 停車目錄查詢接入 parking-queries</h2>
-    <p>已將 S2-012 的 300 公尺查詢服務接入既有 <code>POST /api/v1/parking-queries</code> 流程。API 仍使用 mock ETA，但路邊與路外結果已改由新莊 seed 目錄產生。</p>
-    <p>驗證：Docker Maven 後端測試通過 13 tests／0 failures；臨時 MySQL 8.4 容器載入 V1 migration 與 seed 後，controller 測試通過 3 tests／0 failures。此階段仍不宣稱即時剩餘位，路邊目前可用數與路外可用汽車位維持空值。</p>
-  </section></body>
+</body>
 </html>
