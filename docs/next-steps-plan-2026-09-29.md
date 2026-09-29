@@ -1,6 +1,6 @@
 # Sprint 2 下一步規劃
 
-更新日期：2026-09-29。狀態：規劃完成，尚未建立新 Issue 或開始下一個實作增量。
+更新日期：2026-09-29。狀態：規劃完成；GitHub Issues #33～#37 已建立，尚未開始下一個實作增量。
 
 ## 規劃依據
 
@@ -18,38 +18,54 @@
 
 驗收：文件不再聲稱 Google Routes、Redis、MySQL schema 或即時快照尚未實作；同時保留尚未完成的前端、正式 catalog／mapping 與預測限制。
 
-### 1. S2-020：官方目錄、ID 對應與低頻來源量測
+### 1. S2-020：官方目錄與 ID 對應
 
-建立新莊路邊／路外的可追溯正式目錄與 `source_mapping` 建立流程；以一次或極少量、受紀錄的官方來源讀取，量測分頁、回應大小、ID、重複率、欄位與新莊覆蓋。量測必須與離線 collector 分開。
+GitHub Issue：[\#33](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/33)。
+
+建立新莊路邊／路外的可追溯正式目錄與 `source_mapping` 建立流程，讓現有快照發布只對已驗證的官方來源 ID 發布。
 
 驗收：
 
-- 每種資料集都有來源 URL、取得時間、HTTP 次數、頁數、筆數、來源 ID 與解析失敗證據。
+- 每種資料集都有來源、靜態欄位與官方來源 ID 的核對依據。
 - 新莊正式 catalog 與動態來源 ID 的對應覆蓋率可量化；未知或衝突 mapping 不會被猜測成已驗證。
-- 以正式 mapping 執行一輪刷新時，能清楚區分「成功發布」、「品質拒絕」與「來源失敗」；仍不把未驗證值顯示為目前有位。
+- 以正式 mapping 執行刷新時，未驗證值不會被發布為目前有位。
 - 用 Docker MySQL 驗證實際資料量下的 migration、交易與查詢；不只依 H2。
 
-決策關口：根據單輪成本、延遲、完整性與覆蓋率，才調整 `page-size`、`max-pages`、cooldown 與前景等待策略。
+決策關口：完成 catalog 與 mapping 後，再由 S2-021 進行低頻來源量測。
 
-### 2. S2-021：查詢生命週期與 API 契約收斂
+### 2. S2-021：官方即時來源量測與發布品質門檻
+
+GitHub Issue：[\#34](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/34)。
+
+以主系統獨立、低頻的官方來源讀取量測分頁、回應大小、延遲、新莊覆蓋與候選快照品質；量測必須與離線 collector 分開。
+
+驗收：路邊與路外都有 HTTP、頁數、資料量、來源 ID、品質與 mapping 覆蓋證據；缺頁、重複、欄位異常與發布拒絕可分開記錄；只有依據量測結果才調整 `page-size`、`max-pages`、cooldown 與工作期限。
+
+### 3. S2-022：查詢生命週期與 API 契約收斂
+
+GitHub Issue：[\#35](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/35)。
 
 移除服務名稱與回應訊息中的 mock 語意，落實已規劃的輸入驗證、錯誤格式、防重送、`queryId` 有效期及讀取／刷新邊界。此項不擴大為預測功能。
 
 驗收：建立、讀取、刷新三個端點的 HTTP 與區塊狀態有 OpenAPI 或等價機器可讀契約；`GET` 不觸發 Google 或政府上游；無效座標、試點外、過期 query 與來源局部失敗皆有可測的穩定回應。
 
-### 3. S2-022：Places、Google Maps 與結果頁
+### 4. S2-023：Places、Google Maps 與結果頁
+
+GitHub Issue：[\#36](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/36)。
 
 前端以瀏覽器受限 key 接 Google Maps JavaScript API 與 Places Autocomplete (New)，使用者選取地點後才把座標送給既有後端。結果頁顯示 ETA、300 公尺圓、路邊／路外清單、資料時間與既有狀態，不能將來源觀測與預測混在一起。
 
 驗收：browser key 僅設定 HTTP referrer 與必要 API restriction；沒有 key、Places 失敗、ETA 失敗、無目錄、有效 0、未知與過期各有可理解畫面；地圖與清單以同一個目的地座標和後端回應呈現。
 
-### 4. S2-023：前端受控刷新與端到端驗收
+### 5. S2-024：前端受控刷新與端到端驗收
+
+GitHub Issue：[\#37](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/37)。
 
 把 `visibilitychange`、手動更新、有限輪詢與停止條件接到既有 refresh API。前端只依後端回傳的狀態與 `nextAllowedRefreshAt` 決定是否可再試，不自行計時繞過 cooldown；車位刷新不重算 ETA。
 
 驗收：頁面隱藏時停止輪詢；重新可見時先 `GET`；同時手動與自動刷新只加入同一來源輪次；Redis 暫失、來源失敗或冷卻時停止密集重試。以 Docker Compose 完成正式 mapping 的成功、失敗與過期情境驗收。
 
-### 5. Sprint 3 入口：資料品質與預測基準
+### 6. Sprint 3 入口：資料品質與預測基準
 
 只有在正式來源歷史、狀態碼、時間欄位、目錄覆蓋與樣本缺口都可量化後，才分別建立路邊 300 公尺區域與路外單場的持續現況／同時段歷史基準，並做時間切分回測。
 
@@ -57,10 +73,10 @@
 
 ## 工程審查重點
 
-- 真實 API 呼叫只在 S2-020 的低頻量測與後續人工驗收中進行，記錄用量但不提交原始敏感設定。
+- 真實 API 呼叫只在 S2-021 的低頻量測與後續人工驗收中進行，記錄用量但不提交原始敏感設定。
 - 目錄、mapping、動態觀測、已發布快照與模型推論維持分層；任何一層缺資料都不能由另一層假裝補齊。
 - 完成每個增量前，同時提供自動測試、Docker MySQL 驗證、人工驗收證據與已知限制；H2 通過不取代 MySQL 驗證。
 
 ## 不在本輪範圍
 
-本規劃不建立新後端／前端程式、不呼叫官方新北市來源、不變更 Google Cloud 設定、不建立 GitHub Issue，也不啟動模型訓練。
+本規劃不建立新後端／前端程式、不呼叫官方新北市來源、不變更 Google Cloud 設定，也不啟動模型訓練。
