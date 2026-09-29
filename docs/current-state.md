@@ -527,3 +527,9 @@ Sponsor 已在本機 `.env` 設定不同用途的 Google Maps Platform key，並
 已修正 Routes 呼叫策略：`NOW` 查詢不送 `departureTime` 給 Google Routes，由 Google 使用當下時間；`SCHEDULED` 查詢才送使用者指定的 `departureTime`。修正後新增／更新自動測試，完整後端測試通過 53 tests／0 failures／0 errors。
 
 重建隔離 Compose API 後再次建立新莊查詢，真實 Routes 驗收通過：`eta.status=READY`、`eta.provider=GOOGLE_ROUTES`、`durationSeconds=1218`、`estimatedArrivalAt` 有值，`predictions.targetArrivalAt` 同步使用該抵達時間。停車觀測區塊仍正常回傳；驗收後已執行 `docker compose -p s2019real down -v` 清理資源。驗收完成後，本機 `.env` 可將 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `false`，避免後續開發誤耗 Google 額度。
+
+## 2026-09-29 S2-019 合併完成，後端 Google ETA 收尾
+
+PR #32 已合併回 `main`，merge commit 為 `f4612b86b7f48fd9a5c19132deea44d4d1077d04`，並透過 `Closes #31` 關閉 S2-019 Issue。本機 `main` 已同步到 `origin/main`，並已刪除 `feature/s2-019-google-eta` 本機與遠端分支；殘留的本機 `feature/s2-018-refresh-control` 也已清理。
+
+S2-019 完成後，建立查詢已可使用 Google Routes 真實 ETA，並在外部呼叫停用、無 key 或 Google 失敗時明確降級，不再產生固定 18 分鐘 mock ETA。下一步轉向前端 Google Maps／Places 整合、結果頁地圖，以及把 S2-018 已提供的 `TriggerType.VISIBLE_AUTO_REFRESH` 接到前端頁面可見時自動刷新。

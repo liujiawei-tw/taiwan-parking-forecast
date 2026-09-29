@@ -61,7 +61,7 @@
   <header>
     <h1>停車預測專案｜進度與待辦</h1>
     <p class="lede">新莊區 MVP：搜尋目的地、計算抵達時間，顯示目的地方圓 300 公尺內收錄的汽車停車選項，以及抵達時有位的預測。</p>
-    <div class="meta"><span class="tag done">目前：S2-019 後端 Google ETA 初版完成</span><span class="tag">更新：2026-09-29</span><span class="tag">下一步：S2-019 PR 與人工驗收</span></div>
+    <div class="meta"><span class="tag done">目前：S2-019 後端 Google ETA 已合併</span><span class="tag">更新：2026-09-29</span><span class="tag">下一步：前端 Google Maps／Places 整合</span></div>
     <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統已完成後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、核心資料模型、Flyway schema、新莊 seed、300 公尺查詢 service、官方來源正規化與已發布快照讀取、來源受控刷新，以及後端 Google Routes ETA 初版。前端地圖／Places 整合、頁面可見時自動刷新前端接線與兩類預測尚未接入；訓練 collector 暫緩，不參與使用者查詢。</div>
   </header>
 
@@ -254,9 +254,9 @@
   <section>
     <h2>Sprint 2 最新進度：S2-019 後端 Google Routes ETA 初版</h2>
     <p>已新增後端 Google Routes <code>computeRoutes</code> client、ETA service 與設定。建立查詢不再產生固定 18 分鐘 mock ETA；Routes 成功時回 <code>GOOGLE_ROUTES</code> ETA，外部呼叫停用、無 key、Google 失敗或無路線時明確回 <code>eta.status=FAILED</code>，且不填假 <code>estimatedArrivalAt</code>。</p>
-    <p>驗證：Docker Maven 後端完整測試通過 53 tests／0 failures／0 errors。PR #32 已建立；隔離 Docker Compose 已驗證外部呼叫停用、無 server key 降級，以及使用受限 server key 的真實 Google Routes <code>READY</code> 路徑。即時 <code>NOW</code> 查詢不送 <code>departureTime</code> 給 Routes，排程 <code>SCHEDULED</code> 查詢才送指定時間。此階段仍不包含前端 Google Maps／Places 或預測模型。</p>
+    <p>驗證：Docker Maven 後端完整測試通過 53 tests／0 failures／0 errors。PR #32 已合併回 <code>main</code>；隔離 Docker Compose 已驗證外部呼叫停用、無 server key 降級，以及使用受限 server key 的真實 Google Routes <code>READY</code> 路徑。即時 <code>NOW</code> 查詢不送 <code>departureTime</code> 給 Routes，排程 <code>SCHEDULED</code> 查詢才送指定時間。此階段仍不包含前端 Google Maps／Places 或預測模型。</p>
   </section>
-  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>完成 S2-019 PR 與人工驗收：以真實 Google Routes server key 驗證成功 ETA，並驗證外部呼叫停用／無 key 的降級行為。</li><li>接著處理前端 Google Maps 結果頁與頁面可見時自動刷新。</li><li>完成 Google 與前端整合後，再規劃預測基準與模型驗證。</li></ol></div></section>
+  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>規劃並建立前端 Google Maps／Places Issue：接入瀏覽器 key、地點搜尋與結果頁地圖。</li><li>將頁面可見時自動刷新接到 S2-018 已提供的後端刷新協調能力。</li><li>完成 Google 與前端整合後，再規劃預測基準與模型驗證。</li></ol></div></section>
   <footer>本頁是人工維護的進度快照。詳細需求、決策與最新狀態以 <a href="requirements.md">requirements.md</a>、<a href="decisions.md">decisions.md</a>、<a href="current-state.md">current-state.md</a> 為準。</footer>
 </main>
   <section>
