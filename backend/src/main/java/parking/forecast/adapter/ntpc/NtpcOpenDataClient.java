@@ -1,11 +1,15 @@
 package parking.forecast.adapter.ntpc;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.net.URI;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -18,56 +22,77 @@ import parking.forecast.config.NtpcOpenDataProperties;
 @Component
 public class NtpcOpenDataClient {
 
-    private static final ParameterizedTypeReference<List<NtpcRoadsideParkingAvailabilityDto>> ROADSIDE_LIST =
-            new ParameterizedTypeReference<>() {
-            };
-    private static final ParameterizedTypeReference<List<NtpcOffStreetParkingAvailabilityDto>> OFF_STREET_LIST =
-            new ParameterizedTypeReference<>() {
-            };
-
     private final RestClient restClient;
     private final NtpcOpenDataProperties properties;
+    private final ObjectMapper objectMapper;
 
-    public NtpcOpenDataClient(@Qualifier("ntpcOpenDataRestClient") RestClient ntpcOpenDataRestClient, NtpcOpenDataProperties properties) {
+    @Autowired
+    public NtpcOpenDataClient(
+            @Qualifier("ntpcOpenDataRestClient") RestClient ntpcOpenDataRestClient,
+            NtpcOpenDataProperties properties
+    ) {
+        this(ntpcOpenDataRestClient, properties, new ObjectMapper());
+    }
+
+    NtpcOpenDataClient(RestClient ntpcOpenDataRestClient, NtpcOpenDataProperties properties, ObjectMapper objectMapper) {
         this.restClient = ntpcOpenDataRestClient;
         this.properties = properties;
+        this.objectMapper = objectMapper;
     }
 
     public List<NtpcRoadsideParkingAvailabilityDto> fetchRoadsideAvailability(int page, int size) {
+        return fetchRoadsideAvailabilityPage(page, size).rows();
+    }
+
+    public NtpcOpenDataPage<NtpcRoadsideParkingAvailabilityDto> fetchRoadsideAvailabilityPage(int page, int size) {
         validatePageRequest(page, size);
         return fetch(
                 properties.getRoadside(),
                 page,
                 size,
-                ROADSIDE_LIST,
+                NtpcRoadsideParkingAvailabilityDto.class,
                 "NTPC roadside parking availability");
     }
 
     public List<NtpcOffStreetParkingAvailabilityDto> fetchOffStreetAvailability(int page, int size) {
+        return fetchOffStreetAvailabilityPage(page, size).rows();
+    }
+
+    public NtpcOpenDataPage<NtpcOffStreetParkingAvailabilityDto> fetchOffStreetAvailabilityPage(int page, int size) {
         validatePageRequest(page, size);
         return fetch(
                 properties.getOffStreet(),
                 page,
                 size,
-                OFF_STREET_LIST,
+                NtpcOffStreetParkingAvailabilityDto.class,
                 "NTPC off-street parking availability");
     }
 
-    private <T> List<T> fetch(
+    private <T> NtpcOpenDataPage<T> fetch(
             NtpcOpenDataProperties.Dataset dataset,
             int page,
             int size,
-            ParameterizedTypeReference<List<T>> responseType,
+            Class<T> rowType,
             String description) {
         ensureExternalCallsEnabled(description);
         NtpcOpenDataClientException lastFailure = null;
         for (int attempt = 1; attempt <= properties.getMaxAttempts(); attempt++) {
+            long startedNanos = System.nanoTime();
             try {
-                var body = restClient.get()
+                String body = restClient.get()
                         .uri(uriBuilder -> buildUri(uriBuilder, dataset, page, size))
                         .retrieve()
-                        .body(responseType);
-                return body == null ? List.of() : body;
+                        .body(String.class);
+                long elapsedMillis = elapsedMillis(startedNanos);
+                long responseBytes = body == null ? 0 : body.getBytes(StandardCharsets.UTF_8).length;
+                return new NtpcOpenDataPage<>(
+                        bodyToRows(body, rowType, description),
+                        page,
+                        size,
+                        attempt,
+                        responseBytes,
+                        elapsedMillis
+                );
             } catch (RestClientResponseException exception) {
                 lastFailure = new NtpcOpenDataClientException(
                         "%s request failed with HTTP %s".formatted(description, exception.getStatusCode().value()),
@@ -81,6 +106,26 @@ public class NtpcOpenDataClient {
         throw lastFailure == null
                 ? new NtpcOpenDataClientException("%s request failed".formatted(description))
                 : lastFailure;
+    }
+
+    private <T> List<T> bodyToRows(String body, Class<T> rowType, String description) {
+        if (!StringUtils.hasText(body)) {
+            return List.of();
+        }
+        try {
+            var listType = objectMapper.getTypeFactory().constructCollectionType(List.class, rowType);
+            List<T> rows = objectMapper.readValue(body, listType);
+            return rows == null ? List.of() : rows;
+        } catch (JsonProcessingException exception) {
+            throw new NtpcOpenDataClientException(
+                    "%s response body could not be parsed as JSON array".formatted(description),
+                    exception
+            );
+        }
+    }
+
+    private long elapsedMillis(long startedNanos) {
+        return Math.max(0, (System.nanoTime() - startedNanos) / 1_000_000);
     }
 
     private URI buildUri(UriBuilder uriBuilder, NtpcOpenDataProperties.Dataset dataset, int page, int size) {
@@ -104,6 +149,19 @@ public class NtpcOpenDataClient {
         }
         if (size <= 0) {
             throw new IllegalArgumentException("size must be greater than 0");
+        }
+    }
+
+    public record NtpcOpenDataPage<T>(
+            List<T> rows,
+            int page,
+            int size,
+            int attempts,
+            long responseBytes,
+            long elapsedMillis
+    ) {
+        public NtpcOpenDataPage {
+            rows = rows == null ? List.of() : List.copyOf(rows);
         }
     }
 }

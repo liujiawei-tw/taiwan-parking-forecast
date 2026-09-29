@@ -1,19 +1,56 @@
--- S2-011 small seed data for New Taipei Xinzhuang MVP flow verification.
--- This file intentionally contains a tiny synthetic catalog. It is not an official or complete parking dataset.
+-- S2-020 official-source seed data for New Taipei Xinzhuang MVP flow verification.
+-- This file contains a small, traceable subset of NTPC Open Data records, not the full Xinzhuang catalog.
+-- Roadside records were sampled from dataset 54A507C4-C038-41B5-BF60-BBECB9D052C6 with areacode 65000050.
+-- Off-street records were sampled from static dataset B1464EF0-9C7C-4A6F-ABF7-6BDF32847E68 and verified
+-- to have matching IDs in availability dataset e09b35a5-a738-48cc-b0f5-570b67ad9c78.
 
 DELETE FROM source_mapping
-WHERE source_system = 'SYSTEM'
-  AND dataset_code IN ('NTPC_ROADSIDE_SPOT', 'NTPC_OFF_STREET_AVAILABILITY')
-  AND source_place_id IN (
-      'SEED-XINZHUANG-ROAD-001',
-      'SEED-XINZHUANG-ROAD-002',
-      'SEED-XINZHUANG-ROAD-003',
-      'SEED-XINZHUANG-LOT-001',
-      'SEED-XINZHUANG-LOT-002'
-  );
+WHERE (
+        source_system = 'SYSTEM'
+        AND dataset_code IN ('NTPC_ROADSIDE_SPOT', 'NTPC_OFF_STREET_AVAILABILITY')
+        AND source_place_id IN (
+            'SEED-XINZHUANG-ROAD-001',
+            'SEED-XINZHUANG-ROAD-002',
+            'SEED-XINZHUANG-ROAD-003',
+            'SEED-XINZHUANG-LOT-001',
+            'SEED-XINZHUANG-LOT-002'
+        )
+    )
+    OR (
+        source_system = 'NTPC_OPEN_DATA'
+        AND dataset_code IN ('NTPC_ROADSIDE_SPOT', 'NTPC_OFF_STREET_AVAILABILITY')
+        AND source_place_id IN (
+            '153854',
+            '153855',
+            '154341',
+            '154342',
+            '154343',
+            '96316',
+            '155063',
+            '050087',
+            '050029',
+            '050213'
+        )
+    );
 
 DELETE FROM parking_place
-WHERE id IN (910001, 910002, 910003, 920001, 920002);
+WHERE id IN (
+    910001,
+    910002,
+    910003,
+    920001,
+    920002,
+    910101,
+    910102,
+    910103,
+    910104,
+    910105,
+    910106,
+    910107,
+    920101,
+    920102,
+    920103
+);
 
 INSERT INTO parking_place (
     id,
@@ -30,74 +67,144 @@ INSERT INTO parking_place (
     updated_at
 ) VALUES
     (
-        910001,
+        910101,
         'ON_STREET_SPOT',
-        '新莊中正路示範路邊汽車格 A',
-        25.0357810,
-        121.4509820,
+        '中華路一段路邊汽車格 20',
+        25.0388680,
+        121.4521260,
         NULL,
         NULL,
         'CONFIRMED',
         'ACTIVE',
         'NEW_TAIPEI_XINZHUANG',
-        '2026-09-26 00:00:00',
-        '2026-09-26 00:00:00'
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
     ),
     (
-        910002,
+        910102,
         'ON_STREET_SPOT',
-        '新莊中華路示範路邊汽車格 B',
-        25.0391050,
-        121.4523350,
+        '中華路一段路邊汽車格 21',
+        25.0389570,
+        121.4521400,
         NULL,
         NULL,
         'CONFIRMED',
         'ACTIVE',
         'NEW_TAIPEI_XINZHUANG',
-        '2026-09-26 00:00:00',
-        '2026-09-26 00:00:00'
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
     ),
     (
-        910003,
+        910103,
         'ON_STREET_SPOT',
-        '新莊公園路示範路邊汽車格 C',
-        25.0376200,
-        121.4489100,
+        '中華路一段路邊汽車格 22',
+        25.0391870,
+        121.4521820,
         NULL,
         NULL,
         'CONFIRMED',
         'ACTIVE',
         'NEW_TAIPEI_XINZHUANG',
-        '2026-09-26 00:00:00',
-        '2026-09-26 00:00:00'
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
     ),
     (
-        920001,
+        910104,
+        'ON_STREET_SPOT',
+        '中華路一段路邊汽車格 23',
+        25.0392350,
+        121.4521940,
+        NULL,
+        NULL,
+        'CONFIRMED',
+        'ACTIVE',
+        'NEW_TAIPEI_XINZHUANG',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
+    ),
+    (
+        910105,
+        'ON_STREET_SPOT',
+        '中華路一段路邊汽車格 24',
+        25.0392840,
+        121.4522060,
+        NULL,
+        NULL,
+        'CONFIRMED',
+        'ACTIVE',
+        'NEW_TAIPEI_XINZHUANG',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
+    ),
+    (
+        910106,
+        'ON_STREET_SPOT',
+        '化成路路邊汽車格 2',
+        25.0431880,
+        121.4649970,
+        NULL,
+        NULL,
+        'CONFIRMED',
+        'ACTIVE',
+        'NEW_TAIPEI_XINZHUANG',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
+    ),
+    (
+        910107,
+        'ON_STREET_SPOT',
+        '化成路路邊汽車格 14',
+        25.0436610,
+        121.4650590,
+        NULL,
+        NULL,
+        'CONFIRMED',
+        'ACTIVE',
+        'NEW_TAIPEI_XINZHUANG',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
+    ),
+    (
+        920101,
         'OFF_STREET_LOT',
-        '新莊區公所周邊示範停車場',
-        25.0372100,
-        121.4530200,
-        25.0371880,
-        121.4527800,
+        '宜家家居股份有限公司新莊分公司停車場',
+        25.0414214,
+        121.4647633,
+        25.0414214,
+        121.4647633,
         'CONFIRMED',
         'ACTIVE',
         'NEW_TAIPEI_XINZHUANG',
-        '2026-09-26 00:00:00',
-        '2026-09-26 00:00:00'
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
     ),
     (
-        920002,
+        920102,
         'OFF_STREET_LOT',
-        '新莊運動中心周邊示範停車場',
-        25.0418400,
-        121.4526400,
-        25.0417000,
-        121.4525000,
+        '新莊區農會停車場',
+        25.0378576,
+        121.4582263,
+        25.0378576,
+        121.4582263,
         'CONFIRMED',
         'ACTIVE',
         'NEW_TAIPEI_XINZHUANG',
-        '2026-09-26 00:00:00',
-        '2026-09-26 00:00:00'
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
+    ),
+    (
+        920103,
+        'OFF_STREET_LOT',
+        '博客停車場藏壽司思源場停車場',
+        25.0481265,
+        121.4601752,
+        25.0481265,
+        121.4601752,
+        'CONFIRMED',
+        'ACTIVE',
+        'NEW_TAIPEI_XINZHUANG',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
     );
 
 INSERT INTO source_mapping (
@@ -114,68 +221,132 @@ INSERT INTO source_mapping (
     updated_at
 ) VALUES
     (
-        'SYSTEM',
+        'NTPC_OPEN_DATA',
         'NTPC_ROADSIDE_SPOT',
-        'SEED-XINZHUANG-ROAD-001',
-        910001,
+        '153854',
+        910101,
         'VERIFIED',
-        '2026-09-26 00:00:00',
+        '2026-09-29 00:00:00',
         NULL,
-        '新莊中正路示範路邊汽車格 A',
-        'Synthetic seed for Xinzhuang MVP catalog flow',
-        '2026-09-26 00:00:00',
-        '2026-09-26 00:00:00'
+        '中華路一段 cellid=20 roadid=R27',
+        'areacode=65000050; name=汽車停車位; lat=25.038868; lng=121.452126',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
     ),
     (
-        'SYSTEM',
+        'NTPC_OPEN_DATA',
         'NTPC_ROADSIDE_SPOT',
-        'SEED-XINZHUANG-ROAD-002',
-        910002,
+        '153855',
+        910102,
         'VERIFIED',
-        '2026-09-26 00:00:00',
+        '2026-09-29 00:00:00',
         NULL,
-        '新莊中華路示範路邊汽車格 B',
-        'Synthetic seed for Xinzhuang MVP catalog flow',
-        '2026-09-26 00:00:00',
-        '2026-09-26 00:00:00'
+        '中華路一段 cellid=21 roadid=R27',
+        'areacode=65000050; name=汽車停車位; lat=25.038957; lng=121.452140',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
     ),
     (
-        'SYSTEM',
+        'NTPC_OPEN_DATA',
         'NTPC_ROADSIDE_SPOT',
-        'SEED-XINZHUANG-ROAD-003',
-        910003,
+        '154341',
+        910103,
         'VERIFIED',
-        '2026-09-26 00:00:00',
+        '2026-09-29 00:00:00',
         NULL,
-        '新莊公園路示範路邊汽車格 C',
-        'Synthetic seed for Xinzhuang MVP catalog flow',
-        '2026-09-26 00:00:00',
-        '2026-09-26 00:00:00'
+        '中華路一段 cellid=22 roadid=R27',
+        'areacode=65000050; name=汽車停車位; lat=25.039187; lng=121.452182',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
     ),
     (
-        'SYSTEM',
+        'NTPC_OPEN_DATA',
+        'NTPC_ROADSIDE_SPOT',
+        '154342',
+        910104,
+        'VERIFIED',
+        '2026-09-29 00:00:00',
+        NULL,
+        '中華路一段 cellid=23 roadid=R27',
+        'areacode=65000050; name=汽車停車位; lat=25.039235; lng=121.452194',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
+    ),
+    (
+        'NTPC_OPEN_DATA',
+        'NTPC_ROADSIDE_SPOT',
+        '154343',
+        910105,
+        'VERIFIED',
+        '2026-09-29 00:00:00',
+        NULL,
+        '中華路一段 cellid=24 roadid=R27',
+        'areacode=65000050; name=汽車停車位; lat=25.039284; lng=121.452206',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
+    ),
+    (
+        'NTPC_OPEN_DATA',
+        'NTPC_ROADSIDE_SPOT',
+        '96316',
+        910106,
+        'VERIFIED',
+        '2026-09-29 00:00:00',
+        NULL,
+        '化成路 cellid=2 roadid=R77',
+        'areacode=65000050; name=汽車停車位; lat=25.043188; lng=121.464997',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
+    ),
+    (
+        'NTPC_OPEN_DATA',
+        'NTPC_ROADSIDE_SPOT',
+        '155063',
+        910107,
+        'VERIFIED',
+        '2026-09-29 00:00:00',
+        NULL,
+        '化成路 cellid=14 roadid=R77',
+        'areacode=65000050; name=汽車停車位; lat=25.043661; lng=121.465059',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
+    ),
+    (
+        'NTPC_OPEN_DATA',
         'NTPC_OFF_STREET_AVAILABILITY',
-        'SEED-XINZHUANG-LOT-001',
-        920001,
+        '050087',
+        920101,
         'VERIFIED',
-        '2026-09-26 00:00:00',
+        '2026-09-29 00:00:00',
         NULL,
-        '新莊區公所周邊示範停車場',
-        'Synthetic seed for Xinzhuang MVP catalog flow',
-        '2026-09-26 00:00:00',
-        '2026-09-26 00:00:00'
+        '宜家家居股份有限公司新莊分公司停車場',
+        '新北市新莊區中正路1號B1~B3; TOTALCAR=641; TWD97=(296897.8,2770446)',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
     ),
     (
-        'SYSTEM',
+        'NTPC_OPEN_DATA',
         'NTPC_OFF_STREET_AVAILABILITY',
-        'SEED-XINZHUANG-LOT-002',
-        920002,
+        '050029',
+        920102,
         'VERIFIED',
-        '2026-09-26 00:00:00',
+        '2026-09-29 00:00:00',
         NULL,
-        '新莊運動中心周邊示範停車場',
-        'Synthetic seed for Xinzhuang MVP catalog flow',
-        '2026-09-26 00:00:00',
-        '2026-09-26 00:00:00'
+        '新莊區農會停車場',
+        '新北市新莊區中正路80號B2-B4; TOTALCAR=345; TWD97=(296239.5,2770049)',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
+    ),
+    (
+        'NTPC_OPEN_DATA',
+        'NTPC_OFF_STREET_AVAILABILITY',
+        '050213',
+        920103,
+        'VERIFIED',
+        '2026-09-29 00:00:00',
+        NULL,
+        '博客停車場開發股份有限公司藏壽司思源場停車場',
+        '新北市新莊區思源路168號; TOTALCAR=26; TWD97=(296432.3,2771187.1)',
+        '2026-09-29 00:00:00',
+        '2026-09-29 00:00:00'
     );
-

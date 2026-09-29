@@ -1,6 +1,6 @@
 # 目前狀態
 
-更新日期：2026-09-26。
+更新日期：2026-09-29。
 
 ## 階段與角色
 
@@ -555,3 +555,67 @@ Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `f
 本次重新閱讀 `main` 的後端、前端與核心文件後，確認 S2-001 至 S2-019 的程式能力與既有驗收紀錄一致：後端已有資料模型、少量合成 seed、300 公尺查詢、來源 adapter／快照發布、受控刷新，以及 Google Routes ETA 與降級。最近一次已記錄的完整後端驗證為 Docker Maven 53 tests／0 failures／0 errors；本次為文件盤點，未重新執行測試或呼叫外部 API。
 
 同時確認目前不能宣稱正式即時停車服務已完成：目錄只有 3 筆路邊與 2 筆路外合成 seed，正式 source mapping 與來源量測尚未完成；前端仍採固定 mock 起點與佔位地圖，尚未接 Maps JavaScript／Places 或可見頁自動刷新。已同步更新根目錄與前後端 README、實作計畫、路線圖、待確認問題及專案狀態頁；#33 至 #38 保持為下一批尚未開始的工作。
+
+## 2026-09-29 S2-020 官方目錄小樣本基線完成
+
+已完成 #33／S2-020 初版，將 `R__seed_xinzhuang_parking_catalog.sql` 從 S2-011 的 `SYSTEM` 合成示範資料改為可追溯的新北市官方 Open Data 小樣本。新 seed 目前包含 7 筆新莊路邊一般汽車格位與 3 筆新莊路外汽車停車場，`source_mapping.source_system=NTPC_OPEN_DATA`，路邊使用官方路邊資料的 `id` 作來源 key，路外使用官方路外靜態與即時剩餘位共用的 `ID` 作來源 key。舊的 `SEED-XINZHUANG-*` 合成 mapping 會在 repeatable migration 中清除。
+
+本次小量官方核對結果：新北市路邊資料完整回應約 30,941 筆，其中新莊 `areacode=65000050` 有 2,124 筆；路外靜態目錄前 1000 筆中篩到 97 筆新莊汽車場，且這 97 個 ID 均能在路外即時剩餘位資料中對上。官方 API 的 `filter` 參數在本次測試未實際套用，因此目前先以小量全回應後本機篩選作證據，不把平台篩選能力視為已確認。路外 TWD97 座標已轉為 WGS84 寫入 seed，原始 TWD97 值保留在 mapping hint。
+
+同時修正 `NtpcAvailabilityNormalizer` 的路邊來源 ID 選擇：優先使用官方 `id`，缺值時才退回 `cellid`，避免 `cellid` 在不同路段重複造成誤合併。查詢回應中的本地目錄來源標示改為 `LOCAL_NTPC_CATALOG`，並更新 repository、nearby search、controller 與 normalizer 測試。驗證使用 Docker JDK 執行精準後端測試：`NtpcAvailabilityNormalizerTest`、`XinzhuangSeedRepositoryTest`、`NearbyParkingSearchServiceTest`、`ParkingQueryControllerTest`，共 23 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 54 tests／0 failures／0 errors。
+
+限制：這仍不是完整新莊正式 catalog，不可宣稱覆蓋 2,124 格或 97 場；目前也沒有把路外靜態匯入流程自動化，沒有新增官方 API 高頻呼叫或模型訓練資料。下一步仍需在 S2-021 量測完整性、分頁、資料量、更新耗時與發布品質門檻，再決定是否匯入完整目錄或建立正式 importer。
+
+## 2026-09-29 S2-021 官方來源量測摘要基線實作
+
+已開始 #34／S2-021 並完成主系統量測摘要基線。`NtpcOpenDataClient` 保留既有 List 回傳方法，另新增 page metadata 版本，記錄單頁 rows、attempts、UTF-8 response bytes 與 client 端 elapsedMillis。`NtpcRealtimeSourceRefreshService` 已改用 page metadata 累計 pages、HTTP attempts、responseBytes 與分頁完整性；若超過 `maxPages`，錯誤訊息會明確包含 dataset、pages、httpRequests、pageSize、maxPages、responseBytes 與 `REJECT_INCOMPLETE_PAGE_TRAVERSAL`，不會進入發布。
+
+新增 `SourceMeasurementService` 將每輪觀測整理成 `sourceMeasurement{...}` 摘要，包含 retries、缺 source ID、重複 source ID、verified mapping 覆蓋、unmapped、failed observation、mappingCoverage 與發布建議。`AvailabilitySnapshotPublishingService` 會將此摘要保存到 `ingestion_run.quality_summary`；`availability_snapshot.quality_reason` 仍保留發布層的簡短 normalized／published／unmapped／failedObservations 結果，避免把量測摘要當成使用者查詢契約。
+
+驗證：Docker Maven 精準測試 `NtpcOpenDataClientTest`、`SourceMeasurementServiceTest`、`NtpcRealtimeSourceRefreshServiceTest`、`AvailabilitySnapshotPublishingServiceTest` 通過 12 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 56 tests／0 failures／0 errors。測試覆蓋 page metadata、bytes／attempts、缺頁拒絕發布、mapping 覆蓋、缺 ID、重複 ID、failed observation 與量測摘要保存。
+
+限制：本階段沒有高頻呼叫官方 API，也沒有執行多輪真實 refresh；S2-020 的低頻官方核對顯示路邊全量約 30,941 筆，以目前 `page-size=500`、`max-pages=20` 會超過上限，因此主系統會拒絕發布不完整路邊快照。正式調整 page-size、max-pages、cooldown 與品質門檻仍需 Sponsor 確認可接受用量後，再做低頻完整量測。
+
+## 2026-09-29 S2-021 單輪真實來源量測紀錄
+
+依 Sponsor 指示補上路邊／路外各一輪可重現的真實量測紀錄，詳見 `realtime-source-measurement.md`。本輪只呼叫新北市官方 Open Data API，不保存原始 JSON，不提交 API 回應內容，也沒有使用金鑰。
+
+路邊格位即時狀態使用 `page=0&size=40000`，HTTP 200，1 request，1 page，30,941 rows，11,270,904 bytes，elapsed 4,600 ms；因 rows 小於 requested size，本輪視為取齊。新莊 `areacode=65000050` 有 2,124 rows；全量 source ID 中有 30,653 unique IDs、0 missing source ID、288 duplicate rows。S2-020 seed 的 7 個 verified mapping ID 本輪皆找到。
+
+路外即時剩餘車位第一次 `size=40000` 只回 1,000 rows，因此以 `size=1000` 做分頁確認：page 0 有 1,000 rows、page 1 有 407 rows，共 2 requests、1,407 rows、50,642 bytes、elapsed 1,011 ms，本輪視為取齊。source ID 有 1,396 unique IDs、0 missing source ID、11 duplicate rows；`AVAILABLECAR`／`AVAILABLE` 缺值 0，負值 981，仍須依官方碼表分辨語意。S2-020 seed 的 3 個 verified mapping ID 本輪皆找到。
+
+驗收判斷：缺頁、重複、來源欄位異常、部分 mapping 與發布建議已能分開記錄；一輪品質拒絕不覆蓋既有 PUBLISHED snapshot 由既有測試保護。設定建議仍保守：現行 `page-size=500`、`max-pages=20` 對路邊全量不足，應繼續拒絕不完整路邊快照；路外現行設定理論上可取齊，但官方平台對大 size 可能限制為 1,000 rows，不可假設單頁放大。這仍是單輪量測，尚不能建立 p50／p95、長期穩定性或正式 cooldown。
+
+## 2026-09-29 S2-022 查詢生命週期與 API 契約基線實作
+
+已開始 #35／S2-022 並完成第一輪後端契約收斂。`ParkingQueryMockService` 已改名為 `ParkingQueryService`，查詢生命週期不再以 mock 命名；建立查詢會驗證 `requestToken`、起訖點座標、目的地是否在新莊 MVP 範圍，以及 `NOW`／`SCHEDULED` 出發時間語意。同一個有效 `requestToken` 會回同一個既有 `queryId`，避免網路重試或連點建立重複查詢。
+
+HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`details`、`retryable`、`nextAllowedAt` 與 `serverTime`。目前已實作 `INVALID_COORDINATE`、`INVALID_REQUEST_TOKEN`、`UNSUPPORTED_AREA`、`INVALID_DEPARTURE_TIME`、`QUERY_NOT_FOUND`、`QUERY_EXPIRED` 與 JSON／Bean validation 的 `INVALID_REQUEST`；前端可依錯誤碼處理流程，不需解析文字訊息。`GET /api/v1/parking-queries/{queryId}` 仍為只讀；`POST /refresh` 只走來源刷新協調並沿用原 Google ETA，不重算 Routes。
+
+目前 `queryId` 有效期實作為建立後 30 分鐘。正式預設使用 Redis query state：`parking:query:{queryId}` 保存短期查詢 response 與原始 request，預設保留 60 分鐘，前 30 分鐘有效、後 30 分鐘用於穩定回 `410 QUERY_EXPIRED`；`parking:query-token:{requestToken}` 保存防重送索引，TTL 為 30 分鐘，避免舊 token 阻擋重新規劃。test profile 使用 memory store，避免單元測試依賴外部 Redis。Redis query state 不可用時，主系統回 `503 SERVICE_TEMPORARILY_UNAVAILABLE` 與 `details.component=redis_query_state`，不以單機 map 冒充多實例可恢復狀態。MySQL 仍保存停車目錄、快照、觀測與來源狀態，不保存使用者查詢生命週期。
+
+驗證：使用本機 Maven 執行精準後端測試 `ParkingQueryControllerTest`、`ParkingQueryServiceTest`、`RedisParkingQueryStateStoreTest`，共 18 tests／0 failures／0 errors。測試覆蓋重複 `requestToken`、無效座標、區外目的地、過去指定出發時間、未知 queryId、refresh 未知 queryId、可控時鐘下的過期 queryId、Redis TTL 寫入、Redis JSON 還原與 Redis 失敗包裝，以及既有查詢讀取／刷新不重算 ETA。完整後端 `mvn test` 通過 67 tests／0 failures／0 errors；Docker Maven `maven:3.9-eclipse-temurin-21 mvn test` 也通過 67 tests／0 failures／0 errors。
+
+## 2026-09-29 S2-023 Maps／Places 前端結果頁初版
+
+已開始 #36／S2-023 並完成第一版前端整合。Vue 單頁不再是固定 mock 目的地與佔位地圖；有 `VITE_GOOGLE_MAPS_BROWSER_API_KEY` 時會載入 Google Maps JavaScript API 與 Place Autocomplete Widget (New)，選取目的地後只取 `displayName`、`formattedAddress`、`location` 等前端需要欄位，並在使用者明確按下「規劃停車查詢」時才把起點、目的地座標與出發時間送到主系統 `POST /api/v1/parking-queries`。前端不提交自算 ETA、目前車位數或預測機率，也不直接呼叫政府停車來源。
+
+結果頁改為地圖優先布局：地圖呈現目的地、300 公尺圈、路外停車場標記，以及後端回傳且 `availableSpots` 內的路邊目前有位格位標記；右側結果面板顯示 query／ETA／預測狀態、路邊與路外資料時間、全部結果清單與外部 Google Maps 路線入口。路邊格位文案明確標示只代表目前觀測，不代表抵達時仍有位；抵達時機率仍依後端 `predictions` 區塊呈現資料不足或未完成狀態。
+
+未設定瀏覽器 Google key 時，前端維持手動座標 fallback，CI 與一般本機 build 不會呼叫 Google。此階段尚未接 S2-024 的頁面可見時自動刷新，也尚未做真實 browser key 的人工 Places 查詢驗收；Google 金鑰限制、Places 實際用量與手機真機可用性仍需 Sponsor 在安全本機環境確認。
+
+## 2026-09-29 S2-024 可見頁受控刷新初版
+
+已開始 #37／S2-024 並完成前後端接線。`POST /api/v1/parking-queries/{queryId}/refresh` 新增 `trigger` query parameter，預設維持 `MANUAL_REFRESH`；前端可見頁自動刷新使用 `VISIBLE_AUTO_REFRESH`。Controller 只允許 `MANUAL_REFRESH` 與 `VISIBLE_AUTO_REFRESH`，其他 trigger 會回穩定錯誤 `INVALID_REFRESH_TRIGGER`，避免瀏覽器端繞過主系統來源刷新用途。`ParkingQueryService` 會把 trigger 傳給 `SourceRefreshCoordinationService`，讓 `ingestion_run.trigger_type` 能分辨手動與可見頁自動刷新。
+
+前端在結果頁有 queryId 後監聽 `visibilitychange`：頁面隱藏時停止進度輪詢與自動刷新；頁面重新可見時先用 `GET /api/v1/parking-queries/{queryId}` 只讀恢復狀態，再依最新 `roadside.status`／`offStreet.status` 判斷。若來源狀態為 `STALE` 或 `NO_REALTIME_SNAPSHOT`，且目前沒有 `refreshInProgress`，同一 queryId 與來源狀態組合只送一次 `VISIBLE_AUTO_REFRESH`。冷卻、失敗或仍無 snapshot 時不靠定時器密集重送；使用者手動「更新車位」仍可發起 `MANUAL_REFRESH` 檢查，且同樣受後端 cooldown、Redis 鎖與來源限制。
+
+驗證：前端 `npm run build` 通過；後端精準測試 `ParkingQueryControllerTest`、`ParkingQueryServiceTest` 通過 16 tests／0 failures／0 errors。此階段未做真實官方來源高頻刷新驗收，也未宣稱 5 分鐘門檻已是正式服務承諾；它只是把既有後端受控刷新能力接到前端可見頁生命週期。
+
+## 2026-09-29 S2-025 文件基線與 Sprint 3 預測進入條件
+
+已開始 #38／S2-025 並完成文件基線校正。新增 `sprint-3-entry-criteria.md`，明確區分目前已完成的主系統能力、仍未完成的資料與人工驗收，以及 Sprint 3 可以開始預測工作的硬性門檻。預測機率輸出前至少需要可重現多輪來源量測、清楚的 catalog／mapping 覆蓋界線、與線上 300 公尺定義一致的訓練標籤、無時間洩漏的回測、基準模型比較、完整推論契約與可回滾模型版本。
+
+同步更新 README、backend README、roadmap、implementation plan、open questions 與 project status，移除 #33 至 #38 尚未開始、前端仍為 mock、目錄仍為合成 seed 等過時敘述。最新基線是：S2-020 至 S2-024 已完成官方小樣本 mapping、單輪來源量測、Redis query state、Maps／Places 結果頁與可見頁受控刷新接線；但完整新莊 catalog、多輪 p50／p95、真實 browser key Places 人工驗收、端到端官方刷新人工驗收及兩類預測模型仍未完成。
+
+驗證：本次為文件任務，未修改產品程式、未呼叫外部 API、未保存原始回應或敏感設定。使用 `git diff --check` 做格式與空白檢查；不重新跑 Maven／前端 build，因為行為程式碼未變更。

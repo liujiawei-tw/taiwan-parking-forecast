@@ -48,3 +48,8 @@ parking:
     lock-ttl: ${PARKING_REFRESH_LOCK_TTL:90s}
     page-size: ${PARKING_REFRESH_PAGE_SIZE:500}
     max-pages: ${PARKING_REFRESH_MAX_PAGES:20}
+
+  query-state:
+    store: ${PARKING_QUERY_STATE_STORE:redis}
+    ttl: ${PARKING_QUERY_STATE_TTL:30m}
+    expired-state-retention: ${PARKING_QUERY_STATE_EXPIRED_RETENTION:30m}

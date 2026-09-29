@@ -299,24 +299,24 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態，並在資料足夠時提供抵達時預測。</p>
     <div class="meta">
-      <span class="pill done">目前：S2-019 已合併</span>
+      <span class="pill doing">目前：S2-025 文件基線完成候選</span>
       <span class="pill">更新：2026-09-29</span>
-      <span class="pill doing">下一步：#33 正式目錄與來源 ID</span>
+      <span class="pill doing">下一步：Sprint 3 標籤 dry run 與人工驗收補齊</span>
       <span class="pill pending">訓練 collector：暫緩</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新與 Google Routes ETA，但正式目錄、官方來源 ID 對應與品質量測尚未完成。前端尚未接 Google Maps JavaScript API／Places Autocomplete，頁面可見時自動刷新也尚未接線；兩類預測仍等待可用訓練資料與基準模型。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪低頻真實來源量測。S2-022 已收斂查詢 API 契約與 Redis query state；S2-023 已接入前端 Maps／Places 載入路徑、手動座標 fallback、地圖優先結果頁與停車標記；S2-024 已接上頁面可見時先 GET、再受控自動刷新一次的前端生命週期。完整新莊目錄、多輪 p50／p95 長期量測、正式品質門檻與兩類預測仍未完成。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
     <article class="metric">
       <span>後端測試</span>
-      <strong>53 / 0 / 0</strong>
-      <p>Docker Maven：tests / failures / errors。</p>
+      <strong>69 / 0 / 0</strong>
+      <p>最近完整後端 Maven 測試：tests / failures / errors；S2-024 精準回歸為 16 / 0 / 0。</p>
     </article>
     <article class="metric">
       <span>Sprint 2 完成項</span>
-      <strong>S2-001 至 S2-019</strong>
-      <p>後端 Google Routes ETA 已合併到 main。</p>
+      <strong>S2-001 至 S2-025</strong>
+      <p>S2-025 已校正文件基線與 Sprint 3 預測進入條件。</p>
     </article>
     <article class="metric">
       <span>最新 merge</span>
@@ -325,8 +325,8 @@
     </article>
     <article class="metric">
       <span>下一個瓶頸</span>
-      <strong>正式目錄與來源對應</strong>
-      <p>低頻量測、官方 ID mapping 與快照發布覆蓋率。</p>
+      <strong>來源量測與完整目錄</strong>
+      <p>分頁完整性、官方資料量、完整 catalog 匯入策略與快照發布覆蓋率。</p>
     </article>
   </section>
 
@@ -361,13 +361,13 @@
         </div>
         <div class="progress-row">
           <div class="progress-label">前端 Maps／Places 結果頁</div>
-          <div class="track"><div class="fill blue" style="width: 20%"></div></div>
-          <div class="progress-value">待實作</div>
+          <div class="track"><div class="fill blue" style="width: 70%"></div></div>
+          <div class="progress-value">驗收候選</div>
         </div>
         <div class="progress-row">
           <div class="progress-label">頁面可見時自動刷新</div>
-          <div class="track"><div class="fill amber" style="width: 35%"></div></div>
-          <div class="progress-value">後端已備妥</div>
+          <div class="track"><div class="fill blue" style="width: 75%"></div></div>
+          <div class="progress-value">驗收候選</div>
         </div>
         <div class="progress-row">
           <div class="progress-label">預測基準與模型</div>
@@ -391,8 +391,8 @@
       <div class="panel">
         <h2>目前不可宣稱</h2>
         <ul class="risk-list">
-          <li>前端 Google 地圖與 Places 尚未完成。</li>
-          <li>頁面可見時自動刷新尚未接前端。</li>
+          <li>真實 browser key 的 Places 人工驗收尚未完成。</li>
+          <li>可見頁刷新尚未做真實端到端人工驗收。</li>
           <li>路邊／路外抵達時預測尚未有可信模型。</li>
           <li>訓練 collector 不參與使用者查詢。</li>
         </ul>
@@ -419,7 +419,7 @@
 
         <div class="phase-name">Google ETA 與前端</div>
         <div class="bar blue" style="grid-column: 10 / span 2;">後端 ETA 完成</div>
-        <div class="bar amber" style="grid-column: 12 / span 2;">前端待做</div>
+        <div class="bar blue" style="grid-column: 12 / span 2;">前端初版完成</div>
 
         <div class="phase-name">預測與回測</div>
         <div class="bar violet" style="grid-column: 14 / span 5;">資料依賴高風險</div>
@@ -449,7 +449,7 @@
         <li>接入 <code>GOOGLE_MAPS_BROWSER_API_KEY</code>。</li>
         <li>使用 Maps JavaScript API 與 Places API (New)。</li>
         <li>建立結果頁地圖、300 公尺圓與停車清單。</li>
-        <li>接上頁面可見時自動刷新。</li>
+        <li>頁面可見時先只讀恢復，再受控自動刷新一次。</li>
       </ul>
     </article>
     <article class="lane">
@@ -503,20 +503,26 @@
         <tr>
           <td>正式目錄與來源量測</td>
           <td>#33、#34</td>
-          <td><span class="pill doing">待實作</span></td>
-          <td>新莊正式 catalog、官方 ID mapping、分頁完整性、覆蓋率與單輪成本量測。</td>
+          <td><span class="pill done">完成</span></td>
+          <td>#33 已建立官方小樣本 catalog 與 ID mapping；#34 已完成量測摘要基線與路邊／路外各一輪真實量測。</td>
         </tr>
         <tr>
-          <td>查詢與前端整合</td>
-          <td>#35、#36、#37</td>
-          <td><span class="pill doing">待實作</span></td>
-          <td>正式查詢契約、Maps JavaScript API、Places Autocomplete、結果頁與可見頁受控刷新。</td>
+          <td>查詢 API 契約</td>
+          <td>#35</td>
+          <td><span class="pill done">完成</span></td>
+          <td>已完成 requestToken 去重、穩定錯誤回應、queryId TTL、Redis query state 與只讀／刷新邊界。</td>
+        </tr>
+        <tr>
+          <td>前端整合</td>
+          <td>#36、#37</td>
+          <td><span class="pill doing">#37 驗收候選</span></td>
+          <td>#36 已完成 Maps JavaScript API、Places Autocomplete 載入路徑、結果頁與無 key fallback；#37 已完成可見頁只讀恢復與受控自動刷新接線。</td>
         </tr>
         <tr>
           <td>文件與 Sprint 3 門檻</td>
           <td>#38</td>
-          <td><span class="pill pending">待實作</span></td>
-          <td>校正文件基線，定義預測開始前的資料品質與回測證據。</td>
+          <td><span class="pill done">完成候選</span></td>
+          <td>已校正文件基線，並新增 Sprint 3 預測進入條件；預測仍需資料品質與回測證據才可輸出機率。</td>
         </tr>
         <tr>
           <td>預測基準</td>
@@ -532,10 +538,9 @@
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
       <ol class="next-list">
-        <li>依 #33 建立新莊正式 catalog 與來源 ID mapping。</li>
-        <li>依 #34 量測分頁、完整性、覆蓋率與單輪成本，再調整刷新設定。</li>
+        <li>依 #34 量測分頁、完整性、覆蓋率與單輪成本，再決定完整 catalog 匯入方式。</li>
         <li>依 #35～#37 收斂查詢契約、接入 Maps／Places 與前端受控刷新。</li>
-        <li>依 #38 校正文件基線；預測必須等資料品質與回測達標後再開始。</li>
+        <li>依 Sprint 3 進入條件建立已發布觀測匯出、標籤 dry run 與基準模型回測。</li>
       </ol>
     </div>
     <div class="panel">

@@ -1,14 +1,22 @@
 package parking.forecast.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import parking.forecast.controller.dto.CreateParkingQueryRequest;
@@ -34,6 +42,7 @@ import parking.forecast.repository.ParkingPlaceRepository;
 import parking.forecast.repository.SourceStateRepository;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
 class ParkingQueryControllerTest {
@@ -43,6 +52,9 @@ class ParkingQueryControllerTest {
 
     @Autowired
     private ParkingQueryController controller;
+
+    @Autowired
+    private MockMvc mockMvc;
 
     @Autowired
     private ParkingPlaceRepository parkingPlaceRepository;
@@ -73,15 +85,15 @@ class ParkingQueryControllerTest {
         assertThat(response.getBody().eta().status()).isEqualTo("FAILED");
         assertThat(response.getBody().eta().provider()).isEqualTo("GOOGLE_ROUTES");
         assertThat(response.getBody().eta().estimatedArrivalAt()).isNull();
-        assertThat(response.getBody().roadside().source()).isEqualTo("LOCAL_CATALOG_SEED");
+        assertThat(response.getBody().roadside().source()).isEqualTo("LOCAL_NTPC_CATALOG");
         assertThat(response.getBody().roadside().status()).isEqualTo("NO_REALTIME_SNAPSHOT");
         assertThat(response.getBody().roadside().currentlyAvailableSpaces()).isNull();
         assertThat(response.getBody().roadside().availableSpots()).isEmpty();
-        assertThat(response.getBody().offStreet().source()).isEqualTo("LOCAL_CATALOG_SEED");
+        assertThat(response.getBody().offStreet().source()).isEqualTo("LOCAL_NTPC_CATALOG");
         assertThat(response.getBody().offStreet().status()).isEqualTo("NO_REALTIME_SNAPSHOT");
         assertThat(response.getBody().offStreet().parkingLots())
                 .extracting(lot -> lot.name())
-                .contains("新莊區公所周邊示範停車場");
+                .contains("宜家家居股份有限公司新莊分公司停車場");
         assertThat(response.getBody().offStreet().parkingLots())
                 .allSatisfy(lot -> {
                     assertThat(lot.availableCarSpaces()).isNull();
@@ -93,11 +105,11 @@ class ParkingQueryControllerTest {
     @Test
     void createQueryReadsFreshPublishedSnapshotForCurrentAvailability() {
         publishRoadsideSnapshot(FRESH_FETCHED_AT, List.of(
-                roadsideObservation(910001L, AvailabilityStatus.AVAILABLE, true),
-                roadsideObservation(910002L, AvailabilityStatus.OCCUPIED, false)
+                roadsideObservation(910106L, AvailabilityStatus.AVAILABLE, true),
+                roadsideObservation(910107L, AvailabilityStatus.OCCUPIED, false)
         ));
         publishOffStreetSnapshot(FRESH_FETCHED_AT, List.of(
-                offStreetObservation(920001L, AvailabilityStatus.AVAILABLE, 12)
+                offStreetObservation(920101L, AvailabilityStatus.AVAILABLE, 12)
         ));
 
         var response = controller.create(mockRequestNearSeedCatalog()).getBody();
@@ -107,11 +119,11 @@ class ParkingQueryControllerTest {
         assertThat(response.roadside().currentlyAvailableSpaces()).isEqualTo(1);
         assertThat(response.roadside().availableSpots())
                 .extracting(spot -> spot.id())
-                .containsExactly("910001");
+                .containsExactly("910106");
         assertThat(response.roadside().availableSpots().getFirst().availabilityStatus()).isEqualTo("AVAILABLE");
         assertThat(response.offStreet().source()).isEqualTo("NTPC_OPEN_DATA");
         assertThat(response.offStreet().parkingLots())
-                .filteredOn(lot -> lot.id().equals("920001"))
+                .filteredOn(lot -> lot.id().equals("920101"))
                 .singleElement()
                 .satisfies(lot -> {
                     assertThat(lot.availabilityStatus()).isEqualTo("AVAILABLE");
@@ -123,14 +135,14 @@ class ParkingQueryControllerTest {
     @Test
     void createQueryKeepsValidZeroSpacesSeparateFromUnknown() {
         publishOffStreetSnapshot(FRESH_FETCHED_AT, List.of(
-                offStreetObservation(920001L, AvailabilityStatus.FULL, 0)
+                offStreetObservation(920101L, AvailabilityStatus.FULL, 0)
         ));
 
         var response = controller.create(mockRequestNearSeedCatalog()).getBody();
 
         assertThat(response.offStreet().status()).isEqualTo("READY");
         assertThat(response.offStreet().parkingLots())
-                .filteredOn(lot -> lot.id().equals("920001"))
+                .filteredOn(lot -> lot.id().equals("920101"))
                 .singleElement()
                 .satisfies(lot -> {
                     assertThat(lot.availabilityStatus()).isEqualTo("FULL");
@@ -141,7 +153,7 @@ class ParkingQueryControllerTest {
     @Test
     void createQueryKeepsUnknownRoadsideObservationSeparateFromZeroOrUnavailable() {
         publishRoadsideSnapshot(FRESH_FETCHED_AT, List.of(
-                roadsideObservation(910001L, AvailabilityStatus.UNKNOWN, null)
+                roadsideObservation(910106L, AvailabilityStatus.UNKNOWN, null)
         ));
 
         var response = controller.create(mockRequestNearSeedCatalog()).getBody();
@@ -153,10 +165,10 @@ class ParkingQueryControllerTest {
     @Test
     void createQueryHidesCurrentAvailabilityWhenSnapshotIsStale() {
         publishRoadsideSnapshot(STALE_FETCHED_AT, List.of(
-                roadsideObservation(910001L, AvailabilityStatus.AVAILABLE, true)
+                roadsideObservation(910106L, AvailabilityStatus.AVAILABLE, true)
         ));
         publishOffStreetSnapshot(STALE_FETCHED_AT, List.of(
-                offStreetObservation(920001L, AvailabilityStatus.AVAILABLE, 8)
+                offStreetObservation(920101L, AvailabilityStatus.AVAILABLE, 8)
         ));
 
         var response = controller.create(mockRequestNearSeedCatalog()).getBody();
@@ -166,7 +178,7 @@ class ParkingQueryControllerTest {
         assertThat(response.roadside().availableSpots()).isEmpty();
         assertThat(response.offStreet().status()).isEqualTo("STALE");
         assertThat(response.offStreet().parkingLots())
-                .filteredOn(lot -> lot.id().equals("920001"))
+                .filteredOn(lot -> lot.id().equals("920101"))
                 .singleElement()
                 .satisfies(lot -> {
                     assertThat(lot.availabilityStatus()).isEqualTo("STALE");
@@ -180,7 +192,7 @@ class ParkingQueryControllerTest {
         var created = controller.create(mockRequestNearSeedCatalog()).getBody();
 
         var read = controller.get(created.query().queryId());
-        var refreshed = controller.refresh(created.query().queryId());
+        var refreshed = controller.refresh(created.query().queryId(), "MANUAL_REFRESH");
 
         assertThat(read.query().queryId()).isEqualTo(created.query().queryId());
         assertThat(refreshed.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
@@ -189,8 +201,19 @@ class ParkingQueryControllerTest {
     }
 
     @Test
-    void createQueryReturnsNoCatalogResultsWhenDestinationIsOutsideSeedArea() {
-        var response = controller.create(mockRequestOutsideSeedCatalog());
+    void createQueryReusesExistingQueryForDuplicateRequestToken() {
+        var request = mockRequestNearSeedCatalog("mock-token-dedupe-" + UUID.randomUUID());
+
+        var first = controller.create(request).getBody();
+        var second = controller.create(request).getBody();
+
+        assertThat(second.query().queryId()).isEqualTo(first.query().queryId());
+        assertThat(second.query().createdAt()).isEqualTo(first.query().createdAt());
+    }
+
+    @Test
+    void createQueryReturnsNoCatalogResultsWhenDestinationIsInsideMvpButOutsideSeedArea() {
+        var response = controller.create(mockRequestInsideMvpButOutsideSeedCatalog());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         assertThat(response.getBody()).isNotNull();
@@ -200,6 +223,82 @@ class ParkingQueryControllerTest {
         assertThat(response.getBody().offStreet().status()).isEqualTo("NO_CATALOG_RESULTS");
         assertThat(response.getBody().offStreet().parkingLots()).isEmpty();
         assertThat(response.getBody().predictions().status()).isEqualTo("INSUFFICIENT_DATA");
+    }
+
+    @Test
+    void createQueryRejectsInvalidCoordinateWithStableError() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestToken": "mock-token-invalid-coordinate",
+                                  "origin": { "label": "目前位置", "latitude": 91.0, "longitude": 121.45000 },
+                                  "destination": { "label": "IKEA 新莊", "latitude": 25.0414214, "longitude": 121.4647633 },
+                                  "departure": { "type": "NOW" }
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_COORDINATE"))
+                .andExpect(jsonPath("$.error.retryable").value(false))
+                .andExpect(jsonPath("$.serverTime").exists());
+    }
+
+    @Test
+    void createQueryRejectsUnsupportedAreaWithStableError() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestToken": "mock-token-unsupported-area",
+                                  "origin": { "label": "目前位置", "latitude": 25.04000, "longitude": 121.45000 },
+                                  "destination": { "label": "板橋測試點", "latitude": 25.01500, "longitude": 121.52000 },
+                                  "departure": { "type": "NOW" }
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("UNSUPPORTED_AREA"))
+                .andExpect(jsonPath("$.error.details.serviceArea").value("NEW_TAIPEI_XINZHUANG"));
+    }
+
+    @Test
+    void createQueryRejectsPastScheduledDepartureWithStableError() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestToken": "mock-token-past-departure",
+                                  "origin": { "label": "目前位置", "latitude": 25.04000, "longitude": 121.45000 },
+                                  "destination": { "label": "IKEA 新莊", "latitude": 25.0414214, "longitude": 121.4647633 },
+                                  "departure": { "type": "SCHEDULED", "departureAt": "2026-01-01T09:00:00+08:00" }
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("INVALID_DEPARTURE_TIME"));
+    }
+
+    @Test
+    void getUnknownQueryReturnsStableError() throws Exception {
+        mockMvc.perform(get("/api/v1/parking-queries/not-found-query"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("QUERY_NOT_FOUND"));
+    }
+
+    @Test
+    void refreshUnknownQueryReturnsStableError() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries/not-found-query/refresh"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("QUERY_NOT_FOUND"));
+    }
+
+    @Test
+    void refreshRejectsUnsupportedTriggerWithStableError() throws Exception {
+        var created = controller.create(mockRequestNearSeedCatalog()).getBody();
+
+        mockMvc.perform(post("/api/v1/parking-queries/{queryId}/refresh", created.query().queryId())
+                        .queryParam("trigger", "BACKGROUND_SAMPLING"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TRIGGER"))
+                .andExpect(jsonPath("$.error.retryable").value(false));
     }
 
     private void publishRoadsideSnapshot(Instant fetchedAt, List<AvailabilityObservationEntity> observations) {
@@ -310,18 +409,22 @@ class ParkingQueryControllerTest {
     }
 
     private CreateParkingQueryRequest mockRequestNearSeedCatalog() {
+        return mockRequestNearSeedCatalog("mock-token-" + UUID.randomUUID());
+    }
+
+    private CreateParkingQueryRequest mockRequestNearSeedCatalog(String requestToken) {
         return new CreateParkingQueryRequest(
-                "mock-token-001",
+                requestToken,
                 new LocationInput("目前位置", 25.04000, 121.45000),
-                new LocationInput("新莊體育館", 25.03720, 121.45250),
+                new LocationInput("IKEA 新莊", 25.0414214, 121.4647633),
                 new DepartureInput("NOW", null));
     }
 
-    private CreateParkingQueryRequest mockRequestOutsideSeedCatalog() {
+    private CreateParkingQueryRequest mockRequestInsideMvpButOutsideSeedCatalog() {
         return new CreateParkingQueryRequest(
-                "mock-token-002",
+                "mock-token-" + UUID.randomUUID(),
                 new LocationInput("目前位置", 25.04000, 121.45000),
-                new LocationInput("新莊遠端測試點", 25.08000, 121.50000),
+                new LocationInput("新莊遠端測試點", 25.07000, 121.48000),
                 new DepartureInput("NOW", null));
     }
 }

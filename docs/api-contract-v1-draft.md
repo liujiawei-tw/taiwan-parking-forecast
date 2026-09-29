@@ -809,3 +809,56 @@ HTTP 狀態只表示主系統是否成功處理這次 API 請求，不代表 Goo
 - 過期：`status=STALE` 或停車場 `availabilityStatus=STALE`，主要目前可用數必須視為不可用。
 - 尚未有即時資料：`NO_REALTIME_SNAPSHOT`，代表有目錄位置但還沒有已發布的即時快照。
 - 未收錄：`NO_CATALOG_RESULTS`，代表 300 公尺內沒有本地目錄資料，不能宣稱現場沒有車位。
+
+## 2026-09-29 S2-022 已實作 API 契約基線
+
+S2-022 已把查詢端點收斂為目前可測的後端契約基線；以下為已實作內容，不是最終 OpenAPI 完稿。
+
+| 項目 | 目前實作 |
+| --- | --- |
+| 建立查詢 | `POST /api/v1/parking-queries` 成功回 `202 Accepted`；完成輸入檢查後建立短期 `queryId`，同步回目的地、300 公尺範圍、ETA、停車資料與刷新摘要 |
+| 查詢讀取 | `GET /api/v1/parking-queries/{queryId}` 成功回 `200 OK`；只讀既有查詢狀態，不呼叫 Google Routes 或新北市官方來源 |
+| 手動刷新 | `POST /api/v1/parking-queries/{queryId}/refresh` 成功回 `202 Accepted`；只檢查路邊／路外來源刷新協調，不重新計算 Google ETA，不延長 `queryId` |
+| 防重送 | 有效且相同的 `requestToken` 會回原本的 `queryId`；`requestToken` 限 120 字元內，允許英數、`.`、`_`、`:`、`-` |
+| MVP 範圍 | 目的地必須在新莊 MVP bounding box 內；區外回 `422 UNSUPPORTED_AREA`，不建立查詢 |
+| 查詢 TTL | `queryId` 有效 30 分鐘；Redis query payload 預設保留 60 分鐘，超過 response `expiresAt` 但 payload 尚在 retention 內時回 `410 QUERY_EXPIRED`，retention 後或從未存在時回 `404 QUERY_NOT_FOUND` |
+
+錯誤回應固定為：
+
+```json
+{
+  "error": {
+    "code": "UNSUPPORTED_AREA",
+    "message": "Destination is outside the Xinzhuang MVP service area.",
+    "details": {
+      "serviceArea": "NEW_TAIPEI_XINZHUANG"
+    },
+    "retryable": false,
+    "nextAllowedAt": null
+  },
+  "serverTime": "2026-09-29T06:25:36Z"
+}
+```
+
+已實作錯誤碼：
+
+| HTTP | 錯誤碼 | 使用情境 |
+| --- | --- | --- |
+| `400` | `INVALID_REQUEST` | JSON 格式錯誤、必填欄位缺漏或 Bean validation 失敗 |
+| `400` | `INVALID_COORDINATE` | 起點或目的地經緯度缺漏、超出合法範圍 |
+| `400` | `INVALID_REQUEST_TOKEN` | `requestToken` 缺漏、太長或字元不合法 |
+| `422` | `UNSUPPORTED_AREA` | 目的地在新莊 MVP 服務範圍外 |
+| `422` | `INVALID_DEPARTURE_TIME` | `departure.type` 不合法、`NOW` 帶 `departureAt`、`SCHEDULED` 缺少合法未來 offset datetime |
+| `404` | `QUERY_NOT_FOUND` | `queryId` 不存在或不應揭露 |
+| `410` | `QUERY_EXPIRED` | `queryId` 已超過目前 30 分鐘 TTL |
+| `503` | `SERVICE_TEMPORARILY_UNAVAILABLE` | Redis query state 暫不可用，主系統無法可靠建立、讀取或刷新查詢 |
+
+目前 Redis／MySQL 邊界：Redis 用於兩類短期協調狀態。來源刷新使用 `parking:refresh-lock:{source}:{dataset}` 短鎖與 MySQL `source_state.next_allowed_refresh_at` cooldown；查詢生命週期使用 `parking:query:{queryId}` 保存短期查詢 response/request，並用 `parking:query-token:{requestToken}` 做防重送索引。`parking:query:{queryId}` 的 TTL 是查詢有效期加 expired retention，目前預設 60 分鐘；`parking:query-token:{requestToken}` 只保留查詢有效期，目前預設 30 分鐘。MySQL 保存停車目錄、來源 mapping、候選／已發布快照、觀測、來源狀態與 ingestion run 量測，不保存使用者短期查詢。Redis query state 不可用時，API 回 `503 SERVICE_TEMPORARILY_UNAVAILABLE`，不降級為單機記憶體狀態。
+
+## 2026-09-29 S2-024 已實作可見頁受控刷新接線
+
+`POST /api/v1/parking-queries/{queryId}/refresh` 已新增可選 query parameter：`trigger`。預設為 `MANUAL_REFRESH`；前端頁面可見時的受控自動刷新使用 `VISIBLE_AUTO_REFRESH`。目前 HTTP 層只接受這兩個值，其他 trigger 回 `400 INVALID_REFRESH_TRIGGER`。這個限制讓瀏覽器端不能用查詢 API 冒充背景取樣或初始來源擷取；實際來源保護仍由後端 `SourceRefreshCoordinationService`、MySQL cooldown 與 Redis 來源短鎖決定。
+
+前端已實作第一版節奏：頁面隱藏時停止輪詢與自動刷新；重新可見時先 `GET /api/v1/parking-queries/{queryId}` 只讀恢復，不直接 `POST`；若最新回應中 `roadside.status` 或 `offStreet.status` 為 `STALE`／`NO_REALTIME_SNAPSHOT`，且 `refresh.*.refreshInProgress=false`，同一 queryId 與來源狀態組合只送一次 `trigger=VISIBLE_AUTO_REFRESH`。手動「更新車位」仍送 `trigger=MANUAL_REFRESH`，且不重算 Google ETA、不重新搜尋地點、不延長 query TTL。
+
+驗證：`ParkingQueryControllerTest`、`ParkingQueryServiceTest` 與 `RedisParkingQueryStateStoreTest` 共 18 tests／0 failures／0 errors，覆蓋成功查詢、讀取、刷新、重複 `requestToken`、非法座標、區外、過去指定出發時間、未知 queryId、過期 queryId、Redis TTL 寫入、Redis JSON 還原與 Redis 失敗包裝。完整後端 Docker Maven 測試通過 67 tests／0 failures／0 errors。測試未呼叫真實 Google 或新北市官方 API。

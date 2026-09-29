@@ -12,8 +12,9 @@ This module currently provides:
 - New Taipei source client, payload normalization, candidate snapshot publication, and published-snapshot reads.
 - MySQL refresh cooldown with Redis short-lock coordination and documented fallback behavior.
 - Google Routes `computeRoutes` ETA integration, including disabled, missing-key, and HTTP-failure degradation.
+- Redis-backed short-lived parking query state with request token deduplication, query TTL, and refresh trigger validation.
 
-The sample catalog is synthetic and is not a formal New Taipei parking-lot directory. Official source-ID mapping and source-quality measurement remain open work. The query service and frontend workflow also retain mock-oriented seams, while Google Maps/Places browser integration and prediction training/inference have not been implemented.
+The catalog seed now uses a traceable New Taipei Open Data sample and verified source IDs, but it is still not a complete Xinzhuang catalog. Single-round roadside and off-street source measurements are documented; multi-round p50/p95, complete catalog import, formal source-quality thresholds, and prediction training/inference are still future work.
 
 ## Run locally
 

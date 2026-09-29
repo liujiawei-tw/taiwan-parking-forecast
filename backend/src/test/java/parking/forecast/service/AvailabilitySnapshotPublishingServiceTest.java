@@ -84,6 +84,8 @@ class AvailabilitySnapshotPublishingServiceTest {
         assertThat(snapshot.getSnapshotStatus()).isEqualTo(SnapshotStatus.PUBLISHED);
         assertThat(snapshot.getActualRecordCount()).isEqualTo(1);
         assertThat(snapshot.getPublishedAt()).isEqualTo(COMPLETED_AT);
+        IngestionRunEntity run = ingestionRunRepository.findById(result.ingestionRunId()).orElseThrow();
+        assertThat(run.getQualitySummary()).isEqualTo("sourceMeasurement{httpRequests=2, responseBytes=4096, recommendation=PUBLISH_MEETS_CURRENT_MVP_THRESHOLD}");
 
         List<AvailabilityObservationEntity> observations = availabilityObservationRepository.findBySnapshot(snapshot);
         assertThat(observations).hasSize(1);
@@ -173,7 +175,8 @@ class AvailabilitySnapshotPublishingServiceTest {
                 COMPLETED_AT,
                 2,
                 observations.size(),
-                observations
+                observations,
+                "sourceMeasurement{httpRequests=2, responseBytes=4096, recommendation=PUBLISH_MEETS_CURRENT_MVP_THRESHOLD}"
         );
     }
 

@@ -2,14 +2,14 @@ package parking.forecast.service;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import parking.forecast.config.ParkingQueryStateProperties;
 import parking.forecast.controller.dto.CreateParkingQueryRequest;
 import parking.forecast.controller.dto.ParkingQueryResponse;
 import parking.forecast.controller.dto.ParkingQueryResponse.AreaSection;
@@ -35,49 +35,70 @@ import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchRe
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedAvailabilityView;
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedObservation;
 import parking.forecast.service.GoogleEtaService.EtaResult;
+import parking.forecast.service.ParkingQueryStateStore.StoredParkingQuery;
 import parking.forecast.service.SourceRefreshCoordinationService.SourceRefreshResult;
 
 @Service
-public class ParkingQueryMockService {
+public class ParkingQueryService {
 
     private static final String MVP_SERVICE_AREA = "NEW_TAIPEI_XINZHUANG";
     private static final String MVP_AREA_CODE = "NEW_TAIPEI_XINZHUANG_MVP";
+    private static final String LOCAL_CATALOG_SOURCE = "LOCAL_NTPC_CATALOG";
     private static final int SEARCH_RADIUS_METERS = 300;
+    private static final int MAX_REQUEST_TOKEN_LENGTH = 120;
+    private static final double MVP_MIN_LATITUDE = 25.015;
+    private static final double MVP_MAX_LATITUDE = 25.075;
+    private static final double MVP_MIN_LONGITUDE = 121.415;
+    private static final double MVP_MAX_LONGITUDE = 121.490;
 
     private final Clock clock;
     private final NearbyParkingSearchService nearbyParkingSearchService;
     private final PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService;
     private final SourceRefreshCoordinationService sourceRefreshCoordinationService;
     private final GoogleEtaService googleEtaService;
-    private final Map<String, ParkingQueryResponse> queries = new ConcurrentHashMap<>();
-    private final Map<String, QueryContext> queryContexts = new ConcurrentHashMap<>();
+    private final ParkingQueryStateStore parkingQueryStateStore;
+    private final ParkingQueryStateProperties queryStateProperties;
 
     @Autowired
-    public ParkingQueryMockService(
+    public ParkingQueryService(
             NearbyParkingSearchService nearbyParkingSearchService,
             PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
             SourceRefreshCoordinationService sourceRefreshCoordinationService,
-            GoogleEtaService googleEtaService
+            GoogleEtaService googleEtaService,
+            ParkingQueryStateStore parkingQueryStateStore,
+            ParkingQueryStateProperties queryStateProperties
     ) {
-        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService);
+        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService, parkingQueryStateStore, queryStateProperties);
     }
 
-    ParkingQueryMockService(
+    ParkingQueryService(
             Clock clock,
             NearbyParkingSearchService nearbyParkingSearchService,
             PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
             SourceRefreshCoordinationService sourceRefreshCoordinationService,
-            GoogleEtaService googleEtaService
+            GoogleEtaService googleEtaService,
+            ParkingQueryStateStore parkingQueryStateStore,
+            ParkingQueryStateProperties queryStateProperties
     ) {
         this.clock = clock;
         this.nearbyParkingSearchService = nearbyParkingSearchService;
         this.publishedAvailabilitySnapshotService = publishedAvailabilitySnapshotService;
         this.sourceRefreshCoordinationService = sourceRefreshCoordinationService;
         this.googleEtaService = googleEtaService;
+        this.parkingQueryStateStore = parkingQueryStateStore;
+        this.queryStateProperties = queryStateProperties;
     }
 
     public ParkingQueryResponse create(CreateParkingQueryRequest request) {
         OffsetDateTime now = OffsetDateTime.now(clock);
+        validateRequest(request, now);
+
+        return parkingQueryStateStore.findQueryIdByRequestToken(request.requestToken())
+                .map(this::findById)
+                .orElseGet(() -> createNewQuery(request, now));
+    }
+
+    private ParkingQueryResponse createNewQuery(CreateParkingQueryRequest request, OffsetDateTime now) {
         boolean scheduledDeparture = "SCHEDULED".equalsIgnoreCase(request.departure().type())
                 && request.departure().departureAt() != null;
         OffsetDateTime departureAt = scheduledDeparture
@@ -99,19 +120,19 @@ public class ParkingQueryMockService {
         OffStreetSection offStreetSection = buildOffStreetSection(nearby);
 
         ParkingQueryResponse response = new ParkingQueryResponse(
-                new QuerySection(queryId, "READY", false, now, now, now.plusMinutes(30), "Mock query is ready."),
+                new QuerySection(queryId, "READY", false, now, now, now.plus(queryStateProperties.getTtl()), "Parking query is ready."),
                 new DestinationSection(
                         request.destination().label(),
                         request.destination().latitude(),
                         request.destination().longitude(),
                         "SUPPORTED",
-                        "Response uses the Xinzhuang MVP catalog sample."),
+                        "Response uses the Xinzhuang MVP catalog seeded from NTPC Open Data."),
                 new AreaSection(
                         nearby.radiusMeters(),
                         nearby.distanceMode(),
                         MVP_AREA_CODE,
                         resolveCoverageStatus(nearby),
-                        "Catalog coverage uses the S2-011 Xinzhuang seed sample. It is not complete city coverage."),
+                        "Catalog coverage uses a S2-020 traceable NTPC Open Data subset. It is not complete city coverage."),
                 new EtaSection(
                         eta.status(),
                         eta.provider(),
@@ -124,40 +145,40 @@ public class ParkingQueryMockService {
                 buildPredictionsSection(nearby, eta.estimatedArrivalAt()),
                 buildRefreshSection(roadsideSection, offStreetSection));
 
-        queries.put(queryId, response);
-        queryContexts.put(queryId, new QueryContext(request, eta.departureAt(), eta.estimatedArrivalAt()));
+        parkingQueryStateStore.save(request.requestToken(), new StoredParkingQuery(response, request));
         return response;
     }
 
     public ParkingQueryResponse findById(String queryId) {
-        ParkingQueryResponse response = queries.get(queryId);
-        if (response == null) {
-            throw new ParkingQueryNotFoundException(queryId);
-        }
+        ParkingQueryResponse response = loadStoredQuery(queryId).response();
+        requireNotExpired(response);
         return response;
     }
 
     public ParkingQueryResponse refresh(String queryId) {
-        ParkingQueryResponse existing = findById(queryId);
-        QueryContext context = queryContexts.get(queryId);
-        if (context == null) {
-            throw new ParkingQueryNotFoundException(queryId);
-        }
+        return refresh(queryId, TriggerType.MANUAL_REFRESH);
+    }
+
+    public ParkingQueryResponse refresh(String queryId, TriggerType triggerType) {
+        StoredParkingQuery storedQuery = loadStoredQuery(queryId);
+        ParkingQueryResponse existing = storedQuery.response();
+        requireNotExpired(existing);
+        CreateParkingQueryRequest request = storedQuery.request();
 
         SourceRefreshResult roadsideRefresh = sourceRefreshCoordinationService.refresh(
                 DatasetCode.NTPC_ROADSIDE_SPOT,
-                TriggerType.MANUAL_REFRESH
+                triggerType
         );
         SourceRefreshResult offStreetRefresh = sourceRefreshCoordinationService.refresh(
                 DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
-                TriggerType.MANUAL_REFRESH
+                triggerType
         );
 
         OffsetDateTime now = OffsetDateTime.now(clock);
         NearbyParkingSearchResult nearby = nearbyParkingSearchService.findNearby(new NearbyParkingSearchRequest(
                 MVP_SERVICE_AREA,
-                context.request().destination().latitude(),
-                context.request().destination().longitude(),
+                request.destination().latitude(),
+                request.destination().longitude(),
                 SEARCH_RADIUS_METERS
         ));
         RoadsideSection roadsideSection = buildRoadsideSection(nearby);
@@ -178,14 +199,98 @@ public class ParkingQueryMockService {
                         nearby.distanceMode(),
                         MVP_AREA_CODE,
                         resolveCoverageStatus(nearby),
-                        "Catalog coverage uses the S2-011 Xinzhuang seed sample. It is not complete city coverage."),
+                        "Catalog coverage uses a S2-020 traceable NTPC Open Data subset. It is not complete city coverage."),
                 existing.eta(),
                 roadsideSection,
                 offStreetSection,
-                buildPredictionsSection(nearby, context.estimatedArrivalAt()),
+                buildPredictionsSection(nearby, existing.eta().estimatedArrivalAt()),
                 buildRefreshSection(roadsideRefresh, offStreetRefresh));
-        queries.put(queryId, refreshed);
+        parkingQueryStateStore.save(request.requestToken(), new StoredParkingQuery(refreshed, request));
         return refreshed;
+    }
+
+    private StoredParkingQuery loadStoredQuery(String queryId) {
+        return parkingQueryStateStore.findByQueryId(queryId)
+                .orElseThrow(() -> new ParkingQueryNotFoundException(queryId));
+    }
+
+    private void validateRequest(CreateParkingQueryRequest request, OffsetDateTime now) {
+        validateRequestToken(request.requestToken());
+        validateLocation(request.origin(), "origin");
+        validateLocation(request.destination(), "destination");
+        validateSupportedDestination(request.destination());
+        validateDeparture(request.departure(), now);
+    }
+
+    private void validateRequestToken(String requestToken) {
+        if (requestToken == null
+                || requestToken.isBlank()
+                || requestToken.length() > MAX_REQUEST_TOKEN_LENGTH
+                || !requestToken.matches("[A-Za-z0-9._:-]+")) {
+            throw new ParkingQueryContractException(
+                    "INVALID_REQUEST_TOKEN",
+                    "requestToken is missing or invalid.",
+                    false
+            );
+        }
+    }
+
+    private void validateLocation(CreateParkingQueryRequest.LocationInput location, String fieldName) {
+        if (location == null
+                || location.latitude() == null
+                || location.longitude() == null
+                || location.latitude() < -90
+                || location.latitude() > 90
+                || location.longitude() < -180
+                || location.longitude() > 180) {
+            throw new ParkingQueryContractException(
+                    "INVALID_COORDINATE",
+                    fieldName + " latitude or longitude is invalid.",
+                    false
+            );
+        }
+    }
+
+    private void validateSupportedDestination(CreateParkingQueryRequest.LocationInput destination) {
+        if (destination.latitude() < MVP_MIN_LATITUDE
+                || destination.latitude() > MVP_MAX_LATITUDE
+                || destination.longitude() < MVP_MIN_LONGITUDE
+                || destination.longitude() > MVP_MAX_LONGITUDE) {
+            throw new ParkingQueryContractException(
+                    "UNSUPPORTED_AREA",
+                    "Destination is outside the Xinzhuang MVP service area.",
+                    false
+            );
+        }
+    }
+
+    private void validateDeparture(CreateParkingQueryRequest.DepartureInput departure, OffsetDateTime now) {
+        if (departure == null || departure.type() == null || departure.type().isBlank()) {
+            throw new ParkingQueryContractException("INVALID_DEPARTURE_TIME", "departure.type is required.", false);
+        }
+        if ("NOW".equalsIgnoreCase(departure.type())) {
+            if (departure.departureAt() != null && !departure.departureAt().isBlank()) {
+                throw new ParkingQueryContractException("INVALID_DEPARTURE_TIME", "NOW departure must not include departureAt.", false);
+            }
+            return;
+        }
+        if (!"SCHEDULED".equalsIgnoreCase(departure.type())) {
+            throw new ParkingQueryContractException("INVALID_DEPARTURE_TIME", "departure.type must be NOW or SCHEDULED.", false);
+        }
+        try {
+            OffsetDateTime departureAt = OffsetDateTime.parse(departure.departureAt());
+            if (!departureAt.isAfter(now)) {
+                throw new ParkingQueryContractException("INVALID_DEPARTURE_TIME", "Scheduled departure must be in the future.", false);
+            }
+        } catch (DateTimeParseException | NullPointerException exception) {
+            throw new ParkingQueryContractException("INVALID_DEPARTURE_TIME", "Scheduled departureAt must include a valid offset date time.", false);
+        }
+    }
+
+    private void requireNotExpired(ParkingQueryResponse response) {
+        if (!response.query().expiresAt().isAfter(OffsetDateTime.now(clock))) {
+            throw new ParkingQueryExpiredException(response.query().queryId());
+        }
     }
 
     private RoadsideSection buildRoadsideSection(NearbyParkingSearchResult nearby) {
@@ -200,7 +305,7 @@ public class ParkingQueryMockService {
         if (roadsidePlaces.isEmpty()) {
             return new RoadsideSection(
                     "NO_CATALOG_RESULTS",
-                    "LOCAL_CATALOG_SEED",
+                    LOCAL_CATALOG_SOURCE,
                     null,
                     null,
                     List.of(),
@@ -239,7 +344,7 @@ public class ParkingQueryMockService {
         if (offStreetPlaces.isEmpty()) {
             return new OffStreetSection(
                     "NO_CATALOG_RESULTS",
-                    "LOCAL_CATALOG_SEED",
+                    LOCAL_CATALOG_SOURCE,
                     null,
                     List.of(),
                     "No off street catalog records were found inside 300 meters."
@@ -420,7 +525,7 @@ public class ParkingQueryMockService {
 
     private String resolveSource(PublishedAvailabilityView availability) {
         return "NO_REALTIME_SNAPSHOT".equals(availability.status()) || "NO_CATALOG_RESULTS".equals(availability.status())
-                ? "LOCAL_CATALOG_SEED"
+                ? LOCAL_CATALOG_SOURCE
                 : "NTPC_OPEN_DATA";
     }
 
@@ -482,17 +587,37 @@ public class ParkingQueryMockService {
         return nearby.places().isEmpty() ? "NO_CATALOG_RESULTS" : "PARTIAL";
     }
 
-    private record QueryContext(
-            CreateParkingQueryRequest request,
-            OffsetDateTime departureAt,
-            OffsetDateTime estimatedArrivalAt
-    ) {
-    }
-
     public static class ParkingQueryNotFoundException extends RuntimeException {
 
         public ParkingQueryNotFoundException(String queryId) {
             super("Parking query not found: " + queryId);
+        }
+    }
+
+    public static class ParkingQueryExpiredException extends RuntimeException {
+
+        public ParkingQueryExpiredException(String queryId) {
+            super("Parking query expired: " + queryId);
+        }
+    }
+
+    public static class ParkingQueryContractException extends RuntimeException {
+
+        private final String code;
+        private final boolean retryable;
+
+        public ParkingQueryContractException(String code, String message, boolean retryable) {
+            super(message);
+            this.code = code;
+            this.retryable = retryable;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public boolean retryable() {
+            return retryable;
         }
     }
 }

@@ -112,7 +112,7 @@ public class AvailabilitySnapshotPublishingService {
         ingestionRun.setFinishedAt(command.completedAt());
         ingestionRun.setHttpRequestCount(command.httpRequestCount());
         ingestionRun.setRecordCount(entities.size());
-        ingestionRun.setQualitySummary(qualityReason);
+        ingestionRun.setQualitySummary(resolveRunQualitySummary(command, qualityReason));
         ingestionRunRepository.save(ingestionRun);
 
         SourceStateEntity sourceState = sourceStateRepository.findBySourceSystemAndDatasetCode(
@@ -182,7 +182,7 @@ public class AvailabilitySnapshotPublishingService {
         ingestionRun.setHttpRequestCount(command.httpRequestCount());
         ingestionRun.setRecordCount(publishedObservationCount);
         ingestionRun.setFailureReason(reason);
-        ingestionRun.setQualitySummary(reason);
+        ingestionRun.setQualitySummary(resolveRunQualitySummary(command, reason));
         ingestionRunRepository.save(ingestionRun);
 
         SourceStateEntity sourceState = sourceStateRepository.findBySourceSystemAndDatasetCode(
@@ -274,6 +274,10 @@ public class AvailabilitySnapshotPublishingService {
         );
     }
 
+    private String resolveRunQualitySummary(PublishSnapshotCommand command, String fallback) {
+        return StringUtils.hasText(command.measurementSummary()) ? command.measurementSummary() : fallback;
+    }
+
     private Instant resolveSystemFetchedAt(PublishSnapshotCommand command) {
         return command.observations().stream()
                 .map(NormalizedAvailabilityObservation::systemFetchedAt)
@@ -298,10 +302,34 @@ public class AvailabilitySnapshotPublishingService {
             Instant completedAt,
             int httpRequestCount,
             Integer expectedRecordCount,
-            List<NormalizedAvailabilityObservation> observations
+            List<NormalizedAvailabilityObservation> observations,
+            String measurementSummary
     ) {
         public PublishSnapshotCommand {
             observations = observations == null ? List.of() : List.copyOf(observations);
+        }
+
+        public PublishSnapshotCommand(
+                SourceSystem sourceSystem,
+                DatasetCode datasetCode,
+                TriggerType triggerType,
+                Instant startedAt,
+                Instant completedAt,
+                int httpRequestCount,
+                Integer expectedRecordCount,
+                List<NormalizedAvailabilityObservation> observations
+        ) {
+            this(
+                    sourceSystem,
+                    datasetCode,
+                    triggerType,
+                    startedAt,
+                    completedAt,
+                    httpRequestCount,
+                    expectedRecordCount,
+                    observations,
+                    null
+            );
         }
 
         private void validate() {

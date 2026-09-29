@@ -23,7 +23,7 @@ public class NtpcAvailabilityNormalizer {
     public NormalizedAvailabilityObservation normalizeRoadside(
             NtpcRoadsideParkingAvailabilityDto dto,
             Instant systemFetchedAt) {
-        var sourcePlaceId = trimToNull(dto.cellId());
+        var sourcePlaceId = resolveRoadsideSourcePlaceId(dto);
         var rawStatusCode = trimToNull(dto.cellStatus());
         var carEligibleStatus = inferRoadsideCarEligibility(dto);
         var base = NormalizedAvailabilityObservation.builder()
@@ -39,7 +39,7 @@ public class NtpcAvailabilityNormalizer {
                     .availabilityStatus(AvailabilityStatus.UNKNOWN)
                     .availableSpot(null)
                     .qualityStatus(QualityStatus.FAIL)
-                    .qualityReason("MISSING_ROADSIDE_CELL_ID")
+                    .qualityReason("MISSING_ROADSIDE_SOURCE_ID")
                     .currentlyRecommendable(false)
                     .build();
         }
@@ -165,6 +165,14 @@ public class NtpcAvailabilityNormalizer {
             return EligibilityStatus.CONFIRMED;
         }
         return EligibilityStatus.UNKNOWN;
+    }
+
+    private String resolveRoadsideSourcePlaceId(NtpcRoadsideParkingAvailabilityDto dto) {
+        var systemId = trimToNull(dto.id());
+        if (systemId != null) {
+            return systemId;
+        }
+        return trimToNull(dto.cellId());
     }
 
     private String trimToNull(String value) {
