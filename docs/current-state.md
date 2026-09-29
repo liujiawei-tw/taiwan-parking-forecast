@@ -519,3 +519,11 @@ PR #30 已合併回 `main`，merge commit 為 `cf8ff2af0a3e9a2b91569b8a51d2c192c
 已使用隔離 Docker Compose project `s2019hit` 啟動 MySQL、Redis、API 與 Web，`/actuator/health` 回 `UP`。在沒有 `GOOGLE_ROUTES_SERVER_API_KEY` 的本機環境完成兩個降級驗收：第一，預設 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=false` 時建立查詢，`eta.status=FAILED`、`eta.provider=GOOGLE_ROUTES`、`estimatedArrivalAt=null`、`durationSeconds=null`，訊息明確指出外部呼叫被設定停用；第二，重建 API 並設定 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=true` 但 server key 為空時，建立查詢同樣回 `eta.status=FAILED`，訊息明確指出 Google Routes API key 未設定，沒有填入假 ETA。
 
 本次驗收也確認停車觀測區塊仍照常回應，不會因 Google ETA 降級而失敗；隔離 Compose 驗證後已執行 `docker compose -p s2019hit down -v` 清理資源。尚未完成真實 Google Routes `READY` 路徑，因目前執行環境沒有可用的受限 `GOOGLE_ROUTES_SERVER_API_KEY`；PR #32 合併前仍需由 Sponsor 在本機或安全環境補做一次小量真實 Routes 呼叫驗收。
+
+## 2026-09-29 S2-019 真實 Google Routes 驗收通過
+
+Sponsor 已在本機 `.env` 設定不同用途的 Google Maps Platform key，並將 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=true`。使用隔離 Docker Compose project `s2019real` 啟動 API 後，第一次真實驗收發現 Google Routes 回 HTTP 400；直接以同一把 server key 與同一組座標呼叫 `computeRoutes` 且不帶 `departureTime` 可成功，確認問題不是 key、API restriction、座標或 field mask，而是 NOW 查詢送出了測試環境時間 `departureTime`。
+
+已修正 Routes 呼叫策略：`NOW` 查詢不送 `departureTime` 給 Google Routes，由 Google 使用當下時間；`SCHEDULED` 查詢才送使用者指定的 `departureTime`。修正後新增／更新自動測試，完整後端測試通過 53 tests／0 failures／0 errors。
+
+重建隔離 Compose API 後再次建立新莊查詢，真實 Routes 驗收通過：`eta.status=READY`、`eta.provider=GOOGLE_ROUTES`、`durationSeconds=1218`、`estimatedArrivalAt` 有值，`predictions.targetArrivalAt` 同步使用該抵達時間。停車觀測區塊仍正常回傳；驗收後已執行 `docker compose -p s2019real down -v` 清理資源。驗收完成後，本機 `.env` 可將 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `false`，避免後續開發誤耗 Google 額度。

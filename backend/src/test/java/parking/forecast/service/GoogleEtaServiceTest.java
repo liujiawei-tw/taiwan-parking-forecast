@@ -1,6 +1,7 @@
 package parking.forecast.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
@@ -25,27 +26,42 @@ class GoogleEtaServiceTest {
     @Test
     void returnsReadyEtaFromGoogleRoutesDuration() {
         var departureAt = OffsetDateTime.parse("2026-09-29T10:00:00+08:00");
-        when(googleRoutesClient.computeDrivingTravelTime(25.04, 121.45, 25.0372, 121.4525, departureAt))
+        when(googleRoutesClient.computeDrivingTravelTime(25.04, 121.45, 25.0372, 121.4525, null))
                 .thenReturn(new GoogleRoutesTravelTime(Duration.ofSeconds(481), Duration.ofSeconds(420), 1300));
         var service = new GoogleEtaService(googleRoutesClient);
 
-        var eta = service.estimate(origin(), destination(), departureAt);
+        var eta = service.estimate(origin(), destination(), departureAt, false);
 
         assertThat(eta.status()).isEqualTo("READY");
         assertThat(eta.provider()).isEqualTo("GOOGLE_ROUTES");
         assertThat(eta.departureAt()).isEqualTo(departureAt);
         assertThat(eta.estimatedArrivalAt()).isEqualTo(departureAt.plusSeconds(481));
         assertThat(eta.durationSeconds()).isEqualTo(481);
+        verify(googleRoutesClient).computeDrivingTravelTime(25.04, 121.45, 25.0372, 121.4525, null);
+    }
+
+    @Test
+    void sendsScheduledDepartureTimeToGoogleRoutes() {
+        var departureAt = OffsetDateTime.parse("2026-09-29T10:00:00+08:00");
+        when(googleRoutesClient.computeDrivingTravelTime(25.04, 121.45, 25.0372, 121.4525, departureAt))
+                .thenReturn(new GoogleRoutesTravelTime(Duration.ofSeconds(481), Duration.ofSeconds(420), 1300));
+        var service = new GoogleEtaService(googleRoutesClient);
+
+        var eta = service.estimate(origin(), destination(), departureAt, true);
+
+        assertThat(eta.status()).isEqualTo("READY");
+        assertThat(eta.estimatedArrivalAt()).isEqualTo(departureAt.plusSeconds(481));
+        verify(googleRoutesClient).computeDrivingTravelTime(25.04, 121.45, 25.0372, 121.4525, departureAt);
     }
 
     @Test
     void returnsFailedEtaWithoutArrivalWhenGoogleRoutesFails() {
         var departureAt = OffsetDateTime.parse("2026-09-29T10:00:00+08:00");
-        when(googleRoutesClient.computeDrivingTravelTime(25.04, 121.45, 25.0372, 121.4525, departureAt))
+        when(googleRoutesClient.computeDrivingTravelTime(25.04, 121.45, 25.0372, 121.4525, null))
                 .thenThrow(new GoogleRoutesClientException("Google Routes external calls are disabled by configuration"));
         var service = new GoogleEtaService(googleRoutesClient);
 
-        var eta = service.estimate(origin(), destination(), departureAt);
+        var eta = service.estimate(origin(), destination(), departureAt, false);
 
         assertThat(eta.status()).isEqualTo("FAILED");
         assertThat(eta.provider()).isEqualTo("GOOGLE_ROUTES");

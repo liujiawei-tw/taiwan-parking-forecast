@@ -21,14 +21,19 @@ public class GoogleEtaService {
         this.googleRoutesClient = googleRoutesClient;
     }
 
-    public EtaResult estimate(LocationInput origin, LocationInput destination, OffsetDateTime departureAt) {
+    public EtaResult estimate(
+            LocationInput origin,
+            LocationInput destination,
+            OffsetDateTime departureAt,
+            boolean scheduledDeparture
+    ) {
         try {
             GoogleRoutesTravelTime travelTime = googleRoutesClient.computeDrivingTravelTime(
                     origin.latitude(),
                     origin.longitude(),
                     destination.latitude(),
                     destination.longitude(),
-                    departureAt
+                    scheduledDeparture ? departureAt : null
             );
             int durationSeconds = toDurationSeconds(travelTime.duration());
             return new EtaResult(

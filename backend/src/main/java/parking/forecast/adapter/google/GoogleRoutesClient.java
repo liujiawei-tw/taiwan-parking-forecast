@@ -40,7 +40,7 @@ public class GoogleRoutesClient {
             double originLongitude,
             double destinationLatitude,
             double destinationLongitude,
-            OffsetDateTime departureAt
+            OffsetDateTime routesDepartureAt
     ) {
         ensureExternalCallsEnabled();
         ensureApiKeyConfigured();
@@ -49,7 +49,7 @@ public class GoogleRoutesClient {
                 ComputeRoutesRequest.RouteWaypoint.of(destinationLatitude, destinationLongitude),
                 properties.getTravelMode(),
                 properties.getRoutingPreference(),
-                departureAt.toInstant().toString()
+                routesDepartureAt == null ? null : routesDepartureAt.toInstant().toString()
         );
 
         try {

@@ -78,11 +78,16 @@ public class ParkingQueryMockService {
 
     public ParkingQueryResponse create(CreateParkingQueryRequest request) {
         OffsetDateTime now = OffsetDateTime.now(clock);
-        OffsetDateTime departureAt = "SCHEDULED".equalsIgnoreCase(request.departure().type())
-                && request.departure().departureAt() != null
-                        ? OffsetDateTime.parse(request.departure().departureAt())
-                        : now;
-        EtaResult eta = googleEtaService.estimate(request.origin(), request.destination(), departureAt);
+        boolean scheduledDeparture = "SCHEDULED".equalsIgnoreCase(request.departure().type())
+                && request.departure().departureAt() != null;
+        OffsetDateTime departureAt = scheduledDeparture
+                ? OffsetDateTime.parse(request.departure().departureAt())
+                : now;
+        EtaResult eta = googleEtaService.estimate(
+                request.origin(),
+                request.destination(),
+                departureAt,
+                scheduledDeparture);
         String queryId = UUID.randomUUID().toString();
         NearbyParkingSearchResult nearby = nearbyParkingSearchService.findNearby(new NearbyParkingSearchRequest(
                 MVP_SERVICE_AREA,

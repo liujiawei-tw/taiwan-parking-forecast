@@ -80,6 +80,57 @@ class GoogleRoutesClientTest {
     }
 
     @Test
+    void omitsDepartureTimeWhenRouteDepartureTimeIsNull() {
+        var testClient = testClient(enabledProperties());
+        testClient.server().expect(requestTo("https://routes.googleapis.com/directions/v2:computeRoutes"))
+                .andExpect(method(POST))
+                .andExpect(content().json("""
+                        {
+                          "origin": {
+                            "location": {
+                              "latLng": {
+                                "latitude": 25.04,
+                                "longitude": 121.45
+                              }
+                            }
+                          },
+                          "destination": {
+                            "location": {
+                              "latLng": {
+                                "latitude": 25.0372,
+                                "longitude": 121.4525
+                              }
+                            }
+                          },
+                          "travelMode": "DRIVE",
+                          "routingPreference": "TRAFFIC_AWARE_OPTIMAL"
+                        }
+                        """))
+                .andRespond(withSuccess("""
+                        {
+                          "routes": [
+                            {
+                              "duration": "481s",
+                              "staticDuration": "420s",
+                              "distanceMeters": 1300
+                            }
+                          ]
+                        }
+                        """, APPLICATION_JSON));
+
+        var travelTime = testClient.client().computeDrivingTravelTime(
+                25.0400,
+                121.4500,
+                25.0372,
+                121.4525,
+                null
+        );
+
+        assertThat(travelTime.duration()).isEqualTo(Duration.ofSeconds(481));
+        testClient.server().verify();
+    }
+
+    @Test
     void doesNotCallGoogleWhenDisabled() {
         var properties = enabledProperties();
         properties.setExternalCallsEnabled(false);
