@@ -513,3 +513,9 @@ PR #30 已合併回 `main`，merge commit 為 `cf8ff2af0a3e9a2b91569b8a51d2c192c
 ## 2026-09-29 S2-019 PR #32 已建立，待人工驗收
 
 已將 `feature/s2-019-google-eta` 推上 GitHub，並建立 PR #32：<https://github.com/liujiawei-tw/taiwan-parking-forecast/pull/32>。PR 目前包含 1 個 commit：`6cc9385 feat: integrate google routes eta`，並以 `Closes #31` 連結 S2-019 Issue。下一步是針對 PR #32 做 Human-in-the-loop 驗收：使用真實且受限的 `GOOGLE_ROUTES_SERVER_API_KEY` 驗證 `eta.status=READY`，再確認外部呼叫停用或無 key 時回 `eta.status=FAILED` 且不產生假抵達時間。
+
+## 2026-09-29 S2-019 PR #32 部分人工驗收完成
+
+已使用隔離 Docker Compose project `s2019hit` 啟動 MySQL、Redis、API 與 Web，`/actuator/health` 回 `UP`。在沒有 `GOOGLE_ROUTES_SERVER_API_KEY` 的本機環境完成兩個降級驗收：第一，預設 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=false` 時建立查詢，`eta.status=FAILED`、`eta.provider=GOOGLE_ROUTES`、`estimatedArrivalAt=null`、`durationSeconds=null`，訊息明確指出外部呼叫被設定停用；第二，重建 API 並設定 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=true` 但 server key 為空時，建立查詢同樣回 `eta.status=FAILED`，訊息明確指出 Google Routes API key 未設定，沒有填入假 ETA。
+
+本次驗收也確認停車觀測區塊仍照常回應，不會因 Google ETA 降級而失敗；隔離 Compose 驗證後已執行 `docker compose -p s2019hit down -v` 清理資源。尚未完成真實 Google Routes `READY` 路徑，因目前執行環境沒有可用的受限 `GOOGLE_ROUTES_SERVER_API_KEY`；PR #32 合併前仍需由 Sponsor 在本機或安全環境補做一次小量真實 Routes 呼叫驗收。

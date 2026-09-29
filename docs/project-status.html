@@ -254,7 +254,7 @@
   <section>
     <h2>Sprint 2 最新進度：S2-019 後端 Google Routes ETA 初版</h2>
     <p>已新增後端 Google Routes <code>computeRoutes</code> client、ETA service 與設定。建立查詢不再產生固定 18 分鐘 mock ETA；Routes 成功時回 <code>GOOGLE_ROUTES</code> ETA，外部呼叫停用、無 key、Google 失敗或無路線時明確回 <code>eta.status=FAILED</code>，且不填假 <code>estimatedArrivalAt</code>。</p>
-    <p>驗證：Docker Maven 後端完整測試通過 51 tests／0 failures／0 errors。PR #32 已建立，等待真實且受限的 Google Routes server key 人工驗收。此階段仍不包含前端 Google Maps／Places 或預測模型。</p>
+    <p>驗證：Docker Maven 後端完整測試通過 51 tests／0 failures／0 errors。PR #32 已建立；隔離 Docker Compose 已驗證外部呼叫停用與無 server key 兩種降級路徑都回 <code>eta.status=FAILED</code>，且不填假 ETA。真實 Google Routes <code>READY</code> 路徑仍等待受限 server key 人工驗收。此階段仍不包含前端 Google Maps／Places 或預測模型。</p>
   </section>
   <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>完成 S2-019 PR 與人工驗收：以真實 Google Routes server key 驗證成功 ETA，並驗證外部呼叫停用／無 key 的降級行為。</li><li>接著處理前端 Google Maps 結果頁與頁面可見時自動刷新。</li><li>完成 Google 與前端整合後，再規劃預測基準與模型驗證。</li></ol></div></section>
   <footer>本頁是人工維護的進度快照。詳細需求、決策與最新狀態以 <a href="requirements.md">requirements.md</a>、<a href="decisions.md">decisions.md</a>、<a href="current-state.md">current-state.md</a> 為準。</footer>
