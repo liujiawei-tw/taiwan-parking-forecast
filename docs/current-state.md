@@ -565,3 +565,13 @@ Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `f
 同時修正 `NtpcAvailabilityNormalizer` 的路邊來源 ID 選擇：優先使用官方 `id`，缺值時才退回 `cellid`，避免 `cellid` 在不同路段重複造成誤合併。查詢回應中的本地目錄來源標示改為 `LOCAL_NTPC_CATALOG`，並更新 repository、nearby search、controller 與 normalizer 測試。驗證使用 Docker JDK 執行精準後端測試：`NtpcAvailabilityNormalizerTest`、`XinzhuangSeedRepositoryTest`、`NearbyParkingSearchServiceTest`、`ParkingQueryControllerTest`，共 23 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 54 tests／0 failures／0 errors。
 
 限制：這仍不是完整新莊正式 catalog，不可宣稱覆蓋 2,124 格或 97 場；目前也沒有把路外靜態匯入流程自動化，沒有新增官方 API 高頻呼叫或模型訓練資料。下一步仍需在 S2-021 量測完整性、分頁、資料量、更新耗時與發布品質門檻，再決定是否匯入完整目錄或建立正式 importer。
+
+## 2026-09-29 S2-021 官方來源量測摘要基線實作
+
+已開始 #34／S2-021 並完成主系統量測摘要基線。`NtpcOpenDataClient` 保留既有 List 回傳方法，另新增 page metadata 版本，記錄單頁 rows、attempts、UTF-8 response bytes 與 client 端 elapsedMillis。`NtpcRealtimeSourceRefreshService` 已改用 page metadata 累計 pages、HTTP attempts、responseBytes 與分頁完整性；若超過 `maxPages`，錯誤訊息會明確包含 dataset、pages、httpRequests、pageSize、maxPages、responseBytes 與 `REJECT_INCOMPLETE_PAGE_TRAVERSAL`，不會進入發布。
+
+新增 `SourceMeasurementService` 將每輪觀測整理成 `sourceMeasurement{...}` 摘要，包含 retries、缺 source ID、重複 source ID、verified mapping 覆蓋、unmapped、failed observation、mappingCoverage 與發布建議。`AvailabilitySnapshotPublishingService` 會將此摘要保存到 `ingestion_run.quality_summary`；`availability_snapshot.quality_reason` 仍保留發布層的簡短 normalized／published／unmapped／failedObservations 結果，避免把量測摘要當成使用者查詢契約。
+
+驗證：Docker Maven 精準測試 `NtpcOpenDataClientTest`、`SourceMeasurementServiceTest`、`NtpcRealtimeSourceRefreshServiceTest`、`AvailabilitySnapshotPublishingServiceTest` 通過 12 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 56 tests／0 failures／0 errors。測試覆蓋 page metadata、bytes／attempts、缺頁拒絕發布、mapping 覆蓋、缺 ID、重複 ID、failed observation 與量測摘要保存。
+
+限制：本階段沒有高頻呼叫官方 API，也沒有執行多輪真實 refresh；S2-020 的低頻官方核對顯示路邊全量約 30,941 筆，以目前 `page-size=500`、`max-pages=20` 會超過上限，因此主系統會拒絕發布不完整路邊快照。正式調整 page-size、max-pages、cooldown 與品質門檻仍需 Sponsor 確認可接受用量後，再做低頻完整量測。

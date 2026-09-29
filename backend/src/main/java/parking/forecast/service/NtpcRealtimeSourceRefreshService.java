@@ -17,6 +17,8 @@ import parking.forecast.domain.SourceSystem;
 import parking.forecast.domain.TriggerType;
 import parking.forecast.service.AvailabilitySnapshotPublishingService.PublishSnapshotCommand;
 import parking.forecast.service.AvailabilitySnapshotPublishingService.PublishSnapshotResult;
+import parking.forecast.service.SourceMeasurementService.SourceMeasurementCommand;
+import parking.forecast.service.SourceMeasurementService.SourceMeasurementSummary;
 
 @Service
 public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshService {
@@ -24,6 +26,7 @@ public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshSe
     private final NtpcOpenDataClient ntpcOpenDataClient;
     private final NtpcAvailabilityNormalizer normalizer;
     private final AvailabilitySnapshotPublishingService publishingService;
+    private final SourceMeasurementService sourceMeasurementService;
     private final RefreshControlProperties properties;
     private final Clock clock;
 
@@ -32,21 +35,24 @@ public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshSe
             NtpcOpenDataClient ntpcOpenDataClient,
             NtpcAvailabilityNormalizer normalizer,
             AvailabilitySnapshotPublishingService publishingService,
+            SourceMeasurementService sourceMeasurementService,
             RefreshControlProperties properties
     ) {
-        this(ntpcOpenDataClient, normalizer, publishingService, properties, Clock.systemUTC());
+        this(ntpcOpenDataClient, normalizer, publishingService, sourceMeasurementService, properties, Clock.systemUTC());
     }
 
     NtpcRealtimeSourceRefreshService(
             NtpcOpenDataClient ntpcOpenDataClient,
             NtpcAvailabilityNormalizer normalizer,
             AvailabilitySnapshotPublishingService publishingService,
+            SourceMeasurementService sourceMeasurementService,
             RefreshControlProperties properties,
             Clock clock
     ) {
         this.ntpcOpenDataClient = ntpcOpenDataClient;
         this.normalizer = normalizer;
         this.publishingService = publishingService;
+        this.sourceMeasurementService = sourceMeasurementService;
         this.properties = properties;
         this.clock = clock;
     }
@@ -63,48 +69,85 @@ public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshSe
     private RefreshExecutionResult refreshRoadside(TriggerType triggerType) {
         Instant startedAt = clock.instant();
         List<NormalizedAvailabilityObservation> observations = new ArrayList<>();
-        int httpRequests = 0;
-        boolean completed = false;
+        FetchMeasurement measurement = new FetchMeasurement();
         for (int page = 0; page < properties.getMaxPages(); page++) {
             Instant fetchedAt = clock.instant();
-            var rows = ntpcOpenDataClient.fetchRoadsideAvailability(page, properties.getPageSize());
-            httpRequests++;
+            var result = ntpcOpenDataClient.fetchRoadsideAvailabilityPage(page, properties.getPageSize());
+            measurement.record(result.attempts(), result.responseBytes());
+            var rows = result.rows();
             rows.stream()
                     .map(row -> normalizer.normalizeRoadside(row, fetchedAt))
                     .forEach(observations::add);
             if (rows.size() < properties.getPageSize()) {
-                completed = true;
+                measurement.markCompleted();
                 break;
             }
         }
-        requireCompletePageTraversal(DatasetCode.NTPC_ROADSIDE_SPOT, completed);
-        return publish(DatasetCode.NTPC_ROADSIDE_SPOT, triggerType, startedAt, httpRequests, observations);
+        Instant completedAt = clock.instant();
+        SourceMeasurementSummary summary = measure(DatasetCode.NTPC_ROADSIDE_SPOT, startedAt, completedAt, measurement, observations);
+        requireCompletePageTraversal(summary);
+        return publish(DatasetCode.NTPC_ROADSIDE_SPOT, triggerType, startedAt, completedAt, summary, observations);
     }
 
     private RefreshExecutionResult refreshOffStreet(TriggerType triggerType) {
         Instant startedAt = clock.instant();
         List<NormalizedAvailabilityObservation> observations = new ArrayList<>();
-        int httpRequests = 0;
-        boolean completed = false;
+        FetchMeasurement measurement = new FetchMeasurement();
         for (int page = 0; page < properties.getMaxPages(); page++) {
             Instant fetchedAt = clock.instant();
-            var rows = ntpcOpenDataClient.fetchOffStreetAvailability(page, properties.getPageSize());
-            httpRequests++;
+            var result = ntpcOpenDataClient.fetchOffStreetAvailabilityPage(page, properties.getPageSize());
+            measurement.record(result.attempts(), result.responseBytes());
+            var rows = result.rows();
             rows.stream()
                     .map(row -> normalizer.normalizeOffStreet(row, fetchedAt))
                     .forEach(observations::add);
             if (rows.size() < properties.getPageSize()) {
-                completed = true;
+                measurement.markCompleted();
                 break;
             }
         }
-        requireCompletePageTraversal(DatasetCode.NTPC_OFF_STREET_AVAILABILITY, completed);
-        return publish(DatasetCode.NTPC_OFF_STREET_AVAILABILITY, triggerType, startedAt, httpRequests, observations);
+        Instant completedAt = clock.instant();
+        SourceMeasurementSummary summary = measure(DatasetCode.NTPC_OFF_STREET_AVAILABILITY, startedAt, completedAt, measurement, observations);
+        requireCompletePageTraversal(summary);
+        return publish(DatasetCode.NTPC_OFF_STREET_AVAILABILITY, triggerType, startedAt, completedAt, summary, observations);
     }
 
-    private void requireCompletePageTraversal(DatasetCode datasetCode, boolean completed) {
-        if (!completed) {
-            throw new IllegalStateException("來源資料超過可處理頁數上限，拒絕發布不完整快照：" + datasetCode);
+    private SourceMeasurementSummary measure(
+            DatasetCode datasetCode,
+            Instant startedAt,
+            Instant completedAt,
+            FetchMeasurement measurement,
+            List<NormalizedAvailabilityObservation> observations
+    ) {
+        return sourceMeasurementService.analyze(new SourceMeasurementCommand(
+                SourceSystem.NTPC_OPEN_DATA,
+                datasetCode,
+                startedAt,
+                completedAt,
+                properties.getPageSize(),
+                properties.getMaxPages(),
+                measurement.pageCount(),
+                measurement.httpRequestCount(),
+                measurement.responseBytes(),
+                measurement.completed(),
+                observations
+        ));
+    }
+
+    private void requireCompletePageTraversal(SourceMeasurementSummary summary) {
+        if (!summary.pageTraversalCompleted()) {
+            throw new IllegalStateException(
+                    "來源資料超過可處理頁數上限，拒絕發布不完整快照：%s pages=%d httpRequests=%d pageSize=%d maxPages=%d responseBytes=%d recommendation=%s"
+                            .formatted(
+                                    summary.datasetCode(),
+                                    summary.pageCount(),
+                                    summary.httpRequestCount(),
+                                    summary.pageSize(),
+                                    summary.maxPages(),
+                                    summary.responseBytes(),
+                                    summary.recommendation()
+                            )
+            );
         }
     }
 
@@ -112,7 +155,8 @@ public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshSe
             DatasetCode datasetCode,
             TriggerType triggerType,
             Instant startedAt,
-            int httpRequestCount,
+            Instant completedAt,
+            SourceMeasurementSummary summary,
             List<NormalizedAvailabilityObservation> observations
     ) {
         PublishSnapshotResult result = publishingService.publish(new PublishSnapshotCommand(
@@ -120,18 +164,52 @@ public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshSe
                 datasetCode,
                 triggerType,
                 startedAt,
-                clock.instant(),
-                httpRequestCount,
+                completedAt,
+                summary.httpRequestCount(),
                 observations.size(),
-                observations
+                observations,
+                summary.toQualitySummary()
         ));
         return new RefreshExecutionResult(
                 result.published(),
                 result.ingestionRunId(),
                 result.snapshotId(),
-                httpRequestCount,
+                summary.httpRequestCount(),
                 observations.size(),
                 result.reason()
         );
+    }
+
+    private static class FetchMeasurement {
+        private int pageCount;
+        private int httpRequestCount;
+        private long responseBytes;
+        private boolean completed;
+
+        void record(int attempts, long pageResponseBytes) {
+            pageCount++;
+            httpRequestCount += attempts;
+            responseBytes += pageResponseBytes;
+        }
+
+        void markCompleted() {
+            completed = true;
+        }
+
+        int pageCount() {
+            return pageCount;
+        }
+
+        int httpRequestCount() {
+            return httpRequestCount;
+        }
+
+        long responseBytes() {
+            return responseBytes;
+        }
+
+        boolean completed() {
+            return completed;
+        }
     }
 }

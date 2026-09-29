@@ -23,17 +23,24 @@ class NtpcOpenDataClientTest {
     @Test
     void fetchesRoadsideAvailabilityWithConfiguredDataset() {
         var testClient = testClient(defaultProperties());
+        String payload = """
+                [{"id":"1","cellid":"RA-001","roadname":"新莊路","cellstatus":"0"}]
+                """;
         testClient.server().expect(requestTo("https://data.ntpc.gov.tw/api/datasets/54A507C4-C038-41B5-BF60-BBECB9D052C6/json?page=0&size=1"))
                 .andExpect(method(GET))
-                .andRespond(withSuccess("""
-                        [{"id":"1","cellid":"RA-001","roadname":"新莊路","cellstatus":"0"}]
-                        """, APPLICATION_JSON));
+                .andRespond(withSuccess(payload, APPLICATION_JSON));
 
-        var rows = testClient.client().fetchRoadsideAvailability(0, 1);
+        var page = testClient.client().fetchRoadsideAvailabilityPage(0, 1);
+        var rows = page.rows();
 
         assertThat(rows).hasSize(1);
         assertThat(rows.getFirst().cellId()).isEqualTo("RA-001");
         assertThat(rows.getFirst().roadName()).isEqualTo("新莊路");
+        assertThat(page.attempts()).isEqualTo(1);
+        assertThat(page.page()).isZero();
+        assertThat(page.size()).isEqualTo(1);
+        assertThat(page.responseBytes()).isEqualTo(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
+        assertThat(page.elapsedMillis()).isGreaterThanOrEqualTo(0);
         testClient.server().verify();
     }
 

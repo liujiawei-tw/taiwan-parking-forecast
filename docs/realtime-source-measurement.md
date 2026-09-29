@@ -1,6 +1,6 @@
 # 主系統官方即時來源：單輪請求量與延遲量測
 
-更新日期：2026-09-24。狀態：唯讀查核與後續量測計畫；未寫主系統程式，**尚無成功的 API 實測數值**。本文件只針對主系統的官方即時來源；離線訓練 collector 的請求量不可充作主系統結果。
+更新日期：2026-09-29。狀態：S2-021 已加入主系統量測摘要基線；低頻真實多輪量測仍待 Sponsor 確認頻率後執行。本文件只針對主系統的官方即時來源；離線訓練 collector 的請求量不可充作主系統結果。
 
 ## 官方已確認的介接方式
 
@@ -17,6 +17,24 @@
 ## 2026-09-24 本環境探測結果
 
 曾各對路邊、路外官方 JSON 第一頁、每頁 1 筆發起一次唯讀探測。PowerShell 與系統 curl 在 TLS 憑證建立階段失敗，回報 `SEC_E_NO_CREDENTIALS`；本機 Anaconda Python 的 `urllib` 與 `requests` 憑證驗證回報 `Missing Subject Key Identifier`。網頁查閱工具也無法開啟 API 本體。**沒有成功取得 HTTP 回應**，因此沒有可信的 HTTP 狀態、來源耗時、回應大小、總筆數、分頁數或資料欄位觀測。憑證握手失敗的約 0.4 秒不能當作 API 延遲。本輪未下載全量檔，也未停用 TLS 驗證。
+
+## 2026-09-29 S2-021 主系統量測摘要基線
+
+已在主系統新增 `SourceMeasurementService`，並讓 `NtpcRealtimeSourceRefreshService` 使用 NTPC client 的 page metadata 產生每輪摘要。摘要會寫入 `ingestion_run.quality_summary`，包含：dataset、started/completed time、durationMs、pageSize、maxPages、pages、HTTP attempts、retries、responseBytes、分頁是否完整、normalized row 數、source ID 數、unique source ID 數、缺 source ID、重複 source ID rows、verified mapping 數、mapped/unmapped observation 數、failed observation 數、mapping coverage 與發布建議。
+
+目前發布建議只作可解釋量測與審查證據，不是服務承諾：
+
+| 建議碼 | 意義 |
+| --- | --- |
+| `REJECT_INCOMPLETE_PAGE_TRAVERSAL` | 來源頁數超過目前 `maxPages`，不可發布不完整快照。 |
+| `REJECT_NO_NORMALIZED_OBSERVATIONS` | 沒有任何可正規化觀測。 |
+| `REJECT_NO_MAPPED_OBSERVATIONS` | 有觀測但沒有任何 verified mapping，可保留舊快照。 |
+| `PUBLISH_WITH_PARTIAL_QUALITY_REVIEW` | 至少有部分 mapping，但存在缺 ID、重複、未 mapping 或 failed observation，須看覆蓋率與範圍門檻。 |
+| `PUBLISH_MEETS_CURRENT_MVP_THRESHOLD` | 目前 MVP 檢查未發現缺口；仍不代表來源長期穩定。 |
+
+S2-020 的低頻官方核對已取得一次資料量證據：新北市路邊完整回應約 30,941 筆，其中新莊 `areacode=65000050` 有 2,124 筆；路外靜態目錄前 1000 筆中篩到 97 筆新莊汽車場，且這 97 個 ID 能在路外即時剩餘位資料中對上。以目前 `page-size=500`、`max-pages=20` 估算，路邊全量 JSON 分頁會超過上限，主系統會拒絕發布不完整快照；路外即時資料是否能在目前上限內取齊，仍須以受控完整刷新量測確認。
+
+尚未完成：沒有執行多輪真實 refresh、沒有建立 p50/p95、沒有提高刷新頻率，也沒有把單次成功視為穩定性證據。
 
 ## 在可正常驗證 HTTPS 的環境重做
 
