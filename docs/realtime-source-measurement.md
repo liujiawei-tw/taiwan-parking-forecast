@@ -36,6 +36,52 @@ S2-020 的低頻官方核對已取得一次資料量證據：新北市路邊完�
 
 尚未完成：沒有執行多輪真實 refresh、沒有建立 p50/p95、沒有提高刷新頻率，也沒有把單次成功視為穩定性證據。
 
+## 2026-09-29 單輪真實來源量測紀錄
+
+本輪只做路邊與路外各一輪低頻官方 API 量測，沒有保存原始 JSON，沒有提交 API 回應內容，沒有使用金鑰。時間為 Asia/Taipei。
+
+### 路邊格位即時狀態
+
+- Dataset：`NTPC_ROADSIDE_SPOT`
+- URL：`https://data.ntpc.gov.tw/api/datasets/54A507C4-C038-41B5-BF60-BBECB9D052C6/json?page=0&size=40000`
+- 開始／完成：`2026-09-29T14:11:40.4993313+08:00` 至 `2026-09-29T14:11:45.1027096+08:00`
+- HTTP：1 request，HTTP 200
+- 頁數：1 page；`rows=30941` 小於 requested `size=40000`，本輪視為取齊
+- 延遲：4600 ms
+- UTF-8 回應大小：11,270,904 bytes
+- 來源 ID：30,941 rows；30,653 unique source IDs；missing source ID 0
+- 重複來源 ID：288 duplicate rows；例：`107898`、`118665`、`134645`、`134652`、`137220`
+- 來源欄位異常：`cellstatus`／`parkingstatus` 缺值 0；負值 0
+- 新莊覆蓋：`areacode=65000050` 共 2,124 rows
+- 目前 seed verified mapping：7 IDs；本輪找到 7 IDs；missing seed IDs 0
+- 本輪發布建議：若只以 S2-020 小樣本 mapping 發布，屬於 `PUBLISH_WITH_PARTIAL_QUALITY_REVIEW`，因為全量 30,941 筆中只有 7 筆可 mapping；不能宣稱完整路邊快照。
+
+### 路外即時剩餘車位
+
+第一次以 `size=40000` 呼叫時只回 1,000 rows，因此加做分頁確認，改以 `size=1000` 取到 page 0 與 page 1；page 1 只有 407 rows，本輪視為取齊。下列數字以分頁確認結果為準。
+
+- Dataset：`NTPC_OFF_STREET_AVAILABILITY`
+- URLs：
+  - `https://data.ntpc.gov.tw/api/datasets/e09b35a5-a738-48cc-b0f5-570b67ad9c78/json?page=0&size=1000`
+  - `https://data.ntpc.gov.tw/api/datasets/e09b35a5-a738-48cc-b0f5-570b67ad9c78/json?page=1&size=1000`
+- 分頁確認時間：`2026-09-29T14:12:55.9866532+08:00`
+- HTTP：2 requests，HTTP 200
+- 頁數：2 pages；page 0 = 1,000 rows，page 1 = 407 rows；本輪視為取齊
+- 延遲：合計 1011 ms；page 0 = 644 ms，page 1 = 367 ms
+- UTF-8 回應大小：合計 50,642 bytes；page 0 = 35,989 bytes，page 1 = 14,653 bytes
+- 來源 ID：1,407 rows；1,396 unique source IDs；missing source ID 0
+- 重複來源 ID：11 duplicate rows；例：`040014`、`040037`、`040068`、`060021`、`060047`
+- 來源欄位異常：`AVAILABLECAR`／`AVAILABLE` 缺值 0；負值 981，其中負值仍須依官方碼表分辨「暫無即時資料」等語意，不得轉成 0
+- 目前 seed verified mapping：3 IDs；本輪找到 3 IDs；missing seed IDs 0
+- 本輪發布建議：若只以 S2-020 小樣本 mapping 發布，屬於 `PUBLISH_WITH_PARTIAL_QUALITY_REVIEW`，因為全量 1,407 筆中只有 3 筆可 mapping；完整路外 catalog 匯入前不可宣稱全新莊覆蓋。
+
+### 設定建議與限制
+
+- 現行預設 `page-size=500`、`max-pages=20` 最多只允許 10,000 rows；依本輪路邊 30,941 rows，路邊全量 refresh 會被 `REJECT_INCOMPLETE_PAGE_TRAVERSAL` 擋下，這是正確保護。
+- 路外依本輪 1,407 rows，現行預設理論上可在 3 pages 內取齊；但官方平台對單頁 `size=40000` 回 1,000 rows，代表不能假設 `size` 會照請求放大。
+- 若要做下一輪 controlled refresh 驗收，路邊可用「大 page size 取一頁」或「`size=1000` 多頁」兩種策略比較；路外建議以 `size=1000`、`max-pages>=3` 量測。
+- 本輪只有單次量測，不足以建立 p50／p95、穩定性或長期 cooldown；不得把本數字視為服務承諾。
+
 ## 在可正常驗證 HTTPS 的環境重做
 
 1. 每來源先請求一頁少量資料，記錄時間、狀態碼、回應格式與欄位；確認資料集 ID／端點與篩選語法。

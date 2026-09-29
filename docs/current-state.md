@@ -575,3 +575,13 @@ Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `f
 驗證：Docker Maven 精準測試 `NtpcOpenDataClientTest`、`SourceMeasurementServiceTest`、`NtpcRealtimeSourceRefreshServiceTest`、`AvailabilitySnapshotPublishingServiceTest` 通過 12 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 56 tests／0 failures／0 errors。測試覆蓋 page metadata、bytes／attempts、缺頁拒絕發布、mapping 覆蓋、缺 ID、重複 ID、failed observation 與量測摘要保存。
 
 限制：本階段沒有高頻呼叫官方 API，也沒有執行多輪真實 refresh；S2-020 的低頻官方核對顯示路邊全量約 30,941 筆，以目前 `page-size=500`、`max-pages=20` 會超過上限，因此主系統會拒絕發布不完整路邊快照。正式調整 page-size、max-pages、cooldown 與品質門檻仍需 Sponsor 確認可接受用量後，再做低頻完整量測。
+
+## 2026-09-29 S2-021 單輪真實來源量測紀錄
+
+依 Sponsor 指示補上路邊／路外各一輪可重現的真實量測紀錄，詳見 `realtime-source-measurement.md`。本輪只呼叫新北市官方 Open Data API，不保存原始 JSON，不提交 API 回應內容，也沒有使用金鑰。
+
+路邊格位即時狀態使用 `page=0&size=40000`，HTTP 200，1 request，1 page，30,941 rows，11,270,904 bytes，elapsed 4,600 ms；因 rows 小於 requested size，本輪視為取齊。新莊 `areacode=65000050` 有 2,124 rows；全量 source ID 中有 30,653 unique IDs、0 missing source ID、288 duplicate rows。S2-020 seed 的 7 個 verified mapping ID 本輪皆找到。
+
+路外即時剩餘車位第一次 `size=40000` 只回 1,000 rows，因此以 `size=1000` 做分頁確認：page 0 有 1,000 rows、page 1 有 407 rows，共 2 requests、1,407 rows、50,642 bytes、elapsed 1,011 ms，本輪視為取齊。source ID 有 1,396 unique IDs、0 missing source ID、11 duplicate rows；`AVAILABLECAR`／`AVAILABLE` 缺值 0，負值 981，仍須依官方碼表分辨語意。S2-020 seed 的 3 個 verified mapping ID 本輪皆找到。
+
+驗收判斷：缺頁、重複、來源欄位異常、部分 mapping 與發布建議已能分開記錄；一輪品質拒絕不覆蓋既有 PUBLISHED snapshot 由既有測試保護。設定建議仍保守：現行 `page-size=500`、`max-pages=20` 對路邊全量不足，應繼續拒絕不完整路邊快照；路外現行設定理論上可取齊，但官方平台對大 size 可能限制為 1,000 rows，不可假設單頁放大。這仍是單輪量測，尚不能建立 p50／p95、長期穩定性或正式 cooldown。

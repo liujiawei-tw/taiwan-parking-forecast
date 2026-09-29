@@ -299,12 +299,12 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態，並在資料足夠時提供抵達時預測。</p>
     <div class="meta">
-      <span class="pill doing">目前：S2-021 量測摘要基線</span>
+      <span class="pill doing">目前：S2-021 單輪量測完成</span>
       <span class="pill">更新：2026-09-29</span>
-      <span class="pill doing">下一步：#34 完整來源量測</span>
+      <span class="pill doing">下一步：#34 多輪門檻</span>
       <span class="pill pending">訓練 collector：暫緩</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping，以及來源刷新量測摘要基線；但完整新莊目錄、多輪真實來源量測與品質門檻尚未完成。前端尚未接 Google Maps JavaScript API／Places Autocomplete，頁面可見時自動刷新也尚未接線；兩類預測仍等待可用訓練資料與基準模型。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪低頻真實來源量測；但完整新莊目錄、多輪 p50／p95 與正式品質門檻尚未完成。前端尚未接 Google Maps JavaScript API／Places Autocomplete，頁面可見時自動刷新也尚未接線；兩類預測仍等待可用訓練資料與基準模型。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -316,7 +316,7 @@
     <article class="metric">
       <span>Sprint 2 完成項</span>
       <strong>S2-001 至 S2-020</strong>
-      <p>S2-021 程式量測摘要基線已完成；#34 多輪真實來源量測仍開放。</p>
+      <p>S2-021 已完成程式量測摘要與路邊／路外各一輪真實量測；#34 多輪門檻仍開放。</p>
     </article>
     <article class="metric">
       <span>最新 merge</span>
