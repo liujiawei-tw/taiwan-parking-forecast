@@ -595,3 +595,11 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 目前 `queryId` 有效期實作為建立後 30 分鐘。正式預設使用 Redis query state：`parking:query:{queryId}` 保存短期查詢 response 與原始 request，預設保留 60 分鐘，前 30 分鐘有效、後 30 分鐘用於穩定回 `410 QUERY_EXPIRED`；`parking:query-token:{requestToken}` 保存防重送索引，TTL 為 30 分鐘，避免舊 token 阻擋重新規劃。test profile 使用 memory store，避免單元測試依賴外部 Redis。Redis query state 不可用時，主系統回 `503 SERVICE_TEMPORARILY_UNAVAILABLE` 與 `details.component=redis_query_state`，不以單機 map 冒充多實例可恢復狀態。MySQL 仍保存停車目錄、快照、觀測與來源狀態，不保存使用者查詢生命週期。
 
 驗證：使用本機 Maven 執行精準後端測試 `ParkingQueryControllerTest`、`ParkingQueryServiceTest`、`RedisParkingQueryStateStoreTest`，共 18 tests／0 failures／0 errors。測試覆蓋重複 `requestToken`、無效座標、區外目的地、過去指定出發時間、未知 queryId、refresh 未知 queryId、可控時鐘下的過期 queryId、Redis TTL 寫入、Redis JSON 還原與 Redis 失敗包裝，以及既有查詢讀取／刷新不重算 ETA。完整後端 `mvn test` 通過 67 tests／0 failures／0 errors；Docker Maven `maven:3.9-eclipse-temurin-21 mvn test` 也通過 67 tests／0 failures／0 errors。
+
+## 2026-09-29 S2-023 Maps／Places 前端結果頁初版
+
+已開始 #36／S2-023 並完成第一版前端整合。Vue 單頁不再是固定 mock 目的地與佔位地圖；有 `VITE_GOOGLE_MAPS_BROWSER_API_KEY` 時會載入 Google Maps JavaScript API 與 Place Autocomplete Widget (New)，選取目的地後只取 `displayName`、`formattedAddress`、`location` 等前端需要欄位，並在使用者明確按下「規劃停車查詢」時才把起點、目的地座標與出發時間送到主系統 `POST /api/v1/parking-queries`。前端不提交自算 ETA、目前車位數或預測機率，也不直接呼叫政府停車來源。
+
+結果頁改為地圖優先布局：地圖呈現目的地、300 公尺圈、路外停車場標記，以及後端回傳且 `availableSpots` 內的路邊目前有位格位標記；右側結果面板顯示 query／ETA／預測狀態、路邊與路外資料時間、全部結果清單與外部 Google Maps 路線入口。路邊格位文案明確標示只代表目前觀測，不代表抵達時仍有位；抵達時機率仍依後端 `predictions` 區塊呈現資料不足或未完成狀態。
+
+未設定瀏覽器 Google key 時，前端維持手動座標 fallback，CI 與一般本機 build 不會呼叫 Google。此階段尚未接 S2-024 的頁面可見時自動刷新，也尚未做真實 browser key 的人工 Places 查詢驗收；Google 金鑰限制、Places 實際用量與手機真機可用性仍需 Sponsor 在安全本機環境確認。
