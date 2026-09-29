@@ -549,3 +549,9 @@ Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `f
 ## 2026-09-29 下一組 GitHub Issues 已建立
 
 已在 GitHub 建立並加上 `sprint-2` 標籤：#33 S2-020 建立新莊正式停車目錄與來源 ID 對應、#34 S2-021 量測官方即時來源與設定發布品質門檻、#35 S2-022 收斂停車查詢生命週期與 API 契約、#36 S2-023 接入 Google Maps／Places 與停車結果頁、#37 S2-024 接入可見頁受控刷新與端到端驗收、#38 S2-025 校正 Sprint 2 文件基線與 Sprint 3 預測進入條件。順序先確保正式 catalog、mapping 與量測證據，再進行 API 與前端整合；各 Issue 皆明確排除以 collector 當主系統即時來源或在資料不足時輸出預測機率。
+
+## 2026-09-29 Repo 複查與文件進度同步
+
+本次重新閱讀 `main` 的後端、前端與核心文件後，確認 S2-001 至 S2-019 的程式能力與既有驗收紀錄一致：後端已有資料模型、少量合成 seed、300 公尺查詢、來源 adapter／快照發布、受控刷新，以及 Google Routes ETA 與降級。最近一次已記錄的完整後端驗證為 Docker Maven 53 tests／0 failures／0 errors；本次為文件盤點，未重新執行測試或呼叫外部 API。
+
+同時確認目前不能宣稱正式即時停車服務已完成：目錄只有 3 筆路邊與 2 筆路外合成 seed，正式 source mapping 與來源量測尚未完成；前端仍採固定 mock 起點與佔位地圖，尚未接 Maps JavaScript／Places 或可見頁自動刷新。已同步更新根目錄與前後端 README、實作計畫、路線圖、待確認問題及專案狀態頁；#33 至 #38 保持為下一批尚未開始的工作。

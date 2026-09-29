@@ -4,19 +4,16 @@ Spring Boot Maven backend for Taiwan Parking Forecast.
 
 ## Current scope
 
-This module is the Sprint 2 backend skeleton. It currently provides:
+This module currently provides:
 
-- Spring Boot Web MVC application entrypoint.
-- Actuator health endpoint.
-- YAML configuration via src/main/resources/application.yml.
-- Project API health endpoint: `GET /api/health`.
-- JPA dependency and profile based datasource configuration.
-- H2 datasource for local development and tests.
-- MySQL datasource for Docker and future deployed environments.
-- Root package: `parking.forecast`.
-- Initial package boundaries for `controller`, `service`, `repository`, `domain`, `adapter`, and `config`.
+- Spring Boot Web MVC application entrypoint, Actuator, and `GET /api/health`.
+- Typed API envelope, parking availability types, core JPA entities, and Flyway schema.
+- H2 local profile and MySQL Docker profile, including a small seed catalog for 300 m queries.
+- New Taipei source client, payload normalization, candidate snapshot publication, and published-snapshot reads.
+- MySQL refresh cooldown with Redis short-lock coordination and documented fallback behavior.
+- Google Routes `computeRoutes` ETA integration, including disabled, missing-key, and HTTP-failure degradation.
 
-It does not yet implement Redis access, Google Maps Platform, New Taipei APIs, TDX, or ML prediction services. MySQL connectivity is configured for the Docker profile, but no domain tables or repositories are implemented yet.
+The sample catalog is synthetic and is not a formal New Taipei parking-lot directory. Official source-ID mapping and source-quality measurement remain open work. The query service and frontend workflow also retain mock-oriented seams, while Google Maps/Places browser integration and prediction training/inference have not been implemented.
 
 ## Run locally
 

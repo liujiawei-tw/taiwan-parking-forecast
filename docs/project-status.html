@@ -301,10 +301,10 @@
     <div class="meta">
       <span class="pill done">目前：S2-019 已合併</span>
       <span class="pill">更新：2026-09-29</span>
-      <span class="pill doing">下一步：前端 Google Maps／Places</span>
+      <span class="pill doing">下一步：#33 正式目錄與來源 ID</span>
       <span class="pill pending">訓練 collector：暫緩</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備可信的即時資料快照讀取、受控刷新與 Google Routes ETA。前端尚未接 Google Maps JavaScript API／Places Autocomplete，頁面可見時自動刷新也尚未接線；兩類預測仍等待可用訓練資料與基準模型。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新與 Google Routes ETA，但正式目錄、官方來源 ID 對應與品質量測尚未完成。前端尚未接 Google Maps JavaScript API／Places Autocomplete，頁面可見時自動刷新也尚未接線；兩類預測仍等待可用訓練資料與基準模型。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -501,10 +501,22 @@
           <td>後端 <code>computeRoutes</code>、真實 ETA、降級行為、NOW 不送 <code>departureTime</code>、Docker Compose 真實驗收。</td>
         </tr>
         <tr>
-          <td>前端 Google 整合</td>
-          <td>下一張 Issue</td>
-          <td><span class="pill doing">待建立</span></td>
-          <td>Maps JavaScript API、Places Autocomplete、結果頁地圖、瀏覽器 key 設定與狀態畫面。</td>
+          <td>正式目錄與來源量測</td>
+          <td>#33、#34</td>
+          <td><span class="pill doing">待實作</span></td>
+          <td>新莊正式 catalog、官方 ID mapping、分頁完整性、覆蓋率與單輪成本量測。</td>
+        </tr>
+        <tr>
+          <td>查詢與前端整合</td>
+          <td>#35、#36、#37</td>
+          <td><span class="pill doing">待實作</span></td>
+          <td>正式查詢契約、Maps JavaScript API、Places Autocomplete、結果頁與可見頁受控刷新。</td>
+        </tr>
+        <tr>
+          <td>文件與 Sprint 3 門檻</td>
+          <td>#38</td>
+          <td><span class="pill pending">待實作</span></td>
+          <td>校正文件基線，定義預測開始前的資料品質與回測證據。</td>
         </tr>
         <tr>
           <td>預測基準</td>
@@ -523,7 +535,7 @@
         <li>依 #33 建立新莊正式 catalog 與來源 ID mapping。</li>
         <li>依 #34 量測分頁、完整性、覆蓋率與單輪成本，再調整刷新設定。</li>
         <li>依 #35～#37 收斂查詢契約、接入 Maps／Places 與前端受控刷新。</li>
-        <li>預測必須等資料品質與回測達標後另行規劃。</li>
+        <li>依 #38 校正文件基線；預測必須等資料品質與回測達標後再開始。</li>
       </ol>
     </div>
     <div class="panel">

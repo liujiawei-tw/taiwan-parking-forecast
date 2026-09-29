@@ -1,6 +1,6 @@
 # 實作順序計畫（Sprint 2 起）
 
-更新日期：2026-09-26。狀態：Sprint 2 已完成骨架、Docker、CI、資料模型、seed、300 公尺查詢與 parking-queries 接入；下一步進入官方即時來源與快照發布。此文件描述建議實作順序，已完成項目仍以 current-state.md 為準。
+更新日期：2026-09-29。狀態：Sprint 2 的 S2-001 至 S2-019 已完成後端骨架、資料模型、300 公尺查詢、官方來源 adapter／快照發布、受控刷新與後端 Google Routes ETA。正式目錄／來源 ID 對應與來源量測尚未完成，前端仍為 mock；下一個實作序以 Issue #33 至 #38 為準。此文件描述建議實作順序，已完成項目仍以 `current-state.md` 為準。
 
 ## 排序原則
 
@@ -17,11 +17,11 @@
 | 0 | 實作前準備 | 建立／確認開發分支、Issue、環境變數範本、目錄規劃；確認不提交金鑰 | 有清楚的開發入口與工作項目 |
 | 1 | 專案骨架與 Docker | 建 Spring Boot Maven、Vue 3＋Vite、Docker Compose 候選；加入 MySQL、Redis、H2 test profile；提供基本 health endpoint | 一個乾淨環境能啟動 web／api／mysql／redis，後端健康檢查可回應 |
 | 2 | 資料庫與 JPA 基礎 | 建核心 entity／repository：`parking_place`、`source_mapping`、`availability_snapshot`、`availability_observation`、`source_state`、`ingestion_run`；H2 測 repository，MySQL 做整合驗證 | 可建立目錄與快照資料，測試可證明 H2 與 MySQL 邊界 |
-| 3 | API 契約與 mock 回應 | 先實作查詢 API DTO、錯誤格式、`POST /parking-queries`、`GET /parking-queries/{id}`、`POST /refresh` 的 mock/stub 流程；Redis 保存短期 `queryId` | 前端可不等真資料就串接查詢生命週期與狀態畫面 |
-| 4 | 停車目錄與 300 公尺查詢 | 匯入或建立新莊路邊／路外目錄小樣本；實作矩形預篩＋精確距離；區分路邊與路外結果 | 輸入目的地座標，可回 300 公尺內已收錄位置與距離 |
-| 5 | 官方即時來源與快照發布 | 接新北市路邊／路外官方 API adapter；正規化欄位；候選快照、品質檢查、發布交易、失敗不覆蓋舊快照 | 可取得並發布一輪完整快照；0、未知、過期、失敗能分開回應 |
-| 6 | 受控刷新與 Redis 協調 | 實作來源級冷卻、刷新鎖、刷新進度、手動更新與可見頁面過期刷新語意；記錄 `ingestion_run` | 多人或多次請求共用同一輪刷新，不會每次都打官方 API |
-| 7 | Google 搜尋與 ETA | 前端接 Google Maps／Places；後端接 Routes `computeRoutes`；ETA 只在明確規劃時取得；失敗時分區塊降級 | 使用者可選起點／目的地／出發時間，看到 Google ETA 和停車範圍 |
+| 3 | API 契約與 mock 回應 | 基礎端點與 mock/stub 流程已存在；正式查詢生命週期、欄位與錯誤契約仍待 #35 收斂 | 前端可不等真資料就串接查詢生命週期與狀態畫面 |
+| 4 | 停車目錄與 300 公尺查詢 | 小樣本與矩形預篩＋精確距離已完成；正式新莊目錄與來源 ID 對應待 #33 | 輸入目的地座標，可回 300 公尺內已收錄位置與距離 |
+| 5 | 官方即時來源與快照發布 | adapter、正規化、候選快照與發布保護已完成；真實來源完整性、ID 對應與品質門檻待 #33、#34 | 可取得並發布一輪完整快照；0、未知、過期、失敗能分開回應 |
+| 6 | 受控刷新與 Redis 協調 | 後端來源級冷卻、短鎖與刷新協調已完成；可見頁刷新語意與端到端驗收待 #37 | 多人或多次請求共用同一輪刷新，不會每次都打官方 API |
+| 7 | Google 搜尋與 ETA | 後端 Routes `computeRoutes` 與降級已完成；前端 Maps／Places 及使用者輸入待 #36 | 使用者可選起點／目的地／出發時間，看到 Google ETA 和停車範圍 |
 | 8 | 前端結果頁整合 | 地圖優先布局、300 公尺圓、路邊區域摘要、路外場站、格位小卡、更新按鈕、狀態文案 | 可完整展示搜尋、ETA、目前車位、資料時間與失敗狀態 |
 | 9 | 預測基準與模型接點 | 先接 `predictions` 區塊與資料不足判斷；再做路邊區域與路外單場的基準模型／簡單模型；記錄版本與回測 | 有資料時顯示有依據的機率；資料不足時清楚說明原因 |
 | 10 | 整合驗收與面試包裝 | Docker 重啟測試、MySQL volume 驗證、Redis 清空降級、API 用量與資料年齡紀錄、面試說明文件 | 可從乾淨環境啟動並展示端到端流程與設計取捨 |

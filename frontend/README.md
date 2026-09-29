@@ -4,15 +4,16 @@ Vue 3 + Vite frontend for Taiwan Parking Forecast.
 
 ## Current scope
 
-This module is the Sprint 2 frontend skeleton. It currently provides:
+This module currently provides:
 
 - Single page app shell.
 - Destination search placeholder.
 - Google Maps placeholder area.
 - Result summary placeholder for ETA, roadside parking, and off-street parking.
 - Environment variable entry points for the backend API and Google Maps browser key.
+- Mock query creation / refresh flow wired to the current backend endpoint shape.
 
-It does not yet load Google Maps JavaScript API, Places Autocomplete, Routes API, or real parking data.
+The browser UI still uses a fixed mock origin and does not load Google Maps JavaScript or Google Places. It does not provide a production location search, rendered map, or real-data UX; the existing backend Google Routes work is not yet surfaced here. The next frontend work is the query contract, Maps/Places integration, and controlled-refresh acceptance flow in Issues #35-#37.
 
 ## Environment
 

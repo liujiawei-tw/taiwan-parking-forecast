@@ -25,9 +25,13 @@
 
 資料來源：[TDX API 使用指引](https://tdx.transportdata.tw/api-service/swagger)、[TDX 官方範例](https://github.com/tdxmotc/SampleCode)、[TDX 訂閱收費](https://tdx.transportdata.tw/pricing)。
 
-## Sprint 2 啟動狀態
+## Sprint 2 目前狀態
 
-Sprint 2 第一組 GitHub Issues #1～#8 已完成並合併回 `main`。目前已完成後端骨架、前端骨架、Docker Compose、後端 profiles、S2-006 mock 查詢生命週期、S2-007 文件驗收清單與 S2-008 GitHub Actions 基礎 CI；正式 Google、新北市官方 API、Redis query state、資料庫正式模型與預測模型尚未接入。下一組任務為 S2-009～S2-013，聚焦資料庫與 300 公尺停車位置查詢，見 [Sprint 2 第二組 GitHub Issues：資料基礎與 300 公尺查詢](docs/sprint-2-data-foundation-issue-drafts.md)。
+更新至 2026-09-29：Sprint 2 的既有工作（S2-001 至 S2-019）已完成後端基線與受控刷新能力：核心資料表與 Flyway、300 公尺目錄查詢、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為均已存在。
+
+現階段的目錄仍是少量合成種子資料，尚未完成正式停車場目錄與官方來源 ID 對應；前端也仍以固定 mock 輸入和佔位地圖呈現結果。因此目前不能把畫面上的資料視為正式即時停車資訊，預測模型亦尚未進入實作。
+
+下一個工作序已建立為 GitHub Issues：[#33](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/33) 正式目錄與來源 ID、[#34](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/34) 官方來源量測、[#35](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/35) 查詢契約、[#36](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/36) Maps/Places 前端、[#37](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/37) 受控刷新驗收，以及 [#38](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/38) 文件基線與 Sprint 3 進入條件。
 
 本機環境變數請從 `.env.example` 複製為 `.env` 後自行填入；真實金鑰與密碼不得提交。每張 Issue 完成前使用 [任務完成檢查清單](docs/task-completion-checklist.md) 做文件、測試、Git 與工程說明驗收。
 
