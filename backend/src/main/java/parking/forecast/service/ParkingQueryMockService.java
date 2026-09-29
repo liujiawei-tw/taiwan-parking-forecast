@@ -42,6 +42,7 @@ public class ParkingQueryMockService {
 
     private static final String MVP_SERVICE_AREA = "NEW_TAIPEI_XINZHUANG";
     private static final String MVP_AREA_CODE = "NEW_TAIPEI_XINZHUANG_MVP";
+    private static final String LOCAL_CATALOG_SOURCE = "LOCAL_NTPC_CATALOG";
     private static final int SEARCH_RADIUS_METERS = 300;
 
     private final Clock clock;
@@ -105,13 +106,13 @@ public class ParkingQueryMockService {
                         request.destination().latitude(),
                         request.destination().longitude(),
                         "SUPPORTED",
-                        "Response uses the Xinzhuang MVP catalog sample."),
+                        "Response uses the Xinzhuang MVP catalog seeded from NTPC Open Data."),
                 new AreaSection(
                         nearby.radiusMeters(),
                         nearby.distanceMode(),
                         MVP_AREA_CODE,
                         resolveCoverageStatus(nearby),
-                        "Catalog coverage uses the S2-011 Xinzhuang seed sample. It is not complete city coverage."),
+                        "Catalog coverage uses a S2-020 traceable NTPC Open Data subset. It is not complete city coverage."),
                 new EtaSection(
                         eta.status(),
                         eta.provider(),
@@ -178,7 +179,7 @@ public class ParkingQueryMockService {
                         nearby.distanceMode(),
                         MVP_AREA_CODE,
                         resolveCoverageStatus(nearby),
-                        "Catalog coverage uses the S2-011 Xinzhuang seed sample. It is not complete city coverage."),
+                        "Catalog coverage uses a S2-020 traceable NTPC Open Data subset. It is not complete city coverage."),
                 existing.eta(),
                 roadsideSection,
                 offStreetSection,
@@ -200,7 +201,7 @@ public class ParkingQueryMockService {
         if (roadsidePlaces.isEmpty()) {
             return new RoadsideSection(
                     "NO_CATALOG_RESULTS",
-                    "LOCAL_CATALOG_SEED",
+                    LOCAL_CATALOG_SOURCE,
                     null,
                     null,
                     List.of(),
@@ -239,7 +240,7 @@ public class ParkingQueryMockService {
         if (offStreetPlaces.isEmpty()) {
             return new OffStreetSection(
                     "NO_CATALOG_RESULTS",
-                    "LOCAL_CATALOG_SEED",
+                    LOCAL_CATALOG_SOURCE,
                     null,
                     List.of(),
                     "No off street catalog records were found inside 300 meters."
@@ -420,7 +421,7 @@ public class ParkingQueryMockService {
 
     private String resolveSource(PublishedAvailabilityView availability) {
         return "NO_REALTIME_SNAPSHOT".equals(availability.status()) || "NO_CATALOG_RESULTS".equals(availability.status())
-                ? "LOCAL_CATALOG_SEED"
+                ? LOCAL_CATALOG_SOURCE
                 : "NTPC_OPEN_DATA";
     }
 

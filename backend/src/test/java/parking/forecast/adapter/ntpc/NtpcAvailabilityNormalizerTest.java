@@ -22,11 +22,11 @@ class NtpcAvailabilityNormalizerTest {
 
     @Test
     void normalizesAvailableRoadsideCarSpotAsRecommendable() {
-        var observation = normalizer.normalizeRoadside(roadside("CELL-001", "小型車格", "0"), FETCHED_AT);
+        var observation = normalizer.normalizeRoadside(roadside("NTPC-001", "CELL-001", "小型車格", "0"), FETCHED_AT);
 
         assertThat(observation.sourceSystem()).isEqualTo(SourceSystem.NTPC_OPEN_DATA);
         assertThat(observation.datasetCode()).isEqualTo(DatasetCode.NTPC_ROADSIDE_SPOT);
-        assertThat(observation.sourcePlaceId()).isEqualTo("CELL-001");
+        assertThat(observation.sourcePlaceId()).isEqualTo("NTPC-001");
         assertThat(observation.availabilityStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
         assertThat(observation.availableSpot()).isTrue();
         assertThat(observation.rawStatusCode()).isEqualTo("0");
@@ -37,7 +37,7 @@ class NtpcAvailabilityNormalizerTest {
 
     @Test
     void doesNotRecommendAvailableRoadsideSpotWhenCarEligibilityIsUnknown() {
-        var observation = normalizer.normalizeRoadside(roadside("CELL-002", "一般格位", "0"), FETCHED_AT);
+        var observation = normalizer.normalizeRoadside(roadside("NTPC-002", "CELL-002", "一般格位", "0"), FETCHED_AT);
 
         assertThat(observation.availabilityStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
         assertThat(observation.availableSpot()).isTrue();
@@ -49,7 +49,7 @@ class NtpcAvailabilityNormalizerTest {
 
     @Test
     void normalizesOccupiedRoadsideSpot() {
-        var observation = normalizer.normalizeRoadside(roadside("CELL-003", "小型車格", "1"), FETCHED_AT);
+        var observation = normalizer.normalizeRoadside(roadside("NTPC-003", "CELL-003", "小型車格", "1"), FETCHED_AT);
 
         assertThat(observation.availabilityStatus()).isEqualTo(AvailabilityStatus.OCCUPIED);
         assertThat(observation.availableSpot()).isFalse();
@@ -59,7 +59,7 @@ class NtpcAvailabilityNormalizerTest {
 
     @Test
     void preservesUnknownRoadsideStatusWithoutInventingAvailability() {
-        var observation = normalizer.normalizeRoadside(roadside("CELL-004", "小型車格", "9"), FETCHED_AT);
+        var observation = normalizer.normalizeRoadside(roadside("NTPC-004", "CELL-004", "小型車格", "9"), FETCHED_AT);
 
         assertThat(observation.availabilityStatus()).isEqualTo(AvailabilityStatus.UNKNOWN);
         assertThat(observation.availableSpot()).isNull();
@@ -70,12 +70,19 @@ class NtpcAvailabilityNormalizerTest {
 
     @Test
     void failsRoadsideObservationWhenRequiredFieldsAreMissing() {
-        var observation = normalizer.normalizeRoadside(roadside(" ", "小型車格", "0"), FETCHED_AT);
+        var observation = normalizer.normalizeRoadside(roadside(" ", " ", "小型車格", "0"), FETCHED_AT);
 
         assertThat(observation.sourcePlaceId()).isNull();
         assertThat(observation.availabilityStatus()).isEqualTo(AvailabilityStatus.UNKNOWN);
         assertThat(observation.qualityStatus()).isEqualTo(QualityStatus.FAIL);
-        assertThat(observation.qualityReason()).isEqualTo("MISSING_ROADSIDE_CELL_ID");
+        assertThat(observation.qualityReason()).isEqualTo("MISSING_ROADSIDE_SOURCE_ID");
+    }
+
+    @Test
+    void fallsBackToRoadsideCellIdWhenSystemIdIsMissing() {
+        var observation = normalizer.normalizeRoadside(roadside(" ", "CELL-FALLBACK", "小型車格", "0"), FETCHED_AT);
+
+        assertThat(observation.sourcePlaceId()).isEqualTo("CELL-FALLBACK");
     }
 
     @Test
@@ -124,9 +131,9 @@ class NtpcAvailabilityNormalizerTest {
         assertThat(observation.currentlyRecommendable()).isFalse();
     }
 
-    private NtpcRoadsideParkingAvailabilityDto roadside(String cellId, String name, String cellStatus) {
+    private NtpcRoadsideParkingAvailabilityDto roadside(String id, String cellId, String name, String cellStatus) {
         return new NtpcRoadsideParkingAvailabilityDto(
-                "1",
+                id,
                 cellId,
                 name,
                 "每日",

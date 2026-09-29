@@ -299,24 +299,24 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態，並在資料足夠時提供抵達時預測。</p>
     <div class="meta">
-      <span class="pill done">目前：S2-019 已合併</span>
+      <span class="pill done">目前：S2-020 小樣本基線完成</span>
       <span class="pill">更新：2026-09-29</span>
-      <span class="pill doing">下一步：#33 正式目錄與來源 ID</span>
+      <span class="pill doing">下一步：#34 來源量測</span>
       <span class="pill pending">訓練 collector：暫緩</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新與 Google Routes ETA，但正式目錄、官方來源 ID 對應與品質量測尚未完成。前端尚未接 Google Maps JavaScript API／Places Autocomplete，頁面可見時自動刷新也尚未接線；兩類預測仍等待可用訓練資料與基準模型。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA，以及可追溯的新北市官方 Open Data 小樣本 catalog／source mapping；但完整新莊目錄與品質量測尚未完成。前端尚未接 Google Maps JavaScript API／Places Autocomplete，頁面可見時自動刷新也尚未接線；兩類預測仍等待可用訓練資料與基準模型。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
     <article class="metric">
       <span>後端測試</span>
-      <strong>53 / 0 / 0</strong>
-      <p>Docker Maven：tests / failures / errors。</p>
+      <strong>54 / 0 / 0</strong>
+      <p>Docker Maven 完整後端：tests / failures / errors；S2-020 精準回歸為 23 / 0 / 0。</p>
     </article>
     <article class="metric">
       <span>Sprint 2 完成項</span>
-      <strong>S2-001 至 S2-019</strong>
-      <p>後端 Google Routes ETA 已合併到 main。</p>
+      <strong>S2-001 至 S2-020</strong>
+      <p>S2-020 已建立官方小樣本 catalog 基線，完整目錄仍待量測。</p>
     </article>
     <article class="metric">
       <span>最新 merge</span>
@@ -325,8 +325,8 @@
     </article>
     <article class="metric">
       <span>下一個瓶頸</span>
-      <strong>正式目錄與來源對應</strong>
-      <p>低頻量測、官方 ID mapping 與快照發布覆蓋率。</p>
+      <strong>來源量測與完整目錄</strong>
+      <p>分頁完整性、官方資料量、完整 catalog 匯入策略與快照發布覆蓋率。</p>
     </article>
   </section>
 
@@ -503,8 +503,8 @@
         <tr>
           <td>正式目錄與來源量測</td>
           <td>#33、#34</td>
-          <td><span class="pill doing">待實作</span></td>
-          <td>新莊正式 catalog、官方 ID mapping、分頁完整性、覆蓋率與單輪成本量測。</td>
+          <td><span class="pill doing">部分完成</span></td>
+          <td>#33 已建立官方小樣本 catalog 與 ID mapping；完整 catalog、分頁完整性、覆蓋率與單輪成本量測待 #34。</td>
         </tr>
         <tr>
           <td>查詢與前端整合</td>
@@ -532,8 +532,7 @@
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
       <ol class="next-list">
-        <li>依 #33 建立新莊正式 catalog 與來源 ID mapping。</li>
-        <li>依 #34 量測分頁、完整性、覆蓋率與單輪成本，再調整刷新設定。</li>
+        <li>依 #34 量測分頁、完整性、覆蓋率與單輪成本，再決定完整 catalog 匯入方式。</li>
         <li>依 #35～#37 收斂查詢契約、接入 Maps／Places 與前端受控刷新。</li>
         <li>依 #38 校正文件基線；預測必須等資料品質與回測達標後再開始。</li>
       </ol>

@@ -26,8 +26,8 @@ class NearbyParkingSearchServiceTest {
     void findsSeedPlacesWithinThreeHundredMetersAndSortsByDistance() {
         NearbyParkingSearchResult result = nearbyParkingSearchService.findNearby(new NearbyParkingSearchRequest(
                 "NEW_TAIPEI_XINZHUANG",
-                25.0372000,
-                121.4525000,
+                25.0414214,
+                121.4647633,
                 300
         ));
 
@@ -38,10 +38,10 @@ class NearbyParkingSearchServiceTest {
         assertThat(result.places())
                 .extracting(NearbyParkingPlace::displayName)
                 .contains(
-                        "新莊中正路示範路邊汽車格 A",
-                        "新莊區公所周邊示範停車場"
+                        "化成路路邊汽車格 2",
+                        "宜家家居股份有限公司新莊分公司停車場"
                 )
-                .doesNotContain("新莊運動中心周邊示範停車場");
+                .doesNotContain("新莊區農會停車場");
 
         List<Integer> distances = result.places().stream()
                 .map(NearbyParkingPlace::distanceMeters)
@@ -54,8 +54,8 @@ class NearbyParkingSearchServiceTest {
     void canLimitResultsToRoadsideOrOffStreetFromSearchResult() {
         NearbyParkingSearchResult result = nearbyParkingSearchService.findNearby(new NearbyParkingSearchRequest(
                 "NEW_TAIPEI_XINZHUANG",
-                25.0372000,
-                121.4525000,
+                25.0414214,
+                121.4647633,
                 300
         ));
 
@@ -89,7 +89,7 @@ class NearbyParkingSearchServiceTest {
     @Test
     void rejectsInvalidRadius() {
         assertThatIllegalArgumentException().isThrownBy(() -> nearbyParkingSearchService.findNearby(
-                new NearbyParkingSearchRequest("NEW_TAIPEI_XINZHUANG", 25.0372000, 121.4525000, 0)
+            new NearbyParkingSearchRequest("NEW_TAIPEI_XINZHUANG", 25.0414214, 121.4647633, 0)
         ));
     }
 }

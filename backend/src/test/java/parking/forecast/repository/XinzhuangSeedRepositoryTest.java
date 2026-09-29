@@ -35,11 +35,11 @@ class XinzhuangSeedRepositoryTest {
         ))
                 .extracting(ParkingPlaceEntity::getDisplayName)
                 .contains(
-                        "新莊中正路示範路邊汽車格 A",
-                        "新莊中華路示範路邊汽車格 B",
-                        "新莊公園路示範路邊汽車格 C",
-                        "新莊區公所周邊示範停車場",
-                        "新莊運動中心周邊示範停車場"
+                        "中華路一段路邊汽車格 20",
+                        "化成路路邊汽車格 2",
+                        "宜家家居股份有限公司新莊分公司停車場",
+                        "新莊區農會停車場",
+                        "博客停車場藏壽司思源場停車場"
                 );
 
         assertThat(parkingPlaceRepository.findByServiceAreaAndPlaceTypeAndActiveStatus(
@@ -66,15 +66,15 @@ class XinzhuangSeedRepositoryTest {
     @Test
     void seedCatalogHasSourceMappingsForRoadsideAndOffStreetPlaces() {
         SourceMappingEntity roadsideMapping = sourceMappingRepository.findBySourceSystemAndDatasetCodeAndSourcePlaceId(
-                SourceSystem.SYSTEM,
+                SourceSystem.NTPC_OPEN_DATA,
                 DatasetCode.NTPC_ROADSIDE_SPOT,
-                "SEED-XINZHUANG-ROAD-001"
+                "96316"
         ).orElseThrow();
 
         SourceMappingEntity offStreetMapping = sourceMappingRepository.findBySourceSystemAndDatasetCodeAndSourcePlaceId(
-                SourceSystem.SYSTEM,
+                SourceSystem.NTPC_OPEN_DATA,
                 DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
-                "SEED-XINZHUANG-LOT-001"
+                "050087"
         ).orElseThrow();
 
         assertThat(roadsideMapping.getMappingStatus()).isEqualTo(MappingStatus.VERIFIED);

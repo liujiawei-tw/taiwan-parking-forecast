@@ -73,15 +73,15 @@ class ParkingQueryControllerTest {
         assertThat(response.getBody().eta().status()).isEqualTo("FAILED");
         assertThat(response.getBody().eta().provider()).isEqualTo("GOOGLE_ROUTES");
         assertThat(response.getBody().eta().estimatedArrivalAt()).isNull();
-        assertThat(response.getBody().roadside().source()).isEqualTo("LOCAL_CATALOG_SEED");
+        assertThat(response.getBody().roadside().source()).isEqualTo("LOCAL_NTPC_CATALOG");
         assertThat(response.getBody().roadside().status()).isEqualTo("NO_REALTIME_SNAPSHOT");
         assertThat(response.getBody().roadside().currentlyAvailableSpaces()).isNull();
         assertThat(response.getBody().roadside().availableSpots()).isEmpty();
-        assertThat(response.getBody().offStreet().source()).isEqualTo("LOCAL_CATALOG_SEED");
+        assertThat(response.getBody().offStreet().source()).isEqualTo("LOCAL_NTPC_CATALOG");
         assertThat(response.getBody().offStreet().status()).isEqualTo("NO_REALTIME_SNAPSHOT");
         assertThat(response.getBody().offStreet().parkingLots())
                 .extracting(lot -> lot.name())
-                .contains("新莊區公所周邊示範停車場");
+                .contains("宜家家居股份有限公司新莊分公司停車場");
         assertThat(response.getBody().offStreet().parkingLots())
                 .allSatisfy(lot -> {
                     assertThat(lot.availableCarSpaces()).isNull();
@@ -93,11 +93,11 @@ class ParkingQueryControllerTest {
     @Test
     void createQueryReadsFreshPublishedSnapshotForCurrentAvailability() {
         publishRoadsideSnapshot(FRESH_FETCHED_AT, List.of(
-                roadsideObservation(910001L, AvailabilityStatus.AVAILABLE, true),
-                roadsideObservation(910002L, AvailabilityStatus.OCCUPIED, false)
+                roadsideObservation(910106L, AvailabilityStatus.AVAILABLE, true),
+                roadsideObservation(910107L, AvailabilityStatus.OCCUPIED, false)
         ));
         publishOffStreetSnapshot(FRESH_FETCHED_AT, List.of(
-                offStreetObservation(920001L, AvailabilityStatus.AVAILABLE, 12)
+                offStreetObservation(920101L, AvailabilityStatus.AVAILABLE, 12)
         ));
 
         var response = controller.create(mockRequestNearSeedCatalog()).getBody();
@@ -107,11 +107,11 @@ class ParkingQueryControllerTest {
         assertThat(response.roadside().currentlyAvailableSpaces()).isEqualTo(1);
         assertThat(response.roadside().availableSpots())
                 .extracting(spot -> spot.id())
-                .containsExactly("910001");
+                .containsExactly("910106");
         assertThat(response.roadside().availableSpots().getFirst().availabilityStatus()).isEqualTo("AVAILABLE");
         assertThat(response.offStreet().source()).isEqualTo("NTPC_OPEN_DATA");
         assertThat(response.offStreet().parkingLots())
-                .filteredOn(lot -> lot.id().equals("920001"))
+                .filteredOn(lot -> lot.id().equals("920101"))
                 .singleElement()
                 .satisfies(lot -> {
                     assertThat(lot.availabilityStatus()).isEqualTo("AVAILABLE");
@@ -123,14 +123,14 @@ class ParkingQueryControllerTest {
     @Test
     void createQueryKeepsValidZeroSpacesSeparateFromUnknown() {
         publishOffStreetSnapshot(FRESH_FETCHED_AT, List.of(
-                offStreetObservation(920001L, AvailabilityStatus.FULL, 0)
+                offStreetObservation(920101L, AvailabilityStatus.FULL, 0)
         ));
 
         var response = controller.create(mockRequestNearSeedCatalog()).getBody();
 
         assertThat(response.offStreet().status()).isEqualTo("READY");
         assertThat(response.offStreet().parkingLots())
-                .filteredOn(lot -> lot.id().equals("920001"))
+                .filteredOn(lot -> lot.id().equals("920101"))
                 .singleElement()
                 .satisfies(lot -> {
                     assertThat(lot.availabilityStatus()).isEqualTo("FULL");
@@ -141,7 +141,7 @@ class ParkingQueryControllerTest {
     @Test
     void createQueryKeepsUnknownRoadsideObservationSeparateFromZeroOrUnavailable() {
         publishRoadsideSnapshot(FRESH_FETCHED_AT, List.of(
-                roadsideObservation(910001L, AvailabilityStatus.UNKNOWN, null)
+                roadsideObservation(910106L, AvailabilityStatus.UNKNOWN, null)
         ));
 
         var response = controller.create(mockRequestNearSeedCatalog()).getBody();
@@ -153,10 +153,10 @@ class ParkingQueryControllerTest {
     @Test
     void createQueryHidesCurrentAvailabilityWhenSnapshotIsStale() {
         publishRoadsideSnapshot(STALE_FETCHED_AT, List.of(
-                roadsideObservation(910001L, AvailabilityStatus.AVAILABLE, true)
+                roadsideObservation(910106L, AvailabilityStatus.AVAILABLE, true)
         ));
         publishOffStreetSnapshot(STALE_FETCHED_AT, List.of(
-                offStreetObservation(920001L, AvailabilityStatus.AVAILABLE, 8)
+                offStreetObservation(920101L, AvailabilityStatus.AVAILABLE, 8)
         ));
 
         var response = controller.create(mockRequestNearSeedCatalog()).getBody();
@@ -166,7 +166,7 @@ class ParkingQueryControllerTest {
         assertThat(response.roadside().availableSpots()).isEmpty();
         assertThat(response.offStreet().status()).isEqualTo("STALE");
         assertThat(response.offStreet().parkingLots())
-                .filteredOn(lot -> lot.id().equals("920001"))
+                .filteredOn(lot -> lot.id().equals("920101"))
                 .singleElement()
                 .satisfies(lot -> {
                     assertThat(lot.availabilityStatus()).isEqualTo("STALE");
@@ -313,7 +313,7 @@ class ParkingQueryControllerTest {
         return new CreateParkingQueryRequest(
                 "mock-token-001",
                 new LocationInput("目前位置", 25.04000, 121.45000),
-                new LocationInput("新莊體育館", 25.03720, 121.45250),
+                new LocationInput("IKEA 新莊", 25.0414214, 121.4647633),
                 new DepartureInput("NOW", null));
     }
 

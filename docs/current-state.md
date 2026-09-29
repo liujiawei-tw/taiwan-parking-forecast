@@ -555,3 +555,13 @@ Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `f
 本次重新閱讀 `main` 的後端、前端與核心文件後，確認 S2-001 至 S2-019 的程式能力與既有驗收紀錄一致：後端已有資料模型、少量合成 seed、300 公尺查詢、來源 adapter／快照發布、受控刷新，以及 Google Routes ETA 與降級。最近一次已記錄的完整後端驗證為 Docker Maven 53 tests／0 failures／0 errors；本次為文件盤點，未重新執行測試或呼叫外部 API。
 
 同時確認目前不能宣稱正式即時停車服務已完成：目錄只有 3 筆路邊與 2 筆路外合成 seed，正式 source mapping 與來源量測尚未完成；前端仍採固定 mock 起點與佔位地圖，尚未接 Maps JavaScript／Places 或可見頁自動刷新。已同步更新根目錄與前後端 README、實作計畫、路線圖、待確認問題及專案狀態頁；#33 至 #38 保持為下一批尚未開始的工作。
+
+## 2026-09-29 S2-020 官方目錄小樣本基線完成
+
+已完成 #33／S2-020 初版，將 `R__seed_xinzhuang_parking_catalog.sql` 從 S2-011 的 `SYSTEM` 合成示範資料改為可追溯的新北市官方 Open Data 小樣本。新 seed 目前包含 7 筆新莊路邊一般汽車格位與 3 筆新莊路外汽車停車場，`source_mapping.source_system=NTPC_OPEN_DATA`，路邊使用官方路邊資料的 `id` 作來源 key，路外使用官方路外靜態與即時剩餘位共用的 `ID` 作來源 key。舊的 `SEED-XINZHUANG-*` 合成 mapping 會在 repeatable migration 中清除。
+
+本次小量官方核對結果：新北市路邊資料完整回應約 30,941 筆，其中新莊 `areacode=65000050` 有 2,124 筆；路外靜態目錄前 1000 筆中篩到 97 筆新莊汽車場，且這 97 個 ID 均能在路外即時剩餘位資料中對上。官方 API 的 `filter` 參數在本次測試未實際套用，因此目前先以小量全回應後本機篩選作證據，不把平台篩選能力視為已確認。路外 TWD97 座標已轉為 WGS84 寫入 seed，原始 TWD97 值保留在 mapping hint。
+
+同時修正 `NtpcAvailabilityNormalizer` 的路邊來源 ID 選擇：優先使用官方 `id`，缺值時才退回 `cellid`，避免 `cellid` 在不同路段重複造成誤合併。查詢回應中的本地目錄來源標示改為 `LOCAL_NTPC_CATALOG`，並更新 repository、nearby search、controller 與 normalizer 測試。驗證使用 Docker JDK 執行精準後端測試：`NtpcAvailabilityNormalizerTest`、`XinzhuangSeedRepositoryTest`、`NearbyParkingSearchServiceTest`、`ParkingQueryControllerTest`，共 23 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 54 tests／0 failures／0 errors。
+
+限制：這仍不是完整新莊正式 catalog，不可宣稱覆蓋 2,124 格或 97 場；目前也沒有把路外靜態匯入流程自動化，沒有新增官方 API 高頻呼叫或模型訓練資料。下一步仍需在 S2-021 量測完整性、分頁、資料量、更新耗時與發布品質門檻，再決定是否匯入完整目錄或建立正式 importer。
