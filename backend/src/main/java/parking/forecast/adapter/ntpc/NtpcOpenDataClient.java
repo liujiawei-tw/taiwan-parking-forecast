@@ -3,6 +3,7 @@ package parking.forecast.adapter.ntpc;
 import java.net.URI;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -27,7 +28,7 @@ public class NtpcOpenDataClient {
     private final RestClient restClient;
     private final NtpcOpenDataProperties properties;
 
-    public NtpcOpenDataClient(RestClient ntpcOpenDataRestClient, NtpcOpenDataProperties properties) {
+    public NtpcOpenDataClient(@Qualifier("ntpcOpenDataRestClient") RestClient ntpcOpenDataRestClient, NtpcOpenDataProperties properties) {
         this.restClient = ntpcOpenDataRestClient;
         this.properties = properties;
     }

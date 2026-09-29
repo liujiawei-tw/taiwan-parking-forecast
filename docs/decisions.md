@@ -537,3 +537,10 @@
 - **決策**：`source_state.next_allowed_refresh_at` 是來源 cooldown 的持久事實；每次刷新先檢查它，再以 Redis `SETNX` 搭配 TTL 取得來源資料集鎖。鎖已被持有的請求回傳加入既有刷新，不重複呼叫來源。Redis 不可用時，單機用本機鎖採保守降級，回應明確標示此狀態。預設 cooldown 5 分鐘、鎖 TTL 90 秒，均可由環境變數調整。
 - **影響**：`parking-queries` 只在刷新完成後重新讀取 `PUBLISHED` snapshot；候選與拒絕快照不會進入使用者結果。來源資料可能因頁數上限截斷時拒絕發布。發布服務已記錄的品質拒絕不由協調層重複增加失敗次數。
 - **狀態**：S2-018 已實作，並通過 H2 自動測試與 Docker Compose 人工驗收。驗收中已修正 API image build 的 Maven go-offline 問題，以及 Compose 中 API 連 Redis host 的設定。前端可見頁自動觸發與正式來源量測仍待後續任務完成。
+
+## 2026-09-29：Google Routes ETA 後端介接採最小欄位、可停用外部呼叫與顯式降級
+
+- **原因**：S2-019 要移除固定 18 分鐘 mock ETA，改由 Google Routes 提供目的地 ETA；同時不能在測試或未設定金鑰時誤打外部 API，也不能在 Google 失敗時捏造抵達時間。
+- **決策**：後端以 Routes API `computeRoutes` 作第一版 ETA 來源，預設 `travelMode=DRIVE`、`routingPreference=TRAFFIC_AWARE_OPTIMAL`，並以 `X-Goog-FieldMask=routes.duration,routes.staticDuration,routes.distanceMeters` 只要求必要欄位。即時 `NOW` 查詢不送 `departureTime` 給 Google Routes，讓 Google 以當下時間計算，避免測試環境時鐘或未來時間窗造成 HTTP 400；只有 `SCHEDULED` 查詢才送使用者指定的 `departureTime`。`GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 預設為 `false`，server key 只從 `GOOGLE_ROUTES_SERVER_API_KEY` 注入；真實 key 不寫入 Git。測試 profile 固定停用外部呼叫。
+- **影響**：建立查詢時若 Routes 成功，`eta.provider=GOOGLE_ROUTES` 並以 Google 回傳 `duration` 推算 `estimatedArrivalAt`；外部呼叫停用、無 key、Google 失敗或沒有路線時，`eta.status=FAILED`，`durationSeconds` 與 `estimatedArrivalAt` 為 `null`。停車目前觀測仍可回傳；`predictions.targetArrivalAt` 不再使用假 ETA。車位刷新不重新呼叫 Google Routes，仍保留原查詢 ETA。
+- **狀態**：S2-019 後端初版已實作並通過 Docker Maven 完整後端測試 53 tests／0 failures／0 errors。Docker Compose 人工驗收已涵蓋外部呼叫停用、無 server key 降級，以及使用受限 server key 的真實 Routes `READY` 路徑。前端 Google Maps／Places、配額限制與地圖結果頁仍待後續任務完成。
