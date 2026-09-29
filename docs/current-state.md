@@ -509,3 +509,7 @@ PR #30 已合併回 `main`，merge commit 為 `cf8ff2af0a3e9a2b91569b8a51d2c192c
 驗證結果：使用 Docker JDK 在正式專案執行完整後端測試，通過 51 tests／0 failures／0 errors。新增測試涵蓋 Google Routes 請求 body、API key 與 field mask header、成功 duration 解析、外部呼叫停用、無 API key、HTTP 500、無 routes，以及 ETA service 成功與失敗降級。測試全部使用 mock HTTP／mock service，未呼叫真實 Google API。
 
 邊界：S2-019 仍不包含前端 Google Maps JavaScript API、Place Autocomplete Widget、結果頁地圖、頁面可見時自動刷新前端接線、Google 金鑰限制驗收或真實 API 人工呼叫。下一步是建立 PR，並在 Sponsor 提供受限 server key 的本機環境中做 Human-in-the-loop 驗收：外部呼叫停用、無 key、mock/測試、以及有 key 時的一次小量 Google Routes 手動驗證。
+
+## 2026-09-29 S2-019 PR #32 已建立，待人工驗收
+
+已將 `feature/s2-019-google-eta` 推上 GitHub，並建立 PR #32：<https://github.com/liujiawei-tw/taiwan-parking-forecast/pull/32>。PR 目前包含 1 個 commit：`6cc9385 feat: integrate google routes eta`，並以 `Closes #31` 連結 S2-019 Issue。下一步是針對 PR #32 做 Human-in-the-loop 驗收：使用真實且受限的 `GOOGLE_ROUTES_SERVER_API_KEY` 驗證 `eta.status=READY`，再確認外部呼叫停用或無 key 時回 `eta.status=FAILED` 且不產生假抵達時間。
