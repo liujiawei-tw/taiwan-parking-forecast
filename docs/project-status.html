@@ -61,7 +61,7 @@
   <header>
     <h1>停車預測專案｜進度與待辦</h1>
     <p class="lede">新莊區 MVP：搜尋目的地、計算抵達時間，顯示目的地方圓 300 公尺內收錄的汽車停車選項，以及抵達時有位的預測。</p>
-    <div class="meta"><span class="tag design">目前：S2-018 受控刷新與 Redis 協調完成</span><span class="tag">更新：2026-09-29</span><span class="tag">下一步：Google ETA 與前端地圖整合</span></div>
+    <div class="meta"><span class="tag design">目前：S2-018 Docker 人工驗收完成，PR #30 待合併</span><span class="tag">更新：2026-09-29</span><span class="tag">下一步：合併 PR #30 後規劃 Google ETA</span></div>
     <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統已完成後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、核心資料模型、Flyway schema、新莊 seed、300 公尺查詢 service、官方來源正規化與已發布快照讀取，以及來源受控刷新。Google ETA、前端地圖整合與兩類預測尚未接入；訓練 collector 暫緩，不參與使用者查詢。</div>
   </header>
 
@@ -69,7 +69,7 @@
     <div class="summary">
       <article><span class="tag pending">資料待修</span><strong>訓練資料收集器</strong><small>獨立 repo 有排程；Sponsor 回報匯出不完整，原因待查。資料盤點暫緩，不供使用者即時查詢。</small></article>
       <article><span class="tag design">設計中</span><strong>主系統需求與資料流</strong><small>首查已定先顯示 ETA 與已收錄位置，車位完成後自動補上；正式 API 與刷新數值未定。</small></article>
-      <article><span class="tag done">資料基礎完成</span><strong>使用者介面與主後端</strong><small>Vue 與 Spring Boot 骨架、Docker Compose、mock 查詢、JPA/Flyway、seed、300 公尺查詢、NTPC client、正規化、候選快照發布、已發布快照讀取與 Redis 受控刷新已完成；Google、前端地圖整合與預測尚未接入。</small></article>
+      <article><span class="tag done">資料基礎完成</span><strong>使用者介面與主後端</strong><small>Vue 與 Spring Boot 骨架、Docker Compose、mock 查詢、JPA/Flyway、seed、300 公尺查詢、NTPC client、正規化、候選快照發布、已發布快照讀取與 Redis 受控刷新已完成；S2-018 Docker 人工驗收已通過，PR #30 待合併。Google、前端地圖整合與預測尚未接入。</small></article>
       <article><span class="tag pending">資料依賴暫緩</span><strong>兩類抵達時預測</strong><small>預測目標與樣本方法已定；collector 匯出不完整，標籤、回測與模型尚無可信成果。</small></article>
     </div>
   </section>
@@ -249,9 +249,9 @@
   <section>
     <h2>Sprint 2 最新進度：S2-018 受控刷新與 Redis 協調</h2>
     <p>手動刷新與頁面可見時自動刷新共用同一個來源資料集協調流程。MySQL 保存 cooldown 與來源狀態；Redis 用 SETNX 短鎖避免跨使用者重複呼叫。Redis 不可用時以本機鎖保守降級，回應不會冒充取得新資料。</p>
-    <p>若來源失敗、品質拒絕，或分頁超過安全上限，系統不發布新快照，保留既有 PUBLISHED snapshot。驗證：Docker Maven 後端完整測試 44 tests／0 failures／0 errors。前端自動觸發與 Docker Compose Redis 正常／停用的人工驗收待進行。</p>
+    <p>若來源失敗、品質拒絕，或分頁超過安全上限，系統不發布新快照，保留既有 PUBLISHED snapshot。驗證：Docker Maven 後端完整測試 44 tests／0 failures／0 errors；Docker Compose 人工驗收已涵蓋 Redis 正常、cooldown、防止發布不完整／無 mapping 快照，以及 Redis 停止後的 <code>*_WITH_LOCAL_LOCK</code> 降級。前端自動觸發仍待後續任務接入。</p>
   </section>
-  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>完成 S2-018 的 Docker Compose 與人工刷新驗收。</li><li>接入 Google ETA 與前端地圖結果頁。</li><li>完成後再處理預測基準與模型驗證。</li></ol></div></section>
+  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>合併 PR #30，並同步本機 main 與清理已合併分支。</li><li>規劃 Google Places／Routes 真實 ETA 的下一張 Issue。</li><li>接著處理前端 Google Maps 結果頁與頁面可見時自動刷新。</li></ol></div></section>
   <footer>本頁是人工維護的進度快照。詳細需求、決策與最新狀態以 <a href="requirements.md">requirements.md</a>、<a href="decisions.md">decisions.md</a>、<a href="current-state.md">current-state.md</a> 為準。</footer>
 </main>
   <section>

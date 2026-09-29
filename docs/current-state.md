@@ -481,3 +481,11 @@ Sponsor 指定後續 GitHub Issue、Pull Request、PR 說明、Issue 內容、�
 設定由 YAML／環境變數提供：`PARKING_REFRESH_SOURCE_COOLDOWN`（預設 5 分鐘）、`PARKING_REFRESH_LOCK_TTL`（預設 90 秒）、`PARKING_REFRESH_PAGE_SIZE` 與 `PARKING_REFRESH_MAX_PAGES`。這些是 MVP 初始值，仍需依正式來源的回應時間、資料量與呼叫限制量測調整。前端自動刷新觸發與 Docker Compose 的 Redis 正常／停用人工驗證，保留到本 Issue 的 Human-in-the-loop 驗收。
 
 驗證：Docker Maven 完整後端測試 44 tests／0 failures／0 errors；新增測試覆蓋 cooldown、Redis 不可用時的本機鎖降級、同時刷新共用一輪、來源失敗、發布拒絕時不重複累計失敗次數，以及資料頁數可能截斷時拒絕發布。未在測試中呼叫真實新北市官方 API。
+
+## 2026-09-29 S2-018 Human-in-the-loop 驗收完成，PR #30 待合併
+
+已對 PR #30 執行 Docker Compose 人工驗收。驗收時先發現 API image build 會在 `dependency:go-offline` 解析 Redis/Lettuce 的舊 optional transitive descriptor `org.iq80.snappy:snappy:0.4` 時失敗；已移除 Dockerfile 的預下載步驟，改由正式 `package` 階段解析實際建置所需相依。接著發現 Compose 雖啟動 Redis container，但 API 未注入 Spring Redis host，容器內會連到 `localhost:6379` 而非 `redis:6379`；已在 `docker-compose.yml` 補上 `SPRING_DATA_REDIS_HOST=redis` 與 `SPRING_DATA_REDIS_PORT=6379`。
+
+隔離 Compose project `s2018hit` 驗收結果：MySQL、Redis、API 均 healthy，`/actuator/health` 回 `UP`。Redis 正常時，手動刷新回 `FAILED`（不帶 `_WITH_LOCAL_LOCK`），路邊因超過頁數上限拒絕發布不完整快照，路外因沒有目錄 mapping 拒絕發布；查詢結果仍為 `NO_CATALOG_RESULTS`，目前可用數維持 `null`，未把舊資料或假資料當成最新資料。MySQL 驗證顯示 `source_state.next_allowed_refresh_at` 已寫入，路外只有 `REJECTED` 候選快照，沒有 `PUBLISHED` 假快照。立即再次刷新回 `COOLDOWN`，未重複呼叫來源。
+
+停止 Redis 後，先將隔離測試庫的 cooldown 調回過去，再觸發手動刷新；回應明確標示 `FAILED_WITH_LOCAL_LOCK`，同樣保留既有已發布快照、不發布不完整或無 mapping 的新快照。回歸測試使用 Docker JDK 執行 `./mvnw test`，結果 44 tests／0 failures／0 errors。PR #30 目前仍未合併；下一步是將本次驗收修正推上 `feature/s2-018-refresh-control`，確認 PR 檢查後再合併 main。
