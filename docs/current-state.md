@@ -499,3 +499,13 @@ PR #30 已合併回 `main`，merge commit 為 `cf8ff2af0a3e9a2b91569b8a51d2c192c
 ## 2026-09-29 S2-019 Google ETA Issue 建立
 
 已建立 GitHub Issue #31：S2-019 接入 Google Places／Routes 真實 ETA。範圍聚焦後端 Google Routes API `computeRoutes` client、ETA service、mock ETA 替換與降級狀態；不包含前端 Google Maps JavaScript API、Place Autocomplete Widget 或地圖結果頁，這些保留後續 Issue。Issue 明確要求不提交真實 Google API key，測試以 mock HTTP／fixture 覆蓋成功、timeout、4xx／5xx、外部呼叫停用與無 API key 情境。
+
+## 2026-09-29 S2-019 後端 Google Routes ETA 初版完成
+
+已在 `feature/s2-019-google-eta` 實作後端 Google Routes ETA 初版。新增 `GoogleRoutesProperties`、`GoogleRoutesClientConfig`、`adapter.google` client/DTO/exception 與 `GoogleEtaService`，使用 Routes API `computeRoutes`，以 `X-Goog-FieldMask=routes.duration,routes.staticDuration,routes.distanceMeters` 只取 ETA 需要欄位，預設 `travelMode=DRIVE`、`routingPreference=TRAFFIC_AWARE_OPTIMAL`。`GOOGLE_ROUTES_SERVER_API_KEY` 只由環境變數注入，不提交真實金鑰；`.env.example` 與 `docker-compose.yml` 僅加入變數名稱與安全預設。
+
+`POST /api/v1/parking-queries` 已停止產生固定 18 分鐘 `MOCK_GOOGLE_ROUTES`。建立查詢時會呼叫 `GoogleEtaService`；成功時 `eta.provider=GOOGLE_ROUTES`、`eta.status=READY`，並以 Google 回傳 `duration` 推算 `estimatedArrivalAt`。外部呼叫停用、未設定 API key、Google HTTP 失敗或無路線時，`eta.status=FAILED`，`durationSeconds` 與 `estimatedArrivalAt` 保持 `null`；目前停車觀測仍照常回傳，`predictions.targetArrivalAt` 不再用假 ETA。手動刷新仍保留原查詢 ETA，不重算 Google Routes。
+
+驗證結果：使用 Docker JDK 在正式專案執行完整後端測試，通過 51 tests／0 failures／0 errors。新增測試涵蓋 Google Routes 請求 body、API key 與 field mask header、成功 duration 解析、外部呼叫停用、無 API key、HTTP 500、無 routes，以及 ETA service 成功與失敗降級。測試全部使用 mock HTTP／mock service，未呼叫真實 Google API。
+
+邊界：S2-019 仍不包含前端 Google Maps JavaScript API、Place Autocomplete Widget、結果頁地圖、頁面可見時自動刷新前端接線、Google 金鑰限制驗收或真實 API 人工呼叫。下一步是建立 PR，並在 Sponsor 提供受限 server key 的本機環境中做 Human-in-the-loop 驗收：外部呼叫停用、無 key、mock/測試、以及有 key 時的一次小量 Google Routes 手動驗證。

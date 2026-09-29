@@ -61,15 +61,15 @@
   <header>
     <h1>停車預測專案｜進度與待辦</h1>
     <p class="lede">新莊區 MVP：搜尋目的地、計算抵達時間，顯示目的地方圓 300 公尺內收錄的汽車停車選項，以及抵達時有位的預測。</p>
-    <div class="meta"><span class="tag done">目前：S2-018 已合併到 main</span><span class="tag">更新：2026-09-29</span><span class="tag">下一步：S2-019 Google ETA</span></div>
-    <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統已完成後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、核心資料模型、Flyway schema、新莊 seed、300 公尺查詢 service、官方來源正規化與已發布快照讀取，以及來源受控刷新。Google ETA、前端地圖整合與兩類預測尚未接入；訓練 collector 暫緩，不參與使用者查詢。</div>
+    <div class="meta"><span class="tag done">目前：S2-019 後端 Google ETA 初版完成</span><span class="tag">更新：2026-09-29</span><span class="tag">下一步：S2-019 PR 與人工驗收</span></div>
+    <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統已完成後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、核心資料模型、Flyway schema、新莊 seed、300 公尺查詢 service、官方來源正規化與已發布快照讀取、來源受控刷新，以及後端 Google Routes ETA 初版。前端地圖／Places 整合、頁面可見時自動刷新前端接線與兩類預測尚未接入；訓練 collector 暫緩，不參與使用者查詢。</div>
   </header>
 
   <section aria-labelledby="overview"><h2 id="overview">一眼看目前進度</h2>
     <div class="summary">
       <article><span class="tag pending">資料待修</span><strong>訓練資料收集器</strong><small>獨立 repo 有排程；Sponsor 回報匯出不完整，原因待查。資料盤點暫緩，不供使用者即時查詢。</small></article>
       <article><span class="tag design">設計中</span><strong>主系統需求與資料流</strong><small>首查已定先顯示 ETA 與已收錄位置，車位完成後自動補上；正式 API 與刷新數值未定。</small></article>
-      <article><span class="tag done">資料基礎完成</span><strong>使用者介面與主後端</strong><small>Vue 與 Spring Boot 骨架、Docker Compose、mock 查詢、JPA/Flyway、seed、300 公尺查詢、NTPC client、正規化、候選快照發布、已發布快照讀取與 Redis 受控刷新已完成；S2-018 已合併到 main。Google、前端地圖整合與預測尚未接入。</small></article>
+      <article><span class="tag done">資料基礎完成</span><strong>使用者介面與主後端</strong><small>Vue 與 Spring Boot 骨架、Docker Compose、mock 查詢、JPA/Flyway、seed、300 公尺查詢、NTPC client、正規化、候選快照發布、已發布快照讀取、Redis 受控刷新與後端 Google Routes ETA 初版已完成。前端地圖／Places 整合與預測尚未接入。</small></article>
       <article><span class="tag pending">資料依賴暫緩</span><strong>兩類抵達時預測</strong><small>預測目標與樣本方法已定；collector 匯出不完整，標籤、回測與模型尚無可信成果。</small></article>
     </div>
   </section>
@@ -89,10 +89,10 @@
   <section aria-labelledby="streams"><h2 id="streams">各工作線：已確定與未完成</h2>
     <div class="work">
       <article><span class="tag design">前端：Vue 3＋Vite 骨架完成，正式 Google 地圖未接入</span><h3>搜尋與結果畫面</h3><ul><li>已定：Google Maps JavaScript 地圖與 Places API (New) 搜尋、起點兩種方式、出發時間、300 公尺結果；電腦版地圖優先、固定區域摘要與「查看全部結果」，手機版上地圖／下清單。路邊格位小卡提供資料時間及外部「查看路線」。</li><li>待定：格位資格與座標驗證、Google 實際用量、面板尺寸、無障礙操作。</li><li>待定：載入中、0 位、無資料、過期、ETA 失敗及預測不足的完整互動原型。</li></ul></article>
-      <article><span class="tag design">後端：查詢已接已發布快照與受控刷新</span><h3>即時查詢與儲存</h3><ul><li>已定：Spring Boot Web／Spring MVC REST 模組化單體；MySQL／JPA 保存啟用快照與可追溯歷史，供未來離線訓練；候選快照通過品質閘門後才發布，失敗不覆蓋舊快照；Redis 作跨實例短鎖與協調，MySQL 的來源狀態才是事實來源。</li><li>已完成：parking-queries 可讀取最新 PUBLISHED snapshot，分開表示 0 位、UNKNOWN、過期、無即時資料與未收錄；手動／自動刷新可共用來源資料集鎖、cooldown 與降級狀態。</li><li>待定：正式 Google ETA、前端可見頁自動刷新觸發、背景取樣間隔與歷史保留／歸檔、前景等待與輪詢上限、請求預算與模型介面。</li></ul></article>
+      <article><span class="tag design">後端：查詢已接已發布快照、受控刷新與 Google ETA</span><h3>即時查詢與儲存</h3><ul><li>已定：Spring Boot Web／Spring MVC REST 模組化單體；MySQL／JPA 保存啟用快照與可追溯歷史，供未來離線訓練；候選快照通過品質閘門後才發布，失敗不覆蓋舊快照；Redis 作跨實例短鎖與協調，MySQL 的來源狀態才是事實來源。</li><li>已完成：parking-queries 可讀取最新 PUBLISHED snapshot，分開表示 0 位、UNKNOWN、過期、無即時資料與未收錄；手動／自動刷新可共用來源資料集鎖、cooldown 與降級狀態；建立查詢已改由後端 Google Routes ETA service 產生或明確降級，不再使用固定 18 分鐘 mock ETA。</li><li>待定：前端可見頁自動刷新觸發、背景取樣間隔與歷史保留／歸檔、前景等待與輪詢上限、請求預算與模型介面。</li></ul></article>
       <article><span class="tag pending">資料：共同欄位方向已定，映射待驗證</span><h3>來源與統一化</h3><ul><li>已定：新北市路邊／路外來源各由 adapter 轉成共同位置、來源對應及動態觀測欄位；未來新增政府或業者來源沿用此契約。訓練 collector 與主系統即時查詢分離。</li><li>待驗：格位狀態碼與汽車適用性、來源 ID／座標、缺值與覆蓋率、來源觀測時間、路外有效剩餘位欄位。</li><li>待驗：新莊邊界資料是否覆蓋完整，如何標示未收錄的鄰區。</li></ul></article>
       <article><span class="tag pending">預測：資料盤點暫緩，模型未開始</span><h3>抵達時有位機率</h3><ul><li>路邊：目的地 300 公尺內至少一個適用汽車格位可停的機率；訓練標籤須對齊實際 300 公尺圓。</li><li>路外：範圍內各停車場抵達時仍有汽車位的機率。</li><li>待處理：collector 匯出不完整；恢復後才驗證標籤、樣本品質、時間與街區切分、基準及模型部署。資料不足時不編造機率。</li></ul></article>
-      <article><span class="tag design">服務整合：雲端專案與 API 已開通，未介接</span><h3>Google 與外部地圖</h3><ul><li>已定：Google Maps 用於地圖、Places (New) 用於搜尋、Routes 的交通感知 ETA 直接作預測時刻；外部地圖負責導航。Sponsor 回報停車專案 Taiwan Parking Forecast（ID taiwan-parking-forecast）已建立，三項 API 已啟用、帳單連結有效，預算通知已設定。</li><li>帳單規劃由 Sponsor 自行管理，本階段跳過；網頁／後端金鑰限制及配額在正式介接前仍須核對。主系統尚未呼叫服務。</li></ul></article>
+      <article><span class="tag design">服務整合：後端 Routes 初版完成，前端 Google 未接入</span><h3>Google 與外部地圖</h3><ul><li>已定：Google Maps 用於地圖、Places (New) 用於搜尋、Routes 的交通感知 ETA 直接作預測時刻；外部地圖負責導航。Sponsor 回報停車專案 Taiwan Parking Forecast（ID taiwan-parking-forecast）已建立，三項 API 已啟用、帳單連結有效，預算通知已設定。</li><li>已完成：後端 Routes `computeRoutes` client 與 ETA service 初版，預設可停用外部呼叫，無 key 或 Google 失敗時明確回 `eta.status=FAILED`，不產生假抵達時間。</li><li>待定：網頁／後端金鑰限制、真實 server key 小量人工驗收、前端 Google Maps JavaScript API 與 Places Autocomplete Widget 接入。</li></ul></article>
       <article><span class="tag pending">部署／驗收：方向已定，未實作</span><h3>Docker 與品質證據</h3><ul><li>已定：Docker 可部署到其他伺服器是必要交付；面試仍可本機展示，兩類預測都列入 20 天目標。</li><li>待做：容器建置與乾淨主機啟動、MySQL 持久化／備份驗證、遠端 HTTPS 與金鑰設定、並發刷新測試、資料年齡及 API 用量量測、兩類模型與基準比較。</li><li>待確認：實際主機、網域與遠端上線是否納入 20 天時程。</li></ul></article>
     </div>
   </section>
@@ -127,7 +127,7 @@
       <li>資料模型與 API mock：JPA entity、Redis queryId、查詢生命週期與錯誤格式。</li>
       <li>停車目錄與 300 公尺查詢：先用本地目錄證明附近搜尋與狀態分層。</li>
       <li>官方即時來源與快照發布：新北市路邊／路外 adapter、品質檢查、受控刷新。</li>
-      <li>Google 搜尋／ETA 與前端結果頁：地圖、Places、Routes、狀態文案與更新按鈕。</li>
+      <li>Google 搜尋／前端結果頁：地圖、Places、狀態文案與更新按鈕；後端 Routes ETA 初版已完成，仍待人工驗收與 PR。</li>
       <li>預測基準與模型：有資料就顯示有依據的機率，資料不足就明確降級。</li>
     </ol><p class="timeline-note">完整順序與驗收邊界見 implementation-plan.md。此區仍是實作計畫，不代表功能已完成。</p></div>
   </section>
@@ -220,7 +220,7 @@
   <section>
     <h2>Sprint 2 最新進度：S2-013 已合併，第二組完成</h2>
     <p>PR #20 已合併回 main，Sprint 2 第二組 S2-009～S2-013 已完成。主系統現在已具備核心資料模型、Flyway schema、新莊停車目錄小樣本、300 公尺查詢 service，以及將本地停車目錄接入 <code>parking-queries</code> 的能力。</p>
-    <p>目前 API 仍使用 mock ETA，且只回已收錄位置；即時剩餘車位、Google ETA、Redis 協調與 ML 預測仍待後續任務。</p>
+    <p>此段為 S2-013 歷史狀態：當時 API 仍使用 mock ETA，且只回已收錄位置；後續 S2-017、S2-018 與 S2-019 已分別接入已發布快照、Redis 協調與後端 Google Routes ETA 初版。</p>
   </section>
   <section>
     <h2>Sprint 2 下一組草案：官方即時來源與快照發布</h2>
@@ -251,7 +251,12 @@
     <p>手動刷新與頁面可見時自動刷新共用同一個來源資料集協調流程。MySQL 保存 cooldown 與來源狀態；Redis 用 SETNX 短鎖避免跨使用者重複呼叫。Redis 不可用時以本機鎖保守降級，回應不會冒充取得新資料。</p>
     <p>若來源失敗、品質拒絕，或分頁超過安全上限，系統不發布新快照，保留既有 PUBLISHED snapshot。驗證：Docker Maven 後端完整測試 44 tests／0 failures／0 errors；Docker Compose 人工驗收已涵蓋 Redis 正常、cooldown、防止發布不完整／無 mapping 快照，以及 Redis 停止後的 <code>*_WITH_LOCAL_LOCK</code> 降級。前端自動觸發仍待後續任務接入。</p>
   </section>
-  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>執行 GitHub Issue #31：S2-019 接入 Google Places／Routes 真實 ETA。</li><li>接著處理前端 Google Maps 結果頁與頁面可見時自動刷新。</li><li>完成 Google 與前端整合後，再規劃預測基準與模型驗證。</li></ol></div></section>
+  <section>
+    <h2>Sprint 2 最新進度：S2-019 後端 Google Routes ETA 初版</h2>
+    <p>已新增後端 Google Routes <code>computeRoutes</code> client、ETA service 與設定。建立查詢不再產生固定 18 分鐘 mock ETA；Routes 成功時回 <code>GOOGLE_ROUTES</code> ETA，外部呼叫停用、無 key、Google 失敗或無路線時明確回 <code>eta.status=FAILED</code>，且不填假 <code>estimatedArrivalAt</code>。</p>
+    <p>驗證：Docker Maven 後端完整測試通過 51 tests／0 failures／0 errors。此階段仍不包含前端 Google Maps／Places、真實 server key 人工驗收或預測模型。</p>
+  </section>
+  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>完成 S2-019 PR 與人工驗收：以真實 Google Routes server key 驗證成功 ETA，並驗證外部呼叫停用／無 key 的降級行為。</li><li>接著處理前端 Google Maps 結果頁與頁面可見時自動刷新。</li><li>完成 Google 與前端整合後，再規劃預測基準與模型驗證。</li></ol></div></section>
   <footer>本頁是人工維護的進度快照。詳細需求、決策與最新狀態以 <a href="requirements.md">requirements.md</a>、<a href="decisions.md">decisions.md</a>、<a href="current-state.md">current-state.md</a> 為準。</footer>
 </main>
   <section>

@@ -70,7 +70,9 @@ class ParkingQueryControllerTest {
         assertThat(response.getBody().area().radiusMeters()).isEqualTo(300);
         assertThat(response.getBody().area().distanceMode()).isEqualTo("STRAIGHT_LINE");
         assertThat(response.getBody().area().coverageStatus()).isEqualTo("PARTIAL");
-        assertThat(response.getBody().eta().status()).isEqualTo("READY");
+        assertThat(response.getBody().eta().status()).isEqualTo("FAILED");
+        assertThat(response.getBody().eta().provider()).isEqualTo("GOOGLE_ROUTES");
+        assertThat(response.getBody().eta().estimatedArrivalAt()).isNull();
         assertThat(response.getBody().roadside().source()).isEqualTo("LOCAL_CATALOG_SEED");
         assertThat(response.getBody().roadside().status()).isEqualTo("NO_REALTIME_SNAPSHOT");
         assertThat(response.getBody().roadside().currentlyAvailableSpaces()).isNull();

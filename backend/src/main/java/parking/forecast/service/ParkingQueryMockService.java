@@ -34,6 +34,7 @@ import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchRe
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchResult;
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedAvailabilityView;
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedObservation;
+import parking.forecast.service.GoogleEtaService.EtaResult;
 import parking.forecast.service.SourceRefreshCoordinationService.SourceRefreshResult;
 
 @Service
@@ -47,6 +48,7 @@ public class ParkingQueryMockService {
     private final NearbyParkingSearchService nearbyParkingSearchService;
     private final PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService;
     private final SourceRefreshCoordinationService sourceRefreshCoordinationService;
+    private final GoogleEtaService googleEtaService;
     private final Map<String, ParkingQueryResponse> queries = new ConcurrentHashMap<>();
     private final Map<String, QueryContext> queryContexts = new ConcurrentHashMap<>();
 
@@ -54,21 +56,24 @@ public class ParkingQueryMockService {
     public ParkingQueryMockService(
             NearbyParkingSearchService nearbyParkingSearchService,
             PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
-            SourceRefreshCoordinationService sourceRefreshCoordinationService
+            SourceRefreshCoordinationService sourceRefreshCoordinationService,
+            GoogleEtaService googleEtaService
     ) {
-        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService);
+        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService);
     }
 
     ParkingQueryMockService(
             Clock clock,
             NearbyParkingSearchService nearbyParkingSearchService,
             PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
-            SourceRefreshCoordinationService sourceRefreshCoordinationService
+            SourceRefreshCoordinationService sourceRefreshCoordinationService,
+            GoogleEtaService googleEtaService
     ) {
         this.clock = clock;
         this.nearbyParkingSearchService = nearbyParkingSearchService;
         this.publishedAvailabilitySnapshotService = publishedAvailabilitySnapshotService;
         this.sourceRefreshCoordinationService = sourceRefreshCoordinationService;
+        this.googleEtaService = googleEtaService;
     }
 
     public ParkingQueryResponse create(CreateParkingQueryRequest request) {
@@ -77,7 +82,7 @@ public class ParkingQueryMockService {
                 && request.departure().departureAt() != null
                         ? OffsetDateTime.parse(request.departure().departureAt())
                         : now;
-        OffsetDateTime estimatedArrivalAt = departureAt.plusMinutes(18);
+        EtaResult eta = googleEtaService.estimate(request.origin(), request.destination(), departureAt);
         String queryId = UUID.randomUUID().toString();
         NearbyParkingSearchResult nearby = nearbyParkingSearchService.findNearby(new NearbyParkingSearchRequest(
                 MVP_SERVICE_AREA,
@@ -103,19 +108,19 @@ public class ParkingQueryMockService {
                         resolveCoverageStatus(nearby),
                         "Catalog coverage uses the S2-011 Xinzhuang seed sample. It is not complete city coverage."),
                 new EtaSection(
-                        "READY",
-                        "MOCK_GOOGLE_ROUTES",
-                        departureAt,
-                        estimatedArrivalAt,
-                        18 * 60,
-                        "Mock ETA. Google Routes is not connected yet."),
+                        eta.status(),
+                        eta.provider(),
+                        eta.departureAt(),
+                        eta.estimatedArrivalAt(),
+                        eta.durationSeconds(),
+                        eta.message()),
                 roadsideSection,
                 offStreetSection,
-                buildPredictionsSection(nearby, estimatedArrivalAt),
+                buildPredictionsSection(nearby, eta.estimatedArrivalAt()),
                 buildRefreshSection(roadsideSection, offStreetSection));
 
         queries.put(queryId, response);
-        queryContexts.put(queryId, new QueryContext(request, departureAt, estimatedArrivalAt));
+        queryContexts.put(queryId, new QueryContext(request, eta.departureAt(), eta.estimatedArrivalAt()));
         return response;
     }
 
