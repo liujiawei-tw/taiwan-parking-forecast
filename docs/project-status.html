@@ -61,7 +61,7 @@
   <header>
     <h1>停車預測專案｜進度與待辦</h1>
     <p class="lede">新莊區 MVP：搜尋目的地、計算抵達時間，顯示目的地方圓 300 公尺內收錄的汽車停車選項，以及抵達時有位的預測。</p>
-    <div class="meta"><span class="tag done">目前：S2-018 已合併到 main</span><span class="tag">更新：2026-09-29</span><span class="tag">下一步：規劃 Google ETA Issue</span></div>
+    <div class="meta"><span class="tag done">目前：S2-018 已合併到 main</span><span class="tag">更新：2026-09-29</span><span class="tag">下一步：S2-019 Google ETA</span></div>
     <div class="notice"><strong>進度判讀：</strong>「已決定」表示需求／方案已確認，不表示程式已完成。目前主系統已完成後端骨架、前端骨架、Docker Compose、後端 profiles、mock 查詢生命週期、核心資料模型、Flyway schema、新莊 seed、300 公尺查詢 service、官方來源正規化與已發布快照讀取，以及來源受控刷新。Google ETA、前端地圖整合與兩類預測尚未接入；訓練 collector 暫緩，不參與使用者查詢。</div>
   </header>
 
@@ -251,7 +251,7 @@
     <p>手動刷新與頁面可見時自動刷新共用同一個來源資料集協調流程。MySQL 保存 cooldown 與來源狀態；Redis 用 SETNX 短鎖避免跨使用者重複呼叫。Redis 不可用時以本機鎖保守降級，回應不會冒充取得新資料。</p>
     <p>若來源失敗、品質拒絕，或分頁超過安全上限，系統不發布新快照，保留既有 PUBLISHED snapshot。驗證：Docker Maven 後端完整測試 44 tests／0 failures／0 errors；Docker Compose 人工驗收已涵蓋 Redis 正常、cooldown、防止發布不完整／無 mapping 快照，以及 Redis 停止後的 <code>*_WITH_LOCAL_LOCK</code> 降級。前端自動觸發仍待後續任務接入。</p>
   </section>
-  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>規劃 Google Places／Routes 真實 ETA 的下一張 Issue。</li><li>接著處理前端 Google Maps 結果頁與頁面可見時自動刷新。</li><li>完成 Google 與前端整合後，再規劃預測基準與模型驗證。</li></ol></div></section>
+  <section aria-labelledby="next"><h2 id="next">下一步最重要的三個決策</h2><div class="next"><ol><li>執行 GitHub Issue #31：S2-019 接入 Google Places／Routes 真實 ETA。</li><li>接著處理前端 Google Maps 結果頁與頁面可見時自動刷新。</li><li>完成 Google 與前端整合後，再規劃預測基準與模型驗證。</li></ol></div></section>
   <footer>本頁是人工維護的進度快照。詳細需求、決策與最新狀態以 <a href="requirements.md">requirements.md</a>、<a href="decisions.md">decisions.md</a>、<a href="current-state.md">current-state.md</a> 為準。</footer>
 </main>
   <section>

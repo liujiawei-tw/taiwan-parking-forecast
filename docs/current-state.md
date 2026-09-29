@@ -495,3 +495,7 @@ Sponsor 指定後續 GitHub Issue、Pull Request、PR 說明、Issue 內容、�
 PR #30 已合併回 `main`，merge commit 為 `cf8ff2af0a3e9a2b91569b8a51d2c192c8a5e83d`。本機 `main` 已同步到 `origin/main`，並已刪除 `feature/s2-018-refresh-control` 本機與遠端分支。Sprint 2 第三組 S2-014～S2-018 已完成：新北市官方來源 client、正規化、候選快照發布、使用者查詢讀取 PUBLISHED snapshot，以及來源受控刷新與 Redis 協調。
 
 目前主查詢仍使用 mock ETA，前端尚未接 Google Maps／Places／Routes，也尚未接頁面可見時自動刷新；後端已具備 `TriggerType.VISIBLE_AUTO_REFRESH` 與共用刷新協調能力。下一步規劃 Google Places／Routes 的真實 ETA，接著前端 Google Maps 結果頁與可見頁自動刷新。
+
+## 2026-09-29 S2-019 Google ETA Issue 建立
+
+已建立 GitHub Issue #31：S2-019 接入 Google Places／Routes 真實 ETA。範圍聚焦後端 Google Routes API `computeRoutes` client、ETA service、mock ETA 替換與降級狀態；不包含前端 Google Maps JavaScript API、Place Autocomplete Widget 或地圖結果頁，這些保留後續 Issue。Issue 明確要求不提交真實 Google API key，測試以 mock HTTP／fixture 覆蓋成功、timeout、4xx／5xx、外部呼叫停用與無 API key 情境。
