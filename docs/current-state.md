@@ -489,3 +489,9 @@ Sponsor 指定後續 GitHub Issue、Pull Request、PR 說明、Issue 內容、�
 隔離 Compose project `s2018hit` 驗收結果：MySQL、Redis、API 均 healthy，`/actuator/health` 回 `UP`。Redis 正常時，手動刷新回 `FAILED`（不帶 `_WITH_LOCAL_LOCK`），路邊因超過頁數上限拒絕發布不完整快照，路外因沒有目錄 mapping 拒絕發布；查詢結果仍為 `NO_CATALOG_RESULTS`，目前可用數維持 `null`，未把舊資料或假資料當成最新資料。MySQL 驗證顯示 `source_state.next_allowed_refresh_at` 已寫入，路外只有 `REJECTED` 候選快照，沒有 `PUBLISHED` 假快照。立即再次刷新回 `COOLDOWN`，未重複呼叫來源。
 
 停止 Redis 後，先將隔離測試庫的 cooldown 調回過去，再觸發手動刷新；回應明確標示 `FAILED_WITH_LOCAL_LOCK`，同樣保留既有已發布快照、不發布不完整或無 mapping 的新快照。回歸測試使用 Docker JDK 執行 `./mvnw test`，結果 44 tests／0 failures／0 errors。PR #30 目前仍未合併；下一步是將本次驗收修正推上 `feature/s2-018-refresh-control`，確認 PR 檢查後再合併 main。
+
+## 2026-09-29 S2-018 合併完成，第三組官方來源基礎收尾
+
+PR #30 已合併回 `main`，merge commit 為 `cf8ff2af0a3e9a2b91569b8a51d2c192c8a5e83d`。本機 `main` 已同步到 `origin/main`，並已刪除 `feature/s2-018-refresh-control` 本機與遠端分支。Sprint 2 第三組 S2-014～S2-018 已完成：新北市官方來源 client、正規化、候選快照發布、使用者查詢讀取 PUBLISHED snapshot，以及來源受控刷新與 Redis 協調。
+
+目前主查詢仍使用 mock ETA，前端尚未接 Google Maps／Places／Routes，也尚未接頁面可見時自動刷新；後端已具備 `TriggerType.VISIBLE_AUTO_REFRESH` 與共用刷新協調能力。下一步規劃 Google Places／Routes 的真實 ETA，接著前端 Google Maps 結果頁與可見頁自動刷新。
