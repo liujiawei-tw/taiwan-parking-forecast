@@ -611,3 +611,11 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 前端在結果頁有 queryId 後監聽 `visibilitychange`：頁面隱藏時停止進度輪詢與自動刷新；頁面重新可見時先用 `GET /api/v1/parking-queries/{queryId}` 只讀恢復狀態，再依最新 `roadside.status`／`offStreet.status` 判斷。若來源狀態為 `STALE` 或 `NO_REALTIME_SNAPSHOT`，且目前沒有 `refreshInProgress`，同一 queryId 與來源狀態組合只送一次 `VISIBLE_AUTO_REFRESH`。冷卻、失敗或仍無 snapshot 時不靠定時器密集重送；使用者手動「更新車位」仍可發起 `MANUAL_REFRESH` 檢查，且同樣受後端 cooldown、Redis 鎖與來源限制。
 
 驗證：前端 `npm run build` 通過；後端精準測試 `ParkingQueryControllerTest`、`ParkingQueryServiceTest` 通過 16 tests／0 failures／0 errors。此階段未做真實官方來源高頻刷新驗收，也未宣稱 5 分鐘門檻已是正式服務承諾；它只是把既有後端受控刷新能力接到前端可見頁生命週期。
+
+## 2026-09-29 S2-025 文件基線與 Sprint 3 預測進入條件
+
+已開始 #38／S2-025 並完成文件基線校正。新增 `sprint-3-entry-criteria.md`，明確區分目前已完成的主系統能力、仍未完成的資料與人工驗收，以及 Sprint 3 可以開始預測工作的硬性門檻。預測機率輸出前至少需要可重現多輪來源量測、清楚的 catalog／mapping 覆蓋界線、與線上 300 公尺定義一致的訓練標籤、無時間洩漏的回測、基準模型比較、完整推論契約與可回滾模型版本。
+
+同步更新 README、backend README、roadmap、implementation plan、open questions 與 project status，移除 #33 至 #38 尚未開始、前端仍為 mock、目錄仍為合成 seed 等過時敘述。最新基線是：S2-020 至 S2-024 已完成官方小樣本 mapping、單輪來源量測、Redis query state、Maps／Places 結果頁與可見頁受控刷新接線；但完整新莊 catalog、多輪 p50／p95、真實 browser key Places 人工驗收、端到端官方刷新人工驗收及兩類預測模型仍未完成。
+
+驗證：本次為文件任務，未修改產品程式、未呼叫外部 API、未保存原始回應或敏感設定。使用 `git diff --check` 做格式與空白檢查；不重新跑 Maven／前端 build，因為行為程式碼未變更。

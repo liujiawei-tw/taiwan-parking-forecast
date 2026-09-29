@@ -15,6 +15,7 @@
 9. [新北市路邊資料概況](docs/new-taipei-data-profile.md)、[桃園機場路外資料概況](docs/airport-data-profile.md)：兩份已取得資料的初步盤點。
 10. [Sprint 0 等待期間工作清單](docs/sprint-0-while-waiting.md)：長區間資料產製時可先完成的工作與交付條件。
 11. [資料來源與預測目標討論稿](docs/data-source-strategy.md)：高額歷史檔的替代方案，以及搜尋／抵達前刷新流程。
+12. [Sprint 3 預測進入條件](docs/sprint-3-entry-criteria.md)：預測開始前必須具備的資料、標籤、回測與推論契約證據。
 
 新北市路邊原始 ZIP 與 CSV 放置位置：`data/raw/tdx/new-taipei/on-street-spot-availability/`；該資料夾的 README 會被追蹤，下載的資料檔不會進 Git。
 桃園機場路外停車歷史 CSV 放置位置：`data/raw/tdx/taoyuan-airport/off-street-availability/`；首次盤點見 [桃園機場資料概況](docs/airport-data-profile.md)。
@@ -27,11 +28,11 @@
 
 ## Sprint 2 目前狀態
 
-更新至 2026-09-29：Sprint 2 的既有工作已完成後端基線、受控刷新能力與前端 Maps／Places 初版：核心資料表與 Flyway、300 公尺目錄查詢、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為、Redis query state、前端 Google Maps／Places 載入路徑、無 key fallback，以及頁面可見時的受控自動刷新接線均已存在。
+更新至 2026-09-29：Sprint 2 的 S2-001 至 S2-025 已完成可展示主系統基線、來源量測證據與文件基線。核心資料表與 Flyway、300 公尺目錄查詢、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為、Redis query state、前端 Google Maps／Places 載入路徑、無 key fallback、頁面可見時的受控自動刷新接線，以及 Sprint 3 預測進入條件均已存在。
 
-現階段的目錄已從少量合成種子資料推進為可追溯的新北市官方 Open Data 小樣本與來源 ID 對應，但仍不是完整新莊目錄；前端可在有瀏覽器 Google key 時載入 Maps／Places，無 key 時以手動座標 fallback 驗證主系統契約。因此目前不能把畫面上的資料視為完整正式即時停車資訊，可見頁刷新仍需端到端人工驗收，預測模型亦尚未進入完成狀態。
+現階段的目錄已從少量合成種子資料推進為可追溯的新北市官方 Open Data 小樣本與來源 ID 對應，但仍不是完整新莊目錄；前端可在有瀏覽器 Google key 時載入 Maps／Places，無 key 時以手動座標 fallback 驗證主系統契約。因此目前不能把畫面上的資料視為完整正式即時停車資訊，真實 browser key Places 與可見頁官方刷新仍需人工驗收，預測模型也尚未開始輸出機率。
 
-下一個工作序已建立為 GitHub Issues：[#33](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/33) 正式目錄與來源 ID 小樣本基線、[#34](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/34) 官方來源量測、[#35](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/35) 查詢契約、[#36](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/36) Maps/Places 前端、[#37](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/37) 受控刷新驗收，以及 [#38](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/38) 文件基線與 Sprint 3 進入條件。
+GitHub Issues [#33](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/33) 至 [#38](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/38) 已作為 S2-020 至 S2-025 收斂：正式目錄與來源 ID 小樣本、官方來源量測、查詢契約、Maps/Places 前端、受控刷新接線，以及文件基線與 Sprint 3 進入條件。下一批應以 Sprint 3 的標籤 dry run、基準模型回測與推論降級契約為主，不直接宣稱預測完成。
 
 本機環境變數請從 `.env.example` 複製為 `.env` 後自行填入；真實金鑰與密碼不得提交。每張 Issue 完成前使用 [任務完成檢查清單](docs/task-completion-checklist.md) 做文件、測試、Git 與工程說明驗收。
 

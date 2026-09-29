@@ -299,9 +299,9 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態，並在資料足夠時提供抵達時預測。</p>
     <div class="meta">
-      <span class="pill doing">目前：S2-024 可見頁受控刷新驗收候選</span>
+      <span class="pill doing">目前：S2-025 文件基線完成候選</span>
       <span class="pill">更新：2026-09-29</span>
-      <span class="pill doing">下一步：#37 端到端人工驗收</span>
+      <span class="pill doing">下一步：Sprint 3 標籤 dry run 與人工驗收補齊</span>
       <span class="pill pending">訓練 collector：暫緩</span>
     </div>
     <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪低頻真實來源量測。S2-022 已收斂查詢 API 契約與 Redis query state；S2-023 已接入前端 Maps／Places 載入路徑、手動座標 fallback、地圖優先結果頁與停車標記；S2-024 已接上頁面可見時先 GET、再受控自動刷新一次的前端生命週期。完整新莊目錄、多輪 p50／p95 長期量測、正式品質門檻與兩類預測仍未完成。</div>
@@ -310,13 +310,13 @@
   <section class="dashboard" aria-label="關鍵狀態摘要">
     <article class="metric">
       <span>後端測試</span>
-      <strong>67 / 0 / 0</strong>
-      <p>Docker Maven 完整後端：tests / failures / errors；S2-022 精準回歸為 18 / 0 / 0。</p>
+      <strong>69 / 0 / 0</strong>
+      <p>最近完整後端 Maven 測試：tests / failures / errors；S2-024 精準回歸為 16 / 0 / 0。</p>
     </article>
     <article class="metric">
       <span>Sprint 2 完成項</span>
-      <strong>S2-001 至 S2-022</strong>
-      <p>S2-024 已完成可見頁受控刷新初版接線。</p>
+      <strong>S2-001 至 S2-025</strong>
+      <p>S2-025 已校正文件基線與 Sprint 3 預測進入條件。</p>
     </article>
     <article class="metric">
       <span>最新 merge</span>
@@ -521,8 +521,8 @@
         <tr>
           <td>文件與 Sprint 3 門檻</td>
           <td>#38</td>
-          <td><span class="pill pending">待實作</span></td>
-          <td>校正文件基線，定義預測開始前的資料品質與回測證據。</td>
+          <td><span class="pill done">完成候選</span></td>
+          <td>已校正文件基線，並新增 Sprint 3 預測進入條件；預測仍需資料品質與回測證據才可輸出機率。</td>
         </tr>
         <tr>
           <td>預測基準</td>
@@ -540,7 +540,7 @@
       <ol class="next-list">
         <li>依 #34 量測分頁、完整性、覆蓋率與單輪成本，再決定完整 catalog 匯入方式。</li>
         <li>依 #35～#37 收斂查詢契約、接入 Maps／Places 與前端受控刷新。</li>
-        <li>依 #38 校正文件基線；預測必須等資料品質與回測達標後再開始。</li>
+        <li>依 Sprint 3 進入條件建立已發布觀測匯出、標籤 dry run 與基準模型回測。</li>
       </ol>
     </div>
     <div class="panel">
