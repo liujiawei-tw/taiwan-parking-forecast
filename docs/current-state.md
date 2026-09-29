@@ -539,3 +539,9 @@ S2-019 完成後，建立查詢已可使用 Google Routes 真實 ETA，並在外
 Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `false`。使用隔離 Docker Compose project `s2019off` 重新啟動 API 驗證：`/actuator/health` 回 `UP`；建立新莊查詢時，即使 `GOOGLE_ROUTES_SERVER_API_KEY` 仍有值，系統仍不呼叫 Google Routes，回應 `eta.status=FAILED`、`eta.provider=GOOGLE_ROUTES`、`estimatedArrivalAt=null`、`durationSeconds=null`，訊息明確指出外部呼叫被設定停用；`predictions.targetArrivalAt` 也維持 `null`。驗收後已執行 `docker compose -p s2019off down -v` 清理資源。
 
 已重整 `docs/project-status.html`，移除原本分散且重複的歷史段落，改成單頁專案進度儀表板：關鍵狀態摘要、開發進度總覽、20 天目標排程視圖、後端／前端／預測三條工作線、Sprint 2 Issue 進度地圖、下一步建議與驗收提醒。此頁目前聚焦高層摘要，詳細歷史仍以 `current-state.md`、`decisions.md`、`implementation-plan.md` 與 `roadmap.md` 為準。
+
+## 2026-09-29 下一步規劃完成，尚未開始實作
+
+已完成現況盤點與下一步排序，詳見 `next-steps-plan-2026-09-29.md`。盤點確認 S2-014～S2-019 的後端能力已在 `main`，但資料庫仍只有 3 筆路邊、2 筆路外的合成 seed 目錄，且不是新北市官方來源的完整 `source_mapping`。因此下一個實作增量應先建立可追溯的正式 catalog／mapping 與低頻來源量測，再處理查詢契約、Google Maps／Places 結果頁與前端受控刷新；預測仍以資料品質與回測為進入門檻。
+
+本次只更新規劃文件與進度摘要，不修改產品程式、不呼叫官方來源、不建立新的 GitHub Issue，也不啟動模型訓練。規劃明確要求保留來源觀測、快照、mapping 與模型推論的邊界；資料不足時不得輸出機率或把未知值當 0。
