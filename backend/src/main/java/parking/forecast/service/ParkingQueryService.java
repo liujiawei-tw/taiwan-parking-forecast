@@ -2,6 +2,7 @@ package parking.forecast.service;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,12 +39,18 @@ import parking.forecast.service.GoogleEtaService.EtaResult;
 import parking.forecast.service.SourceRefreshCoordinationService.SourceRefreshResult;
 
 @Service
-public class ParkingQueryMockService {
+public class ParkingQueryService {
 
     private static final String MVP_SERVICE_AREA = "NEW_TAIPEI_XINZHUANG";
     private static final String MVP_AREA_CODE = "NEW_TAIPEI_XINZHUANG_MVP";
     private static final String LOCAL_CATALOG_SOURCE = "LOCAL_NTPC_CATALOG";
     private static final int SEARCH_RADIUS_METERS = 300;
+    private static final int QUERY_TTL_MINUTES = 30;
+    private static final int MAX_REQUEST_TOKEN_LENGTH = 120;
+    private static final double MVP_MIN_LATITUDE = 25.015;
+    private static final double MVP_MAX_LATITUDE = 25.075;
+    private static final double MVP_MIN_LONGITUDE = 121.415;
+    private static final double MVP_MAX_LONGITUDE = 121.490;
 
     private final Clock clock;
     private final NearbyParkingSearchService nearbyParkingSearchService;
@@ -52,9 +59,10 @@ public class ParkingQueryMockService {
     private final GoogleEtaService googleEtaService;
     private final Map<String, ParkingQueryResponse> queries = new ConcurrentHashMap<>();
     private final Map<String, QueryContext> queryContexts = new ConcurrentHashMap<>();
+    private final Map<String, String> requestTokenToQueryId = new ConcurrentHashMap<>();
 
     @Autowired
-    public ParkingQueryMockService(
+    public ParkingQueryService(
             NearbyParkingSearchService nearbyParkingSearchService,
             PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
             SourceRefreshCoordinationService sourceRefreshCoordinationService,
@@ -63,7 +71,7 @@ public class ParkingQueryMockService {
         this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService);
     }
 
-    ParkingQueryMockService(
+    ParkingQueryService(
             Clock clock,
             NearbyParkingSearchService nearbyParkingSearchService,
             PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
@@ -79,6 +87,13 @@ public class ParkingQueryMockService {
 
     public ParkingQueryResponse create(CreateParkingQueryRequest request) {
         OffsetDateTime now = OffsetDateTime.now(clock);
+        validateRequest(request, now);
+
+        String existingQueryId = requestTokenToQueryId.get(request.requestToken());
+        if (existingQueryId != null) {
+            return findById(existingQueryId);
+        }
+
         boolean scheduledDeparture = "SCHEDULED".equalsIgnoreCase(request.departure().type())
                 && request.departure().departureAt() != null;
         OffsetDateTime departureAt = scheduledDeparture
@@ -100,7 +115,7 @@ public class ParkingQueryMockService {
         OffStreetSection offStreetSection = buildOffStreetSection(nearby);
 
         ParkingQueryResponse response = new ParkingQueryResponse(
-                new QuerySection(queryId, "READY", false, now, now, now.plusMinutes(30), "Mock query is ready."),
+                new QuerySection(queryId, "READY", false, now, now, now.plusMinutes(QUERY_TTL_MINUTES), "Parking query is ready."),
                 new DestinationSection(
                         request.destination().label(),
                         request.destination().latitude(),
@@ -127,6 +142,7 @@ public class ParkingQueryMockService {
 
         queries.put(queryId, response);
         queryContexts.put(queryId, new QueryContext(request, eta.departureAt(), eta.estimatedArrivalAt()));
+        requestTokenToQueryId.put(request.requestToken(), queryId);
         return response;
     }
 
@@ -135,6 +151,7 @@ public class ParkingQueryMockService {
         if (response == null) {
             throw new ParkingQueryNotFoundException(queryId);
         }
+        requireNotExpired(response);
         return response;
     }
 
@@ -187,6 +204,85 @@ public class ParkingQueryMockService {
                 buildRefreshSection(roadsideRefresh, offStreetRefresh));
         queries.put(queryId, refreshed);
         return refreshed;
+    }
+
+    private void validateRequest(CreateParkingQueryRequest request, OffsetDateTime now) {
+        validateRequestToken(request.requestToken());
+        validateLocation(request.origin(), "origin");
+        validateLocation(request.destination(), "destination");
+        validateSupportedDestination(request.destination());
+        validateDeparture(request.departure(), now);
+    }
+
+    private void validateRequestToken(String requestToken) {
+        if (requestToken == null
+                || requestToken.isBlank()
+                || requestToken.length() > MAX_REQUEST_TOKEN_LENGTH
+                || !requestToken.matches("[A-Za-z0-9._:-]+")) {
+            throw new ParkingQueryContractException(
+                    "INVALID_REQUEST_TOKEN",
+                    "requestToken is missing or invalid.",
+                    false
+            );
+        }
+    }
+
+    private void validateLocation(CreateParkingQueryRequest.LocationInput location, String fieldName) {
+        if (location == null
+                || location.latitude() == null
+                || location.longitude() == null
+                || location.latitude() < -90
+                || location.latitude() > 90
+                || location.longitude() < -180
+                || location.longitude() > 180) {
+            throw new ParkingQueryContractException(
+                    "INVALID_COORDINATE",
+                    fieldName + " latitude or longitude is invalid.",
+                    false
+            );
+        }
+    }
+
+    private void validateSupportedDestination(CreateParkingQueryRequest.LocationInput destination) {
+        if (destination.latitude() < MVP_MIN_LATITUDE
+                || destination.latitude() > MVP_MAX_LATITUDE
+                || destination.longitude() < MVP_MIN_LONGITUDE
+                || destination.longitude() > MVP_MAX_LONGITUDE) {
+            throw new ParkingQueryContractException(
+                    "UNSUPPORTED_AREA",
+                    "Destination is outside the Xinzhuang MVP service area.",
+                    false
+            );
+        }
+    }
+
+    private void validateDeparture(CreateParkingQueryRequest.DepartureInput departure, OffsetDateTime now) {
+        if (departure == null || departure.type() == null || departure.type().isBlank()) {
+            throw new ParkingQueryContractException("INVALID_DEPARTURE_TIME", "departure.type is required.", false);
+        }
+        if ("NOW".equalsIgnoreCase(departure.type())) {
+            if (departure.departureAt() != null && !departure.departureAt().isBlank()) {
+                throw new ParkingQueryContractException("INVALID_DEPARTURE_TIME", "NOW departure must not include departureAt.", false);
+            }
+            return;
+        }
+        if (!"SCHEDULED".equalsIgnoreCase(departure.type())) {
+            throw new ParkingQueryContractException("INVALID_DEPARTURE_TIME", "departure.type must be NOW or SCHEDULED.", false);
+        }
+        try {
+            OffsetDateTime departureAt = OffsetDateTime.parse(departure.departureAt());
+            if (!departureAt.isAfter(now)) {
+                throw new ParkingQueryContractException("INVALID_DEPARTURE_TIME", "Scheduled departure must be in the future.", false);
+            }
+        } catch (DateTimeParseException | NullPointerException exception) {
+            throw new ParkingQueryContractException("INVALID_DEPARTURE_TIME", "Scheduled departureAt must include a valid offset date time.", false);
+        }
+    }
+
+    private void requireNotExpired(ParkingQueryResponse response) {
+        if (!response.query().expiresAt().isAfter(OffsetDateTime.now(clock))) {
+            throw new ParkingQueryExpiredException(response.query().queryId());
+        }
     }
 
     private RoadsideSection buildRoadsideSection(NearbyParkingSearchResult nearby) {
@@ -494,6 +590,33 @@ public class ParkingQueryMockService {
 
         public ParkingQueryNotFoundException(String queryId) {
             super("Parking query not found: " + queryId);
+        }
+    }
+
+    public static class ParkingQueryExpiredException extends RuntimeException {
+
+        public ParkingQueryExpiredException(String queryId) {
+            super("Parking query expired: " + queryId);
+        }
+    }
+
+    public static class ParkingQueryContractException extends RuntimeException {
+
+        private final String code;
+        private final boolean retryable;
+
+        public ParkingQueryContractException(String code, String message, boolean retryable) {
+            super(message);
+            this.code = code;
+            this.retryable = retryable;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public boolean retryable() {
+            return retryable;
         }
     }
 }

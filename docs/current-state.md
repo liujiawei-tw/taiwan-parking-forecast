@@ -1,6 +1,6 @@
 # 目前狀態
 
-更新日期：2026-09-26。
+更新日期：2026-09-29。
 
 ## 階段與角色
 
@@ -585,3 +585,13 @@ Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `f
 路外即時剩餘車位第一次 `size=40000` 只回 1,000 rows，因此以 `size=1000` 做分頁確認：page 0 有 1,000 rows、page 1 有 407 rows，共 2 requests、1,407 rows、50,642 bytes、elapsed 1,011 ms，本輪視為取齊。source ID 有 1,396 unique IDs、0 missing source ID、11 duplicate rows；`AVAILABLECAR`／`AVAILABLE` 缺值 0，負值 981，仍須依官方碼表分辨語意。S2-020 seed 的 3 個 verified mapping ID 本輪皆找到。
 
 驗收判斷：缺頁、重複、來源欄位異常、部分 mapping 與發布建議已能分開記錄；一輪品質拒絕不覆蓋既有 PUBLISHED snapshot 由既有測試保護。設定建議仍保守：現行 `page-size=500`、`max-pages=20` 對路邊全量不足，應繼續拒絕不完整路邊快照；路外現行設定理論上可取齊，但官方平台對大 size 可能限制為 1,000 rows，不可假設單頁放大。這仍是單輪量測，尚不能建立 p50／p95、長期穩定性或正式 cooldown。
+
+## 2026-09-29 S2-022 查詢生命週期與 API 契約基線實作
+
+已開始 #35／S2-022 並完成第一輪後端契約收斂。`ParkingQueryMockService` 已改名為 `ParkingQueryService`，查詢生命週期不再以 mock 命名；建立查詢會驗證 `requestToken`、起訖點座標、目的地是否在新莊 MVP 範圍，以及 `NOW`／`SCHEDULED` 出發時間語意。同一個有效 `requestToken` 會回同一個既有 `queryId`，避免網路重試或連點建立重複查詢。
+
+HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`details`、`retryable`、`nextAllowedAt` 與 `serverTime`。目前已實作 `INVALID_COORDINATE`、`INVALID_REQUEST_TOKEN`、`UNSUPPORTED_AREA`、`INVALID_DEPARTURE_TIME`、`QUERY_NOT_FOUND`、`QUERY_EXPIRED` 與 JSON／Bean validation 的 `INVALID_REQUEST`；前端可依錯誤碼處理流程，不需解析文字訊息。`GET /api/v1/parking-queries/{queryId}` 仍為只讀；`POST /refresh` 只走來源刷新協調並沿用原 Google ETA，不重算 Routes。
+
+目前 `queryId` TTL 實作為建立後 30 分鐘，存於單機記憶體 map；過期後讀取會回 `410 QUERY_EXPIRED`。這是 Sprint 2 的單機 MVP 基線，不等於正式 Redis 查詢狀態已完成。Redis 目前仍只用於來源刷新鎖與 cooldown 協調；未來若需要多實例查詢狀態恢復，須另把 query state、requestToken 去重與 TTL 邊界搬到 Redis 或其他共享儲存。MySQL 仍保存停車目錄、快照、觀測與來源狀態，不保存使用者查詢生命週期。
+
+驗證：使用本機 Maven 執行精準後端測試 `ParkingQueryControllerTest`、`ParkingQueryServiceTest`，共 14 tests／0 failures／0 errors。測試覆蓋重複 `requestToken`、無效座標、區外目的地、過去指定出發時間、未知 queryId、refresh 未知 queryId、可控時鐘下的過期 queryId，以及既有查詢讀取／刷新不重算 ETA。完整後端 `mvn test` 通過 63 tests／0 failures／0 errors；Docker Maven `maven:3.9-eclipse-temurin-21 mvn test` 也通過 63 tests／0 failures／0 errors。

@@ -1,14 +1,22 @@
 package parking.forecast.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import parking.forecast.controller.dto.CreateParkingQueryRequest;
@@ -34,6 +42,7 @@ import parking.forecast.repository.ParkingPlaceRepository;
 import parking.forecast.repository.SourceStateRepository;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
 class ParkingQueryControllerTest {
@@ -43,6 +52,9 @@ class ParkingQueryControllerTest {
 
     @Autowired
     private ParkingQueryController controller;
+
+    @Autowired
+    private MockMvc mockMvc;
 
     @Autowired
     private ParkingPlaceRepository parkingPlaceRepository;
@@ -189,8 +201,19 @@ class ParkingQueryControllerTest {
     }
 
     @Test
-    void createQueryReturnsNoCatalogResultsWhenDestinationIsOutsideSeedArea() {
-        var response = controller.create(mockRequestOutsideSeedCatalog());
+    void createQueryReusesExistingQueryForDuplicateRequestToken() {
+        var request = mockRequestNearSeedCatalog("mock-token-dedupe-" + UUID.randomUUID());
+
+        var first = controller.create(request).getBody();
+        var second = controller.create(request).getBody();
+
+        assertThat(second.query().queryId()).isEqualTo(first.query().queryId());
+        assertThat(second.query().createdAt()).isEqualTo(first.query().createdAt());
+    }
+
+    @Test
+    void createQueryReturnsNoCatalogResultsWhenDestinationIsInsideMvpButOutsideSeedArea() {
+        var response = controller.create(mockRequestInsideMvpButOutsideSeedCatalog());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         assertThat(response.getBody()).isNotNull();
@@ -200,6 +223,71 @@ class ParkingQueryControllerTest {
         assertThat(response.getBody().offStreet().status()).isEqualTo("NO_CATALOG_RESULTS");
         assertThat(response.getBody().offStreet().parkingLots()).isEmpty();
         assertThat(response.getBody().predictions().status()).isEqualTo("INSUFFICIENT_DATA");
+    }
+
+    @Test
+    void createQueryRejectsInvalidCoordinateWithStableError() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestToken": "mock-token-invalid-coordinate",
+                                  "origin": { "label": "目前位置", "latitude": 91.0, "longitude": 121.45000 },
+                                  "destination": { "label": "IKEA 新莊", "latitude": 25.0414214, "longitude": 121.4647633 },
+                                  "departure": { "type": "NOW" }
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_COORDINATE"))
+                .andExpect(jsonPath("$.error.retryable").value(false))
+                .andExpect(jsonPath("$.serverTime").exists());
+    }
+
+    @Test
+    void createQueryRejectsUnsupportedAreaWithStableError() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestToken": "mock-token-unsupported-area",
+                                  "origin": { "label": "目前位置", "latitude": 25.04000, "longitude": 121.45000 },
+                                  "destination": { "label": "板橋測試點", "latitude": 25.01500, "longitude": 121.52000 },
+                                  "departure": { "type": "NOW" }
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("UNSUPPORTED_AREA"))
+                .andExpect(jsonPath("$.error.details.serviceArea").value("NEW_TAIPEI_XINZHUANG"));
+    }
+
+    @Test
+    void createQueryRejectsPastScheduledDepartureWithStableError() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "requestToken": "mock-token-past-departure",
+                                  "origin": { "label": "目前位置", "latitude": 25.04000, "longitude": 121.45000 },
+                                  "destination": { "label": "IKEA 新莊", "latitude": 25.0414214, "longitude": 121.4647633 },
+                                  "departure": { "type": "SCHEDULED", "departureAt": "2026-01-01T09:00:00+08:00" }
+                                }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("INVALID_DEPARTURE_TIME"));
+    }
+
+    @Test
+    void getUnknownQueryReturnsStableError() throws Exception {
+        mockMvc.perform(get("/api/v1/parking-queries/not-found-query"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("QUERY_NOT_FOUND"));
+    }
+
+    @Test
+    void refreshUnknownQueryReturnsStableError() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries/not-found-query/refresh"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("QUERY_NOT_FOUND"));
     }
 
     private void publishRoadsideSnapshot(Instant fetchedAt, List<AvailabilityObservationEntity> observations) {
@@ -310,18 +398,22 @@ class ParkingQueryControllerTest {
     }
 
     private CreateParkingQueryRequest mockRequestNearSeedCatalog() {
+        return mockRequestNearSeedCatalog("mock-token-" + UUID.randomUUID());
+    }
+
+    private CreateParkingQueryRequest mockRequestNearSeedCatalog(String requestToken) {
         return new CreateParkingQueryRequest(
-                "mock-token-001",
+                requestToken,
                 new LocationInput("目前位置", 25.04000, 121.45000),
                 new LocationInput("IKEA 新莊", 25.0414214, 121.4647633),
                 new DepartureInput("NOW", null));
     }
 
-    private CreateParkingQueryRequest mockRequestOutsideSeedCatalog() {
+    private CreateParkingQueryRequest mockRequestInsideMvpButOutsideSeedCatalog() {
         return new CreateParkingQueryRequest(
-                "mock-token-002",
+                "mock-token-" + UUID.randomUUID(),
                 new LocationInput("目前位置", 25.04000, 121.45000),
-                new LocationInput("新莊遠端測試點", 25.08000, 121.50000),
+                new LocationInput("新莊遠端測試點", 25.07000, 121.48000),
                 new DepartureInput("NOW", null));
     }
 }

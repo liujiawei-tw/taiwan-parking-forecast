@@ -809,3 +809,49 @@ HTTP 狀態只表示主系統是否成功處理這次 API 請求，不代表 Goo
 - 過期：`status=STALE` 或停車場 `availabilityStatus=STALE`，主要目前可用數必須視為不可用。
 - 尚未有即時資料：`NO_REALTIME_SNAPSHOT`，代表有目錄位置但還沒有已發布的即時快照。
 - 未收錄：`NO_CATALOG_RESULTS`，代表 300 公尺內沒有本地目錄資料，不能宣稱現場沒有車位。
+
+## 2026-09-29 S2-022 已實作 API 契約基線
+
+S2-022 已把查詢端點收斂為目前可測的後端契約基線；以下為已實作內容，不是最終 OpenAPI 完稿。
+
+| 項目 | 目前實作 |
+| --- | --- |
+| 建立查詢 | `POST /api/v1/parking-queries` 成功回 `202 Accepted`；完成輸入檢查後建立短期 `queryId`，同步回目的地、300 公尺範圍、ETA、停車資料與刷新摘要 |
+| 查詢讀取 | `GET /api/v1/parking-queries/{queryId}` 成功回 `200 OK`；只讀既有查詢狀態，不呼叫 Google Routes 或新北市官方來源 |
+| 手動刷新 | `POST /api/v1/parking-queries/{queryId}/refresh` 成功回 `202 Accepted`；只檢查路邊／路外來源刷新協調，不重新計算 Google ETA，不延長 `queryId` |
+| 防重送 | 有效且相同的 `requestToken` 會回原本的 `queryId`；`requestToken` 限 120 字元內，允許英數、`.`、`_`、`:`、`-` |
+| MVP 範圍 | 目的地必須在新莊 MVP bounding box 內；區外回 `422 UNSUPPORTED_AREA`，不建立查詢 |
+| 查詢 TTL | 目前單機記憶體 query state 建立後 30 分鐘到期；過期回 `410 QUERY_EXPIRED` |
+
+錯誤回應固定為：
+
+```json
+{
+  "error": {
+    "code": "UNSUPPORTED_AREA",
+    "message": "Destination is outside the Xinzhuang MVP service area.",
+    "details": {
+      "serviceArea": "NEW_TAIPEI_XINZHUANG"
+    },
+    "retryable": false,
+    "nextAllowedAt": null
+  },
+  "serverTime": "2026-09-29T06:25:36Z"
+}
+```
+
+已實作錯誤碼：
+
+| HTTP | 錯誤碼 | 使用情境 |
+| --- | --- | --- |
+| `400` | `INVALID_REQUEST` | JSON 格式錯誤、必填欄位缺漏或 Bean validation 失敗 |
+| `400` | `INVALID_COORDINATE` | 起點或目的地經緯度缺漏、超出合法範圍 |
+| `400` | `INVALID_REQUEST_TOKEN` | `requestToken` 缺漏、太長或字元不合法 |
+| `422` | `UNSUPPORTED_AREA` | 目的地在新莊 MVP 服務範圍外 |
+| `422` | `INVALID_DEPARTURE_TIME` | `departure.type` 不合法、`NOW` 帶 `departureAt`、`SCHEDULED` 缺少合法未來 offset datetime |
+| `404` | `QUERY_NOT_FOUND` | `queryId` 不存在或不應揭露 |
+| `410` | `QUERY_EXPIRED` | `queryId` 已超過目前 30 分鐘 TTL |
+
+目前 Redis／MySQL 邊界：Redis 已用於來源刷新鎖與 cooldown 協調；S2-022 尚未把 query state 放進 Redis。MySQL 保存停車目錄、來源 mapping、候選／已發布快照、觀測、來源狀態與 ingestion run 量測，不保存使用者短期查詢。若之後要支援多實例查詢恢復或跨重啟保留 `queryId`，需要另設計 Redis query key、requestToken 去重 key、背景工作終止狀態與清除策略。
+
+驗證：`ParkingQueryControllerTest` 與 `ParkingQueryServiceTest` 共 14 tests／0 failures／0 errors，覆蓋成功查詢、讀取、刷新、重複 `requestToken`、非法座標、區外、過去指定出發時間、未知 queryId 與過期 queryId。完整後端 Docker Maven 測試通過 63 tests／0 failures／0 errors。測試未呼叫真實 Google 或新北市官方 API。
