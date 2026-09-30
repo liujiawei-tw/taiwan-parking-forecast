@@ -21,4 +21,10 @@ public interface SourceMappingRepository extends JpaRepository<SourceMappingEnti
             DatasetCode datasetCode,
             MappingStatus mappingStatus
     );
+
+    long countBySourceSystemAndDatasetCodeAndMappingStatus(
+            SourceSystem sourceSystem,
+            DatasetCode datasetCode,
+            MappingStatus mappingStatus
+    );
 }
