@@ -22,7 +22,7 @@
 
 2. 該 key 應限制 HTTP referrer，例如 `http://localhost:5173/*`，並只允許 Maps JavaScript API 與 Places API (New) 的瀏覽器用途。
 3. 後端 API 可在本機啟動；Google Routes server key 可維持停用，避免本驗收額外消耗 Routes。
-4. DevTools Network 可觀察 `parking-queries` 與 `refresh` 請求，但驗收紀錄只寫結論與狀態碼，不貼完整 response body。
+4. 右側「人工驗收事件」可觀察 `parking-queries` 與 `refresh` 的狀態碼、trigger 與 payload 欄位摘要；DevTools Network 只作輔助確認，不貼完整 request／response body。
 
 ## 驗收步驟
 
@@ -47,7 +47,7 @@
 2. 啟動前端 dev server。
 3. 搜尋並選取一個新莊目的地，例如「新莊體育館」。
 4. DevTools 確認建立查詢時只呼叫主系統 `POST /api/v1/parking-queries`，且前端沒有直接呼叫政府停車 API。
-5. DevTools 檢查 request payload 不包含 Google key、ETA、目前車位數或預測機率。
+5. 右側「人工驗收事件」出現 `QUERY_PAYLOAD_BUILT` 與 `QUERY_POST`；確認 `forbiddenFieldsPresent` 為空陣列，且 `QUERY_POST` 狀態碼符合本機後端回應。
 
 紀錄：
 
@@ -55,14 +55,15 @@
 - 使用的 key 限制方式摘要，不記錄 key 本身：
 - Places 是否成功選取目的地：
 - 建立查詢 HTTP 狀態：
+- `QUERY_PAYLOAD_BUILT.forbiddenFieldsPresent` 是否為空：
 - payload 邊界檢查結果：
 
 ### C. 可見頁受控刷新
 
 1. 建立一筆查詢，使回應中路邊或路外狀態為 `STALE` 或 `NO_REALTIME_SNAPSHOT`。
 2. 切到其他分頁或讓頁面隱藏，確認前端停止輪詢與自動刷新。
-3. 回到頁面，確認 Network 先出現 `GET /api/v1/parking-queries/{queryId}`。
-4. 若最新狀態仍需更新且沒有 `refreshInProgress`，確認只送一次 `POST /api/v1/parking-queries/{queryId}/refresh?trigger=VISIBLE_AUTO_REFRESH`。
+3. 回到頁面，確認人工驗收事件先出現 `QUERY_GET`。
+4. 若最新狀態仍需更新且沒有 `refreshInProgress`，確認人工驗收事件只出現一次 `trigger=VISIBLE_AUTO_REFRESH` 的 `REFRESH_POST`。
 5. 保持頁面可見且狀態未變時，確認不會密集重送同一組自動刷新。
 
 紀錄：
@@ -70,19 +71,21 @@
 - 日期／環境：
 - 觸發前來源狀態：
 - 重新可見後第一個主系統請求是否為 GET：
+- 人工驗收事件是否顯示先 `QUERY_GET` 再 `REFRESH_POST`：
 - 自動刷新 trigger：
 - 同一 query/status 是否只送一次：
 
 ### D. 手動刷新
 
 1. 按「更新車位」。
-2. 確認請求為 `POST /api/v1/parking-queries/{queryId}/refresh?trigger=MANUAL_REFRESH`。
+2. 確認人工驗收事件出現 `trigger=MANUAL_REFRESH` 的 `REFRESH_POST`。
 3. 確認沒有新的 Google Routes `computeRoutes` 請求。
 
 紀錄：
 
 - 日期／環境：
 - 手動刷新 trigger：
+- 人工驗收事件是否顯示 `trigger=MANUAL_REFRESH`：
 - 是否重算 ETA：
 - 後端回應摘要：
 

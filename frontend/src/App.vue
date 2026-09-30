@@ -1,6 +1,10 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
+  appendAcceptanceEvent,
+  summarizeParkingQueryPayload,
+} from './acceptanceLog.js'
+import {
   buildParkingQueryPayload,
   buildRequestToken,
   hasUsableGoogleMapsKey,
@@ -39,6 +43,7 @@ const refreshMessage = ref('')
 const mapStatus = ref(hasGoogleMapsKey ? '正在載入 Google 地圖' : '未設定瀏覽器 Google Maps key，使用手動座標模式')
 const selectedItemId = ref('')
 const autoRefreshAttemptKey = ref('')
+const acceptanceEvents = ref([])
 
 let googleMapsPromise
 let map
@@ -102,12 +107,16 @@ const resultItems = computed(() => {
 
 onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
-  if (!hasGoogleMapsKey) return
+  if (!hasGoogleMapsKey) {
+    logAcceptanceEvent('MAPS_SKIPPED_NO_KEY', '未設定 browser key，維持手動座標模式。')
+    return
+  }
 
   try {
     await initializeGoogleMap()
   } catch (error) {
     mapStatus.value = `Google 地圖載入失敗：${error.message}`
+    logAcceptanceEvent('MAPS_LOAD_FAILED', 'Google Maps JavaScript API 載入失敗。')
   }
 })
 
@@ -130,18 +139,26 @@ async function createParkingQuery() {
   errorMessage.value = ''
 
   try {
+    const payload = buildParkingQueryPayload({
+      requestToken: buildRequestToken(window.crypto),
+      origin: origin.value,
+      destination: selectedDestination.value,
+      departureType: departureType.value,
+      scheduledDepartureLocal: scheduledDepartureLocal.value,
+    })
+    logAcceptanceEvent('QUERY_PAYLOAD_BUILT', '已建立查詢 payload 欄位摘要。', summarizeParkingQueryPayload(payload))
+
     const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(buildParkingQueryPayload({
-        requestToken: buildRequestToken(window.crypto),
-        origin: origin.value,
-        destination: selectedDestination.value,
-        departureType: departureType.value,
-        scheduledDepartureLocal: scheduledDepartureLocal.value,
-      })),
+      body: JSON.stringify(payload),
+    })
+    logAcceptanceEvent('QUERY_POST', '建立停車查詢 API 已回應。', {
+      method: 'POST',
+      status: response.status,
+      ok: response.ok,
     })
 
     if (!response.ok) {
@@ -174,6 +191,12 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
     const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${queryResult.value.query.queryId}/refresh?trigger=${encodeURIComponent(trigger)}`, {
       method: 'POST',
     })
+    logAcceptanceEvent('REFRESH_POST', '刷新 API 已回應。', {
+      method: 'POST',
+      trigger,
+      status: response.status,
+      ok: response.ok,
+    })
 
     if (!response.ok) {
       throw new Error(await readApiError(response))
@@ -197,6 +220,11 @@ async function readParkingQuery() {
 
   try {
     const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${queryResult.value.query.queryId}`)
+    logAcceptanceEvent('QUERY_GET', '已讀取查詢狀態。', {
+      method: 'GET',
+      status: response.status,
+      ok: response.ok,
+    })
     if (!response.ok) {
       throw new Error(await readApiError(response))
     }
@@ -284,6 +312,7 @@ async function initializeGoogleMap() {
   })
   infoWindow = new window.google.maps.InfoWindow()
   mapStatus.value = 'Google 地圖已載入'
+  logAcceptanceEvent('MAPS_LOADED', 'Google Maps JavaScript API 與 Places library 已載入。')
 
   setupPlaceAutocomplete()
   renderMap()
@@ -339,6 +368,11 @@ function setupPlaceAutocomplete() {
       latitude: place.location.lat(),
       longitude: place.location.lng(),
     }
+    logAcceptanceEvent('PLACE_SELECTED', '已選取 Google Places 目的地。', {
+      label: selectedDestination.value.label,
+      latitude: Number(selectedDestination.value.latitude.toFixed(6)),
+      longitude: Number(selectedDestination.value.longitude.toFixed(6)),
+    })
     errorMessage.value = ''
     map?.panTo(getDestinationLatLng())
     renderMap()
@@ -492,6 +526,14 @@ function formatDateTime(value) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
+}
+
+function logAcceptanceEvent(type, message, details = {}) {
+  acceptanceEvents.value = appendAcceptanceEvent(acceptanceEvents.value, {
+    type,
+    message,
+    details,
+  })
 }
 </script>
 
@@ -692,6 +734,19 @@ function formatDateTime(value) {
           <span>API：{{ apiBaseUrl }}</span>
           <span>Google Key：{{ hasGoogleMapsKey ? '已設定' : '未設定' }}</span>
           <span>自動刷新：頁面可見且來源狀態需更新時，每個查詢狀態組合只嘗試一次。</span>
+        </article>
+
+        <article class="result-card acceptance-log">
+          <strong>人工驗收事件</strong>
+          <span>只記錄狀態碼、trigger 與 payload 欄位摘要；不顯示 key 或完整 API 回應。</span>
+          <ol v-if="acceptanceEvents.length">
+            <li v-for="(event, index) in acceptanceEvents" :key="`${event.occurredAt}-${event.type}-${index}`">
+              <span>{{ formatDateTime(event.occurredAt) }} · {{ event.type }}</span>
+              <strong>{{ event.message }}</strong>
+              <code>{{ JSON.stringify(event.details) }}</code>
+            </li>
+          </ol>
+          <span v-else>尚無事件。送出查詢或載入 Places 後會在此出現。</span>
         </article>
       </aside>
     </section>

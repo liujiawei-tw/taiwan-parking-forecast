@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict'
 import {
+  appendAcceptanceEvent,
+  summarizeParkingQueryPayload,
+} from '../src/acceptanceLog.js'
+import {
   buildParkingQueryPayload,
   buildRequestToken,
   hasUsableGoogleMapsKey,
@@ -76,6 +80,54 @@ assert.equal(JSON.stringify(payload).includes('placeId'), false)
 assert.equal(JSON.stringify(payload).includes('predictionProbability'), false)
 assert.equal(JSON.stringify(payload).includes('currentlyAvailableSpaces'), false)
 assert.equal(JSON.stringify(payload).includes('eta'), false)
+
+assert.deepEqual(summarizeParkingQueryPayload(payload), {
+  topLevelFields: ['departure', 'destination', 'origin', 'requestToken'],
+  originFields: ['label', 'latitude', 'longitude'],
+  destinationFields: ['label', 'latitude', 'longitude'],
+  departureType: 'NOW',
+  forbiddenFieldsPresent: [],
+})
+
+assert.deepEqual(
+  summarizeParkingQueryPayload({
+    ...payload,
+    destination: {
+      ...payload.destination,
+      placeId: 'must-not-be-logged',
+      predictionProbability: 0.8,
+    },
+  }).forbiddenFieldsPresent,
+  ['placeId', 'predictionProbability'],
+)
+
+const acceptanceEvents = appendAcceptanceEvent([], {
+  occurredAt: '2026-09-30T01:00:00.000Z',
+  type: 'QUERY_POST',
+  message: 'created',
+  details: {
+    method: 'POST',
+    status: 200,
+    requestToken: 'secret-ish-token',
+    responseBody: { raw: true },
+    nested: {
+      googleKey: 'must-not-be-logged',
+      ok: true,
+    },
+  },
+})
+assert.deepEqual(acceptanceEvents, [{
+  occurredAt: '2026-09-30T01:00:00.000Z',
+  type: 'QUERY_POST',
+  message: 'created',
+  details: {
+    method: 'POST',
+    status: 200,
+    nested: {
+      ok: true,
+    },
+  },
+}])
 
 const visibleStale = shouldAutoRefresh({
   queryResult: queryResult({ roadsideStatus: 'STALE', offStreetStatus: 'NO_REALTIME_SNAPSHOT' }),
