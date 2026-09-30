@@ -1,4 +1,6 @@
 spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/taiwan_parking_forecast?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Taipei}
     username: ${SPRING_DATASOURCE_USERNAME:parking_app}
