@@ -641,3 +641,9 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 `s2-harden-001-manual-acceptance.md` 已依 2026-09-30 Sponsor 人工驗證結果補齊，涵蓋真實 Places 選取、payload 邊界、可見頁先 GET 再 `VISIBLE_AUTO_REFRESH`、手動 `MANUAL_REFRESH` 與不重算 Google Routes ETA。#40／S2-HARDEN-001 可視為完成候選；文件只記錄結論、狀態碼摘要與邊界檢查，不保存金鑰、截圖、完整 request／response body 或官方原始回應。
 
 驗證：`frontend/npm run test` 通過，`frontend/npm run build` 通過。未呼叫 Google、未呼叫新北市官方來源，未提交任何 key、原始 API 回應或敏感設定。
+
+## 2026-09-30 S2-HARDEN-002 開始實作
+
+已開始 #41／S2-HARDEN-002。新增 `CatalogCoverageReportService`，以目前 MySQL catalog／source mapping 與 S2-020／S2-021 已量測的官方基準數產生新莊覆蓋報告。第一版固定目前事實：路邊 active catalog 7／官方新莊路邊基準 2,124，verified mapping 7／2,124，覆蓋率 0.33%；路外 active catalog 3／官方新莊汽車場基準 97，verified mapping 3／97，覆蓋率 3.09%。兩者狀態皆為 `PARTIAL`，因此不得宣稱完整新莊覆蓋，也不得輸出完整 300 公尺路邊區域機率。
+
+新增 `s2-harden-002-catalog-coverage.md` 作為覆蓋報告與匯入策略文件，明確列出完整匯入前需要的可重跑輸入、catalog／mapping 分離、缺 ID／重複／座標異常／車種資格不明的分流，以及路邊 2,124、路外 97 的完成候選門檻。此階段未重新呼叫官方 API、未匯入全量 catalog、未保存原始回應；只把已量測基準轉為可測的覆蓋治理證據。

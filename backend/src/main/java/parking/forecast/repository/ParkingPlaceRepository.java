@@ -17,6 +17,12 @@ public interface ParkingPlaceRepository extends JpaRepository<ParkingPlaceEntity
             ActiveStatus activeStatus
     );
 
+    long countByServiceAreaAndPlaceTypeAndActiveStatus(
+            String serviceArea,
+            ParkingPlaceType placeType,
+            ActiveStatus activeStatus
+    );
+
     List<ParkingPlaceEntity> findByServiceAreaAndActiveStatusAndLatitudeBetweenAndLongitudeBetween(
             String serviceArea,
             ActiveStatus activeStatus,
