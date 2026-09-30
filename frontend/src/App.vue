@@ -1,9 +1,15 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  buildParkingQueryPayload,
+  buildRequestToken,
+  hasUsableGoogleMapsKey,
+  shouldAutoRefresh,
+} from './planner.js'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY || ''
-const hasGoogleMapsKey = Boolean(googleMapsApiKey && googleMapsApiKey !== 'replace-with-local-browser-key')
+const hasGoogleMapsKey = hasUsableGoogleMapsKey(googleMapsApiKey)
 
 const defaultDestination = {
   label: '新莊體育館',
@@ -17,7 +23,6 @@ const defaultOrigin = {
   latitude: 25.04,
   longitude: 121.45,
 }
-const AUTO_REFRESH_SOURCE_STATUSES = new Set(['STALE', 'NO_REALTIME_SNAPSHOT'])
 const POLL_INTERVAL_MS = 5000
 
 const mapElement = ref(null)
@@ -51,15 +56,7 @@ const refreshInProgress = computed(() => Boolean(
   queryResult.value?.refresh?.roadside?.refreshInProgress
     || queryResult.value?.refresh?.offStreet?.refreshInProgress,
 ))
-const autoRefreshEligibleSources = computed(() => {
-  if (!queryResult.value || refreshInProgress.value) return []
-  return [
-    ['roadside', queryResult.value.roadside?.status],
-    ['offStreet', queryResult.value.offStreet?.status],
-  ]
-    .filter(([, status]) => AUTO_REFRESH_SOURCE_STATUSES.has(status))
-    .map(([source]) => source)
-})
+const autoRefreshEligibleSources = computed(() => getAutoRefreshDecision().sources)
 const etaMessage = computed(() => {
   const eta = queryResult.value?.eta
   if (!eta) return '送出查詢後由後端 Google Routes 估算'
@@ -128,21 +125,6 @@ watch(queryResult, () => {
   maybeAutoRefresh('state-change')
 }, { deep: true })
 
-function buildRequestToken() {
-  if (window.crypto?.randomUUID) return `web-${window.crypto.randomUUID()}`
-  return `web-${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
-function buildDeparture() {
-  if (departureType.value === 'SCHEDULED' && scheduledDepartureLocal.value) {
-    return {
-      type: 'SCHEDULED',
-      departureAt: new Date(scheduledDepartureLocal.value).toISOString(),
-    }
-  }
-  return { type: 'NOW' }
-}
-
 async function createParkingQuery() {
   loading.value = true
   errorMessage.value = ''
@@ -153,20 +135,13 @@ async function createParkingQuery() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        requestToken: buildRequestToken(),
-        origin: {
-          label: origin.value.label,
-          latitude: Number(origin.value.latitude),
-          longitude: Number(origin.value.longitude),
-        },
-        destination: {
-          label: selectedDestination.value.label,
-          latitude: Number(selectedDestination.value.latitude),
-          longitude: Number(selectedDestination.value.longitude),
-        },
-        departure: buildDeparture(),
-      }),
+      body: JSON.stringify(buildParkingQueryPayload({
+        requestToken: buildRequestToken(window.crypto),
+        origin: origin.value,
+        destination: selectedDestination.value,
+        departureType: departureType.value,
+        scheduledDepartureLocal: scheduledDepartureLocal.value,
+      })),
     })
 
     if (!response.ok) {
@@ -264,19 +239,22 @@ function clearProgressPolling() {
 }
 
 async function maybeAutoRefresh(reason) {
-  if (!queryResult.value?.query?.queryId || !isPageVisible() || loading.value) return
-  if (autoRefreshEligibleSources.value.length === 0) return
+  const decision = getAutoRefreshDecision()
+  if (!decision.shouldRefresh) return
 
-  const attemptKey = [
-    queryResult.value.query.queryId,
-    queryResult.value.roadside?.status,
-    queryResult.value.offStreet?.status,
-  ].join(':')
-  if (autoRefreshAttemptKey.value === attemptKey) return
-
-  autoRefreshAttemptKey.value = attemptKey
-  refreshMessage.value = `偵測到 ${autoRefreshEligibleSources.value.join('、')} 需要更新，執行一次受控自動刷新。`
+  autoRefreshAttemptKey.value = decision.attemptKey
+  refreshMessage.value = `偵測到 ${decision.sources.join('、')} 需要更新，執行一次受控自動刷新。`
   await refreshParkingAvailability('VISIBLE_AUTO_REFRESH')
+}
+
+function getAutoRefreshDecision() {
+  return shouldAutoRefresh({
+    queryResult: queryResult.value,
+    loading: loading.value,
+    visible: isPageVisible(),
+    refreshInProgress: refreshInProgress.value,
+    lastAttemptKey: autoRefreshAttemptKey.value,
+  })
 }
 
 function isPageVisible() {

@@ -627,3 +627,11 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 已新增 `sprint-3-next-work-plan.md`，把 S2 hardening 與 Sprint 3 預測前置工作拆成六個 GitHub Issues：#40 補齊真實 Places 與可見頁刷新人工驗收、#41 完整新莊 catalog／source mapping 匯入策略與覆蓋報告、#42 多輪官方來源量測與刷新品質門檻、#43 已發布觀測匯出與標籤 dry run、#44 基準模型與時間切分回測報告、#45 預測推論契約降級與模型版本接點。
 
 規劃順序維持保守：先補前端與刷新人工驗收，再確認 catalog／mapping 覆蓋與來源穩定性，之後才產生訓練標籤 dry run、做 baseline 回測，最後規劃推論契約接點。未完成 #41～#44 前，不應宣稱可輸出可信預測；未完成 #45 前，即使離線有模型結果，也不接入使用者查詢回應。
+
+## 2026-09-30 S2-HARDEN-001 開始實作
+
+已開始 #40／S2-HARDEN-001。前端將查詢 payload 組裝、Google browser key 判斷與可見頁自動刷新決策抽成 `planner.js` 純函式，並新增 `npm run test` 的 Node 測試；GitHub Actions 前端 job 已加入 `npm run test`，使 payload 與自動刷新契約成為 PR 守門檢查。測試覆蓋：placeholder 或空 browser key 不載入 Google、查詢 payload 只包含起訖點座標／label／departure／requestToken、不包含 `placeId`、ETA、目前車位數或預測機率，以及頁面可見且來源狀態為 `STALE`／`NO_REALTIME_SNAPSHOT` 時同一 query/status 組合只觸發一次 `VISIBLE_AUTO_REFRESH`。
+
+新增 `s2-harden-001-manual-acceptance.md` 作為人工驗收紀錄模板，列出無 key fallback、真實 Places 選取、可見頁受控刷新與手動刷新檢查步驟。當前執行環境沒有 `frontend/.env.local`，因此尚未執行真實 browser key Places 驗收；不可宣稱 #40 完成，只能宣稱自動化契約測試與人工驗收步驟已補上。
+
+驗證：`frontend/npm run test` 通過，`frontend/npm run build` 通過。未呼叫 Google、未呼叫新北市官方來源，未提交任何 key、原始 API 回應或敏感設定。
