@@ -43,6 +43,29 @@
    - 路外完整匯入候選：active catalog 與 verified mapping 接近 97，且所有匯入 ID 可對上即時剩餘位資料。
    - 若任何一類未達完整門檻，API 與文件必須維持 `PARTIAL`，不得包裝成完整覆蓋。
 
+## 正規化 Import Dry Run
+
+後續不應把新莊寫成唯一規格。第一版已新增 source-agnostic `CatalogImportDryRunService`，使用共同的 `CatalogSourceRecord` 作為 importer adapter 的輸出格式：
+
+- `serviceArea`：例如 `NEW_TAIPEI_XINZHUANG`，未來可加入板橋、中和或其他縣市。
+- `sourceSystem`／`datasetCode`／`sourcePlaceId`：保留來源與資料集邊界，避免不同地區或不同來源 ID 撞名。
+- `placeType`：路邊格位或路外停車場。
+- `displayName`、WGS84 `latitude`／`longitude`、`carEligibleStatus`。
+- `rawNameHint`／`rawLocationHint`：只保存必要提示，不保存完整原始回應。
+
+Dry run 會依 `CatalogImportScope` 統計：
+
+- scope 內來源 rows。
+- accepted catalog candidates。
+- missing source ID。
+- duplicate source ID。
+- invalid coordinates。
+- unknown eligibility。
+- existing verified mappings。
+- import recommendation。
+
+這讓新莊只是第一個 `scope config`；未來新增地區時，應新增對應的 scope 與來源 adapter，不應複製新莊專用 service。
+
 ## 待驗證
 
 - 路邊 `id`／`cellid` 長期穩定性與重複列語意。
