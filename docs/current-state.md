@@ -634,4 +634,6 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 
 新增 `s2-harden-001-manual-acceptance.md` 作為人工驗收紀錄模板，列出無 key fallback、真實 Places 選取、可見頁受控刷新與手動刷新檢查步驟。當前執行環境沒有 `frontend/.env.local`，因此尚未執行真實 browser key Places 驗收；不可宣稱 #40 完成，只能宣稱自動化契約測試與人工驗收步驟已補上。
 
+後續補上前端右側「人工驗收事件」面板，供本機驗收時記錄 Maps/Places 載入、Places 選取、查詢 payload 欄位摘要、`POST /parking-queries`、`GET /parking-queries/{queryId}` 與 `POST /refresh` 的狀態碼與 trigger。事件紀錄只保存狀態、trigger 與欄位摘要，不保存 Google key、requestToken、完整 request／response body 或官方原始回應；人工驗收文件已改用該面板作主要紀錄來源，DevTools Network 只作輔助確認。
+
 驗證：`frontend/npm run test` 通過，`frontend/npm run build` 通過。未呼叫 Google、未呼叫新北市官方來源，未提交任何 key、原始 API 回應或敏感設定。
