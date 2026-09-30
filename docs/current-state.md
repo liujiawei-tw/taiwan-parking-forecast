@@ -619,3 +619,11 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 同步更新 README、backend README、roadmap、implementation plan、open questions 與 project status，移除 #33 至 #38 尚未開始、前端仍為 mock、目錄仍為合成 seed 等過時敘述。最新基線是：S2-020 至 S2-024 已完成官方小樣本 mapping、單輪來源量測、Redis query state、Maps／Places 結果頁與可見頁受控刷新接線；但完整新莊 catalog、多輪 p50／p95、真實 browser key Places 人工驗收、端到端官方刷新人工驗收及兩類預測模型仍未完成。
 
 驗證：本次為文件任務，未修改產品程式、未呼叫外部 API、未保存原始回應或敏感設定。使用 `git diff --check` 做格式與空白檢查；不重新跑 Maven／前端 build，因為行為程式碼未變更。
+
+## 2026-09-29 Sprint 3 下一步規劃與 GitHub Issues 建立
+
+依 Sponsor 指示「不實作，規劃接下來要的事情，並上傳到 GitHub」，本次只做規劃與任務建立，沒有修改產品程式、沒有呼叫官方來源、沒有訓練模型，也沒有新增任何預測機率。
+
+已新增 `sprint-3-next-work-plan.md`，把 S2 hardening 與 Sprint 3 預測前置工作拆成六個 GitHub Issues：#40 補齊真實 Places 與可見頁刷新人工驗收、#41 完整新莊 catalog／source mapping 匯入策略與覆蓋報告、#42 多輪官方來源量測與刷新品質門檻、#43 已發布觀測匯出與標籤 dry run、#44 基準模型與時間切分回測報告、#45 預測推論契約降級與模型版本接點。
+
+規劃順序維持保守：先補前端與刷新人工驗收，再確認 catalog／mapping 覆蓋與來源穩定性，之後才產生訓練標籤 dry run、做 baseline 回測，最後規劃推論契約接點。未完成 #41～#44 前，不應宣稱可輸出可信預測；未完成 #45 前，即使離線有模型結果，也不接入使用者查詢回應。
