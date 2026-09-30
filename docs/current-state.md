@@ -649,3 +649,7 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 新增 `s2-harden-002-catalog-coverage.md` 作為覆蓋報告與匯入策略文件，明確列出完整匯入前需要的可重跑輸入、catalog／mapping 分離、缺 ID／重複／座標異常／車種資格不明的分流，以及路邊 2,124、路外 97 的完成候選門檻。此階段未重新呼叫官方 API、未匯入全量 catalog、未保存原始回應；只把已量測基準轉為可測的覆蓋治理證據。
 
 依 Sponsor 回饋，後續補上 source-agnostic `CatalogImportDryRunService`，避免把新莊寫成唯一規格。新的 dry-run 使用 `CatalogImportScope` 與共同 `CatalogSourceRecord`，由來源 adapter 先轉出 service area、source system、dataset、source ID、位置、車種資格與必要 raw hint；dry-run 再統計 scope rows、accepted candidates、missing source ID、duplicate source ID、invalid coordinates、unknown eligibility、existing verified mappings 與 import recommendation。新莊會是第一個 scope config，未來新增地區時應新增 scope 與 adapter，不複製新莊專用流程。
+
+後續完成 NTPC catalog adapter 基線：`NtpcOpenDataClient` 新增新北市公有路外停車場靜態目錄 dataset `B1464EF0-9C7C-4A6F-ABF7-6BDF32847E68`；新增 `NtpcOffStreetParkingLotDto` 解析 `ID`、`AREA`、`NAME`、`ADDRESS`、`TW97X`、`TW97Y`、`TOTALCAR`。`NtpcCatalogRecordMapper` 可把路邊即時來源列與路外靜態目錄列轉成共用 `CatalogSourceRecord`，由呼叫端傳入 `serviceArea`、路邊 `areacode` 或路外行政區名稱，因此新莊只是第一個 scope，不把規格寫死在 service 核心。路外 TWD97 座標會轉成 WGS84；解析失敗、缺 ID、重複 ID與車種資格不明仍交由 dry-run 分開計數，不會自動匯入 DB 或標為 verified mapping。
+
+驗證：使用 Docker JDK 執行精準後端測試 `NtpcOpenDataDtoTest`、`NtpcOpenDataClientTest`、`NtpcCatalogRecordMapperTest`，共 11 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 76 tests／0 failures／0 errors／0 skipped。此階段未呼叫官方 API、未保存原始 JSON、未提交敏感設定，也尚未執行完整新莊 catalog 匯入。

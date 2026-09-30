@@ -34,6 +34,10 @@ public class NtpcOpenDataProperties {
     @NotNull
     private Dataset offStreet = new Dataset("e09b35a5-a738-48cc-b0f5-570b67ad9c78");
 
+    @Valid
+    @NotNull
+    private Dataset offStreetCatalog = new Dataset("B1464EF0-9C7C-4A6F-ABF7-6BDF32847E68");
+
     public URI getBaseUrl() {
         return baseUrl;
     }
@@ -80,6 +84,14 @@ public class NtpcOpenDataProperties {
 
     public void setOffStreet(Dataset offStreet) {
         this.offStreet = offStreet;
+    }
+
+    public Dataset getOffStreetCatalog() {
+        return offStreetCatalog;
+    }
+
+    public void setOffStreetCatalog(Dataset offStreetCatalog) {
+        this.offStreetCatalog = offStreetCatalog;
     }
 
     public static class Dataset {

@@ -63,6 +63,24 @@ class NtpcOpenDataClientTest {
     }
 
     @Test
+    void fetchesOffStreetCatalogWithConfiguredDataset() {
+        var testClient = testClient(defaultProperties());
+        testClient.server().expect(requestTo("https://data.ntpc.gov.tw/api/datasets/B1464EF0-9C7C-4A6F-ABF7-6BDF32847E68/json?page=0&size=1"))
+                .andExpect(method(GET))
+                .andRespond(withSuccess("""
+                        [{"ID":"050029","AREA":"新莊區","NAME":"新莊區農會停車場","TW97X":"296239.5","TW97Y":"2770049","TOTALCAR":"345"}]
+                        """, APPLICATION_JSON));
+
+        var rows = testClient.client().fetchOffStreetCatalog(0, 1);
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.getFirst().id()).isEqualTo("050029");
+        assertThat(rows.getFirst().area()).isEqualTo("新莊區");
+        assertThat(rows.getFirst().totalCar()).isEqualTo("345");
+        testClient.server().verify();
+    }
+
+    @Test
     void retriesConfiguredNumberOfAttemptsBeforeFailing() {
         var properties = defaultProperties();
         properties.setMaxAttempts(2);

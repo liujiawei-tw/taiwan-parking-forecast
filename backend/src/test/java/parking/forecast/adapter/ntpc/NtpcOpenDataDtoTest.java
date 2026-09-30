@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 
 import parking.forecast.adapter.ntpc.dto.NtpcOffStreetParkingAvailabilityDto;
+import parking.forecast.adapter.ntpc.dto.NtpcOffStreetParkingLotDto;
 import parking.forecast.adapter.ntpc.dto.NtpcRoadsideParkingAvailabilityDto;
 
 class NtpcOpenDataDtoTest {
@@ -51,5 +52,25 @@ class NtpcOpenDataDtoTest {
         assertThat(rows.get(0).availableCar()).isEqualTo("12");
         assertThat(rows.get(1).id()).isEqualTo("P002");
         assertThat(rows.get(1).availableCar()).isEqualTo("-9");
+    }
+
+    @Test
+    void parsesOffStreetCatalogStaticFields() throws Exception {
+        var resource = new ClassPathResource("fixtures/ntpc/off-street-catalog.json");
+
+        List<NtpcOffStreetParkingLotDto> rows = objectMapper.readValue(
+                resource.getInputStream(),
+                new TypeReference<>() {
+                });
+
+        assertThat(rows).hasSize(2);
+        var row = rows.getFirst();
+        assertThat(row.id()).isEqualTo("050029");
+        assertThat(row.area()).isEqualTo("新莊區");
+        assertThat(row.name()).isEqualTo("新莊區農會停車場");
+        assertThat(row.address()).isEqualTo("新北市新莊區中正路80號B2-B4");
+        assertThat(row.tw97x()).isEqualTo("296239.5");
+        assertThat(row.tw97y()).isEqualTo("2770049");
+        assertThat(row.totalCar()).isEqualTo("345");
     }
 }
