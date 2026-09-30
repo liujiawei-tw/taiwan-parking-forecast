@@ -48,3 +48,13 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## Test
+
+```bash
+npm run test
+```
+
+The current frontend test covers the query payload boundary and visible-page auto-refresh decision rules. It verifies that the browser submits selected coordinates and departure settings only, not frontend-computed ETA, current availability, prediction probabilities, Google keys, or raw place details.
+
+Manual browser-key acceptance for S2-HARDEN-001 is tracked in `../docs/s2-harden-001-manual-acceptance.md`.
