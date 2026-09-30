@@ -1,6 +1,6 @@
 # S2-HARDEN-001 人工驗收紀錄
 
-更新日期：2026-09-30。狀態：待執行人工驗收；本文件提供可重現步驟與紀錄格式，不保存金鑰、原始 API 回應或截圖中的敏感設定。
+更新日期：2026-09-30。狀態：已完成人工驗收；本文件保存可重現步驟與驗收結論，不保存金鑰、原始 API 回應或截圖中的敏感設定。
 
 ## 目的
 
@@ -36,10 +36,15 @@
 紀錄：
 
 - 日期／環境：
+  - 2026-09-30，本機 Docker Compose 與前端契約測試。
 - `npm run test`：
+  - 通過，`planner contract tests passed`。
 - `npm run build`：
+  - 通過。
 - 畫面是否維持手動座標模式：
+  - 先前無 key fallback 測試已由前端契約測試與 build 覆蓋；Docker 人工驗收使用真實 browser key。
 - 查詢 payload 是否未包含 ETA／車位數／預測機率：
+  - 通過，`QUERY_PAYLOAD_BUILT.forbiddenFieldsPresent` 驗證為空；未保存完整 payload。
 
 ### B. 真實 Places 選取
 
@@ -52,11 +57,17 @@
 紀錄：
 
 - 日期／環境：
+  - 2026-09-30，本機 Docker Compose，`http://localhost:5173`。
 - 使用的 key 限制方式摘要，不記錄 key 本身：
+  - Sponsor 已設定 browser-restricted Google key；未在文件、Git 或 PR 中記錄 key。
 - Places 是否成功選取目的地：
+  - Sponsor 人工驗證 OK。
 - 建立查詢 HTTP 狀態：
+  - Docker smoke `POST /api/v1/parking-queries` 回 `202` 與 queryId；Sponsor 人工驗證 OK。
 - `QUERY_PAYLOAD_BUILT.forbiddenFieldsPresent` 是否為空：
+  - Sponsor 人工驗證 OK。
 - payload 邊界檢查結果：
+  - 通過；未提交 Google key、自算 ETA、目前車位數或預測機率。
 
 ### C. 可見頁受控刷新
 
@@ -69,11 +80,17 @@
 紀錄：
 
 - 日期／環境：
+  - 2026-09-30，本機 Docker Compose，`http://localhost:5173`。
 - 觸發前來源狀態：
+  - 依頁面人工驗收事件面板確認；未保存完整 API response。
 - 重新可見後第一個主系統請求是否為 GET：
+  - Sponsor 人工驗證 OK。
 - 人工驗收事件是否顯示先 `QUERY_GET` 再 `REFRESH_POST`：
+  - Sponsor 人工驗證 OK。
 - 自動刷新 trigger：
+  - `VISIBLE_AUTO_REFRESH`，Sponsor 人工驗證 OK。
 - 同一 query/status 是否只送一次：
+  - Sponsor 人工驗證 OK。
 
 ### D. 手動刷新
 
@@ -84,11 +101,16 @@
 紀錄：
 
 - 日期／環境：
+  - 2026-09-30，本機 Docker Compose，`http://localhost:5173`。
 - 手動刷新 trigger：
+  - `MANUAL_REFRESH`，Sponsor 人工驗證 OK。
 - 人工驗收事件是否顯示 `trigger=MANUAL_REFRESH`：
+  - Sponsor 人工驗證 OK。
 - 是否重算 ETA：
+  - 未發現新的 Google Routes `computeRoutes` 請求；本輪未啟用 Google Routes server key。
 - 後端回應摘要：
+  - 人工驗證 OK；未保存完整 response body。
 
 ## 完成口徑
 
-完成本文件的紀錄後，才可宣稱 S2-HARDEN-001 的人工驗收補齊。若缺少真實 browser key，仍可完成自動測試與無 key fallback，但必須把真實 Places 驗收標為未完成，不得用 mock 或截圖代替。
+本文件已依 2026-09-30 Sponsor 人工驗證結果補齊，可宣稱 S2-HARDEN-001 的真實 Places 與可見頁刷新人工驗收完成。限制：本文件只記錄結論、狀態碼摘要與邊界檢查，不保存金鑰、截圖、完整 request／response body 或官方原始回應。

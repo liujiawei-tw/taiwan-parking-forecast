@@ -636,6 +636,8 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 
 後續補上前端右側「人工驗收事件」面板，供本機驗收時記錄 Maps/Places 載入、Places 選取、查詢 payload 欄位摘要、`POST /parking-queries`、`GET /parking-queries/{queryId}` 與 `POST /refresh` 的狀態碼與 trigger。事件紀錄只保存狀態、trigger 與欄位摘要，不保存 Google key、requestToken、完整 request／response body 或官方原始回應；人工驗收文件已改用該面板作主要紀錄來源，DevTools Network 只作輔助確認。
 
-使用 Sponsor 本機已設定的 browser-restricted Google key 進行 Docker smoke 驗證時，發現並修正兩個 Docker profile 啟動缺口：`application-docker.yml` 未納入 `db/seed` Flyway location，導致既有 MySQL volume 的 repeatable seed migration 驗證失敗；Redis query state 使用的 `ObjectMapper` 在 production context 未宣告 bean，導致 API 啟動失敗。修正後 Docker Compose 已可啟動 `api`、`web`、`mysql`、`redis`；`GET /actuator/health` 回 `UP`，前端 Docker bundle 確認含 Maps loader 與人工驗收事件面板，且本機 key 已進入 Docker web build。以 Docker API 送出一筆低成本查詢得到 `202` 與 queryId；因未啟用 Google Routes server key，ETA 回 `FAILED`，預測仍為 `INSUFFICIENT_DATA`，這符合目前不把估計冒充正式預測的限制。Docker 容器保留啟動，供 Sponsor 接續瀏覽器人工驗收。
+使用 Sponsor 本機已設定的 browser-restricted Google key 進行 Docker smoke 驗證時，發現並修正兩個 Docker profile 啟動缺口：`application-docker.yml` 未納入 `db/seed` Flyway location，導致既有 MySQL volume 的 repeatable seed migration 驗證失敗；Redis query state 使用的 `ObjectMapper` 在 production context 未宣告 bean，導致 API 啟動失敗。修正後 Docker Compose 已可啟動 `api`、`web`、`mysql`、`redis`；`GET /actuator/health` 回 `UP`，前端 Docker bundle 確認含 Maps loader 與人工驗收事件面板，且本機 key 已進入 Docker web build。以 Docker API 送出一筆低成本查詢得到 `202` 與 queryId；因未啟用 Google Routes server key，ETA 回 `FAILED`，預測仍為 `INSUFFICIENT_DATA`，這符合目前不把估計冒充正式預測的限制。Docker 容器保留啟動，Sponsor 已接續完成瀏覽器人工驗收並回報 OK。
+
+`s2-harden-001-manual-acceptance.md` 已依 2026-09-30 Sponsor 人工驗證結果補齊，涵蓋真實 Places 選取、payload 邊界、可見頁先 GET 再 `VISIBLE_AUTO_REFRESH`、手動 `MANUAL_REFRESH` 與不重算 Google Routes ETA。#40／S2-HARDEN-001 可視為完成候選；文件只記錄結論、狀態碼摘要與邊界檢查，不保存金鑰、截圖、完整 request／response body 或官方原始回應。
 
 驗證：`frontend/npm run test` 通過，`frontend/npm run build` 通過。未呼叫 Google、未呼叫新北市官方來源，未提交任何 key、原始 API 回應或敏感設定。
