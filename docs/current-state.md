@@ -647,3 +647,5 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 已開始 #41／S2-HARDEN-002。新增 `CatalogCoverageReportService`，以目前 MySQL catalog／source mapping 與 S2-020／S2-021 已量測的官方基準數產生新莊覆蓋報告。第一版固定目前事實：路邊 active catalog 7／官方新莊路邊基準 2,124，verified mapping 7／2,124，覆蓋率 0.33%；路外 active catalog 3／官方新莊汽車場基準 97，verified mapping 3／97，覆蓋率 3.09%。兩者狀態皆為 `PARTIAL`，因此不得宣稱完整新莊覆蓋，也不得輸出完整 300 公尺路邊區域機率。
 
 新增 `s2-harden-002-catalog-coverage.md` 作為覆蓋報告與匯入策略文件，明確列出完整匯入前需要的可重跑輸入、catalog／mapping 分離、缺 ID／重複／座標異常／車種資格不明的分流，以及路邊 2,124、路外 97 的完成候選門檻。此階段未重新呼叫官方 API、未匯入全量 catalog、未保存原始回應；只把已量測基準轉為可測的覆蓋治理證據。
+
+依 Sponsor 回饋，後續補上 source-agnostic `CatalogImportDryRunService`，避免把新莊寫成唯一規格。新的 dry-run 使用 `CatalogImportScope` 與共同 `CatalogSourceRecord`，由來源 adapter 先轉出 service area、source system、dataset、source ID、位置、車種資格與必要 raw hint；dry-run 再統計 scope rows、accepted candidates、missing source ID、duplicate source ID、invalid coordinates、unknown eligibility、existing verified mappings 與 import recommendation。新莊會是第一個 scope config，未來新增地區時應新增 scope 與 adapter，不複製新莊專用流程。
