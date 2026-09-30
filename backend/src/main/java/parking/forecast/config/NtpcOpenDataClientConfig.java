@@ -7,7 +7,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-@EnableConfigurationProperties(NtpcOpenDataProperties.class)
+@EnableConfigurationProperties({ NtpcOpenDataProperties.class, NtpcCatalogImportProperties.class })
 public class NtpcOpenDataClientConfig {
 
     @Bean

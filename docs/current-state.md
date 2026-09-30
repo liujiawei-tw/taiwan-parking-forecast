@@ -653,3 +653,7 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 後續完成 NTPC catalog adapter 基線：`NtpcOpenDataClient` 新增新北市公有路外停車場靜態目錄 dataset `B1464EF0-9C7C-4A6F-ABF7-6BDF32847E68`；新增 `NtpcOffStreetParkingLotDto` 解析 `ID`、`AREA`、`NAME`、`ADDRESS`、`TW97X`、`TW97Y`、`TOTALCAR`。`NtpcCatalogRecordMapper` 可把路邊即時來源列與路外靜態目錄列轉成共用 `CatalogSourceRecord`，由呼叫端傳入 `serviceArea`、路邊 `areacode` 或路外行政區名稱，因此新莊只是第一個 scope，不把規格寫死在 service 核心。路外 TWD97 座標會轉成 WGS84；解析失敗、缺 ID、重複 ID與車種資格不明仍交由 dry-run 分開計數，不會自動匯入 DB 或標為 verified mapping。
 
 驗證：使用 Docker JDK 執行精準後端測試 `NtpcOpenDataDtoTest`、`NtpcOpenDataClientTest`、`NtpcCatalogRecordMapperTest`，共 11 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 76 tests／0 failures／0 errors／0 skipped。此階段未呼叫官方 API、未保存原始 JSON、未提交敏感設定，也尚未執行完整新莊 catalog 匯入。
+
+再補上 NTPC catalog dry-run orchestration：新增 `NtpcCatalogImportProperties` 與 `NtpcCatalogDryRunService`，把 NTPC client、catalog mapper 與 generic `CatalogImportDryRunService` 串起來。`parking.catalog.ntpc` 可設定 page size、max pages 與多個 scope；預設 scope 是 `NEW_TAIPEI_XINZHUANG`／`65000050`／`新莊區`。dry-run result 會保留路邊與路外 catalog 的 pages、HTTP attempts、response bytes、elapsed millis 與 traversal 是否完整，達到 `max-pages` 仍滿頁時會標示 incomplete，避免把缺頁結果偽裝成完整 catalog。這仍只產生審查報告，不寫入 `parking_place`、`source_mapping` 或發布快照。
+
+驗證：使用 Docker JDK 執行精準後端測試 `NtpcCatalogDryRunServiceTest`、`NtpcOpenDataClientTest`、`NtpcCatalogRecordMapperTest`、`CatalogImportDryRunServiceTest`，通過 16 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 79 tests／0 failures／0 errors／0 skipped。此階段仍未呼叫官方 API，也未提交任何原始回應或敏感設定。
