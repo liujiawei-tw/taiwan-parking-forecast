@@ -16,6 +16,7 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriBuilder;
 
 import parking.forecast.adapter.ntpc.dto.NtpcOffStreetParkingAvailabilityDto;
+import parking.forecast.adapter.ntpc.dto.NtpcOffStreetParkingLotDto;
 import parking.forecast.adapter.ntpc.dto.NtpcRoadsideParkingAvailabilityDto;
 import parking.forecast.config.NtpcOpenDataProperties;
 
@@ -66,6 +67,20 @@ public class NtpcOpenDataClient {
                 size,
                 NtpcOffStreetParkingAvailabilityDto.class,
                 "NTPC off-street parking availability");
+    }
+
+    public List<NtpcOffStreetParkingLotDto> fetchOffStreetCatalog(int page, int size) {
+        return fetchOffStreetCatalogPage(page, size).rows();
+    }
+
+    public NtpcOpenDataPage<NtpcOffStreetParkingLotDto> fetchOffStreetCatalogPage(int page, int size) {
+        validatePageRequest(page, size);
+        return fetch(
+                properties.getOffStreetCatalog(),
+                page,
+                size,
+                NtpcOffStreetParkingLotDto.class,
+                "NTPC off-street parking catalog");
     }
 
     private <T> NtpcOpenDataPage<T> fetch(

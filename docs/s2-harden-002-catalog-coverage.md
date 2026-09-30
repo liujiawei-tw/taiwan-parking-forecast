@@ -1,6 +1,6 @@
 # S2-HARDEN-002 新莊 Catalog／Source Mapping 覆蓋報告
 
-更新日期：2026-09-30。狀態：第一版覆蓋報告與匯入策略。本文記錄已確認事實、目前工作假設與待驗證項目；不保存官方原始回應、金鑰或敏感設定。
+更新日期：2026-09-30。狀態：第一版覆蓋報告、匯入策略與 NTPC catalog adapter 基線。本文記錄已確認事實、目前工作假設與待驗證項目；不保存官方原始回應、金鑰或敏感設定。
 
 ## 結論
 
@@ -66,12 +66,32 @@ Dry run 會依 `CatalogImportScope` 統計：
 
 這讓新莊只是第一個 `scope config`；未來新增地區時，應新增對應的 scope 與來源 adapter，不應複製新莊專用 service。
 
+## NTPC Catalog Adapter 基線
+
+第一版已新增 `NtpcCatalogRecordMapper`，把新北市 Open Data 的路邊與路外來源列轉成共用 `CatalogSourceRecord`，供 `CatalogImportDryRunService` 使用。這仍是 dry-run 輸入轉換，不會寫入 `parking_place` 或 `source_mapping`，也不會把任何來源列自動標為 `VERIFIED`。
+
+路邊 adapter：
+
+- 以呼叫端傳入的 `serviceArea` 與 `roadsideAreaCode` 篩選，例如新莊第一個 scope 使用 `NEW_TAIPEI_XINZHUANG`／`65000050`；service 本體不綁死新莊。
+- `sourceSystem=NTPC_OPEN_DATA`、`datasetCode=NTPC_ROADSIDE_SPOT`、`placeType=ON_STREET_SPOT`。
+- 來源 ID 優先使用官方 `id`，缺值時退回 `cellid`，讓 dry-run 能另外統計缺 ID 與重複 ID。
+- 座標以來源 WGS84 `latitude`／`longitude` 解析；解析失敗時保留 `null`，交由 dry-run 計入 invalid coordinates。
+- 車種資格延續目前正規化規則：文字含 `機車` 為 `NOT_ELIGIBLE`；含 `小型車` 或 `汽車` 為 `CONFIRMED`；其餘為 `UNKNOWN`。
+
+路外 adapter：
+
+- 使用新北市公有路外停車場靜態目錄 dataset `B1464EF0-9C7C-4A6F-ABF7-6BDF32847E68`，以呼叫端傳入的 `offStreetAreaName` 篩選，例如 `新莊區`。
+- `sourceSystem=NTPC_OPEN_DATA`、`datasetCode=NTPC_OFF_STREET_AVAILABILITY`、`placeType=OFF_STREET_LOT`。目前使用即時剩餘位 dataset code 作 mapping key，因靜態目錄 `ID` 與即時剩餘位 `ID` 是同一個後續查詢 key。
+- 靜態目錄的 TWD97 `TW97X`／`TW97Y` 會轉為 WGS84；解析或轉換失敗時保留 `null`，交由 dry-run 計入 invalid coordinates。
+- `TOTALCAR > 0` 視為汽車資格 `CONFIRMED`；`TOTALCAR <= 0` 為 `NOT_ELIGIBLE`；缺值或格式異常為 `UNKNOWN`。
+- raw hint 只保留名稱、行政區、地址、TWD97 與汽車格數等必要排查線索，不保存完整官方原始回應。
+
 ## 待驗證
 
 - 路邊 `id`／`cellid` 長期穩定性與重複列語意。
 - 路邊 `name`、開放日、開放時段、備註是否足以判斷一般汽車資格與條件式可停。
 - 路外靜態目錄是否需要全量分頁取得，避免只使用前 1,000 筆造成假完整。
-- 路外 TWD97 座標轉 WGS84 的誤差與入口座標策略。
+- 路外 TWD97 座標轉 WGS84 已有單元測試基線；仍需以更多真實點驗證誤差與入口座標策略。
 - catalog 更新時，單筆暫時消失應標 `INACTIVE`、保留上一版或等待多輪確認。
 
 ## 驗證方式
@@ -82,3 +102,9 @@ Dry run 會依 `CatalogImportScope` 統計：
 - 路外：3 / 97 = 3.09%，`PARTIAL`。
 
 這份報告只用於覆蓋治理與 Sprint 3 進入條件，不是使用者 API 契約，也不是正式服務承諾。
+
+NTPC adapter 基線的自動化驗證：
+
+- `NtpcOpenDataDtoTest`：解析路外靜態目錄欄位 `ID`、`AREA`、`NAME`、`ADDRESS`、`TW97X`、`TW97Y`、`TOTALCAR`。
+- `NtpcOpenDataClientTest`：確認路外靜態目錄使用設定中的 dataset ID 組成 request。
+- `NtpcCatalogRecordMapperTest`：確認路邊／路外 scope 篩選、來源 ID fallback、車種資格、座標解析失敗分流，以及路外 TWD97 轉 WGS84 的誤差範圍。
