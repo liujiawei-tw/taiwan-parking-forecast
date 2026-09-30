@@ -1,6 +1,6 @@
 # S2-HARDEN-002 新莊 Catalog／Source Mapping 覆蓋報告
 
-更新日期：2026-09-30。狀態：第一版覆蓋報告、匯入策略與 NTPC catalog adapter 基線。本文記錄已確認事實、目前工作假設與待驗證項目；不保存官方原始回應、金鑰或敏感設定。
+更新日期：2026-09-30。狀態：第一版覆蓋報告、匯入策略、NTPC catalog adapter 與 dry-run orchestration 基線。本文記錄已確認事實、目前工作假設與待驗證項目；不保存官方原始回應、金鑰或敏感設定。
 
 ## 結論
 
@@ -86,12 +86,29 @@ Dry run 會依 `CatalogImportScope` 統計：
 - `TOTALCAR > 0` 視為汽車資格 `CONFIRMED`；`TOTALCAR <= 0` 為 `NOT_ELIGIBLE`；缺值或格式異常為 `UNKNOWN`。
 - raw hint 只保留名稱、行政區、地址、TWD97 與汽車格數等必要排查線索，不保存完整官方原始回應。
 
+## NTPC Catalog Dry Run Orchestration
+
+後續已新增 `NtpcCatalogDryRunService` 與 `NtpcCatalogImportProperties`，把 client、mapper 與 generic dry-run 統計串成可重跑流程。這個 service 仍不寫 DB、不發布 snapshot，也不會把候選資料自動標成 verified mapping；它只產生審查用報告。
+
+第一版設定放在 `parking.catalog.ntpc`：
+
+- `page-size` 與 `max-pages`：獨立於使用者查詢刷新設定，避免把 catalog 全量擷取和即時 refresh cooldown 混在一起。
+- `scopes[]`：每個 scope 定義 `service-area`、`roadside-area-code`、`off-street-area-name`。預設第一個 scope 是 `NEW_TAIPEI_XINZHUANG`／`65000050`／`新莊區`；未來新增板橋、中和或其他縣市時，應新增 scope，而不是複製一套新莊專用 service。
+
+Dry run result 會包含：
+
+- generic `CatalogImportDryRunReport`：scope rows、accepted candidates、missing source ID、duplicate source ID、invalid coordinates、unknown eligibility、existing verified mappings 與 recommendation。
+- roadside fetch summary：pages、HTTP attempts、response bytes、elapsed millis、是否取齊。
+- off-street catalog fetch summary：pages、HTTP attempts、response bytes、elapsed millis、是否取齊。
+- `sourceTraversalComplete`：路邊與路外 catalog traversal 都取齊時才為 true；達到 `max-pages` 而最後一頁仍滿頁時，會標成 false，避免把缺頁結果偽裝成完整 catalog。
+
 ## 待驗證
 
 - 路邊 `id`／`cellid` 長期穩定性與重複列語意。
 - 路邊 `name`、開放日、開放時段、備註是否足以判斷一般汽車資格與條件式可停。
 - 路外靜態目錄是否需要全量分頁取得，避免只使用前 1,000 筆造成假完整。
 - 路外 TWD97 座標轉 WGS84 已有單元測試基線；仍需以更多真實點驗證誤差與入口座標策略。
+- `NtpcCatalogDryRunService` 尚未對外提供 CLI 或管理端點；目前只能由程式層測試或後續管理流程呼叫。
 - catalog 更新時，單筆暫時消失應標 `INACTIVE`、保留上一版或等待多輪確認。
 
 ## 驗證方式
@@ -108,3 +125,4 @@ NTPC adapter 基線的自動化驗證：
 - `NtpcOpenDataDtoTest`：解析路外靜態目錄欄位 `ID`、`AREA`、`NAME`、`ADDRESS`、`TW97X`、`TW97Y`、`TOTALCAR`。
 - `NtpcOpenDataClientTest`：確認路外靜態目錄使用設定中的 dataset ID 組成 request。
 - `NtpcCatalogRecordMapperTest`：確認路邊／路外 scope 篩選、來源 ID fallback、車種資格、座標解析失敗分流，以及路外 TWD97 轉 WGS84 的誤差範圍。
+- `NtpcCatalogDryRunServiceTest`：確認 orchestration 會依設定分頁抓路邊與路外 catalog、保留 fetch measurements、套用 scope mapping、呼叫 generic dry-run，並在 page limit 截斷時標示 traversal incomplete。
