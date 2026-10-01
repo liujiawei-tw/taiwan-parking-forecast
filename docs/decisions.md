@@ -558,3 +558,10 @@
 - **決策**：路邊區域預測只有在 catalog 覆蓋、source mapping 覆蓋、realtime snapshot 與模型回測都具備證據時才可輸出 `READY`。catalog 或 mapping 仍為 `PARTIAL`、coverage boundary 未知、查詢圓跨出已確認邊界、即時 snapshot 缺失／過期／品質拒絕、或模型未通過回測時，必須回資料不足或阻擋狀態，不得以目前車位數或舊 snapshot 推估機率。
 - **影響**：目前新莊路邊 active catalog 7／官方基準 2,124、路外 active catalog 3／官方基準 97，因此仍維持 `PARTIAL`。路外可對已收錄且 verified mapping 的單場做較早期的逐場資料或預測驗證，但不得宣稱 300 公尺內路外場站完整。
 - **狀態**：規則已記錄於 `s2-harden-002-catalog-coverage.md`；實際 API 原因碼與前端文案可在後續查詢契約或預測接入 Issue 中細化。
+
+## 2026-10-01：官方來源刷新設定先採多輪量測支撐的保守暫定值
+
+- **原因**：#42 多輪量測已補上路邊與路外各 5 輪低頻官方 API 證據，但尚未量到主系統端到端寫入、快照發布、多人併發、跨時段失敗率或長期穩定性。
+- **決策**：路邊若沿用新北市 JSON 全量擷取，可先以 `page-size=40000`、`max-pages=1` 作低頻驗證候選；路外以 `page-size=1000`、`max-pages=3` 可取齊目前量測到的 1,405 rows，保守可留 `max-pages=5`。來源最低刷新間隔第一版仍維持 5 分鐘暫定；缺頁或無法確認取齊仍一律拒絕發布，不覆蓋既有 `PUBLISHED` snapshot。
+- **影響**：路邊 HTTP p95 8,575 ms、路外 HTTP p95 667 ms 只能代表官方 API 下載段，不可直接當使用者等待上限或 SLA。失敗冷卻、品質比例門檻、前景等待上限與正式 `nextAllowedRefreshAt` 策略仍需後續端到端量測。
+- **狀態**：已記錄於 `realtime-source-measurement.md`；目前是 Sprint 2 hardening 的暫定設定依據，不是正式服務承諾。

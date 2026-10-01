@@ -616,7 +616,7 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 
 已開始 #38／S2-025 並完成文件基線校正。新增 `sprint-3-entry-criteria.md`，明確區分目前已完成的主系統能力、仍未完成的資料與人工驗收，以及 Sprint 3 可以開始預測工作的硬性門檻。預測機率輸出前至少需要可重現多輪來源量測、清楚的 catalog／mapping 覆蓋界線、與線上 300 公尺定義一致的訓練標籤、無時間洩漏的回測、基準模型比較、完整推論契約與可回滾模型版本。
 
-同步更新 README、backend README、roadmap、implementation plan、open questions 與 project status，移除 #33 至 #38 尚未開始、前端仍為 mock、目錄仍為合成 seed 等過時敘述。最新基線是：S2-020 至 S2-024 已完成官方小樣本 mapping、單輪來源量測、Redis query state、Maps／Places 結果頁與可見頁受控刷新接線；但完整新莊 catalog、多輪 p50／p95、真實 browser key Places 人工驗收、端到端官方刷新人工驗收及兩類預測模型仍未完成。
+同步更新 README、backend README、roadmap、implementation plan、open questions 與 project status，移除 #33 至 #38 尚未開始、前端仍為 mock、目錄仍為合成 seed 等過時敘述。當時基線是：S2-020 至 S2-024 已完成官方小樣本 mapping、單輪來源量測、Redis query state、Maps／Places 結果頁與可見頁受控刷新接線；但完整新莊 catalog、多輪 p50／p95、真實 browser key Places 人工驗收、端到端官方刷新人工驗收及兩類預測模型仍未完成。2026-10-01 後多輪官方 API 下載段量測已補齊，端到端刷新寫入與發布量測仍未完成。
 
 驗證：本次為文件任務，未修改產品程式、未呼叫外部 API、未保存原始回應或敏感設定。使用 `git diff --check` 做格式與空白檢查；不重新跑 Maven／前端 build，因為行為程式碼未變更。
 
@@ -659,3 +659,11 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 驗證：使用 Docker JDK 執行精準後端測試 `NtpcCatalogDryRunServiceTest`、`NtpcOpenDataClientTest`、`NtpcCatalogRecordMapperTest`、`CatalogImportDryRunServiceTest`，通過 16 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 79 tests／0 failures／0 errors／0 skipped。此階段仍未呼叫官方 API，也未提交任何原始回應或敏感設定。
 
 2026-10-01 補齊 #41 驗收文件收斂：`s2-harden-002-catalog-coverage.md` 已列出完整 catalog 匯入候選方案，明確不採手寫全量 repeatable seed 或一次性 migration 作第一選擇，採「NTPC catalog dry-run → 人工審查摘要 → 受控管理命令匯入」方向。覆蓋規則也已拆成 catalog 覆蓋、mapping 覆蓋與 realtime 覆蓋三層；路邊 300 公尺區域預測只有在 catalog／mapping 完整、coverage boundary 可判斷、即時 snapshot 新鮮且模型回測通過時才可輸出 `READY`，否則必須以 `CATALOG_COVERAGE_PARTIAL`、`COVERAGE_BOUNDARY_UNKNOWN`、`REALTIME_SNAPSHOT_EXPIRED`、`MODEL_NOT_READY` 等原因拒絕或標示資料不足。同步更新 `decisions.md` 與 `open-questions.md`。本次為文件收斂，未修改產品程式、未呼叫官方 API、未提交原始回應或敏感設定。
+
+## 2026-10-01 S2-HARDEN-003 多輪官方來源量測
+
+已開始 #42／S2-HARDEN-003 並完成低頻真實多輪量測紀錄。路邊格位即時狀態 5 輪皆使用新北市官方 Open Data JSON `page=0&size=40000`，每輪 1 request／1 page／30,941 rows／11,270,904 bytes；HTTP 成功 5/5，延遲 p50 5,279 ms、p95 8,575 ms。路外即時剩餘車位 5 輪皆使用 `size=1000` 取 page 0 與 page 1，每輪 2 requests／2 pages／1,405 rows；HTTP 成功 5/5，bytes p50/p95 50,592，延遲 p50 358 ms、p95 667 ms。
+
+品質紀錄已分開記錄缺 source ID、重複 source ID、來源欄位異常、mapping 覆蓋與發布建議。路邊缺 source ID 0、重複 source ID rows 288、`cellstatus`／`parkingstatus` 缺值 0；S2-020 seed 的 7 個 verified mapping 皆仍可在官方即時回應找到，但全新莊 verified mapping 仍只有 7/2,124。路外缺 source ID 0、重複 source ID rows 11、`AVAILABLECAR` 缺值 0、負值 979；S2-020 seed 的 3 個 verified mapping 皆仍可在官方即時回應找到，但全新莊 verified mapping 仍只有 3/97。
+
+設定建議已寫入 `docs/realtime-source-measurement.md`：路邊若沿用 JSON 全量擷取，可先以 `page-size=40000`、`max-pages=1` 作低頻驗證候選；路外 `page-size=1000`、`max-pages=3` 可取齊目前 1,405 rows，保守可留 `max-pages=5`。最低刷新間隔仍維持 5 分鐘暫定；失敗冷卻、前景等待上限、品質比例門檻與正式 SLA 仍未量到，不能偽裝成服務承諾。本輪只提交摘要與文件，不保存原始 JSON、不提交完整 request／response body、未使用金鑰。
