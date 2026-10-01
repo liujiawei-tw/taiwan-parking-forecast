@@ -1,6 +1,16 @@
 # 目前狀態
 
-更新日期：2026-10-01。
+更新日期：2026-10-02。
+
+## 2026-10-02 最新進度：S3-005 官方來源端到端刷新寫入與發布量測
+
+- 已開始 #61／S3-005，新增 `RefreshE2eMeasurementCommandRunner` 與 `parking.refresh.measurement.command`，預設 `enabled=false`，只在明確開啟時執行一次性端到端量測。command runner 會直接呼叫官方 refresh service，並量測 HTTP、頁數、response bytes、normalize、品質量測、DB 發布交易、`PUBLISHED` snapshot 查詢讀取與總耗時。
+- `RealtimeSourceRefreshService.RefreshExecutionResult` 已補上 `pageCount`、`responseBytes` 與 `RefreshStageTimings`，讓路邊／路外 refresh 結果可重現量測摘要。DB 的 `quality_summary` 維持品質摘要，不把未完成或易混淆的耗時資訊塞進品質欄位。
+- 已用一次性 Docker Maven 容器跑真實新北市官方 Open Data E2E 量測，不啟動或停止既有 Docker Compose，不保存原始 JSON、完整 request／response body 或敏感設定。
+- 路邊 `NTPC_ROADSIDE_SPOT`：1 HTTP request／1 page／11,270,904 bytes／30,941 normalized records；發布成功，7 筆已 mapping、30,934 筆 unmapped、0 failed observations；HTTP 4,692 ms、normalize 39 ms、measurement 1,577 ms、publish transaction 3,044 ms、total 9,353 ms；讀回 `PUBLISHED` snapshot 53 ms，query status 為 `UNKNOWN`。
+- 路外 `NTPC_OFF_STREET_AVAILABILITY`：2 HTTP requests／2 pages／50,608 bytes／1,405 normalized records；發布成功，3 筆已 mapping、1,402 筆 unmapped、0 failed observations；HTTP 872 ms、normalize 8 ms、measurement 1,544 ms、publish transaction 577 ms、total 3,003 ms；讀回 `PUBLISHED` snapshot 40 ms，query status 為 `READY`。
+- 新增 `docs/s3-005-refresh-e2e-measurement.md`，把兩輪量測指令、結果、拒絕／失敗分流、設定依據與限制寫清楚。缺頁拒絕由 `NtpcRealtimeSourceRefreshServiceTest` 覆蓋；品質拒絕不覆蓋既有 `PUBLISHED` snapshot 由 `AvailabilitySnapshotPublishingServiceTest` 覆蓋；重複、來源欄位異常與 mapping 覆蓋則承接 #42 的來源量測文件。
+- 驗證：Docker Maven 精準測試 `NtpcRealtimeSourceRefreshServiceTest,SourceRefreshCoordinationServiceTest,AvailabilitySnapshotPublishingServiceTest` 通過 12 tests／0 failures／0 errors；完整後端 Docker Maven `mvn test` 通過 88 tests／0 failures／0 errors／0 skipped。
 
 ## 2026-10-01 最新進度：S3-004 Catalog 匯入管理命令
 
