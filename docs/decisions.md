@@ -565,3 +565,10 @@
 - **決策**：路邊若沿用新北市 JSON 全量擷取，可先以 `page-size=40000`、`max-pages=1` 作低頻驗證候選；路外以 `page-size=1000`、`max-pages=3` 可取齊目前量測到的 1,405 rows，保守可留 `max-pages=5`。來源最低刷新間隔第一版仍維持 5 分鐘暫定；缺頁或無法確認取齊仍一律拒絕發布，不覆蓋既有 `PUBLISHED` snapshot。
 - **影響**：路邊 HTTP p95 8,575 ms、路外 HTTP p95 667 ms 只能代表官方 API 下載段，不可直接當使用者等待上限或 SLA。失敗冷卻、品質比例門檻、前景等待上限與正式 `nextAllowedRefreshAt` 策略仍需後續端到端量測。
 - **狀態**：已記錄於 `realtime-source-measurement.md`；目前是 Sprint 2 hardening 的暫定設定依據，不是正式服務承諾。
+
+## 2026-10-01：訓練標籤 dry run 只使用已發布觀測並保守拒絕覆蓋不足樣本
+
+- **原因**：Sprint 3 需要從主系統已發布觀測建立候選訓練資料，但不能把候選／拒絕快照、未知可用數、過期資料或部分 catalog coverage 冒充真實標籤。
+- **決策**：`TrainingLabelDryRunService` 只讀 `PUBLISHED` snapshot 的 `availability_observation`，且 `system_fetched_at` 時間窗採起點含括、終點不含括。路邊區域樣本必須符合線上 300 公尺直線距離、service area、一般汽車資格、資料年齡與有效觀測比例；catalog coverage 不是 `COMPLETE` 時一律拒絕並記 `CATALOG_COVERAGE_PARTIAL`。路外逐場樣本必須是 active、汽車資格 confirmed、品質可用且可用數或狀態可判定；`UNKNOWN`、負值特殊碼和品質失敗不得當成 0。
+- **影響**：第一版可以產生 row 數、可用比例、拒絕原因、時間覆蓋與 mapping 覆蓋的 dry run 報告，但不會訓練模型、不產生預測機率、不改使用者查詢 API。
+- **狀態**：後端 service 與單元測試已完成初版；實際 MySQL 管理命令、報告持久化與大型匯出策略仍待後續決定。

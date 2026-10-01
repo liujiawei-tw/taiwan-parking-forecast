@@ -667,3 +667,11 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 品質紀錄已分開記錄缺 source ID、重複 source ID、來源欄位異常、mapping 覆蓋與發布建議。路邊缺 source ID 0、重複 source ID rows 288、`cellstatus`／`parkingstatus` 缺值 0；S2-020 seed 的 7 個 verified mapping 皆仍可在官方即時回應找到，但全新莊 verified mapping 仍只有 7/2,124。路外缺 source ID 0、重複 source ID rows 11、`AVAILABLECAR` 缺值 0、負值 979；S2-020 seed 的 3 個 verified mapping 皆仍可在官方即時回應找到，但全新莊 verified mapping 仍只有 3/97。
 
 設定建議已寫入 `docs/realtime-source-measurement.md`：路邊若沿用 JSON 全量擷取，可先以 `page-size=40000`、`max-pages=1` 作低頻驗證候選；路外 `page-size=1000`、`max-pages=3` 可取齊目前 1,405 rows，保守可留 `max-pages=5`。最低刷新間隔仍維持 5 分鐘暫定；失敗冷卻、前景等待上限、品質比例門檻與正式 SLA 仍未量到，不能偽裝成服務承諾。本輪只提交摘要與文件，不保存原始 JSON、不提交完整 request／response body、未使用金鑰。
+
+## 2026-10-01 S3-001 標籤 dry run 初版
+
+已開始 #43／S3-001。新增 `TrainingLabelDryRunService`，第一版只讀 `snapshot_status=PUBLISHED` 且位於指定 `system_fetched_at` 時間窗內的 `availability_observation`，查詢條件採起點含括、終點不含括，避免相鄰批次重複取樣。不讀 `CANDIDATE`／`REJECTED` snapshot，不呼叫 Google、新北市官方 API 或 TDX，也不建立大型匯出檔。Repository 新增依 snapshot 狀態、dataset 與時間窗查詢已發布觀測的方法。
+
+路邊 dry run 以目的地圓心、直線半徑、`serviceArea`、`ON_STREET_SPOT`、`ACTIVE`、汽車資格 `CONFIRMED` 與有效觀測比例產生區域候選樣本；若 catalog coverage 不是 `COMPLETE`，即使範圍內有目前可用格位，也會拒絕並記 `CATALOG_COVERAGE_PARTIAL`，避免把目前小樣本誤當完整 300 公尺區域標籤。路外 dry run 以單一 verified lot 的已發布觀測建立候選樣本，會分開拒絕類型錯誤、汽車資格不符、資料過期、品質不可用與未知可用數。
+
+新增 `docs/s3-001-label-dry-run.md` 記錄 dry run 目標、資料來源、路邊／路外標籤規則、報告欄位與拒絕原因。驗證：Windows Maven wrapper 仍有既有問題，改用 Docker Maven 執行精準測試 `TrainingLabelDryRunServiceTest`，通過 3 tests／0 failures／0 errors；完整後端 `mvn -q test` 通過 82 tests／0 failures／0 errors。此階段不訓練模型、不輸出預測機率、不提交原始 API 回應或敏感設定。
