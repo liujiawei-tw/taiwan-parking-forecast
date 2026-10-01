@@ -1,8 +1,10 @@
 package parking.forecast.service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -118,6 +120,13 @@ public class ParkingQueryService {
         ));
         RoadsideSection roadsideSection = buildRoadsideSection(nearby);
         OffStreetSection offStreetSection = buildOffStreetSection(nearby);
+        EtaSection etaSection = new EtaSection(
+                eta.status(),
+                eta.provider(),
+                eta.departureAt(),
+                eta.estimatedArrivalAt(),
+                eta.durationSeconds(),
+                eta.message());
 
         ParkingQueryResponse response = new ParkingQueryResponse(
                 new QuerySection(queryId, "READY", false, now, now, now.plus(queryStateProperties.getTtl()), "Parking query is ready."),
@@ -133,16 +142,10 @@ public class ParkingQueryService {
                         MVP_AREA_CODE,
                         resolveCoverageStatus(nearby),
                         "Catalog coverage uses a S2-020 traceable NTPC Open Data subset. It is not complete city coverage."),
-                new EtaSection(
-                        eta.status(),
-                        eta.provider(),
-                        eta.departureAt(),
-                        eta.estimatedArrivalAt(),
-                        eta.durationSeconds(),
-                        eta.message()),
+                etaSection,
                 roadsideSection,
                 offStreetSection,
-                buildPredictionsSection(nearby, eta.estimatedArrivalAt()),
+                buildPredictionsSection(nearby, etaSection, roadsideSection, offStreetSection, now),
                 buildRefreshSection(roadsideSection, offStreetSection));
 
         parkingQueryStateStore.save(request.requestToken(), new StoredParkingQuery(response, request));
@@ -203,7 +206,7 @@ public class ParkingQueryService {
                 existing.eta(),
                 roadsideSection,
                 offStreetSection,
-                buildPredictionsSection(nearby, existing.eta().estimatedArrivalAt()),
+                buildPredictionsSection(nearby, existing.eta(), roadsideSection, offStreetSection, now),
                 buildRefreshSection(roadsideRefresh, offStreetRefresh));
         parkingQueryStateStore.save(request.requestToken(), new StoredParkingQuery(refreshed, request));
         return refreshed;
@@ -308,6 +311,7 @@ public class ParkingQueryService {
                     LOCAL_CATALOG_SOURCE,
                     null,
                     null,
+                    null,
                     List.of(),
                     "No roadside catalog records were found inside 300 meters."
             );
@@ -325,6 +329,7 @@ public class ParkingQueryService {
         return new RoadsideSection(
                 status,
                 resolveSource(availability),
+                availability.snapshotId(),
                 availability.systemCollectedAt(),
                 currentlyAvailableSpaces,
                 availableSpots,
@@ -346,6 +351,7 @@ public class ParkingQueryService {
                     "NO_CATALOG_RESULTS",
                     LOCAL_CATALOG_SOURCE,
                     null,
+                    null,
                     List.of(),
                     "No off street catalog records were found inside 300 meters."
             );
@@ -358,6 +364,7 @@ public class ParkingQueryService {
         return new OffStreetSection(
                 resolveOffStreetStatus(availability, parkingLots),
                 resolveSource(availability),
+                availability.snapshotId(),
                 availability.systemCollectedAt(),
                 parkingLots,
                 offStreetMessage(availability)
@@ -563,24 +570,127 @@ public class ParkingQueryService {
         };
     }
 
-    private PredictionsSection buildPredictionsSection(NearbyParkingSearchResult nearby, OffsetDateTime estimatedArrivalAt) {
+    private PredictionsSection buildPredictionsSection(
+            NearbyParkingSearchResult nearby,
+            EtaSection eta,
+            RoadsideSection roadsideSection,
+            OffStreetSection offStreetSection,
+            OffsetDateTime generatedAt
+    ) {
+        List<String> commonReasons = predictionReasons(eta);
+        boolean hasRoadsideCatalog = nearby.places().stream()
+                .anyMatch(place -> place.placeType() == ParkingPlaceType.ON_STREET_SPOT);
+        List<String> roadsideReasons = new ArrayList<>(commonReasons);
+        roadsideReasons.addAll(sourcePredictionReasons(roadsideSection.status(), hasRoadsideCatalog));
+        if (hasRoadsideCatalog) {
+            roadsideReasons.add("CATALOG_COVERAGE_PARTIAL");
+        }
+
         List<OffStreetPrediction> offStreetPredictions = nearby.places().stream()
                 .filter(place -> place.placeType() == ParkingPlaceType.OFF_STREET_LOT)
                 .map(place -> new OffStreetPrediction(
                         place.parkingPlaceId().toString(),
                         "INSUFFICIENT_DATA",
                         null,
+                        null,
+                        inputSnapshotVersion(offStreetSection),
+                        dataAgeSeconds(offStreetSection.systemCollectedAt(), generatedAt),
+                        offStreetPredictionReasons(commonReasons, offStreetSection.status(), place.parkingPlaceId(), offStreetSection),
                         "No validated model or baseline is connected yet."
                 ))
                 .toList();
 
+        List<String> sectionReasons = new ArrayList<>(roadsideReasons);
+        offStreetPredictions.stream()
+                .flatMap(prediction -> prediction.reasons().stream())
+                .filter(reason -> !sectionReasons.contains(reason))
+                .forEach(sectionReasons::add);
+
         return new PredictionsSection(
                 "INSUFFICIENT_DATA",
-                estimatedArrivalAt,
-                new RoadsidePrediction("INSUFFICIENT_DATA", null, "No validated model or baseline is connected yet."),
+                eta.estimatedArrivalAt(),
+                null,
+                generatedAt,
+                List.copyOf(sectionReasons),
+                new RoadsidePrediction(
+                        "INSUFFICIENT_DATA",
+                        null,
+                        null,
+                        inputSnapshotVersion(roadsideSection),
+                        dataAgeSeconds(roadsideSection.systemCollectedAt(), generatedAt),
+                        List.copyOf(roadsideReasons),
+                        "No validated model or baseline is connected yet."
+                ),
                 offStreetPredictions,
-                "Prediction contract is present, but S2-017 does not output probabilities."
+                "Prediction contract is present, but no validated model is loaded. Current availability and ETA remain independent."
         );
+    }
+
+    private List<String> predictionReasons(EtaSection eta) {
+        List<String> reasons = new ArrayList<>(List.of("MODEL_NOT_LOADED", "BACKTEST_NOT_VERIFIED"));
+        if (!"READY".equals(eta.status()) || eta.estimatedArrivalAt() == null) {
+            reasons.add("ETA_NOT_READY");
+        }
+        return reasons;
+    }
+
+    private List<String> sourcePredictionReasons(String sourceStatus, boolean hasCatalogResults) {
+        if (!hasCatalogResults) {
+            return List.of("NO_CATALOG_RESULTS");
+        }
+        return switch (sourceStatus) {
+            case "READY", "PARTIAL" -> List.of();
+            case "STALE" -> List.of("REALTIME_SNAPSHOT_EXPIRED");
+            case "NO_REALTIME_SNAPSHOT" -> List.of("NO_REALTIME_SNAPSHOT");
+            case "UNKNOWN" -> List.of("UNKNOWN_AVAILABILITY");
+            case "NO_OBSERVATION" -> List.of("NO_OBSERVATION");
+            default -> List.of("MODEL_INPUT_NOT_READY");
+        };
+    }
+
+    private List<String> offStreetPredictionReasons(
+            List<String> commonReasons,
+            String sourceStatus,
+            Long parkingPlaceId,
+            OffStreetSection offStreetSection
+    ) {
+        List<String> reasons = new ArrayList<>(commonReasons);
+        reasons.addAll(sourcePredictionReasons(sourceStatus, true));
+        offStreetSection.parkingLots().stream()
+                .filter(lot -> lot.id().equals(parkingPlaceId.toString()))
+                .findFirst()
+                .map(ParkingLot::availabilityStatus)
+                .ifPresent(status -> {
+                    switch (status) {
+                        case "STALE" -> reasons.add("REALTIME_SNAPSHOT_EXPIRED");
+                        case "UNKNOWN" -> reasons.add("UNKNOWN_AVAILABILITY");
+                        case "NO_OBSERVATION" -> reasons.add("NO_OBSERVATION");
+                        case "NO_REALTIME_SNAPSHOT" -> reasons.add("NO_REALTIME_SNAPSHOT");
+                        default -> {
+                        }
+                    }
+                });
+        return reasons.stream().distinct().toList();
+    }
+
+    private String inputSnapshotVersion(RoadsideSection section) {
+        return section.snapshotId() == null ? null : "NTPC_ROADSIDE_SPOT:%d".formatted(section.snapshotId());
+    }
+
+    private String inputSnapshotVersion(OffStreetSection section) {
+        return section.snapshotId() == null ? null : "NTPC_OFF_STREET_AVAILABILITY:%d".formatted(section.snapshotId());
+    }
+
+    private Integer dataAgeSeconds(OffsetDateTime systemCollectedAt, OffsetDateTime generatedAt) {
+        if (systemCollectedAt == null || generatedAt == null) {
+            return null;
+        }
+        Duration age = Duration.between(systemCollectedAt, generatedAt);
+        if (age.isNegative()) {
+            return null;
+        }
+        long ageSeconds = age.toSeconds();
+        return ageSeconds > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) ageSeconds;
     }
 
     private String resolveCoverageStatus(NearbyParkingSearchResult nearby) {

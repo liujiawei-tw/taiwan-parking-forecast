@@ -579,3 +579,10 @@
 - **決策**：`BaselineBacktestService` 接收 S3-001 的 label dry run report，只評估 usable labels，依時間排序切成 training／validation／test。第一版 baseline 固定為 `TRAIN_POSITIVE_RATE`、`TRAIN_MAJORITY_CLASS`、`LATEST_TRAINING_LABEL`；指標固定輸出 Brier score、log loss、accuracy、precision、recall 與 TP／FP／FN。若樣本不足、split 不足、test split 單一類別或最佳 test Brier score 高於預先設定門檻，報告狀態維持 `INSUFFICIENT_DATA`。
 - **影響**：這能產出路邊與路外各自的 baseline 回測摘要，但仍不代表模型品質達服務標準；線上 `predictions` 在 #45 前仍維持資料不足或模型未就緒。
 - **狀態**：後端 service 與合成樣本測試已完成初版；實際 MySQL 報告、持久化、notebook／CSV 匯出與模型產物版本化仍待後續決定。
+
+## 2026-10-01：線上預測在無模型或資料不足時固定可解釋降級
+
+- **原因**：模型尚未通過回測前，線上 API 仍需要穩定 `predictions` 區塊，但不能把目前車位、baseline 分數或人工估計包裝成抵達時機率。
+- **決策**：查詢回應固定保留 `predictions`，目前無模型時回 `INSUFFICIENT_DATA`、`modelVersion=null`、`probability=null`，並輸出 `generatedAt`、`targetArrivalAt`、`inputSnapshotVersion`、`dataAgeSeconds` 與原因碼。第一版原因碼包含 `MODEL_NOT_LOADED`、`BACKTEST_NOT_VERIFIED`、`ETA_NOT_READY`、`NO_CATALOG_RESULTS`、`CATALOG_COVERAGE_PARTIAL`、`NO_REALTIME_SNAPSHOT`、`REALTIME_SNAPSHOT_EXPIRED`、`UNKNOWN_AVAILABILITY`、`NO_OBSERVATION` 與 `MODEL_INPUT_NOT_READY`。
+- **影響**：模型不可用、ETA 失敗、快照缺失或過期、catalog 覆蓋不足時，只降級 `predictions`；目前車位、ETA 與刷新狀態仍各自顯示。模型版本切換失敗時回滾到無模型狀態，不覆蓋既有 `PUBLISHED` snapshot。
+- **狀態**：S3-003 後端契約初版已實作並文件化；正式模型產物、線上推論程序、模型版本儲存與自動回滾仍待後續任務。

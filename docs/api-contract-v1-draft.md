@@ -272,11 +272,38 @@ Google ETA 的時間狀態與停車資料 5 分鐘新鮮度門檻分開。停車
 | 目標抵達時間 | `targetArrivalAt` | 必須等於 `eta.estimatedArrivalAt`；不得用固定 10／30／60 分鐘替代 |
 | ETA 參照 | `etaRef` | 指向 `eta` 區塊的本次 Google Routes 計算結果與計算時間 |
 | 模型版本 | `modelVersion` | 可空；尚未有模型或只用基準規則時要明確標示 |
+| 產生時間 | `generatedAt` | 主系統組出本次 `predictions` 區塊的時間；即使資料不足也要可追蹤 |
 | 訓練資料摘要 | `trainingDataSummary` | 可空；可描述資料來源、時間範圍、樣本數與最後訓練時間 |
 | 路邊預測 | `roadside` | 目的地 300 公尺內「抵達時至少一格一般汽車格位可停」的區域機率與狀態 |
 | 路外預測 | `offStreet` | 逐停車場「抵達時仍有汽車位」的機率與狀態 |
 | 阻擋或不足原因 | `reasons` | 例如缺 ETA、覆蓋不完整、資料過期、訓練資料不足、模型不可用、來源失敗 |
 | 使用者訊息 | `message` | 給前端顯示的簡短說明，例如「目前資料不足，先顯示即時車位」 |
+
+S3-003 先把「無模型或資料不足」也定為合法、可解釋的查詢結果。`predictions.status=INSUFFICIENT_DATA` 時，`probability` 一律為 `null`，`modelVersion` 可為 `null`，但 `generatedAt`、`targetArrivalAt`（若 ETA 可用）、`reasons`、各來源的 `inputSnapshotVersion` 與 `dataAgeSeconds` 仍應盡量提供，讓前端與工程排查能知道缺的是模型、ETA、快照、覆蓋或資料新鮮度。
+
+| 子項欄位 | 適用對象 | 說明 |
+| --- | --- | --- |
+| `status` | `predictions.roadside`、`predictions.offStreet[]` | 候選值同上；目前無模型時固定 `INSUFFICIENT_DATA` |
+| `probability` | `predictions.roadside`、`predictions.offStreet[]` | 只有 `status=READY` 且模型已驗證時才可為 0 到 1 的數字；目前無模型時為 `null` |
+| `modelVersion` | `predictions` 與各子項 | 已載入並通過回測門檻的模型版本；無模型、回測未通過或回滾到無模型狀態時為 `null` |
+| `inputSnapshotVersion` | 各子項 | 推論輸入所依據的已發布快照版本，例如 `NTPC_ROADSIDE_SPOT:123`；沒有可用快照時為 `null` |
+| `dataAgeSeconds` | 各子項 | `generatedAt` 與來源 `systemCollectedAt` 的差距秒數；沒有可用快照或時間異常時為 `null` |
+| `reasons` | `predictions` 與各子項 | 機率不可輸出的原因碼；頂層為各子項原因彙整 |
+
+第一版原因碼先分為以下語意，前端可依原因碼顯示「預測資料不足」，不解析後端訊息文字。
+
+| 原因碼 | 語意 |
+| --- | --- |
+| `MODEL_NOT_LOADED` | 線上沒有載入可用模型產物 |
+| `BACKTEST_NOT_VERIFIED` | 候選模型或 baseline 尚未通過時間切分回測門檻 |
+| `ETA_NOT_READY` | Google ETA 失敗、被阻擋或沒有 `targetArrivalAt` |
+| `NO_CATALOG_RESULTS` | 300 公尺範圍內沒有可用目錄結果，或目錄不可支撐該子項 |
+| `CATALOG_COVERAGE_PARTIAL` | 目錄或 mapping 覆蓋仍為部分，不可冒充完整 300 公尺區域 |
+| `NO_REALTIME_SNAPSHOT` | 該來源尚無已發布即時快照 |
+| `REALTIME_SNAPSHOT_EXPIRED` | 該來源快照已超過新鮮度門檻 |
+| `UNKNOWN_AVAILABILITY` | 來源有觀測但無法判定目前可用狀態 |
+| `NO_OBSERVATION` | 已發布快照中缺少該停車位置的觀測 |
+| `MODEL_INPUT_NOT_READY` | 來源狀態無法映射成可推論輸入，需工程排查或補規則 |
 
 路邊預測第一版的產品語意是：在目的地直線 300 公尺範圍內，抵達時至少一個一般汽車路邊格位可停的機率。它是區域摘要，不是逐格位承諾。若 `area.roadsideCoverageStatus` 不是可支持完整 300 公尺判定的狀態，或路邊目前觀測／歷史訓練資料不足，`predictions.roadside.status` 應為 `INSUFFICIENT_DATA` 或 `BLOCKED`，不可輸出完整區域機率。
 
@@ -285,6 +312,8 @@ Google ETA 的時間狀態與停車資料 5 分鐘新鮮度門檻分開。停車
 `predictions` 必須保留「不能預測」的合法結果。若 `eta.status` 不是 `READY`，`targetArrivalAt` 不存在或已過期，整個 `predictions.status` 不得為 `READY`。若車位來源過期，仍可保留已知目前觀測作參考，但模型是否能推論要看資料品質規則；不能因為目前有位就直接產生高機率。
 
 第一版面試展示可以先採簡單基準模型或可解釋規則作為模型候選，但 API 仍要用同一個 `predictions` 契約表示。若尚未通過時間切分回測，前端應顯示「預測資料不足」或「實驗中」，不得把未驗證分數包裝成正式準確預測。之後改成 ML 模型時，只更新模型版本、資料摘要與推論服務，不改前端主要契約。
+
+模型產物載入與回滾策略：線上查詢只能讀取已離線產生、已版本化並通過回測門檻的模型產物；不得在使用者查詢時即時訓練。每次部署或切換模型時，應先保留上一個可用版本與「無模型」降級路徑。若模型檔缺失、版本驗證失敗、輸入 schema 不相容、回測門檻撤銷或推論程序失敗，系統回滾到 `modelVersion=null`、`status=INSUFFICIENT_DATA`，但 `eta`、`roadside`、`offStreet` 的目前觀測照常依各自狀態顯示，不覆蓋已發布快照。
 ### 已決定：`refresh` 區塊欄位語意
 
 `refresh` 區塊只描述路邊與路外官方來源的刷新操作、共用擷取、冷卻、失敗重試與可再試時間，不放目前車位數，也不放抵達時預測。實際目前觀測分別放在 `roadside` 與 `offStreet`；抵達時機率放在 `predictions`。

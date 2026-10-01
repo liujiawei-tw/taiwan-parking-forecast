@@ -112,12 +112,23 @@ class RedisParkingQueryStateStoreTest {
                 new DestinationSection("IKEA 新莊", 25.0414214, 121.4647633, "SUPPORTED", "supported"),
                 new AreaSection(300, "STRAIGHT_LINE", "NEW_TAIPEI_XINZHUANG_MVP", "PARTIAL", "partial"),
                 new EtaSection("FAILED", "GOOGLE_ROUTES", now, null, null, "failed"),
-                new RoadsideSection("NO_REALTIME_SNAPSHOT", "LOCAL_NTPC_CATALOG", null, null, List.of(), "none"),
-                new OffStreetSection("NO_REALTIME_SNAPSHOT", "LOCAL_NTPC_CATALOG", null, List.of(), "none"),
+                new RoadsideSection("NO_REALTIME_SNAPSHOT", "LOCAL_NTPC_CATALOG", null, null, null, List.of(), "none"),
+                new OffStreetSection("NO_REALTIME_SNAPSHOT", "LOCAL_NTPC_CATALOG", null, null, List.of(), "none"),
                 new PredictionsSection(
                         "INSUFFICIENT_DATA",
                         null,
-                        new RoadsidePrediction("INSUFFICIENT_DATA", null, "none"),
+                        null,
+                        now,
+                        List.of("MODEL_NOT_LOADED", "ETA_NOT_READY"),
+                        new RoadsidePrediction(
+                                "INSUFFICIENT_DATA",
+                                null,
+                                null,
+                                null,
+                                null,
+                                List.of("MODEL_NOT_LOADED", "ETA_NOT_READY"),
+                                "none"
+                        ),
                         List.of(),
                         "none"
                 ),

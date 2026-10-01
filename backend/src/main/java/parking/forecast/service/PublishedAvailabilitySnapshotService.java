@@ -91,6 +91,7 @@ public class PublishedAvailabilitySnapshotService {
         return new PublishedAvailabilityView(
                 datasetCode,
                 status,
+                snapshot.getId(),
                 systemCollectedAt,
                 sourceObservedAt,
                 observationMap,
@@ -144,6 +145,7 @@ public class PublishedAvailabilitySnapshotService {
     public record PublishedAvailabilityView(
             DatasetCode datasetCode,
             String status,
+            Long snapshotId,
             OffsetDateTime systemCollectedAt,
             OffsetDateTime sourceObservedAt,
             Map<Long, PublishedObservation> observations,
@@ -155,6 +157,7 @@ public class PublishedAvailabilitySnapshotService {
                     "NO_CATALOG_RESULTS",
                     null,
                     null,
+                    null,
                     Map.of(),
                     "No catalog records were found inside the query radius."
             );
@@ -164,6 +167,7 @@ public class PublishedAvailabilitySnapshotService {
             return new PublishedAvailabilityView(
                     datasetCode,
                     "NO_REALTIME_SNAPSHOT",
+                    null,
                     null,
                     null,
                     Map.of(),

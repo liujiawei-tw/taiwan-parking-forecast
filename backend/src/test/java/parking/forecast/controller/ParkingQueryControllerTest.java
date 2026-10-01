@@ -100,6 +100,17 @@ class ParkingQueryControllerTest {
                     assertThat(lot.availabilityStatus()).isEqualTo("NO_REALTIME_SNAPSHOT");
                 });
         assertThat(response.getBody().predictions().status()).isEqualTo("INSUFFICIENT_DATA");
+        assertThat(response.getBody().predictions().targetArrivalAt()).isNull();
+        assertThat(response.getBody().predictions().modelVersion()).isNull();
+        assertThat(response.getBody().predictions().generatedAt()).isNotNull();
+        assertThat(response.getBody().predictions().reasons())
+                .contains("MODEL_NOT_LOADED", "BACKTEST_NOT_VERIFIED", "ETA_NOT_READY", "NO_REALTIME_SNAPSHOT");
+        assertThat(response.getBody().predictions().roadside().probability()).isNull();
+        assertThat(response.getBody().predictions().roadside().inputSnapshotVersion()).isNull();
+        assertThat(response.getBody().predictions().roadside().dataAgeSeconds()).isNull();
+        assertThat(response.getBody().predictions().roadside().reasons())
+                .contains("MODEL_NOT_LOADED", "BACKTEST_NOT_VERIFIED", "ETA_NOT_READY",
+                        "NO_REALTIME_SNAPSHOT", "CATALOG_COVERAGE_PARTIAL");
     }
 
     @Test
@@ -116,18 +127,44 @@ class ParkingQueryControllerTest {
 
         assertThat(response.roadside().source()).isEqualTo("NTPC_OPEN_DATA");
         assertThat(response.roadside().status()).isEqualTo("READY");
+        assertThat(response.roadside().snapshotId()).isNotNull();
         assertThat(response.roadside().currentlyAvailableSpaces()).isEqualTo(1);
         assertThat(response.roadside().availableSpots())
                 .extracting(spot -> spot.id())
                 .containsExactly("910106");
         assertThat(response.roadside().availableSpots().getFirst().availabilityStatus()).isEqualTo("AVAILABLE");
         assertThat(response.offStreet().source()).isEqualTo("NTPC_OPEN_DATA");
+        assertThat(response.offStreet().snapshotId()).isNotNull();
         assertThat(response.offStreet().parkingLots())
                 .filteredOn(lot -> lot.id().equals("920101"))
                 .singleElement()
                 .satisfies(lot -> {
                     assertThat(lot.availabilityStatus()).isEqualTo("AVAILABLE");
                     assertThat(lot.availableCarSpaces()).isEqualTo(12);
+                });
+        assertThat(response.predictions().status()).isEqualTo("INSUFFICIENT_DATA");
+        assertThat(response.predictions().generatedAt()).isNotNull();
+        assertThat(response.predictions().roadside().status()).isEqualTo("INSUFFICIENT_DATA");
+        assertThat(response.predictions().roadside().modelVersion()).isNull();
+        assertThat(response.predictions().roadside().probability()).isNull();
+        assertThat(response.predictions().roadside().inputSnapshotVersion())
+                .isEqualTo("NTPC_ROADSIDE_SPOT:" + response.roadside().snapshotId());
+        assertThat(response.predictions().roadside().dataAgeSeconds()).isNotNull().isGreaterThanOrEqualTo(0);
+        assertThat(response.predictions().roadside().reasons())
+                .contains("MODEL_NOT_LOADED", "BACKTEST_NOT_VERIFIED", "ETA_NOT_READY",
+                        "CATALOG_COVERAGE_PARTIAL");
+        assertThat(response.predictions().offStreet())
+                .filteredOn(prediction -> prediction.parkingLotId().equals("920101"))
+                .singleElement()
+                .satisfies(prediction -> {
+                    assertThat(prediction.status()).isEqualTo("INSUFFICIENT_DATA");
+                    assertThat(prediction.modelVersion()).isNull();
+                    assertThat(prediction.probability()).isNull();
+                    assertThat(prediction.inputSnapshotVersion())
+                            .isEqualTo("NTPC_OFF_STREET_AVAILABILITY:" + response.offStreet().snapshotId());
+                    assertThat(prediction.dataAgeSeconds()).isNotNull().isGreaterThanOrEqualTo(0);
+                    assertThat(prediction.reasons())
+                            .contains("MODEL_NOT_LOADED", "BACKTEST_NOT_VERIFIED", "ETA_NOT_READY");
                 });
         assertThat(response.refresh().roadside().action()).isEqualTo("USED_PUBLISHED_SNAPSHOT");
     }
@@ -223,6 +260,8 @@ class ParkingQueryControllerTest {
         assertThat(response.getBody().offStreet().status()).isEqualTo("NO_CATALOG_RESULTS");
         assertThat(response.getBody().offStreet().parkingLots()).isEmpty();
         assertThat(response.getBody().predictions().status()).isEqualTo("INSUFFICIENT_DATA");
+        assertThat(response.getBody().predictions().reasons())
+                .contains("MODEL_NOT_LOADED", "BACKTEST_NOT_VERIFIED", "ETA_NOT_READY", "NO_CATALOG_RESULTS");
     }
 
     @Test
