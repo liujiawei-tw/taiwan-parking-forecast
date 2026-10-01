@@ -51,6 +51,7 @@ public record ParkingQueryResponse(
     public record RoadsideSection(
             String status,
             String source,
+            Long snapshotId,
             OffsetDateTime systemCollectedAt,
             Integer currentlyAvailableSpaces,
             List<RoadsideSpot> availableSpots,
@@ -71,6 +72,7 @@ public record ParkingQueryResponse(
     public record OffStreetSection(
             String status,
             String source,
+            Long snapshotId,
             OffsetDateTime systemCollectedAt,
             List<ParkingLot> parkingLots,
             String message) {
@@ -92,6 +94,9 @@ public record ParkingQueryResponse(
     public record PredictionsSection(
             String status,
             OffsetDateTime targetArrivalAt,
+            String modelVersion,
+            OffsetDateTime generatedAt,
+            List<String> reasons,
             RoadsidePrediction roadside,
             List<OffStreetPrediction> offStreet,
             String message) {
@@ -100,6 +105,10 @@ public record ParkingQueryResponse(
     public record RoadsidePrediction(
             String status,
             Double probability,
+            String modelVersion,
+            String inputSnapshotVersion,
+            Integer dataAgeSeconds,
+            List<String> reasons,
             String message) {
     }
 
@@ -107,6 +116,10 @@ public record ParkingQueryResponse(
             String parkingLotId,
             String status,
             Double probability,
+            String modelVersion,
+            String inputSnapshotVersion,
+            Integer dataAgeSeconds,
+            List<String> reasons,
             String message) {
     }
 

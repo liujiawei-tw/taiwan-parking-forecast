@@ -1,6 +1,14 @@
 # 目前狀態
 
-更新日期：2026-09-29。
+更新日期：2026-10-01。
+
+## 2026-10-01 最新進度：S3-003 預測降級契約
+
+- S3-003 已補線上 `predictions` 的無模型降級契約：目前無正式模型時固定回 `INSUFFICIENT_DATA`、`modelVersion=null`、`probability=null`，並帶 `generatedAt`、`targetArrivalAt`、`inputSnapshotVersion`、`dataAgeSeconds` 與 `reasons`。
+- 拒絕原因已拆分為模型未載入、回測未驗證、ETA 不可用、沒有目錄、catalog 覆蓋不足、沒有即時快照、快照過期、未知可用狀態、缺觀測與模型輸入未就緒。
+- 目前車位、ETA、刷新與預測降級分開：模型不可用或資料不足不會覆蓋既有 `PUBLISHED` snapshot，也不會阻止 `roadside`／`offStreet` 顯示目前觀測。
+- 已新增 `docs/s3-003-prediction-degradation.md`，並同步 API 契約、決策與待確認事項。正式模型產物、線上推論程序、模型版本儲存與自動回滾仍未完成。
+- 本輪已通過 `git diff --check`、精準 Docker Maven 測試 `ParkingQueryControllerTest,ParkingQueryServiceTest,RedisParkingQueryStateStoreTest`，以及完整後端 Docker Maven 測試 85 tests／0 failures／0 errors／0 skipped。Windows `mvnw.cmd` 仍是既有不可用狀態，後端測試維持使用 Docker Maven。
 
 ## 階段與角色
 

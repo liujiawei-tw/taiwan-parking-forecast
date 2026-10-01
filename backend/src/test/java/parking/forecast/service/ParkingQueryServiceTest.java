@@ -104,6 +104,7 @@ class ParkingQueryServiceTest {
                             "NO_CATALOG_RESULTS",
                             null,
                             null,
+                            null,
                             Map.of(),
                             "No catalog records were found inside the query radius."
                     ));
