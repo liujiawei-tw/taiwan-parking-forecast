@@ -301,10 +301,10 @@
     <div class="meta">
       <span class="pill doing">目前：S3-003 預測降級契約初版</span>
       <span class="pill">更新：2026-10-01</span>
-      <span class="pill doing">下一步：模型產物載入與實際回測報告</span>
+      <span class="pill doing">下一步：#60-#65 規劃收斂與資料品質盤點</span>
       <span class="pill pending">訓練 collector：暫緩</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪與各 5 輪低頻真實來源量測。#41 已補 catalog 覆蓋與匯入策略；#42 已補路邊 p50/p95 5,279/8,575 ms、路外 p50/p95 358/667 ms；#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。完整新莊目錄寫入、端到端刷新寫入發布量測、正式品質門檻、實際 MySQL 回測報告與兩類可信預測仍未完成。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪與各 5 輪低頻真實來源量測。#41 已補 catalog 覆蓋與匯入策略；#42 已補路邊 p50/p95 5,279/8,575 ms、路外 p50/p95 358/667 ms；#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。#60-#65 已建立後續規劃，下一步先做完整 catalog 匯入、端到端發布量測與 collector 訓練資料品質盤點；兩類可信預測仍未完成。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -325,8 +325,8 @@
     </article>
     <article class="metric">
       <span>下一個瓶頸</span>
-      <strong>模型產物載入</strong>
-      <p>降級契約已有初版；仍需實際 MySQL 報告、模型版本儲存與推論程序。</p>
+      <strong>資料品質盤點</strong>
+      <p>#60-#65 已建立；模型線先從 collector CSV/ZIP 品質盤點開始，不直接訓練。</p>
     </article>
   </section>
 

@@ -10,6 +10,12 @@
 - 已新增 `docs/s3-003-prediction-degradation.md`，並同步 API 契約、決策與待確認事項。正式模型產物、線上推論程序、模型版本儲存與自動回滾仍未完成。
 - 本輪已通過 `git diff --check`、精準 Docker Maven 測試 `ParkingQueryControllerTest,ParkingQueryServiceTest,RedisParkingQueryStateStoreTest`，以及完整後端 Docker Maven 測試 85 tests／0 failures／0 errors／0 skipped。Windows `mvnw.cmd` 仍是既有不可用狀態，後端測試維持使用 Docker Maven。
 
+## 2026-10-01 後續規劃：S3-004 至 S3-009
+
+- 已建立 GitHub Issues #60 至 #65，規劃完整 catalog／mapping 匯入、官方來源端到端發布量測、collector 訓練資料品質盤點、訓練標籤產生、baseline／第一版模型實驗，以及模型產物版本化與離線推論。
+- 已新增 `docs/sprint-3-continuation-plan.md`，記錄下一批 Issue 順序與模型訓練路線。
+- `parking-data-collector` 只作離線訓練資料來源；不服務使用者查詢，也不取代主系統 PUBLISHED snapshot。模型訓練第一步是資料品質盤點，不直接訓練或接線上 API。
+
 ## 階段與角色
 
 目前為 Sprint 1 主系統設計：需求、資料來源／計費查核和技術可行性持續收斂，尚未進入主系統實作。Sponsor 兼開發者是使用者；AI 擔任產品經理、架構師、資料工程師、Scrum 引導者與面試官。主應用程式尚未編碼。獨立收集器已轉為 GitHub Actions 定時擷取、新莊每日 CSV 儲存到 Google Drive；Sponsor 確認排程已開始運作，但後續回報其取得方式有問題、資料不完整，collector 稽核與模型訓練先暫緩。收集器已有 GitHub 遠端，主專案尚無遠端。沒有呼叫使用者的 TDX 金鑰。
