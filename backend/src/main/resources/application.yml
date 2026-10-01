@@ -50,6 +50,10 @@ parking:
     ntpc:
       page-size: ${NTPC_CATALOG_DRY_RUN_PAGE_SIZE:1000}
       max-pages: ${NTPC_CATALOG_DRY_RUN_MAX_PAGES:50}
+      command:
+        enabled: ${NTPC_CATALOG_IMPORT_COMMAND_ENABLED:false}
+        confirm-write: ${NTPC_CATALOG_IMPORT_CONFIRM_WRITE:false}
+        service-area: ${NTPC_CATALOG_IMPORT_SERVICE_AREA:NEW_TAIPEI_XINZHUANG}
       scopes:
         - service-area: ${NTPC_CATALOG_SCOPE_0_SERVICE_AREA:NEW_TAIPEI_XINZHUANG}
           roadside-area-code: ${NTPC_CATALOG_SCOPE_0_ROADSIDE_AREA_CODE:65000050}

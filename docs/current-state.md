@@ -2,7 +2,15 @@
 
 更新日期：2026-10-01。
 
-## 2026-10-01 最新進度：S3-003 預測降級契約
+## 2026-10-01 最新進度：S3-004 Catalog 匯入管理命令
+
+- 已開始 #60／S3-004，補上 NTPC catalog dry-run 後的受控寫入路徑。新增 `CatalogImportService`，只有 dry-run recommendation 為 `READY_FOR_IMPORT_REVIEW` 時才建立 `parking_place` 與 `source_mapping`，且既有 source mapping 只會跳過，不會覆蓋或改寫。
+- `NtpcCatalogDryRunService` 的結果現在保留正規化後的 `CatalogSourceRecord`，讓同一份 dry-run 報告可直接餵給後續匯入；新莊仍只是第一個 `scope`，未來新增地區應新增 scope 與 adapter，不複製新莊專用流程。
+- 新增 `NtpcCatalogImportCommandRunner` 與 `parking.catalog.ntpc.command` 設定。預設 `enabled=false`、`confirm-write=false`，啟用命令後也會先輸出 dry-run 摘要；只有明確設定 `confirm-write=true` 且來源 traversal complete 時才嘗試寫入 DB。
+- 目前完成的是「管理命令與保護條件」的程式基線，尚未執行真實官方 dry-run 審查，也尚未把完整新莊 catalog 寫入資料庫。不得宣稱新莊 catalog 已完整；覆蓋狀態仍以既有 7 筆路邊、3 筆路外 verified mapping 為準。
+- 驗證：Docker Maven 精準測試 `CatalogImportServiceTest,NtpcCatalogDryRunServiceTest` 通過 5 tests／0 failures／0 errors。Windows `mvnw.cmd` 仍有既有 wrapper 啟動問題；本輪後端驗證使用 Docker Maven。
+
+## 2026-10-01 進度：S3-003 預測降級契約
 
 - S3-003 已補線上 `predictions` 的無模型降級契約：目前無正式模型時固定回 `INSUFFICIENT_DATA`、`modelVersion=null`、`probability=null`，並帶 `generatedAt`、`targetArrivalAt`、`inputSnapshotVersion`、`dataAgeSeconds` 與 `reasons`。
 - 拒絕原因已拆分為模型未載入、回測未驗證、ETA 不可用、沒有目錄、catalog 覆蓋不足、沒有即時快照、快照過期、未知可用狀態、缺觀測與模型輸入未就緒。

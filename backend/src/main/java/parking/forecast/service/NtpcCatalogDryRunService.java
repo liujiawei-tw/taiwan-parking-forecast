@@ -76,7 +76,8 @@ public class NtpcCatalogDryRunService {
                 scope.getServiceArea(),
                 catalogImportDryRunService.dryRun(importScope, sourceRecords),
                 roadsideRows.summary(),
-                offStreetRows.summary()
+                offStreetRows.summary(),
+                sourceRecords
         );
     }
 
@@ -129,8 +130,13 @@ public class NtpcCatalogDryRunService {
             String serviceArea,
             CatalogImportDryRunReport report,
             FetchSummary roadside,
-            FetchSummary offStreetCatalog
+            FetchSummary offStreetCatalog,
+            List<CatalogSourceRecord> sourceRecords
     ) {
+        public NtpcCatalogDryRunResult {
+            sourceRecords = List.copyOf(sourceRecords);
+        }
+
         public boolean sourceTraversalComplete() {
             return roadside.complete() && offStreetCatalog.complete();
         }

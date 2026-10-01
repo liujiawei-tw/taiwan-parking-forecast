@@ -88,6 +88,7 @@ class NtpcCatalogDryRunServiceTest {
         assertThat(result.report().acceptedCandidates()).isEqualTo(2);
         assertThat(result.report().existingVerifiedMappings()).isEqualTo(10);
         assertThat(result.report().recommendation()).isEqualTo(ImportRecommendation.READY_FOR_IMPORT_REVIEW);
+        assertThat(result.sourceRecords()).hasSize(2);
     }
 
     @Test
