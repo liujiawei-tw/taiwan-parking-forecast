@@ -19,6 +19,7 @@ import parking.forecast.service.AvailabilitySnapshotPublishingService.PublishSna
 import parking.forecast.service.AvailabilitySnapshotPublishingService.PublishSnapshotResult;
 import parking.forecast.service.SourceMeasurementService.SourceMeasurementCommand;
 import parking.forecast.service.SourceMeasurementService.SourceMeasurementSummary;
+import parking.forecast.service.RealtimeSourceRefreshService.RefreshStageTimings;
 
 @Service
 public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshService {
@@ -67,49 +68,89 @@ public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshSe
     }
 
     private RefreshExecutionResult refreshRoadside(TriggerType triggerType) {
+        long totalStartedNanos = System.nanoTime();
         Instant startedAt = clock.instant();
         List<NormalizedAvailabilityObservation> observations = new ArrayList<>();
         FetchMeasurement measurement = new FetchMeasurement();
+        long httpNanos = 0;
+        long normalizeNanos = 0;
         for (int page = 0; page < properties.getMaxPages(); page++) {
             Instant fetchedAt = clock.instant();
+            long httpStartedNanos = System.nanoTime();
             var result = ntpcOpenDataClient.fetchRoadsideAvailabilityPage(page, properties.getPageSize());
+            httpNanos += elapsedSince(httpStartedNanos);
             measurement.record(result.attempts(), result.responseBytes());
             var rows = result.rows();
+            long normalizeStartedNanos = System.nanoTime();
             rows.stream()
                     .map(row -> normalizer.normalizeRoadside(row, fetchedAt))
                     .forEach(observations::add);
+            normalizeNanos += elapsedSince(normalizeStartedNanos);
             if (rows.size() < properties.getPageSize()) {
                 measurement.markCompleted();
                 break;
             }
         }
         Instant completedAt = clock.instant();
+        long measurementStartedNanos = System.nanoTime();
         SourceMeasurementSummary summary = measure(DatasetCode.NTPC_ROADSIDE_SPOT, startedAt, completedAt, measurement, observations);
+        long measurementNanos = elapsedSince(measurementStartedNanos);
         requireCompletePageTraversal(summary);
-        return publish(DatasetCode.NTPC_ROADSIDE_SPOT, triggerType, startedAt, completedAt, summary, observations);
+        return publish(
+                DatasetCode.NTPC_ROADSIDE_SPOT,
+                triggerType,
+                startedAt,
+                completedAt,
+                summary,
+                observations,
+                httpNanos,
+                normalizeNanos,
+                measurementNanos,
+                totalStartedNanos
+        );
     }
 
     private RefreshExecutionResult refreshOffStreet(TriggerType triggerType) {
+        long totalStartedNanos = System.nanoTime();
         Instant startedAt = clock.instant();
         List<NormalizedAvailabilityObservation> observations = new ArrayList<>();
         FetchMeasurement measurement = new FetchMeasurement();
+        long httpNanos = 0;
+        long normalizeNanos = 0;
         for (int page = 0; page < properties.getMaxPages(); page++) {
             Instant fetchedAt = clock.instant();
+            long httpStartedNanos = System.nanoTime();
             var result = ntpcOpenDataClient.fetchOffStreetAvailabilityPage(page, properties.getPageSize());
+            httpNanos += elapsedSince(httpStartedNanos);
             measurement.record(result.attempts(), result.responseBytes());
             var rows = result.rows();
+            long normalizeStartedNanos = System.nanoTime();
             rows.stream()
                     .map(row -> normalizer.normalizeOffStreet(row, fetchedAt))
                     .forEach(observations::add);
+            normalizeNanos += elapsedSince(normalizeStartedNanos);
             if (rows.size() < properties.getPageSize()) {
                 measurement.markCompleted();
                 break;
             }
         }
         Instant completedAt = clock.instant();
+        long measurementStartedNanos = System.nanoTime();
         SourceMeasurementSummary summary = measure(DatasetCode.NTPC_OFF_STREET_AVAILABILITY, startedAt, completedAt, measurement, observations);
+        long measurementNanos = elapsedSince(measurementStartedNanos);
         requireCompletePageTraversal(summary);
-        return publish(DatasetCode.NTPC_OFF_STREET_AVAILABILITY, triggerType, startedAt, completedAt, summary, observations);
+        return publish(
+                DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
+                triggerType,
+                startedAt,
+                completedAt,
+                summary,
+                observations,
+                httpNanos,
+                normalizeNanos,
+                measurementNanos,
+                totalStartedNanos
+        );
     }
 
     private SourceMeasurementSummary measure(
@@ -157,8 +198,13 @@ public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshSe
             Instant startedAt,
             Instant completedAt,
             SourceMeasurementSummary summary,
-            List<NormalizedAvailabilityObservation> observations
+            List<NormalizedAvailabilityObservation> observations,
+            long httpNanos,
+            long normalizeNanos,
+            long measurementNanos,
+            long totalStartedNanos
     ) {
+        long publishStartedNanos = System.nanoTime();
         PublishSnapshotResult result = publishingService.publish(new PublishSnapshotCommand(
                 SourceSystem.NTPC_OPEN_DATA,
                 datasetCode,
@@ -170,14 +216,49 @@ public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshSe
                 observations,
                 summary.toQualitySummary()
         ));
+        long publishNanos = elapsedSince(publishStartedNanos);
+        RefreshStageTimings stageTimings = stageTimings(
+                httpNanos,
+                normalizeNanos,
+                measurementNanos,
+                publishNanos,
+                totalStartedNanos
+        );
         return new RefreshExecutionResult(
                 result.published(),
                 result.ingestionRunId(),
                 result.snapshotId(),
                 summary.httpRequestCount(),
+                summary.pageCount(),
+                summary.responseBytes(),
                 observations.size(),
-                result.reason()
+                result.reason(),
+                stageTimings
         );
+    }
+
+    private RefreshStageTimings stageTimings(
+            long httpNanos,
+            long normalizeNanos,
+            long measurementNanos,
+            long publishNanos,
+            long totalStartedNanos
+    ) {
+        return new RefreshStageTimings(
+                nanosToMillis(httpNanos),
+                nanosToMillis(normalizeNanos),
+                nanosToMillis(measurementNanos),
+                nanosToMillis(publishNanos),
+                nanosToMillis(elapsedSince(totalStartedNanos))
+        );
+    }
+
+    private long elapsedSince(long startedNanos) {
+        return System.nanoTime() - startedNanos;
+    }
+
+    private long nanosToMillis(long nanos) {
+        return Math.max(0, nanos / 1_000_000);
     }
 
     private static class FetchMeasurement {

@@ -64,6 +64,9 @@ parking:
     lock-ttl: ${PARKING_REFRESH_LOCK_TTL:90s}
     page-size: ${PARKING_REFRESH_PAGE_SIZE:500}
     max-pages: ${PARKING_REFRESH_MAX_PAGES:20}
+    measurement:
+      command:
+        enabled: ${PARKING_REFRESH_MEASUREMENT_COMMAND_ENABLED:false}
 
   query-state:
     store: ${PARKING_QUERY_STATE_STORE:redis}
