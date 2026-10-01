@@ -299,12 +299,12 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態，並在資料足夠時提供抵達時預測。</p>
     <div class="meta">
-      <span class="pill doing">目前：S3-001 標籤 dry run 初版</span>
+      <span class="pill doing">目前：S3-002 baseline 回測初版</span>
       <span class="pill">更新：2026-10-01</span>
-      <span class="pill doing">下一步：#43 驗收收尾、#44 baseline 回測</span>
+      <span class="pill doing">下一步：#44 驗收收尾、#45 推論降級契約</span>
       <span class="pill pending">訓練 collector：暫緩</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪與各 5 輪低頻真實來源量測。#41 已補 catalog 覆蓋與匯入策略；#42 已補路邊 p50/p95 5,279/8,575 ms、路外 p50/p95 358/667 ms；#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與報告規則。完整新莊目錄寫入、端到端刷新寫入發布量測、正式品質門檻、baseline 回測與兩類預測仍未完成。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪與各 5 輪低頻真實來源量測。#41 已補 catalog 覆蓋與匯入策略；#42 已補路邊 p50/p95 5,279/8,575 ms、路外 p50/p95 358/667 ms；#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與報告規則；#44 已新增 baseline backtest service 與時間切分／指標規則。完整新莊目錄寫入、端到端刷新寫入發布量測、正式品質門檻、實際 MySQL 回測報告與兩類預測仍未完成。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -325,8 +325,8 @@
     </article>
     <article class="metric">
       <span>下一個瓶頸</span>
-      <strong>回測資料品質</strong>
-      <p>標籤 dry run 已有初版；仍需完整目錄、實際報告與 baseline 回測。</p>
+      <strong>推論降級契約</strong>
+      <p>baseline backtest service 已有初版；仍需實際 MySQL 報告與 #45 線上降級接點。</p>
     </article>
   </section>
 
@@ -527,8 +527,8 @@
         <tr>
           <td>預測基準</td>
           <td>#43、#44、#45</td>
-          <td><span class="pill doing">#43 進行中</span></td>
-          <td>#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與規則文件；#44 baseline 回測與 #45 推論降級仍待後續。</td>
+          <td><span class="pill doing">#44 進行中</span></td>
+          <td>#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與規則文件；#44 已新增 baseline backtest service；#45 推論降級仍待後續。</td>
         </tr>
       </tbody>
     </table>
@@ -542,7 +542,8 @@
         <li>#41 已完成驗收收尾：新莊 catalog／source mapping 覆蓋報告、通用 import dry-run、NTPC catalog adapter、dry-run orchestration、匯入候選方案與預測拒絕規則皆已補齊，目前路邊 0.33%、路外 3.09%，皆維持 PARTIAL。</li>
         <li>#42 已完成候選：路邊／路外各 5 輪低頻官方量測已記錄，含 p50／p95、失敗率、資料量、重複 ID、欄位異常、mapping 覆蓋與暫定設定建議。</li>
         <li>#43 已完成初版：標籤 dry run 僅讀 PUBLISHED snapshot，路邊 coverage 不完整時拒絕區域標籤，路外逐場分開記錄 unknown／quality 等拒絕原因。</li>
-        <li>#44～#45 依 Sprint 3 進入條件建立 baseline 回測與推論降級契約。</li>
+        <li>#44 已完成初版：baseline backtest 依時間切分，固定 Brier score、log loss、accuracy、precision／recall 等指標，樣本不足時維持 INSUFFICIENT_DATA。</li>
+        <li>#45 依 Sprint 3 進入條件建立推論降級契約。</li>
       </ol>
     </div>
     <div class="panel">

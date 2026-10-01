@@ -675,3 +675,11 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 路邊 dry run 以目的地圓心、直線半徑、`serviceArea`、`ON_STREET_SPOT`、`ACTIVE`、汽車資格 `CONFIRMED` 與有效觀測比例產生區域候選樣本；若 catalog coverage 不是 `COMPLETE`，即使範圍內有目前可用格位，也會拒絕並記 `CATALOG_COVERAGE_PARTIAL`，避免把目前小樣本誤當完整 300 公尺區域標籤。路外 dry run 以單一 verified lot 的已發布觀測建立候選樣本，會分開拒絕類型錯誤、汽車資格不符、資料過期、品質不可用與未知可用數。
 
 新增 `docs/s3-001-label-dry-run.md` 記錄 dry run 目標、資料來源、路邊／路外標籤規則、報告欄位與拒絕原因。驗證：Windows Maven wrapper 仍有既有問題，改用 Docker Maven 執行精準測試 `TrainingLabelDryRunServiceTest`，通過 3 tests／0 failures／0 errors；完整後端 `mvn -q test` 通過 82 tests／0 failures／0 errors。此階段不訓練模型、不輸出預測機率、不提交原始 API 回應或敏感設定。
+
+## 2026-10-01 S3-002 baseline 回測初版
+
+已開始 #44／S3-002。新增 `BaselineBacktestService`，直接接收 S3-001 的 `LabelDryRunReport`，只使用 usable、sample time 與 positive label 皆完整的候選樣本，依時間順序切成 training／validation／test。第一版固定三個可解釋 baseline：訓練窗正樣本率、訓練窗多數類別、訓練窗最後已知標籤。路外同場站樣本可用同一 parking place 的訓練窗最後標籤；路邊區域樣本沒有場站 ID 時使用整體訓練窗最後標籤。
+
+回測報告輸出 Brier score、log loss、accuracy、precision、recall 與 TP／FP／FN。接受口徑在看結果前定義：若 usable samples、training／validation／test split 不足、test split 只有單一類別、或最佳 test Brier score 高於預先設定門檻，報告一律建議 `INSUFFICIENT_DATA`。新增 `docs/s3-002-baseline-backtest.md` 記錄時間切分、baseline、指標與資料不足規則。
+
+驗證：使用 Docker Maven 執行精準測試 `BaselineBacktestServiceTest`，通過 3 tests／0 failures／0 errors。此階段不接線上推論、不輸出正式預測機率、不呼叫官方 API、不提交原始 API 回應或敏感設定。

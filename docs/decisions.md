@@ -572,3 +572,10 @@
 - **決策**：`TrainingLabelDryRunService` 只讀 `PUBLISHED` snapshot 的 `availability_observation`，且 `system_fetched_at` 時間窗採起點含括、終點不含括。路邊區域樣本必須符合線上 300 公尺直線距離、service area、一般汽車資格、資料年齡與有效觀測比例；catalog coverage 不是 `COMPLETE` 時一律拒絕並記 `CATALOG_COVERAGE_PARTIAL`。路外逐場樣本必須是 active、汽車資格 confirmed、品質可用且可用數或狀態可判定；`UNKNOWN`、負值特殊碼和品質失敗不得當成 0。
 - **影響**：第一版可以產生 row 數、可用比例、拒絕原因、時間覆蓋與 mapping 覆蓋的 dry run 報告，但不會訓練模型、不產生預測機率、不改使用者查詢 API。
 - **狀態**：後端 service 與單元測試已完成初版；實際 MySQL 管理命令、報告持久化與大型匯出策略仍待後續決定。
+
+## 2026-10-01：baseline 回測先固定時間切分、指標與不足資料拒絕規則
+
+- **原因**：S3-002 需要先用可解釋 baseline 檢查資料是否有基本可預測性，不能等看到結果後才挑指標或門檻，也不能把小樣本結果直接接進線上推論。
+- **決策**：`BaselineBacktestService` 接收 S3-001 的 label dry run report，只評估 usable labels，依時間排序切成 training／validation／test。第一版 baseline 固定為 `TRAIN_POSITIVE_RATE`、`TRAIN_MAJORITY_CLASS`、`LATEST_TRAINING_LABEL`；指標固定輸出 Brier score、log loss、accuracy、precision、recall 與 TP／FP／FN。若樣本不足、split 不足、test split 單一類別或最佳 test Brier score 高於預先設定門檻，報告狀態維持 `INSUFFICIENT_DATA`。
+- **影響**：這能產出路邊與路外各自的 baseline 回測摘要，但仍不代表模型品質達服務標準；線上 `predictions` 在 #45 前仍維持資料不足或模型未就緒。
+- **狀態**：後端 service 與合成樣本測試已完成初版；實際 MySQL 報告、持久化、notebook／CSV 匯出與模型產物版本化仍待後續決定。
