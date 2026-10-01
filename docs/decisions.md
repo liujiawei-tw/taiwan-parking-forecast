@@ -544,3 +544,17 @@
 - **決策**：後端以 Routes API `computeRoutes` 作第一版 ETA 來源，預設 `travelMode=DRIVE`、`routingPreference=TRAFFIC_AWARE_OPTIMAL`，並以 `X-Goog-FieldMask=routes.duration,routes.staticDuration,routes.distanceMeters` 只要求必要欄位。即時 `NOW` 查詢不送 `departureTime` 給 Google Routes，讓 Google 以當下時間計算，避免測試環境時鐘或未來時間窗造成 HTTP 400；只有 `SCHEDULED` 查詢才送使用者指定的 `departureTime`。`GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 預設為 `false`，server key 只從 `GOOGLE_ROUTES_SERVER_API_KEY` 注入；真實 key 不寫入 Git。測試 profile 固定停用外部呼叫。
 - **影響**：建立查詢時若 Routes 成功，`eta.provider=GOOGLE_ROUTES` 並以 Google 回傳 `duration` 推算 `estimatedArrivalAt`；外部呼叫停用、無 key、Google 失敗或沒有路線時，`eta.status=FAILED`，`durationSeconds` 與 `estimatedArrivalAt` 為 `null`。停車目前觀測仍可回傳；`predictions.targetArrivalAt` 不再使用假 ETA。車位刷新不重新呼叫 Google Routes，仍保留原查詢 ETA。
 - **狀態**：S2-019 後端初版已實作並通過 Docker Maven 完整後端測試 53 tests／0 failures／0 errors。Docker Compose 人工驗收已涵蓋外部呼叫停用、無 server key 降級，以及使用受限 server key 的真實 Routes `READY` 路徑。前端 Google Maps／Places、配額限制與地圖結果頁仍待後續任務完成。
+
+## 2026-10-01：完整 catalog 匯入採 dry-run 審查後的管理命令方向
+
+- **原因**：#41 要釐清完整新莊 catalog／source mapping 覆蓋界線。直接手寫全量 SQL 或把部分 mapping 包裝成完整覆蓋，會讓後續 300 公尺路邊區域預測失去可解釋性。
+- **決策**：完整 catalog 匯入採「NTPC catalog dry-run → 人工審查摘要 → 受控管理命令匯入」方向。dry-run 必須保留路邊／路外 pages、HTTP attempts、response bytes、elapsed millis、traversal 是否完整、accepted candidates、missing source ID、duplicate source ID、invalid coordinates、unknown eligibility 與 existing verified mappings。正式 DB 寫入不在 #41 強制完成；未來若實作 importer，需先確認 dry-run 完整且拒絕原因可分流。
+- **影響**：新莊只是第一個 `scope`，未來新增地區應新增 scope 與來源 adapter，不複製新莊專用 service。匯入 PR 不提交官方原始 JSON、大檔、金鑰或敏感設定，只提交程式、設定與審查摘要。未完成完整 catalog／mapping 驗收前，查詢 API 必須維持 `PARTIAL` 語意。
+- **狀態**：已新增 `CatalogImportDryRunService`、`NtpcCatalogRecordMapper` 與 `NtpcCatalogDryRunService` 基線；正式匯入管理命令與 DB 寫入流程仍待後續 Issue。
+
+## 2026-10-01：路邊 300 公尺區域預測須受 catalog／mapping／realtime 三層覆蓋保護
+
+- **原因**：路邊預測代表 300 公尺內抵達時至少一格可停的區域機率；若 catalog 或 mapping 不完整，輸出機率會把未知覆蓋誤導成低機率或無車位。
+- **決策**：路邊區域預測只有在 catalog 覆蓋、source mapping 覆蓋、realtime snapshot 與模型回測都具備證據時才可輸出 `READY`。catalog 或 mapping 仍為 `PARTIAL`、coverage boundary 未知、查詢圓跨出已確認邊界、即時 snapshot 缺失／過期／品質拒絕、或模型未通過回測時，必須回資料不足或阻擋狀態，不得以目前車位數或舊 snapshot 推估機率。
+- **影響**：目前新莊路邊 active catalog 7／官方基準 2,124、路外 active catalog 3／官方基準 97，因此仍維持 `PARTIAL`。路外可對已收錄且 verified mapping 的單場做較早期的逐場資料或預測驗證，但不得宣稱 300 公尺內路外場站完整。
+- **狀態**：規則已記錄於 `s2-harden-002-catalog-coverage.md`；實際 API 原因碼與前端文案可在後續查詢契約或預測接入 Issue 中細化。

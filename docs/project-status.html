@@ -301,10 +301,10 @@
     <div class="meta">
       <span class="pill doing">目前：S2-HARDEN-002 catalog dry-run 基線</span>
       <span class="pill">更新：2026-09-30</span>
-      <span class="pill doing">下一步：#41 完整匯入策略收斂、#42 多輪量測</span>
+      <span class="pill doing">下一步：#41 驗收收尾、#42 多輪量測</span>
       <span class="pill pending">訓練 collector：暫緩</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪低頻真實來源量測。S2-022 已收斂查詢 API 契約與 Redis query state；S2-023 已接入前端 Maps／Places 載入路徑、手動座標 fallback、地圖優先結果頁與停車標記；S2-024 已接上頁面可見時先 GET、再受控自動刷新一次的前端生命週期。#41 已補 catalog 覆蓋報告、通用 dry-run、NTPC catalog adapter 與 dry-run orchestration 基線；完整新莊目錄匯入、多輪 p50／p95 長期量測、正式品質門檻與兩類預測仍未完成。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪低頻真實來源量測。S2-022 已收斂查詢 API 契約與 Redis query state；S2-023 已接入前端 Maps／Places 載入路徑、手動座標 fallback、地圖優先結果頁與停車標記；S2-024 已接上頁面可見時先 GET、再受控自動刷新一次的前端生命週期。#41 已補 catalog 覆蓋報告、通用 dry-run、NTPC catalog adapter、dry-run orchestration、匯入候選方案與 300 公尺預測拒絕規則；完整新莊目錄寫入、多輪 p50／p95 長期量測、正式品質門檻與兩類預測仍未完成。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -326,7 +326,7 @@
     <article class="metric">
       <span>下一個瓶頸</span>
       <strong>完整目錄與多輪量測</strong>
-      <p>NTPC catalog dry-run 已有基線；仍需完整匯入治理、真實分頁量測與發布門檻。</p>
+      <p>完整匯入採 dry-run 審查後管理命令方向；仍需真實分頁量測與發布門檻。</p>
     </article>
   </section>
 
@@ -504,7 +504,7 @@
           <td>正式目錄與來源量測</td>
           <td>#33、#34、#41</td>
           <td><span class="pill doing">#41 進行中</span></td>
-          <td>#33 已建立官方小樣本 catalog 與 ID mapping；#34 已完成量測摘要基線與路邊／路外各一輪真實量測；#41 已補覆蓋報告、通用 dry-run、NTPC catalog adapter 與 orchestration 基線，尚未完整匯入 DB。</td>
+          <td>#33 已建立官方小樣本 catalog 與 ID mapping；#34 已完成量測摘要基線與路邊／路外各一輪真實量測；#41 已補覆蓋報告、通用 dry-run、NTPC catalog adapter、orchestration、候選匯入方案與預測拒絕規則，尚未完整匯入 DB。</td>
         </tr>
         <tr>
           <td>查詢 API 契約</td>
@@ -539,7 +539,7 @@
       <h2 id="next-title">下一步建議</h2>
       <ol class="next-list">
         <li>#40 已完成候選：前端 payload／自動刷新契約測試、GitHub Actions 守門、人工驗收事件面板、Docker smoke 與 Sponsor 真實瀏覽器 Places 人工驗收皆已完成。</li>
-        <li>#41 已開始：補上新莊 catalog／source mapping 覆蓋報告、通用 import dry-run、NTPC catalog adapter 與 dry-run orchestration 基線，目前路邊 0.33%、路外 3.09%，皆維持 PARTIAL；#42 仍需補多輪官方來源量測。</li>
+        <li>#41 已接近驗收收尾：補上新莊 catalog／source mapping 覆蓋報告、通用 import dry-run、NTPC catalog adapter、dry-run orchestration、匯入候選方案與預測拒絕規則，目前路邊 0.33%、路外 3.09%，皆維持 PARTIAL；#42 仍需補多輪官方來源量測。</li>
         <li>#43～#45 依 Sprint 3 進入條件建立標籤 dry run、baseline 回測與推論降級契約。</li>
       </ol>
     </div>

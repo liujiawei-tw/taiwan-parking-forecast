@@ -1,6 +1,6 @@
 # S2-HARDEN-002 新莊 Catalog／Source Mapping 覆蓋報告
 
-更新日期：2026-09-30。狀態：第一版覆蓋報告、匯入策略、NTPC catalog adapter 與 dry-run orchestration 基線。本文記錄已確認事實、目前工作假設與待驗證項目；不保存官方原始回應、金鑰或敏感設定。
+更新日期：2026-10-01。狀態：第一版覆蓋報告、匯入策略、採用建議、NTPC catalog adapter 與 dry-run orchestration 基線。本文記錄已確認事實、目前工作假設與待驗證項目；不保存官方原始回應、金鑰或敏感設定。
 
 ## 結論
 
@@ -42,6 +42,51 @@
    - 路邊完整匯入候選：active catalog 與 verified mapping 接近 2,124，且缺 ID／重複／座標異常有分開報告。
    - 路外完整匯入候選：active catalog 與 verified mapping 接近 97，且所有匯入 ID 可對上即時剩餘位資料。
    - 若任何一類未達完整門檻，API 與文件必須維持 `PARTIAL`，不得包裝成完整覆蓋。
+
+## 匯入候選方案與採用建議
+
+| 方案 | 作法 | 優點 | 風險 | 建議 |
+| --- | --- | --- | --- | --- |
+| 手寫 repeatable seed | 將 2,124 筆路邊與 97 筆路外直接寫入 `R__seed_xinzhuang_parking_catalog.sql` | 最快讓 DB 看起來完整 | SQL 巨大、審查困難、難保留每筆拒絕原因；未來新增地區會複製大量手工資料 | 不採用 |
+| 一次性 migration | 以版本化 migration 寫入完整 catalog 與 mapping | 可追溯 schema 歷史，部署時自動套用 | 官方 catalog 更新時不易重跑；資料問題修正需再寫 migration；仍容易把資料與程式版本綁死 | 暫不採用 |
+| 管理命令 dry-run + 審查後匯入 | 以 `NtpcCatalogDryRunService` 先量測與產生候選，審查通過後由受控管理命令寫入 DB | 可重跑、可分區、可保留缺 ID／重複／座標／資格問題；未來地區可共用 scope | 需要新增管理命令與人工審查流程；正式寫入前仍要定停用策略 | 採用方向 |
+| 後續排程 importer | 週期性跑 catalog adapter，偵測新增、異動與消失 | 長期維護性最好 | 需要穩定的來源語意、版本策略與停用門檻；目前缺多輪證據 | Sprint 3 後再評估 |
+
+採用建議：#41 先以「管理命令 dry-run + 審查後匯入」作下一步方向。正式 importer 寫入前，必須先跑一輪真實 dry-run 並輸出可審查摘要；只有 `sourceTraversalComplete=true`、accepted candidates 與官方基準數差距可解釋、拒絕原因可分流時，才允許建立匯入 PR。匯入 PR 應提交程式與審查摘要，不提交官方原始 JSON 或大檔。
+
+第一版審查摘要至少包含：
+
+- scope 與來源設定：`serviceArea`、路邊 `areacode`、路外 `AREA`、page size、max pages。
+- 擷取量測：路邊／路外各自 pages、HTTP attempts、response bytes、elapsed millis、traversal complete。
+- 來源 rows：官方 rows、scope rows、accepted candidates。
+- 拒絕原因：missing source ID、duplicate source ID、invalid coordinates、unknown eligibility、not car eligible。
+- 現有 mapping：existing verified mappings、匯入後預期 verified mappings。
+- 採用／拒絕建議：可匯入、需人工審查、拒絕缺頁或拒絕無 accepted candidates。
+
+## 覆蓋與 300 公尺預測規則
+
+覆蓋判斷分三層，不可混用：
+
+1. **Catalog 覆蓋**：`parking_place` 是否收錄該服務區的完整候選位置。
+2. **Mapping 覆蓋**：`source_mapping` 是否能把官方 source ID 對到系統位置，且狀態為 `VERIFIED`。
+3. **Realtime 覆蓋**：已發布 snapshot 是否有足夠且新鮮的即時觀測。
+
+路邊 300 公尺區域預測只有在下列條件全部成立時才可輸出 `READY` 機率：
+
+- 查詢目的地位於已支援 service area，且 300 公尺圓不跨出已確認的收錄邊界。
+- 路邊 catalog 與 mapping 對該 service area 達完整門檻，且最近一次 catalog dry-run 沒有無法解釋的缺頁、重複或座標異常。
+- 300 公尺圓內的路邊格位集合可由系統 catalog 重現，且路邊格位的汽車資格可解釋。
+- 即時來源有可用的 `PUBLISHED` snapshot，且資料時效未超過當前門檻。
+- Sprint 3 訓練標籤與模型回測已通過，且訓練時的 300 公尺定義與線上查詢一致。
+
+只要任一條件不成立，路邊區域預測必須拒絕或標示資料不足：
+
+- catalog 或 mapping 仍是 `PARTIAL`：`predictions.roadside.status=INSUFFICIENT_DATA`，原因建議為 `CATALOG_COVERAGE_PARTIAL`。
+- coverage boundary 未知或查詢圓跨出已確認邊界：`predictions.roadside.status=BLOCKED` 或 `INSUFFICIENT_DATA`，原因建議為 `COVERAGE_BOUNDARY_UNKNOWN`／`SEARCH_AREA_CROSSES_COVERAGE_BOUNDARY`。
+- 即時 snapshot 缺失、過期或刷新拒絕：不得用舊的目前有位數推估抵達時機率；原因建議為 `REALTIME_SNAPSHOT_MISSING`、`REALTIME_SNAPSHOT_EXPIRED` 或 `SOURCE_QUALITY_REJECTED`。
+- 模型或回測未完成：原因建議為 `MODEL_NOT_READY` 或 `BACKTEST_NOT_VERIFIED`。
+
+路外逐場預測可比路邊區域預測更早開放，但僅限「已收錄且 mapping verified 的單一停車場」。若路外 catalog 仍 `PARTIAL`，可對已收錄場站顯示逐場資料不足或預測結果，但不得宣稱 300 公尺內路外場站完整，也不得把空清單解讀為附近沒有停車場。
 
 ## 正規化 Import Dry Run
 
@@ -110,6 +155,7 @@ Dry run result 會包含：
 - 路外 TWD97 座標轉 WGS84 已有單元測試基線；仍需以更多真實點驗證誤差與入口座標策略。
 - `NtpcCatalogDryRunService` 尚未對外提供 CLI 或管理端點；目前只能由程式層測試或後續管理流程呼叫。
 - catalog 更新時，單筆暫時消失應標 `INACTIVE`、保留上一版或等待多輪確認。
+- 新莊服務區的可信覆蓋邊界仍需定義；目前只知道行政區 scope，不足以判定任意 300 公尺圓是否完整位於已收錄範圍。
 
 ## 驗證方式
 
