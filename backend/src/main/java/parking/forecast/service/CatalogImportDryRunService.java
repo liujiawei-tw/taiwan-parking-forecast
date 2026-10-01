@@ -138,7 +138,7 @@ public class CatalogImportDryRunService {
             return new SourceKey(sourceSystem, datasetCode, sourcePlaceId == null ? "" : sourcePlaceId.trim());
         }
 
-        private boolean hasValidCoordinates() {
+        public boolean hasValidCoordinates() {
             return latitude != null
                     && longitude != null
                     && latitude.compareTo(BigDecimal.valueOf(-90)) >= 0
@@ -147,7 +147,7 @@ public class CatalogImportDryRunService {
                     && longitude.compareTo(BigDecimal.valueOf(180)) <= 0;
         }
 
-        private boolean isAcceptableCatalogCandidate() {
+        public boolean isAcceptableCatalogCandidate() {
             return sourceKey().hasSourcePlaceId()
                     && hasValidCoordinates()
                     && carEligibleStatus == EligibilityStatus.CONFIRMED;

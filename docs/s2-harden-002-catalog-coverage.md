@@ -1,6 +1,6 @@
 # S2-HARDEN-002 新莊 Catalog／Source Mapping 覆蓋報告
 
-更新日期：2026-10-01。狀態：第一版覆蓋報告、匯入策略、採用建議、NTPC catalog adapter 與 dry-run orchestration 基線。本文記錄已確認事實、目前工作假設與待驗證項目；不保存官方原始回應、金鑰或敏感設定。
+更新日期：2026-10-01。狀態：第一版覆蓋報告、匯入策略、採用建議、NTPC catalog adapter、dry-run orchestration 與受控匯入命令基線。本文記錄已確認事實、目前工作假設與待驗證項目；不保存官方原始回應、金鑰或敏感設定。
 
 ## 結論
 
@@ -147,13 +147,36 @@ Dry run result 會包含：
 - off-street catalog fetch summary：pages、HTTP attempts、response bytes、elapsed millis、是否取齊。
 - `sourceTraversalComplete`：路邊與路外 catalog traversal 都取齊時才為 true；達到 `max-pages` 而最後一頁仍滿頁時，會標成 false，避免把缺頁結果偽裝成完整 catalog。
 
+## 受控匯入命令基線
+
+後續已新增受控匯入路徑，但尚未執行真實官方 dry-run 審查或完整 DB 寫入。
+
+新增 `CatalogImportService`：
+
+- 只接受 generic `CatalogImportDryRunReport` 與對應的 `CatalogSourceRecord` 清單。
+- 僅當 recommendation 為 `READY_FOR_IMPORT_REVIEW` 時才建立 `parking_place` 與 `source_mapping`。
+- 缺 source ID、座標無效、汽車資格不是 `CONFIRMED` 的來源列不會寫入。
+- 已存在相同 `sourceSystem`／`datasetCode`／`sourcePlaceId` 的 mapping 時只跳過，不覆蓋既有 mapping。
+- 新增 mapping 一律為 `VERIFIED`，並保存必要 raw hint；不保存完整官方原始回應。
+- 路外停車場第一版以來源座標同時填入位置與入口座標；後續若能取得更可信入口點，再以版本化策略處理。
+
+新增 `NtpcCatalogImportCommandRunner` 與 `parking.catalog.ntpc.command` 設定：
+
+- `enabled=false` 為預設，避免一般 API 啟動或測試時意外寫入 catalog。
+- `confirm-write=false` 為預設；啟用 command 後會先輸出 dry-run 摘要，不寫 DB。
+- 只有 `confirm-write=true` 且 `sourceTraversalComplete=true` 時，才會呼叫匯入服務。
+- 若 dry-run recommendation 不是 `READY_FOR_IMPORT_REVIEW`，匯入服務會拒絕並回報 `REJECTED_DRY_RUN_NOT_READY`。
+- 這是一次性管理命令；command 執行完成後會關閉 Spring context，不會把 dry-run/import 模式誤留成常駐 API server。
+
+這個命令是 #60／S3-004 的程式基線，不等於已完成完整新莊 catalog 匯入。正式匯入前仍需先跑真實 dry-run，審查 pages、HTTP attempts、bytes、latency、scope rows、accepted candidates、缺 ID、重複、座標異常、資格不明與既有 mapping 覆蓋，再決定是否使用 `confirm-write=true`。
+
 ## 待驗證
 
 - 路邊 `id`／`cellid` 長期穩定性與重複列語意。
 - 路邊 `name`、開放日、開放時段、備註是否足以判斷一般汽車資格與條件式可停。
 - 路外靜態目錄是否需要全量分頁取得，避免只使用前 1,000 筆造成假完整。
 - 路外 TWD97 座標轉 WGS84 已有單元測試基線；仍需以更多真實點驗證誤差與入口座標策略。
-- `NtpcCatalogDryRunService` 尚未對外提供 CLI 或管理端點；目前只能由程式層測試或後續管理流程呼叫。
+- `NtpcCatalogImportCommandRunner` 已提供受控管理命令基線，但尚未跑真實官方 dry-run 與 confirm-write 寫入驗收。
 - catalog 更新時，單筆暫時消失應標 `INACTIVE`、保留上一版或等待多輪確認。
 - 新莊服務區的可信覆蓋邊界仍需定義；目前只知道行政區 scope，不足以判定任意 300 公尺圓是否完整位於已收錄範圍。
 
@@ -172,3 +195,4 @@ NTPC adapter 基線的自動化驗證：
 - `NtpcOpenDataClientTest`：確認路外靜態目錄使用設定中的 dataset ID 組成 request。
 - `NtpcCatalogRecordMapperTest`：確認路邊／路外 scope 篩選、來源 ID fallback、車種資格、座標解析失敗分流，以及路外 TWD97 轉 WGS84 的誤差範圍。
 - `NtpcCatalogDryRunServiceTest`：確認 orchestration 會依設定分頁抓路邊與路外 catalog、保留 fetch measurements、套用 scope mapping、呼叫 generic dry-run，並在 page limit 截斷時標示 traversal incomplete。
+- `CatalogImportServiceTest`：確認 dry-run 未通過時不寫 DB、既有 mapping 不覆蓋、通過審查的路邊與路外候選可建立 active catalog 與 verified mapping。

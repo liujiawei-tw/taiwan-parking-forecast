@@ -299,19 +299,19 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態，並在資料足夠時提供抵達時預測。</p>
     <div class="meta">
-      <span class="pill doing">目前：S3-003 預測降級契約初版</span>
+      <span class="pill doing">目前：S3-004 Catalog 匯入命令初版</span>
       <span class="pill">更新：2026-10-01</span>
-      <span class="pill doing">下一步：#60-#65 規劃收斂與資料品質盤點</span>
+      <span class="pill doing">下一步：#60 真實 dry-run 與匯入驗收</span>
       <span class="pill pending">訓練 collector：暫緩</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪與各 5 輪低頻真實來源量測。#41 已補 catalog 覆蓋與匯入策略；#42 已補路邊 p50/p95 5,279/8,575 ms、路外 p50/p95 358/667 ms；#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。#60-#65 已建立後續規劃，下一步先做完整 catalog 匯入、端到端發布量測與 collector 訓練資料品質盤點；兩類可信預測仍未完成。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各一輪與各 5 輪低頻真實來源量測。#41 已補 catalog 覆蓋與匯入策略；#42 已補路邊 p50/p95 5,279/8,575 ms、路外 p50/p95 358/667 ms；#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。#60 已新增 catalog dry-run 後的受控匯入命令基線；下一步需跑真實 dry-run 審查與 confirm-write 驗收。兩類可信預測仍未完成。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
     <article class="metric">
       <span>後端測試</span>
-      <strong>85 / 0 / 0</strong>
-      <p>S3-003 完整後端 Docker Maven 測試：tests / failures / errors；skipped 0。</p>
+      <strong>5 / 0 / 0</strong>
+      <p>S3-004 目前精準 Docker Maven 測試：tests / failures / errors；尚待完整後端測試。</p>
     </article>
     <article class="metric">
       <span>Sprint 2 完成項</span>
@@ -326,7 +326,7 @@
     <article class="metric">
       <span>下一個瓶頸</span>
       <strong>資料品質盤點</strong>
-      <p>#60-#65 已建立；模型線先從 collector CSV/ZIP 品質盤點開始，不直接訓練。</p>
+      <p>#60 先完成真實 dry-run 與受控匯入驗收；模型線仍從 collector CSV/ZIP 品質盤點開始。</p>
     </article>
   </section>
 
@@ -391,7 +391,7 @@
       <div class="panel">
         <h2>目前不可宣稱</h2>
         <ul class="risk-list">
-          <li>完整新莊 catalog 尚未正式寫入 DB。</li>
+          <li>完整新莊 catalog 尚未正式寫入 DB；目前只完成受控匯入命令基線。</li>
           <li>可見頁刷新尚未量到端到端寫入與發布耗時。</li>
           <li>路邊／路外抵達時預測尚未有可信模型。</li>
           <li>訓練 collector 不參與使用者查詢。</li>
@@ -502,9 +502,9 @@
         </tr>
         <tr>
           <td>正式目錄與來源量測</td>
-          <td>#33、#34、#41、#42</td>
-          <td><span class="pill done">完成候選</span></td>
-          <td>#33 已建立官方小樣本 catalog 與 ID mapping；#34 已完成量測摘要基線與單輪真實量測；#41 已補覆蓋報告、通用 dry-run、NTPC catalog adapter、orchestration、候選匯入方案與預測拒絕規則；#42 已補路邊／路外各 5 輪低頻官方量測、p50／p95 與暫定設定建議。</td>
+          <td>#33、#34、#41、#42、#60</td>
+          <td><span class="pill doing">#60 實作中</span></td>
+          <td>#33 已建立官方小樣本 catalog 與 ID mapping；#34 已完成量測摘要基線與單輪真實量測；#41 已補覆蓋報告、通用 dry-run、NTPC catalog adapter、orchestration、候選匯入方案與預測拒絕規則；#42 已補路邊／路外各 5 輪低頻官方量測、p50／p95 與暫定設定建議；#60 已新增 dry-run 後受控匯入命令基線，尚待真實 dry-run 與 confirm-write 驗收。</td>
         </tr>
         <tr>
           <td>查詢 API 契約</td>
@@ -538,6 +538,7 @@
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
       <ol class="next-list">
+        <li>#60 目前優先：以新莊 scope 跑真實 catalog dry-run，審查量測摘要與品質分流；通過後才用 `confirm-write=true` 驗證寫入。</li>
         <li>#40 已完成候選：前端 payload／自動刷新契約測試、GitHub Actions 守門、人工驗收事件面板、Docker smoke 與 Sponsor 真實瀏覽器 Places 人工驗收皆已完成。</li>
         <li>#41 已完成驗收收尾：新莊 catalog／source mapping 覆蓋報告、通用 import dry-run、NTPC catalog adapter、dry-run orchestration、匯入候選方案與預測拒絕規則皆已補齊，目前路邊 0.33%、路外 3.09%，皆維持 PARTIAL。</li>
         <li>#42 已完成候選：路邊／路外各 5 輪低頻官方量測已記錄，含 p50／p95、失敗率、資料量、重複 ID、欄位異常、mapping 覆蓋與暫定設定建議。</li>
