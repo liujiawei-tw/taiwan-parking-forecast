@@ -2,6 +2,13 @@
 
 更新日期：2026-10-03。
 
+## 2026-10-03 最新進度：S3-012 collector roadside confirmed availability label
+
+- 已在獨立 `parking-data-collector` repo 合併 PR #1，將 roadside `is_available` 改為保守二元 label：只有 `parkingstatus=2` 視為 confirmed available；`1/3/5/other` 皆為 `false`，但以 `availability_state` 與 `not_confirmed_reason` 保留 occupied、restricted、unknown 等語意。
+- 新版 collector `label_rule` 為 `ntpc_roadside_confirmed_available_status_2_else_false_v1`。這裡的 `false` 表示「不確認有一般可停空位」，不得在模型報告或產品文案中說成保證沒有空位。
+- collector 文件已同步更新 `README.md` 與 `docs/data-contract.md`，data contract 升至 v0.4；Apps Script 與 Java backup collector 均已更新，並新增 Java 單元測試鎖定 `1/2/3/5/0` label 行為。
+- 下一步需等 Apps Script 部署新版 collector 並產出新版 daily ZIP，或明確做離線 re-label，才能回主系統重跑 S3-007 label dry-run 與 S3-008 baseline。既有 2026-09-24 至 2026-10-02 ZIP 仍是舊 schema／舊 label rule，不可宣稱已修正。
+
 ## 2026-10-03 最新進度：S3-010 路邊狀態碼驗證
 
 - 已開始 roadside label 問題收斂。新增 `tools/roadside_status_validation.py`，可讀取新北市官方 CSV 全檔 endpoint 與本機 collector ZIP，輸出 aggregate 狀態碼驗證報告；不保存官方 CSV 原文、不輸出 row-level collector 資料。
