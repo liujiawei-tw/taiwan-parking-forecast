@@ -35,6 +35,13 @@
     "rowRandomSplitAllowed": false,
     "futureDefault": "chronological_80_20_or_rolling_window_when_more_days_exist"
   },
+  "labelDryRun": {
+    "leadMinutes": [30, 60],
+    "labelToleranceMinutes": 15,
+    "roadsideRadiusMeters": 300,
+    "maxRoadsideCandidateCenters": 50,
+    "allowProvisionalRoadsideLabels": false
+  },
   "outputs": {
     "reportDirectory": "ml-training/reports/private",
     "artifactDirectory": "ml-training/models",

@@ -39,6 +39,7 @@ class DatasetSplitTest(unittest.TestCase):
         self.assertFalse(config.publish_to_online_system)
         self.assertEqual(date(2026, 9, 24), config.split.train.start)
         self.assertEqual(date(2026, 10, 2), config.split.test.end)
+        self.assertFalse(config.label_dry_run["allowProvisionalRoadsideLabels"])
 
 
 if __name__ == "__main__":

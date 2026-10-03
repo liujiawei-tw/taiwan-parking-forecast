@@ -61,6 +61,12 @@ Preview the current training plan:
 python ml-training/scripts/plan_training_run.py --config ml-training/config/training-config.example.json
 ```
 
+Generate a private label dry-run report:
+
+```powershell
+python ml-training/scripts/generate_label_dry_run.py --config ml-training/config/training-config.example.json --input data/private/collector-samples --output data/private/collector-samples/label-dry-run-2026-09-24_2026-10-02.md
+```
+
 Run lightweight tests:
 
 ```powershell
@@ -68,4 +74,4 @@ python -m unittest discover -s ml-training/tests
 ```
 
 These commands do not train a model yet. They only validate the offline training
-workspace contract.
+workspace contract and label-pairing dry run.

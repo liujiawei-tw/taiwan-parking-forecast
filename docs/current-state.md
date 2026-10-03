@@ -10,6 +10,13 @@
 - 新增 `docs/s3-006-collector-quality-inventory.md`，記錄欄位語意、拒絕原因、匯入規格草案、9 天真實樣本摘要與 train/test 日期切分。盤點結果：roadside 728,532 rows、offstreet 50,516 rows，無缺日、parse error、duplicate rows 或 duplicate observations；roadside reliable label 仍為 0%，暫不開始 #64 模型訓練。#63 label generation dry run 採 train=`2026-09-24..2026-09-30`、test=`2026-10-01..2026-10-02`，不可 row-random split。
 - 新增 `ml-training/` 離線模型訓練 workspace 骨架與 `docs/model-training-architecture.md`。目前只包含訓練設定範例、日期切分 helper、計畫預覽 script 與單元測試；不訓練模型、不發布模型產物、不接線上查詢。
 
+## 2026-10-03 最新進度：S3-007 訓練標籤 dry-run
+
+- 已開始 #63／S3-007。新增 `ml-training/scripts/generate_label_dry_run.py`、collector ZIP reader 與 label dry-run pairing 程式，輸出 aggregate Markdown 報告，不輸出 row-level labels。
+- Label 規則固定 `asOf` 只供 feature side 使用，`arrivalAt = asOf + leadTime` 附近觀測只作 label；目前 lead time 為 30／60 分鐘，label window 為 ±15 分鐘。
+- 真實 9 天 dry-run：roadside 50 個 300m candidate centers，candidate centers 內最少 10 格、平均 54.7 格、最多 97 格。roadside 因 provisional label 預設拒絕，train/test usable labels 皆為 0；offstreet 30 分鐘 lead 可用 train 8,516、test 3,189，60 分鐘 lead 可用 train 8,638、test 3,148。
+- 新增 `docs/s3-007-label-generation-dry-run.md`，記錄 label definition、拒絕原因、dry-run 摘要與限制：目前仍不得輸出線上機率，也不得開始 #64 正式模型訓練。
+
 ## 2026-10-02 最新進度：S3-005 官方來源端到端刷新寫入與發布量測
 
 - 已開始 #61／S3-005，新增 `RefreshE2eMeasurementCommandRunner` 與 `parking.refresh.measurement.command`，預設 `enabled=false`，只在明確開啟時執行一次性端到端量測。command runner 會直接呼叫官方 refresh service，並量測 HTTP、頁數、response bytes、normalize、品質量測、DB 發布交易、`PUBLISHED` snapshot 查詢讀取與總耗時。
