@@ -71,5 +71,6 @@ Current credentials are local placeholder values for development only. Replace t
 ```bash
 python ml-training/scripts/plan_training_run.py --config ml-training/config/training-config.example.json
 python ml-training/scripts/generate_label_dry_run.py --config ml-training/config/training-config.example.json --input data/private/collector-samples --output data/private/collector-samples/label-dry-run-2026-09-24_2026-10-02.md
+python ml-training/scripts/run_baseline_experiment.py --config ml-training/config/training-config.example.json --input data/private/collector-samples --output data/private/collector-samples/baseline-experiment-2026-09-24_2026-10-02.md
 python -m unittest discover -s ml-training/tests
 ```

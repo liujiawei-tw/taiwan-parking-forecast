@@ -2,6 +2,13 @@
 
 更新日期：2026-10-03。
 
+## 2026-10-03 最新進度：S3-008 baseline 與第一版模型實驗
+
+- 已開始 #64／S3-008。新增 `ml-training/scripts/run_baseline_experiment.py` 與 `parking_ml.baseline_experiment`，可用 #63 相同時間切分與 label pairing 規則產生 aggregate baseline／簡單模型回測報告；不輸出 row-level label、不產生模型檔、不接線上 API。
+- 真實 9 天離線報告已產生於 `data/private/collector-samples/baseline-experiment-2026-09-24_2026-10-02.md`，該路徑為 ignored，不提交 Git。公開摘要寫入 `docs/s3-008-baseline-experiment.md`。
+- Offstreet 30 分鐘 lead：train 8,516 labels、test 3,189 labels；`current_state_persistence` Brier 0.0152、log loss 0.0928。Offstreet 60 分鐘 lead：train 8,638 labels、test 3,148 labels；`current_state_persistence` Brier 0.0182、log loss 0.1028。
+- Roadside 因 provisional label 預設拒絕，30／60 分鐘 lead 的 train/test usable labels 仍為 0，狀態維持 `INSUFFICIENT_DATA`。目前仍不得輸出線上機率，也尚未進 #65 模型產物版本化。
+
 ## 2026-10-03 最新進度：S3-006 collector 訓練資料品質盤點與匯入規格
 
 - 已開始 #62／S3-006。新增 `tools/collector_quality_inventory.py`，可讀取 `parking-data-collector` daily CSV／ZIP 匯出根目錄或單一 ZIP，輸出只含摘要的 Markdown 品質報告；工具不複製原始 CSV／ZIP、不輸出 row-level 資料。

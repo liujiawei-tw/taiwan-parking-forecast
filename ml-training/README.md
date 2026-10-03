@@ -24,6 +24,8 @@ ml-training/
     training-config.example.json
   scripts/
     plan_training_run.py
+    generate_label_dry_run.py
+    run_baseline_experiment.py
   src/
     parking_ml/
       dataset_split.py
@@ -67,11 +69,17 @@ Generate a private label dry-run report:
 python ml-training/scripts/generate_label_dry_run.py --config ml-training/config/training-config.example.json --input data/private/collector-samples --output data/private/collector-samples/label-dry-run-2026-09-24_2026-10-02.md
 ```
 
+Generate a private baseline experiment report:
+
+```powershell
+python ml-training/scripts/run_baseline_experiment.py --config ml-training/config/training-config.example.json --input data/private/collector-samples --output data/private/collector-samples/baseline-experiment-2026-09-24_2026-10-02.md
+```
+
 Run lightweight tests:
 
 ```powershell
 python -m unittest discover -s ml-training/tests
 ```
 
-These commands do not train a model yet. They only validate the offline training
-workspace contract and label-pairing dry run.
+These commands do not publish a model. They only validate the offline training
+workspace contract, label-pairing dry run, and private aggregate baseline report.

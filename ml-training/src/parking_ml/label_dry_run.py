@@ -29,6 +29,7 @@ class OffstreetObservation:
     collected_at: datetime
     file_date: date
     available_car: int | None
+    availability_ratio: float | None
     is_unknown: bool
     has_source_response: bool
 
@@ -149,6 +150,7 @@ def parse_offstreet(row: CollectorRow) -> OffstreetObservation | None:
         collected_at=collected_at,
         file_date=file_date,
         available_car=available_car,
+        availability_ratio=parse_float(value(values, "availability_ratio")),
         is_unknown=value(values, "is_unknown").lower() == "true",
         has_source_response=bool(value(values, "source_api_response_at_utc")),
     )
