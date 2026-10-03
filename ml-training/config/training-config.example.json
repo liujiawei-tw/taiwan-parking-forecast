@@ -42,6 +42,14 @@
     "maxRoadsideCandidateCenters": 50,
     "allowProvisionalRoadsideLabels": false
   },
+  "baselineExperiment": {
+    "minTrainSamples": 500,
+    "minTestSamples": 100,
+    "maxTestBrierForCandidate": 0.2,
+    "logisticIterations": 300,
+    "logisticLearningRate": 0.05,
+    "logisticL2": 0.001
+  },
   "outputs": {
     "reportDirectory": "ml-training/reports/private",
     "artifactDirectory": "ml-training/models",
