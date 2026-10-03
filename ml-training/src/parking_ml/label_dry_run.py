@@ -13,6 +13,8 @@ from parking_ml.collector_reader import CollectorRow, iter_collector_rows
 from parking_ml.dataset_split import ChronologicalSplit
 from parking_ml.training_config import TrainingConfig
 
+ROADSIDE_CONFIRMED_AVAILABLE_RULE = "ntpc_roadside_confirmed_available_status_2_else_false_v1"
+
 
 @dataclass(frozen=True)
 class LabelDryRunSettings:
@@ -43,6 +45,11 @@ class RoadsideObservation:
     longitude: float
     is_available: bool | None
     label_rule: str
+    raw_label_rule: str
+    parking_status_raw: str
+    availability_state: str
+    not_confirmed_reason: str
+    offline_relabel_applied: bool
     has_source_response: bool
 
 
@@ -69,12 +76,14 @@ class DryRunReport:
     roadside_spot_coverage_avg: float = 0.0
     source_rows: Counter[str] = field(default_factory=Counter)
     skipped_rows: Counter[str] = field(default_factory=Counter)
+    roadside_offline_relabel_rows: int = 0
 
 
 def generate_label_dry_run_report(input_path: Path, config: TrainingConfig) -> str:
     settings = settings_from_config(config)
     observations = read_observations(input_path)
     report = DryRunReport(source_rows=observations.source_rows, skipped_rows=observations.skipped_rows)
+    report.roadside_offline_relabel_rows = observations.roadside_offline_relabel_rows
     report.offstreet = run_offstreet_dry_run(
         observations.offstreet_by_lot,
         split=config.split,
@@ -99,6 +108,7 @@ class Observations:
     roadside_by_spot: dict[str, list[RoadsideObservation]] = field(default_factory=lambda: defaultdict(list))
     source_rows: Counter[str] = field(default_factory=Counter)
     skipped_rows: Counter[str] = field(default_factory=Counter)
+    roadside_offline_relabel_rows: int = 0
 
 
 def settings_from_config(config: TrainingConfig) -> LabelDryRunSettings:
@@ -127,6 +137,8 @@ def read_observations(input_path: Path) -> Observations:
             if observation is None:
                 observations.skipped_rows["roadside_parse_or_missing_key"] += 1
                 continue
+            if observation.offline_relabel_applied:
+                observations.roadside_offline_relabel_rows += 1
             observations.roadside_by_spot[observation.spot_id].append(observation)
 
     for rows in observations.offstreet_by_lot.values():
@@ -165,16 +177,62 @@ def parse_roadside(row: CollectorRow) -> RoadsideObservation | None:
     longitude = parse_float(value(values, "longitude"))
     if not spot_id or collected_at is None or file_date is None or latitude is None or longitude is None:
         return None
+    raw_label_rule = value(values, "label_rule")
+    parking_status_raw = value(values, "parking_status_raw")
+    is_available = parse_bool(value(values, "is_available"))
+    label_rule = raw_label_rule
+    availability_state = value(values, "availability_state")
+    not_confirmed_reason = value(values, "not_confirmed_reason")
+    offline_relabel_applied = False
+    if should_offline_relabel_roadside(raw_label_rule, parking_status_raw):
+        label = confirmed_available_label(parking_status_raw)
+        is_available = label.is_available
+        label_rule = ROADSIDE_CONFIRMED_AVAILABLE_RULE
+        availability_state = label.availability_state
+        not_confirmed_reason = label.not_confirmed_reason
+        offline_relabel_applied = True
     return RoadsideObservation(
         spot_id=spot_id,
         collected_at=collected_at,
         file_date=file_date,
         latitude=latitude,
         longitude=longitude,
-        is_available=parse_bool(value(values, "is_available")),
-        label_rule=value(values, "label_rule"),
+        is_available=is_available,
+        label_rule=label_rule,
+        raw_label_rule=raw_label_rule,
+        parking_status_raw=parking_status_raw,
+        availability_state=availability_state,
+        not_confirmed_reason=not_confirmed_reason,
+        offline_relabel_applied=offline_relabel_applied,
         has_source_response=bool(value(values, "source_api_response_at_utc")),
     )
+
+
+@dataclass(frozen=True)
+class RoadsideConfirmedLabel:
+    is_available: bool
+    availability_state: str
+    not_confirmed_reason: str
+
+
+def should_offline_relabel_roadside(label_rule: str, parking_status_raw: str) -> bool:
+    if not parking_status_raw:
+        return False
+    if label_rule == ROADSIDE_CONFIRMED_AVAILABLE_RULE:
+        return False
+    return "keep_raw" in label_rule or "parkingstatus_0_available" in label_rule
+
+
+def confirmed_available_label(parking_status_raw: str) -> RoadsideConfirmedLabel:
+    if parking_status_raw == "2":
+        return RoadsideConfirmedLabel(True, "AVAILABLE", "")
+    if parking_status_raw == "1":
+        return RoadsideConfirmedLabel(False, "OCCUPIED", "occupied_status")
+    if parking_status_raw == "3":
+        return RoadsideConfirmedLabel(False, "RESTRICTED_OR_CLOSED", "restricted_or_closed_status")
+    if parking_status_raw == "5":
+        return RoadsideConfirmedLabel(False, "UNKNOWN_OR_SPECIAL", "unknown_or_special_status")
+    return RoadsideConfirmedLabel(False, "UNKNOWN", "unverified_parkingstatus")
 
 
 def run_offstreet_dry_run(
@@ -375,12 +433,14 @@ def render_report(
         f"- Roadside radius：{settings.roadside_radius_meters}m",
         f"- Roadside candidate centers：{report.roadside_centers}",
         f"- Roadside provisional labels allowed：{str(settings.allow_provisional_roadside_labels).lower()}",
+        f"- Roadside offline re-label rows：{report.roadside_offline_relabel_rows:,}",
         "",
         "## Label Definition",
         "",
         "- `asOf` 是模型做出預測的時間；特徵只能使用 `asOf` 當下與以前的觀測。",
         "- `arrivalAt = asOf + leadTime`；`arrivalAt` 附近時間窗內的觀測只能作 label，不可回填成特徵。",
-        "- 路邊 label 使用 300 公尺候選目的地圓；抵達時間窗內任一格 `is_available=true` 才是正例。",
+        f"- 路邊 label 使用 300 公尺候選目的地圓；抵達時間窗內任一格 `{ROADSIDE_CONFIRMED_AVAILABLE_RULE}` 的 `is_available=true` 才是正例。",
+        "- 舊 collector roadside CSV 若保留 `parking_status_raw`，本 dry-run 會離線套用 confirmed available 規則；不覆蓋原始 ZIP／CSV。",
         "- 路外 label 使用同一 `lot_id`；抵達時間窗內 `available_car > 0` 才是正例，unknown、負值或缺觀測皆拒絕。",
         "",
         "## Source Rows",
@@ -440,7 +500,7 @@ def render_report(
             "## 判定",
             "",
             "- 本 dry-run 可證明時間配對規則：feature side 只使用 `asOf`，label side 才讀 `arrivalAt` 附近資料。",
-            "- Roadside 預設拒絕 provisional label，因此目前仍不能產生可訓練的路邊可靠標籤。",
+            "- Roadside 舊 provisional raw status 已可透過離線 re-label 產生 confirmed availability label；`false` 代表不確認有一般可停空位，不是保證沒有空位。",
             "- Offstreet 可產生可靠 label 候選，但仍需在 #64 與 baseline／模型門檻一起審查，不得直接接線上機率。",
         ]
     )

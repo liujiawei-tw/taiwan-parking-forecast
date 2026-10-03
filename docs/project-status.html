@@ -299,19 +299,19 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
-      <span class="pill doing">目前：S3-012 collector relabel 已合併</span>
+      <span class="pill doing">目前：S3-013 roadside offline re-label 已重跑</span>
       <span class="pill">更新：2026-10-03</span>
-      <span class="pill doing">下一步：新版 ZIP / re-label dry-run</span>
-      <span class="pill pending">roadside label：等待新資料</span>
+      <span class="pill doing">下一步：roadside baseline/model</span>
+      <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。#62、#63、#64 已完成；S3-010 已確認 roadside 問題是舊 label rule 錯位。`parking-data-collector` PR #1 已將 roadside 改為 confirmed available 二元標籤；下一步需拿新版 ZIP 或明確離線 re-label 後，才可重跑主系統 dry-run 與 baseline。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。#62、#63、#64 已完成；S3-010 已確認 roadside 問題是舊 label rule 錯位。`parking-data-collector` PR #1 已將 roadside 改為 confirmed available 二元標籤；S3-013 已對舊 ZIP 做明確離線 re-label 並重跑 dry-run／baseline。這仍不是正式模型訓練，尚未產生模型檔或線上機率。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
     <article class="metric">
       <span>後端測試</span>
       <strong>5 / 0 / 0</strong>
-      <p>S3-008 ml-training 單元測試：tests / failures / errors；後端主系統未變更。</p>
+      <p>S3-013 ml-training 單元測試：tests / failures / errors；後端主系統未變更。</p>
     </article>
     <article class="metric">
       <span>目前 Sprint</span>
@@ -320,13 +320,13 @@
     </article>
     <article class="metric">
       <span>最新 merge</span>
-      <strong>PR #70</strong>
-      <p>S3-007 訓練標籤 dry-run 與無洩漏時間配對。</p>
+      <strong>PR #73</strong>
+      <p>S3-012 collector confirmed availability label 與主系統狀態同步。</p>
     </article>
     <article class="metric">
       <span>下一個瓶頸</span>
-      <strong>roadside label</strong>
-      <p>#64 可先回測 offstreet；roadside 仍需確認 raw status 語意。</p>
+      <strong>roadside model</strong>
+      <p>roadside label 已可離線產生；仍需專用 baseline／模型與門檻。</p>
     </article>
   </section>
 
@@ -393,7 +393,7 @@
         <ul class="risk-list">
           <li>完整新莊 catalog 尚未正式寫入 DB；目前只完成受控匯入命令基線。</li>
           <li>端到端刷新寫入與發布已有單輪候選量測，但尚未形成正式 SLA。</li>
-          <li>路外已有離線 baseline 回測；線上抵達時預測尚未有可信模型。</li>
+          <li>路外已有離線 baseline 回測；roadside 已有離線 re-label 後標籤，但線上抵達時預測尚未有可信模型。</li>
           <li>訓練 collector 不參與使用者查詢。</li>
         </ul>
       </div>
@@ -457,7 +457,7 @@
       <span class="pill doing">離線回測中</span>
       <ul>
         <li>collector 匯出只供離線訓練，不進主查詢。</li>
-        <li>路外已進 baseline 回測；路邊 collector relabel 規則已合併，待新版 ZIP 或離線 re-label。</li>
+        <li>路外已進 baseline 回測；路邊已完成舊 ZIP 離線 re-label 與 dry-run 重跑。</li>
         <li>線上仍維持資料不足或無模型降級。</li>
         <li>不可用隨機或假機率作展示。</li>
       </ul>
@@ -526,9 +526,9 @@
         </tr>
         <tr>
           <td>預測基準</td>
-          <td>#43、#44、#45、#62、#63、#64、S3-010、S3-011、S3-012</td>
-          <td><span class="pill doing">S3-012 等待新資料</span></td>
-          <td>#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與規則文件；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。#62、#63、#64 已完成；S3-010 已新增 roadside 狀態碼驗證與 relabel 計畫，S3-011 已開始 ML canonical schema 草案；S3-012 已在 collector 合併 confirmed availability label rule。兩類可信線上預測仍未接入。</td>
+          <td>#43、#44、#45、#62、#63、#64、S3-010、S3-011、S3-012、S3-013</td>
+          <td><span class="pill doing">S3-013 完成候選</span></td>
+          <td>#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與規則文件；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。#62、#63、#64 已完成；S3-010 已新增 roadside 狀態碼驗證與 relabel 計畫，S3-011 已開始 ML canonical schema 草案；S3-012 已在 collector 合併 confirmed availability label rule；S3-013 已對舊 ZIP 做離線 re-label 並重跑主系統 dry-run／baseline。兩類可信線上預測仍未接入。</td>
         </tr>
       </tbody>
     </table>
@@ -538,7 +538,7 @@
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
       <ol class="next-list">
-        <li>S3-012 目前優先：部署或取得新版 collector ZIP，或對舊 ZIP 做明確離線 re-label，才能重跑主系統 label dry-run。</li>
+        <li>S3-013 下一步：在已離線 re-label 的 roadside labels 上實作與評估 roadside 專用 baseline／模型候選。</li>
         <li>roadside 後續風險：confirmed availability 的 `false` 代表不確認有一般可停空位，不得說成保證沒有空位。</li>
         <li>#60、#61 已合併：Catalog 受控匯入命令與官方 E2E 刷新發布量測基線已完成；真實全量匯入仍需另案審查與人工確認。</li>
         <li>#40 已完成候選：前端 payload／自動刷新契約測試、GitHub Actions 守門、人工驗收事件面板、Docker smoke 與 Sponsor 真實瀏覽器 Places 人工驗收皆已完成。</li>

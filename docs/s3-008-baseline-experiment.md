@@ -1,6 +1,6 @@
 # S3-008 baseline 與第一版模型訓練實驗報告
 
-更新日期：2026-10-03。狀態：第一版離線 baseline／簡單模型回測；尚未發布模型、尚未接入線上 API、尚未輸出正式機率。
+更新日期：2026-10-03。狀態：第一版離線 baseline／簡單模型回測，並重跑 roadside 離線 re-label 後資料狀態；尚未發布模型、尚未接入線上 API、尚未輸出正式機率。
 
 ## 目的
 
@@ -21,8 +21,8 @@
 | --- | ---: | --- | ---: | ---: | --- |
 | offstreet | 30 | `EXPERIMENT_ONLY` | 8,516 | 3,189 | baseline_experiment_only |
 | offstreet | 60 | `EXPERIMENT_ONLY` | 8,638 | 3,148 | baseline_experiment_only |
-| roadside | 30 | `INSUFFICIENT_DATA` | 0 | 0 | roadside_provisional_labels_rejected |
-| roadside | 60 | `INSUFFICIENT_DATA` | 0 | 0 | roadside_provisional_labels_rejected |
+| roadside | 30 | `INSUFFICIENT_DATA` | 10,750 | 3,900 | roadside_baseline_not_implemented_after_relabel |
+| roadside | 60 | `INSUFFICIENT_DATA` | 10,900 | 3,850 | roadside_baseline_not_implemented_after_relabel |
 
 ## Offstreet Metrics
 
@@ -41,15 +41,13 @@
 
 | Lead | Reason | Count |
 | ---: | --- | ---: |
-| 30 | `provisional_roadside_label` | 14,650 |
 | 30 | `no_arrival_observation` | 2,250 |
 | 30 | `as_of_missing_source_response` | 250 |
-| 60 | `provisional_roadside_label` | 14,750 |
 | 60 | `no_arrival_observation` | 2,200 |
 | 60 | `as_of_missing_source_response` | 200 |
 
 ## 判定
 
 - 路外資料可支撐第一版 baseline 與簡單 logistic regression 的離線時間切分回測；目前最好的候選是 `current_state_persistence`，但這仍是實驗證據，不是服務承諾。
-- 路邊 300 公尺語意沒有被固定路段機率取代；因 provisional label 預設拒絕，仍維持 `INSUFFICIENT_DATA`。
+- 路邊 300 公尺語意沒有被固定路段機率取代；離線 re-label 後已有 usable labels，但 roadside 專用 baseline／模型與門檻尚未實作，因此仍維持 `INSUFFICIENT_DATA`。
 - 現在不產生版本化模型檔，也不接入線上 `predictions`。若要進 #65，必須先補模型版本、schema、門檻、產物保存與回滾驗證。

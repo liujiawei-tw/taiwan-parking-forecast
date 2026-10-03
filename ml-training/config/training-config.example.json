@@ -14,7 +14,7 @@
   },
   "datasets": {
     "roadside": {
-      "labelPolicy": "provisional_only_until_status_semantics_verified",
+      "labelPolicy": "confirmed_available_status_2_else_false_offline_relabel",
       "entityKey": "spot_id",
       "target": "is_available",
       "minimumReliableLabelRatio": 0.0
