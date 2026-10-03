@@ -10,14 +10,14 @@
 
 | 類型 | 定義 | 正例 | 拒絕原因 |
 | --- | --- | --- | --- |
-| roadside | 候選目的地圓心 300 公尺內的格位集合，對 `asOf + leadTime` 附近時間窗配對；舊 collector ZIP 可用 `parking_status_raw` 離線套用 confirmed availability rule，不改原始 ZIP/CSV | 抵達時間窗內至少一格 `is_available=true`；目前 confirmed rule 僅 `parkingstatus=2` 視為 confirmed available | 沒有抵達觀測、`asOf` lineage 缺 `source_api_response_at_utc`、抵達 label unknown |
+| roadside | 候選目的地圓心 500 公尺內的格位集合，對 `asOf + leadTime` 附近時間窗配對；舊 collector ZIP 可用 `parking_status_raw` 離線套用 confirmed availability rule，不改原始 ZIP/CSV | 抵達時間窗內至少一格 `is_available=true`；目前 confirmed rule 僅 `parkingstatus=2` 視為 confirmed available | 沒有抵達觀測、`asOf` lineage 缺 `source_api_response_at_utc`、抵達 label unknown |
 | offstreet | 同一 `lot_id`，對 `asOf + leadTime` 附近時間窗配對 | 抵達時間窗內 `available_car > 0` | unknown／負值、沒有抵達觀測、`asOf` lineage 缺 `source_api_response_at_utc` |
 
 目前 dry-run 設定：
 
 - `leadMinutes`: 30、60
 - `labelToleranceMinutes`: 15
-- roadside radius: 300m
+- roadside radius: 500m
 - roadside candidate centers: 50 個 deterministic sampled spot centers
 - roadside label policy: `confirmed_available_status_2_else_false_offline_relabel`
 - roadside offline re-label rows: 728,532
@@ -41,20 +41,20 @@
 | roadside | 728,532 | 0 |
 | offstreet | 50,516 | 0 |
 
-### Roadside 300m Candidate Coverage
+### Roadside 500m Candidate Coverage
 
 | Candidate centers | Min spots | Avg spots | Max spots |
 | ---: | ---: | ---: | ---: |
-| 50 | 10 | 54.7 | 97 |
+| 50 | 33 | 106.8 | 194 |
 
 ### Dry-run Summary
 
 | Dataset | Split | Lead | Candidate samples | Usable labels | Rejected | Positive | Negative | Entity coverage |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| roadside | train | 30 | 12,800 | 10,750 | 2,050 | 860 | 9,890 | 50 |
-| roadside | train | 60 | 12,800 | 10,900 | 1,900 | 872 | 10,028 | 50 |
-| roadside | test | 30 | 4,350 | 3,900 | 450 | 312 | 3,588 | 50 |
-| roadside | test | 60 | 4,350 | 3,850 | 500 | 308 | 3,542 | 50 |
+| roadside | train | 30 | 12,800 | 10,750 | 2,050 | 2,150 | 8,600 | 50 |
+| roadside | train | 60 | 12,800 | 10,900 | 1,900 | 2,180 | 8,720 | 50 |
+| roadside | test | 30 | 4,350 | 3,900 | 450 | 780 | 3,120 | 50 |
+| roadside | test | 60 | 4,350 | 3,850 | 500 | 770 | 3,080 | 50 |
 | offstreet | train | 30 | 37,640 | 8,516 | 29,124 | 7,853 | 663 | 149 |
 | offstreet | train | 60 | 37,640 | 8,638 | 29,002 | 7,968 | 670 | 149 |
 | offstreet | test | 30 | 12,876 | 3,189 | 9,687 | 2,958 | 231 | 148 |
@@ -84,6 +84,7 @@
 ## 判定
 
 - 路外可產生可靠 label 候選：test split 在 30 分鐘 lead 有 3,189 usable labels，60 分鐘 lead 有 3,148 usable labels。
-- 路邊 300 公尺語意已用候選目的地圓建立，不以固定路段機率冒充任意目的地圓形機率；離線 re-label 後 30 分鐘 lead 有 train 10,750／test 3,900 usable labels，60 分鐘 lead 有 train 10,900／test 3,850 usable labels。
+- 路邊 500 公尺語意已用候選目的地圓建立，不以固定路段機率冒充任意目的地圓形機率；離線 re-label 後 30 分鐘 lead 有 train 10,750／test 3,900 usable labels，60 分鐘 lead 有 train 10,900／test 3,850 usable labels。
+- 半徑改為 500m 後，候選圓內平均格位與正例率介於 300m 與 1000m 之間；後續評估仍需檢查使用者可接受距離與「至少一格」問題是否過於容易。
 - roadside `false` 只代表「不確認有一般可停空位」，不得說成保證沒空位；這是訓練標籤治理結論，不是線上使用者承諾。
 - 目前仍不得輸出線上機率；下一步是 roadside 專用 baseline／模型與門檻評估。

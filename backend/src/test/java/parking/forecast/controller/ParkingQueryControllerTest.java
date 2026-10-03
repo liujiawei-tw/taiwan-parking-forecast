@@ -79,7 +79,7 @@ class ParkingQueryControllerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().query().queryId()).isNotBlank();
         assertThat(response.getBody().query().status()).isEqualTo("READY");
-        assertThat(response.getBody().area().radiusMeters()).isEqualTo(300);
+        assertThat(response.getBody().area().radiusMeters()).isEqualTo(500);
         assertThat(response.getBody().area().distanceMode()).isEqualTo("STRAIGHT_LINE");
         assertThat(response.getBody().area().coverageStatus()).isEqualTo("PARTIAL");
         assertThat(response.getBody().eta().status()).isEqualTo("FAILED");

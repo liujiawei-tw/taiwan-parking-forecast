@@ -297,14 +297,14 @@
 <main>
   <header>
     <h1>台灣停車預測｜專案進度儀表板</h1>
-    <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
+    <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
-      <span class="pill doing">目前：S3-014 roadside baseline 已回測</span>
+      <span class="pill doing">目前：S3-015 半徑改 500m</span>
       <span class="pill">更新：2026-10-03</span>
       <span class="pill doing">下一步：模型版本化門檻</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。#62、#63、#64 已完成；S3-013 已對舊 ZIP 做明確離線 re-label 並重跑 dry-run；S3-014 已補 roadside 300 公尺候選圓 baseline 離線回測。這仍不是正式模型訓練，尚未產生模型檔或線上機率。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。#62、#63、#64 已完成；S3-015 已將主系統與 ML roadside 半徑改為 500m 並重跑 dry-run／baseline。這仍不是正式模型訓練，尚未產生模型檔或線上機率。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -340,7 +340,7 @@
           <div class="progress-value">完成</div>
         </div>
         <div class="progress-row">
-          <div class="progress-label">資料模型與 300 公尺查詢</div>
+          <div class="progress-label">資料模型與 500 公尺查詢</div>
           <div class="track"><div class="fill green" style="width: 100%"></div></div>
           <div class="progress-value">完成</div>
         </div>
@@ -448,7 +448,7 @@
       <ul>
         <li>接入 <code>GOOGLE_MAPS_BROWSER_API_KEY</code>。</li>
         <li>使用 Maps JavaScript API 與 Places API (New)。</li>
-        <li>建立結果頁地圖、300 公尺圓與停車清單。</li>
+        <li>建立結果頁地圖、500 公尺圓與停車清單。</li>
         <li>頁面可見時先只讀恢復，再受控自動刷新一次。</li>
       </ul>
     </article>
@@ -457,7 +457,7 @@
       <span class="pill doing">離線回測中</span>
       <ul>
         <li>collector 匯出只供離線訓練，不進主查詢。</li>
-        <li>路外已進 baseline 回測；路邊已完成舊 ZIP 離線 re-label、dry-run 重跑與 300 公尺候選圓 baseline。</li>
+        <li>路外已進 baseline 回測；路邊已完成舊 ZIP 離線 re-label、500 公尺 dry-run 重跑與候選圓 baseline。</li>
         <li>線上仍維持資料不足或無模型降級。</li>
         <li>不可用隨機或假機率作展示。</li>
       </ul>
@@ -486,7 +486,7 @@
           <td>資料基礎</td>
           <td>S2-009 至 S2-013</td>
           <td><span class="pill done">完成</span></td>
-          <td>JPA/Flyway、seed、新莊 300 公尺查詢、parking-queries 接入本地停車目錄。</td>
+          <td>JPA/Flyway、seed、新莊附近查詢、parking-queries 接入本地停車目錄；目前產品半徑為 500 公尺。</td>
         </tr>
         <tr>
           <td>官方即時來源</td>
@@ -528,7 +528,7 @@
           <td>預測基準</td>
           <td>#43、#44、#45、#62、#63、#64、S3-010、S3-011、S3-012、S3-013、S3-014</td>
           <td><span class="pill doing">S3-014 完成候選</span></td>
-          <td>#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與規則文件；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。#62、#63、#64 已完成；S3-010 已新增 roadside 狀態碼驗證與 relabel 計畫，S3-011 已開始 ML canonical schema 草案；S3-012 已在 collector 合併 confirmed availability label rule；S3-013 已對舊 ZIP 做離線 re-label 並重跑主系統 dry-run；S3-014 已補 roadside 300 公尺候選圓 baseline 離線回測。兩類可信線上預測仍未接入。</td>
+          <td>#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與規則文件；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。#62、#63、#64 已完成；S3-010 已新增 roadside 狀態碼驗證與 relabel 計畫，S3-011 已開始 ML canonical schema 草案；S3-012 已在 collector 合併 confirmed availability label rule；S3-013 已對舊 ZIP 做離線 re-label 並重跑主系統 dry-run；S3-014 已補 roadside baseline；S3-015 已改為 500m 並重跑 ML 摘要。兩類可信線上預測仍未接入。</td>
         </tr>
       </tbody>
     </table>

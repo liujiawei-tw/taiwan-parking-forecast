@@ -116,7 +116,7 @@ def settings_from_config(config: TrainingConfig) -> LabelDryRunSettings:
     return LabelDryRunSettings(
         lead_minutes=tuple(int(value) for value in dry_run.get("leadMinutes", [30, 60])),
         tolerance=timedelta(minutes=int(dry_run.get("labelToleranceMinutes", 15))),
-        roadside_radius_meters=int(dry_run.get("roadsideRadiusMeters", 300)),
+        roadside_radius_meters=int(dry_run.get("roadsideRadiusMeters", 500)),
         max_roadside_candidate_centers=int(dry_run.get("maxRoadsideCandidateCenters", 50)),
         allow_provisional_roadside_labels=bool(dry_run.get("allowProvisionalRoadsideLabels", False)),
     )
@@ -439,7 +439,7 @@ def render_report(
         "",
         "- `asOf` 是模型做出預測的時間；特徵只能使用 `asOf` 當下與以前的觀測。",
         "- `arrivalAt = asOf + leadTime`；`arrivalAt` 附近時間窗內的觀測只能作 label，不可回填成特徵。",
-        f"- 路邊 label 使用 300 公尺候選目的地圓；抵達時間窗內任一格 `{ROADSIDE_CONFIRMED_AVAILABLE_RULE}` 的 `is_available=true` 才是正例。",
+        f"- 路邊 label 使用 {settings.roadside_radius_meters} 公尺候選目的地圓；抵達時間窗內任一格 `{ROADSIDE_CONFIRMED_AVAILABLE_RULE}` 的 `is_available=true` 才是正例。",
         "- 舊 collector roadside CSV 若保留 `parking_status_raw`，本 dry-run 會離線套用 confirmed available 規則；不覆蓋原始 ZIP／CSV。",
         "- 路外 label 使用同一 `lot_id`；抵達時間窗內 `available_car > 0` 才是正例，unknown、負值或缺觀測皆拒絕。",
         "",
@@ -450,7 +450,7 @@ def render_report(
         f"| roadside | {report.source_rows['roadside']} | {report.skipped_rows['roadside_parse_or_missing_key']} |",
         f"| offstreet | {report.source_rows['offstreet']} | {report.skipped_rows['offstreet_parse_or_missing_key']} |",
         "",
-        "## Roadside 300m Candidate Coverage",
+        f"## Roadside {settings.roadside_radius_meters}m Candidate Coverage",
         "",
         "| Candidate centers | Min spots | Avg spots | Max spots |",
         "| ---: | ---: | ---: | ---: |",

@@ -52,7 +52,7 @@ public class CatalogCoverageReportService {
                 List.of(roadside, offStreet),
                 List.of(
                         "Current catalog is PARTIAL and must not be presented as complete Xinzhuang coverage.",
-                        "Do not output a complete 300m roadside area probability until the roadside catalog boundary is complete or explicitly partial.",
+                        "Do not output a complete 500m roadside area probability until the roadside catalog boundary is complete or explicitly partial.",
                         "Full import needs repeatable source export, stable source IDs, car eligibility rules, and retired-record handling."
                 )
         );

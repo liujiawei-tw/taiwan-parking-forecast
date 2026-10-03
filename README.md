@@ -29,7 +29,7 @@
 
 ## Sprint 2 目前狀態
 
-更新至 2026-09-29：Sprint 2 的 S2-001 至 S2-025 已完成可展示主系統基線、來源量測證據與文件基線。核心資料表與 Flyway、300 公尺目錄查詢、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為、Redis query state、前端 Google Maps／Places 載入路徑、無 key fallback、頁面可見時的受控自動刷新接線，以及 Sprint 3 預測進入條件均已存在。
+更新至 2026-10-03：Sprint 2 的 S2-001 至 S2-025 已完成可展示主系統基線、來源量測證據與文件基線。核心資料表與 Flyway、附近目錄查詢（目前產品半徑 500 公尺）、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為、Redis query state、前端 Google Maps／Places 載入路徑、無 key fallback、頁面可見時的受控自動刷新接線，以及 Sprint 3 預測進入條件均已存在。
 
 現階段的目錄已從少量合成種子資料推進為可追溯的新北市官方 Open Data 小樣本與來源 ID 對應，但仍不是完整新莊目錄；前端可在有瀏覽器 Google key 時載入 Maps／Places，無 key 時以手動座標 fallback 驗證主系統契約。因此目前不能把畫面上的資料視為完整正式即時停車資訊，真實 browser key Places 與可見頁官方刷新仍需人工驗收，預測模型也尚未開始輸出機率。
 

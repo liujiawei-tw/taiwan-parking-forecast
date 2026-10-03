@@ -110,7 +110,7 @@ class RedisParkingQueryStateStoreTest {
         ParkingQueryResponse response = new ParkingQueryResponse(
                 new QuerySection(queryId, "READY", false, now, now, now.plusMinutes(30), "ready"),
                 new DestinationSection("IKEA 新莊", 25.0414214, 121.4647633, "SUPPORTED", "supported"),
-                new AreaSection(300, "STRAIGHT_LINE", "NEW_TAIPEI_XINZHUANG_MVP", "PARTIAL", "partial"),
+                new AreaSection(500, "STRAIGHT_LINE", "NEW_TAIPEI_XINZHUANG_MVP", "PARTIAL", "partial"),
                 new EtaSection("FAILED", "GOOGLE_ROUTES", now, null, null, "failed"),
                 new RoadsideSection("NO_REALTIME_SNAPSHOT", "LOCAL_NTPC_CATALOG", null, null, null, List.of(), "none"),
                 new OffStreetSection("NO_REALTIME_SNAPSHOT", "LOCAL_NTPC_CATALOG", null, null, List.of(), "none"),

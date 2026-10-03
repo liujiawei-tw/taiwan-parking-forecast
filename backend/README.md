@@ -8,7 +8,7 @@ This module currently provides:
 
 - Spring Boot Web MVC application entrypoint, Actuator, and `GET /api/health`.
 - Typed API envelope, parking availability types, core JPA entities, and Flyway schema.
-- H2 local profile and MySQL Docker profile, including a small seed catalog for 300 m queries.
+- H2 local profile and MySQL Docker profile, including a small seed catalog for 500 m queries.
 - New Taipei source client, payload normalization, candidate snapshot publication, and published-snapshot reads.
 - MySQL refresh cooldown with Redis short-lock coordination and documented fallback behavior.
 - Google Routes `computeRoutes` ETA integration, including disabled, missing-key, and HTTP-failure degradation.

@@ -38,7 +38,7 @@
   "labelDryRun": {
     "leadMinutes": [30, 60],
     "labelToleranceMinutes": 15,
-    "roadsideRadiusMeters": 300,
+    "roadsideRadiusMeters": 500,
     "maxRoadsideCandidateCenters": 50,
     "allowProvisionalRoadsideLabels": false
   },

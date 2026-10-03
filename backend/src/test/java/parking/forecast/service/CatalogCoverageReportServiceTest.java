@@ -53,6 +53,6 @@ class CatalogCoverageReportServiceTest {
 
         assertThat(report.gatingNotes())
                 .anySatisfy(note -> assertThat(note).contains("must not be presented as complete"))
-                .anySatisfy(note -> assertThat(note).contains("Do not output a complete 300m roadside area probability"));
+                .anySatisfy(note -> assertThat(note).contains("Do not output a complete 500m roadside area probability"));
     }
 }
