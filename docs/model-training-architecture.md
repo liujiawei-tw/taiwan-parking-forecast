@@ -49,6 +49,8 @@
 - #62：資料品質盤點與匯入規格，提供可用日期、schema 差異與拒絕原因。
 - #63：在 `ml-training/src/parking_ml/` 補 label generation dry run，輸出 label usable ratio 與 rejection report。
 - #64：加入 baseline 與第一版 ML experiment，至少比較可解釋 baseline 與簡單模型。
+- S3-010：先驗證新北市 roadside `parkingstatus`／`cellstatus` 語意與 relabel 計畫，再重跑 roadside label dry-run。
+- S3-011：建立 ML canonical schema 與 source-specific mapping contract，避免不同地方政府 raw status code 直接混入模型。
 - #65：只有通過門檻後，才建立版本化模型產物、推論輸入 schema 與回滾驗證。
 
 ## 驗證

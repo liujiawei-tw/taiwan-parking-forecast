@@ -2,6 +2,15 @@
 
 更新日期：2026-10-03。
 
+## 2026-10-03 最新進度：S3-010 路邊狀態碼驗證
+
+- 已開始 roadside label 問題收斂。新增 `tools/roadside_status_validation.py`，可讀取新北市官方 CSV 全檔 endpoint 與本機 collector ZIP，輸出 aggregate 狀態碼驗證報告；不保存官方 CSV 原文、不輸出 row-level collector 資料。
+- 已用官方 CSV 全檔驗證 31,560 rows，新莊區 `areacode=65000050` 為 2,149 rows。新莊主要組合為 `parkingstatus=3/cellstatus=Y` 1,733、`3/N` 186、`1/Y` 145、`2/N` 49、`5/Y` 30、`5/N` 6。
+- 已用 9 天 collector roadside 樣本驗證主要組合：`3/Y` 586,530、`3/N` 63,112、`1/Y` 49,735、`2/N` 16,807、`5/Y` 10,290、`5/N` 2,058。舊規則 `parkingstatus=0 -> true` 不適合這批資料，因為 9 天樣本沒有任何 `parkingstatus=0`。
+- 已用本機 TDX 新北市路邊格位歷史 CSV 兩份交叉比對，共 8,422,511 rows；`SpotStatus=1` 5,744,482、`SpotStatus=2` 1,469,909、`SpotStatus=254` 1,208,120。TDX 樣本支持 `1/2` 作為使用中／空位語意，但不能直接證明新北市 `parkingstatus=5`。
+- 新增 `docs/s3-010-roadside-status-validation.md`，建議下一步在 `parking-data-collector` 導入 versioned label rule：`1=OCCUPIED`、`2=AVAILABLE`、`3=RESTRICTED_OR_CLOSED`、`5=UNKNOWN_OR_SPECIAL`；`3/5` 不作一般訓練 label。
+- 新增 `docs/ml-canonical-schema.md`，定義跨來源 ML 訓練 canonical observation、availability state、label rule version 與 source-specific mapping contract；未來不同地方政府 API 不應直接混用 raw status code。
+
 ## 2026-10-03 最新進度：S3-008 baseline 與第一版模型實驗
 
 - 已開始 #64／S3-008。新增 `ml-training/scripts/run_baseline_experiment.py` 與 `parking_ml.baseline_experiment`，可用 #63 相同時間切分與 label pairing 規則產生 aggregate baseline／簡單模型回測報告；不輸出 row-level label、不產生模型檔、不接線上 API。
