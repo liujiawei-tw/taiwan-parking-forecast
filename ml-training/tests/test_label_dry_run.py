@@ -27,8 +27,9 @@ class LabelDryRunTest(unittest.TestCase):
 
         self.assertIn("# S3-007 訓練標籤 dry-run 報告", report)
         self.assertIn("| offstreet | train | 30 | 2 | 1", report)
-        self.assertIn("roadside | train | 30", report)
-        self.assertIn("`provisional_roadside_label`", report)
+        self.assertIn("| roadside | train | 30 | 2 | 1 | 1 | 1 | 0 |", report)
+        self.assertIn("Roadside offline re-label rows：2", report)
+        self.assertNotIn("`provisional_roadside_label`", report)
         self.assertNotIn("lot-a,2026", report)
 
 
@@ -84,8 +85,8 @@ def write_sample_zip(zip_path: Path) -> None:
         },
     ]
     roadside_rows = [
-        roadside_row("spot-a", "2026-09-24T00:00:00Z", "false"),
-        roadside_row("spot-a", "2026-09-24T00:30:00Z", "true"),
+        roadside_row("spot-a", "2026-09-24T00:00:00Z", "1"),
+        roadside_row("spot-a", "2026-09-24T00:30:00Z", "2"),
     ]
     with zipfile.ZipFile(zip_path, "w") as archive:
         archive.writestr("offstreet_training_samples_2026-09-24.csv", csv_text(offstreet_rows))
@@ -93,7 +94,7 @@ def write_sample_zip(zip_path: Path) -> None:
         archive.writestr("manifest_2026-09-24.json", "{}")
 
 
-def roadside_row(spot_id: str, collected_at: str, is_available: str) -> dict[str, str]:
+def roadside_row(spot_id: str, collected_at: str, parking_status_raw: str) -> dict[str, str]:
     return {
         "collected_at_utc": collected_at,
         "collected_date_taipei": "2026-09-24",
@@ -109,9 +110,9 @@ def roadside_row(spot_id: str, collected_at: str, is_available: str) -> dict[str
         "spot_type": "",
         "latitude": "25.0",
         "longitude": "121.0",
-        "parking_status_raw": "0",
+        "parking_status_raw": parking_status_raw,
         "cell_status_raw": "0",
-        "is_available": is_available,
+        "is_available": "",
         "label_rule": "parkingstatus_0_available_1_unavailable_keep_raw",
         "source_dataset_id": "x",
         "source_dataset_name": "x",

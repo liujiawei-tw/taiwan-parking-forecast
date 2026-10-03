@@ -100,13 +100,23 @@ def generate_baseline_experiment_report(input_path: Path, config: TrainingConfig
                         test_samples=test_stats.usable,
                         train_positive_rate=None,
                         test_positive_rate=None,
-                        reason="roadside_provisional_labels_rejected",
+                        reason=roadside_not_run_reason(train_stats, test_stats, config),
                     )
                 ],
             )
         )
 
     return render_baseline_report(BaselineExperimentReport(dataset_reports), input_path, config)
+
+
+def roadside_not_run_reason(train_stats: LabelStats, test_stats: LabelStats, config: TrainingConfig) -> str:
+    min_train_samples = int(config.baseline_experiment.get("minTrainSamples", 500))
+    min_test_samples = int(config.baseline_experiment.get("minTestSamples", 100))
+    if train_stats.usable < min_train_samples:
+        return "roadside_insufficient_train_labels_after_relabel"
+    if test_stats.usable < min_test_samples:
+        return "roadside_insufficient_test_labels_after_relabel"
+    return "roadside_baseline_not_implemented_after_relabel"
 
 
 def build_offstreet_samples(
@@ -396,7 +406,7 @@ def render_baseline_report(report: BaselineExperimentReport, input_path: Path, c
             "## 判定",
             "",
             "- Offstreet baseline 與簡單 logistic regression 已可用時間切分回測；結果仍只是實驗，不代表可上線服務承諾。",
-            "- Roadside 因 provisional label 預設拒絕，維持 `INSUFFICIENT_DATA`，不得用固定路段或 provisional status 補成線上機率。",
+            "- Roadside confirmed availability label 已可由 raw status 離線 re-label；本 baseline 階段仍維持 `INSUFFICIENT_DATA` 或 not-run，直到 roadside 專用 baseline／模型與門檻完成。",
             "- 後續若要進 #65，必須先定義模型版本、schema、門檻、回滾與正式模型產物保存規則。",
         ]
     )

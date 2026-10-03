@@ -2,12 +2,19 @@
 
 更新日期：2026-10-03。
 
-## 2026-10-03 最新進度：S3-012 collector roadside confirmed availability label
+## 2026-10-03 最新進度：S3-013 roadside 離線 re-label 與 dry-run 重跑
+
+- 已在主系統 `ml-training` 加入 roadside 離線 re-label：對既有舊 collector ZIP 讀取 `parking_status_raw`，套用 `ntpc_roadside_confirmed_available_status_2_else_false_v1`，不改寫原始 ZIP/CSV，不提交 row-level label。
+- 真實 9 天樣本重跑 S3-007 label dry-run 後，roadside offline re-label rows 為 728,532。30 分鐘 lead 有 train 10,750／test 3,900 usable labels，正例分別 860／312；60 分鐘 lead 有 train 10,900／test 3,850 usable labels，正例分別 872／308。
+- S3-008 baseline report 已同步重跑。Roadside 現在不是因 label 數量為 0 被拒絕；目前維持 `INSUFFICIENT_DATA` 的原因是 `roadside_baseline_not_implemented_after_relabel`，也就是尚未實作 roadside 專用 baseline／模型與門檻。
+- `is_available=false` 的語意仍維持保守：代表「不確認有一般可停空位」，不得寫成保證沒有空位。這批工作仍是訓練前資料治理與離線實驗，沒有產生正式模型檔，也沒有接入線上 `predictions`。
+
+## 2026-10-03 進度：S3-012 collector roadside confirmed availability label
 
 - 已在獨立 `parking-data-collector` repo 合併 PR #1，將 roadside `is_available` 改為保守二元 label：只有 `parkingstatus=2` 視為 confirmed available；`1/3/5/other` 皆為 `false`，但以 `availability_state` 與 `not_confirmed_reason` 保留 occupied、restricted、unknown 等語意。
 - 新版 collector `label_rule` 為 `ntpc_roadside_confirmed_available_status_2_else_false_v1`。這裡的 `false` 表示「不確認有一般可停空位」，不得在模型報告或產品文案中說成保證沒有空位。
 - collector 文件已同步更新 `README.md` 與 `docs/data-contract.md`，data contract 升至 v0.4；Apps Script 與 Java backup collector 均已更新，並新增 Java 單元測試鎖定 `1/2/3/5/0` label 行為。
-- 下一步需等 Apps Script 部署新版 collector 並產出新版 daily ZIP，或明確做離線 re-label，才能回主系統重跑 S3-007 label dry-run 與 S3-008 baseline。既有 2026-09-24 至 2026-10-02 ZIP 仍是舊 schema／舊 label rule，不可宣稱已修正。
+- 主系統已在 S3-013 對既有 2026-09-24 至 2026-10-02 ZIP 做明確離線 re-label，並重跑 S3-007 label dry-run 與 S3-008 baseline。新版 Apps Script collector ZIP 仍可作後續驗證，但不再是解除舊樣本 provisional label 的唯一途徑。
 
 ## 2026-10-03 最新進度：S3-010 路邊狀態碼驗證
 
@@ -18,12 +25,12 @@
 - 新增 `docs/s3-010-roadside-status-validation.md`，建議下一步在 `parking-data-collector` 導入 versioned label rule：`1=OCCUPIED`、`2=AVAILABLE`、`3=RESTRICTED_OR_CLOSED`、`5=UNKNOWN_OR_SPECIAL`；`3/5` 不作一般訓練 label。
 - 新增 `docs/ml-canonical-schema.md`，定義跨來源 ML 訓練 canonical observation、availability state、label rule version 與 source-specific mapping contract；未來不同地方政府 API 不應直接混用 raw status code。
 
-## 2026-10-03 最新進度：S3-008 baseline 與第一版模型實驗
+## 2026-10-03 進度：S3-008 baseline 與第一版模型實驗
 
 - 已開始 #64／S3-008。新增 `ml-training/scripts/run_baseline_experiment.py` 與 `parking_ml.baseline_experiment`，可用 #63 相同時間切分與 label pairing 規則產生 aggregate baseline／簡單模型回測報告；不輸出 row-level label、不產生模型檔、不接線上 API。
 - 真實 9 天離線報告已產生於 `data/private/collector-samples/baseline-experiment-2026-09-24_2026-10-02.md`，該路徑為 ignored，不提交 Git。公開摘要寫入 `docs/s3-008-baseline-experiment.md`。
 - Offstreet 30 分鐘 lead：train 8,516 labels、test 3,189 labels；`current_state_persistence` Brier 0.0152、log loss 0.0928。Offstreet 60 分鐘 lead：train 8,638 labels、test 3,148 labels；`current_state_persistence` Brier 0.0182、log loss 0.1028。
-- Roadside 因 provisional label 預設拒絕，30／60 分鐘 lead 的 train/test usable labels 仍為 0，狀態維持 `INSUFFICIENT_DATA`。目前仍不得輸出線上機率，也尚未進 #65 模型產物版本化。
+- Roadside 已在 S3-013 透過離線 re-label 產生 usable labels：30 分鐘 lead train 10,750／test 3,900，60 分鐘 lead train 10,900／test 3,850；但 roadside 專用 baseline／模型與門檻尚未實作，狀態仍維持 `INSUFFICIENT_DATA`。目前仍不得輸出線上機率，也尚未進 #65 模型產物版本化。
 
 ## 2026-10-03 最新進度：S3-006 collector 訓練資料品質盤點與匯入規格
 
@@ -33,12 +40,12 @@
 - 新增 `docs/s3-006-collector-quality-inventory.md`，記錄欄位語意、拒絕原因、匯入規格草案、9 天真實樣本摘要與 train/test 日期切分。盤點結果：roadside 728,532 rows、offstreet 50,516 rows，無缺日、parse error、duplicate rows 或 duplicate observations；roadside reliable label 仍為 0%，暫不開始 #64 模型訓練。#63 label generation dry run 採 train=`2026-09-24..2026-09-30`、test=`2026-10-01..2026-10-02`，不可 row-random split。
 - 新增 `ml-training/` 離線模型訓練 workspace 骨架與 `docs/model-training-architecture.md`。目前只包含訓練設定範例、日期切分 helper、計畫預覽 script 與單元測試；不訓練模型、不發布模型產物、不接線上查詢。
 
-## 2026-10-03 最新進度：S3-007 訓練標籤 dry-run
+## 2026-10-03 進度：S3-007 訓練標籤 dry-run
 
 - 已開始 #63／S3-007。新增 `ml-training/scripts/generate_label_dry_run.py`、collector ZIP reader 與 label dry-run pairing 程式，輸出 aggregate Markdown 報告，不輸出 row-level labels。
 - Label 規則固定 `asOf` 只供 feature side 使用，`arrivalAt = asOf + leadTime` 附近觀測只作 label；目前 lead time 為 30／60 分鐘，label window 為 ±15 分鐘。
-- 真實 9 天 dry-run：roadside 50 個 300m candidate centers，candidate centers 內最少 10 格、平均 54.7 格、最多 97 格。roadside 因 provisional label 預設拒絕，train/test usable labels 皆為 0；offstreet 30 分鐘 lead 可用 train 8,516、test 3,189，60 分鐘 lead 可用 train 8,638、test 3,148。
-- 新增 `docs/s3-007-label-generation-dry-run.md`，記錄 label definition、拒絕原因、dry-run 摘要與限制：目前仍不得輸出線上機率，也不得開始 #64 正式模型訓練。
+- 真實 9 天 dry-run：roadside 50 個 300m candidate centers，candidate centers 內最少 10 格、平均 54.7 格、最多 97 格。S3-013 離線 re-label 後，roadside 30 分鐘 lead 可用 train 10,750、test 3,900；60 分鐘 lead 可用 train 10,900、test 3,850。offstreet 30 分鐘 lead 可用 train 8,516、test 3,189，60 分鐘 lead 可用 train 8,638、test 3,148。
+- 新增 `docs/s3-007-label-generation-dry-run.md`，記錄 label definition、拒絕原因、dry-run 摘要與限制：目前仍不得輸出線上機率；roadside 下一步是專用 baseline／模型與門檻評估。
 
 ## 2026-10-02 最新進度：S3-005 官方來源端到端刷新寫入與發布量測
 

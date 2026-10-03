@@ -30,7 +30,8 @@ class BaselineExperimentTest(unittest.TestCase):
         self.assertIn("`train_positive_rate`", report)
         self.assertIn("`logistic_regression_v1`", report)
         self.assertIn("| roadside | 30 | `INSUFFICIENT_DATA`", report)
-        self.assertIn("`provisional_roadside_label`", report)
+        self.assertIn("roadside_insufficient_train_labels_after_relabel", report)
+        self.assertNotIn("`provisional_roadside_label`", report)
         self.assertNotIn("lot-a,2026", report)
 
 
@@ -42,8 +43,8 @@ def write_zip(zip_path: Path, day: str, positive: bool) -> None:
         offstreet_row(day, "01:30:00", "0" if positive else "3"),
     ]
     roadside_rows = [
-        roadside_row("spot-a", day, "00:00:00", "false"),
-        roadside_row("spot-a", day, "00:30:00", "true"),
+        roadside_row("spot-a", day, "00:00:00", "1"),
+        roadside_row("spot-a", day, "00:30:00", "2"),
     ]
     with zipfile.ZipFile(zip_path, "w") as archive:
         archive.writestr(f"offstreet_training_samples_{day}.csv", csv_text(offstreet_rows))
@@ -78,7 +79,7 @@ def offstreet_row(day: str, time_text: str, available_car: str) -> dict[str, str
     }
 
 
-def roadside_row(spot_id: str, day: str, time_text: str, is_available: str) -> dict[str, str]:
+def roadside_row(spot_id: str, day: str, time_text: str, parking_status_raw: str) -> dict[str, str]:
     return {
         "collected_at_utc": f"{day}T{time_text}Z",
         "collected_date_taipei": day,
@@ -94,9 +95,9 @@ def roadside_row(spot_id: str, day: str, time_text: str, is_available: str) -> d
         "spot_type": "",
         "latitude": "25.0",
         "longitude": "121.0",
-        "parking_status_raw": "0",
+        "parking_status_raw": parking_status_raw,
         "cell_status_raw": "0",
-        "is_available": is_available,
+        "is_available": "",
         "label_rule": "parkingstatus_0_available_1_unavailable_keep_raw",
         "source_dataset_id": "x",
         "source_dataset_name": "x",
