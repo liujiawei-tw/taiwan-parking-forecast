@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "ml-training-config-v1",
+  "project": "taiwan-parking-forecast",
+  "source": {
+    "type": "collector-daily-zip",
+    "description": "parking-data-collector Google Drive daily ZIP exports",
+    "localSampleDirectory": "data/private/collector-samples",
+    "excludedDates": [
+      {
+        "date": "2026-09-23",
+        "reason": "User reported incomplete sample; exclude from first training-quality split."
+      }
+    ]
+  },
+  "datasets": {
+    "roadside": {
+      "labelPolicy": "provisional_only_until_status_semantics_verified",
+      "entityKey": "spot_id",
+      "target": "is_available",
+      "minimumReliableLabelRatio": 0.0
+    },
+    "offstreet": {
+      "labelPolicy": "available_car_non_negative_with_unknown_rejected",
+      "entityKey": "lot_id",
+      "target": "availability_ratio",
+      "minimumReliableLabelRatio": 0.2
+    }
+  },
+  "split": {
+    "strategy": "chronological_date",
+    "trainStart": "2026-09-24",
+    "trainEnd": "2026-09-30",
+    "testStart": "2026-10-01",
+    "testEnd": "2026-10-02",
+    "rowRandomSplitAllowed": false,
+    "futureDefault": "chronological_80_20_or_rolling_window_when_more_days_exist"
+  },
+  "outputs": {
+    "reportDirectory": "ml-training/reports/private",
+    "artifactDirectory": "ml-training/models",
+    "publishToOnlineSystem": false
+  }
+}

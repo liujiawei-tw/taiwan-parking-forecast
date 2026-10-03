@@ -6,8 +6,9 @@
 
 - 已開始 #62／S3-006。新增 `tools/collector_quality_inventory.py`，可讀取 `parking-data-collector` daily CSV／ZIP 匯出根目錄或單一 ZIP，輸出只含摘要的 Markdown 品質報告；工具不複製原始 CSV／ZIP、不輸出 row-level 資料。
 - 已讀取 sibling repo `parking-data-collector` 的 README、`docs/data-contract.md` 與 Apps Script 欄位規則，確認 `collected_at_utc` 是收集輪次開始時間，`source_api_response_at_utc` 是 API response time 或 fallback，兩者都不是官方逐筆觀測時間。
-- 本機 `parking-data-collector\data` 目前只有 H2 DB、pid 與 log，repo 內未找到 `roadside_training_samples_*.csv`、`offstreet_training_samples_*.csv`、`manifest_*.json` 或 `parking-training-*.zip`。本輪未存取 Google Drive、未下載原始資料、未提交 CSV／ZIP。
-- 新增 `docs/s3-006-collector-quality-inventory.md`，記錄欄位語意、拒絕原因、匯入規格草案與本輪判定：因沒有 daily CSV／ZIP 樣本，row count、缺日、時間間隔、重複列與 label 可用比例皆不能宣稱通過；暫不進入 #63 label generation，也不能開始 #64 模型訓練。
+- 已從 Google Drive `parking-training-data/exports` 取得 2026-09-24 至 2026-10-02 共 9 包 daily ZIP 做私有盤點；`2026-09-23` 因資料不齊先排除。原始 ZIP、CSV 與完整私有報告放在 `data/private/collector-samples/`，不提交 Git。
+- 新增 `docs/s3-006-collector-quality-inventory.md`，記錄欄位語意、拒絕原因、匯入規格草案、9 天真實樣本摘要與 train/test 日期切分。盤點結果：roadside 728,532 rows、offstreet 50,516 rows，無缺日、parse error、duplicate rows 或 duplicate observations；roadside reliable label 仍為 0%，暫不開始 #64 模型訓練。#63 label generation dry run 採 train=`2026-09-24..2026-09-30`、test=`2026-10-01..2026-10-02`，不可 row-random split。
+- 新增 `ml-training/` 離線模型訓練 workspace 骨架與 `docs/model-training-architecture.md`。目前只包含訓練設定範例、日期切分 helper、計畫預覽 script 與單元測試；不訓練模型、不發布模型產物、不接線上查詢。
 
 ## 2026-10-02 最新進度：S3-005 官方來源端到端刷新寫入與發布量測
 

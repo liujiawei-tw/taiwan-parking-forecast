@@ -331,8 +331,8 @@ def render_report(
         "",
         "## 檔案盤點",
         "",
-        "| 類型 | CSV 檔數 | Manifest 檔數 | Row count | 日期數 | Header mismatch | Parse errors |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| 類型 | CSV 檔數 | Manifest 檔數 | Row count | 日期數 | Header mismatch | Duplicate rows | Parse errors |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
         file_row(roadside),
         file_row(offstreet),
         "",
@@ -351,8 +351,8 @@ def render_report(
         "",
         "## Label 可用性與拒絕原因",
         "",
-        "| 類型 | Candidate label ratio | Reliable label ratio | Unknown/blank | Negative unknown | Missing raw | Missing entity ID | Duplicate observations | Invalid coordinates | Provisional label rows |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| 類型 | Candidate label ratio | Reliable label ratio | Unknown/blank | Negative unknown | Missing raw | Missing entity ID | Missing label rule | Missing source response | Duplicate observations | Invalid coordinates | Provisional label rows |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
         quality_row(roadside),
         quality_row(offstreet),
         "",
@@ -366,7 +366,8 @@ def render_report(
 def file_row(quality: CsvQuality) -> str:
     return (
         f"| {quality.dataset} | {len(quality.files)} | {len(set(quality.manifests))} | {quality.rows} | "
-        f"{len(quality.dates)} | {quality.header_mismatches} | {len(quality.parse_errors)} |"
+        f"{len(quality.dates)} | {quality.header_mismatches} | {quality.duplicate_rows} | "
+        f"{len(quality.parse_errors)} |"
     )
 
 
@@ -374,8 +375,8 @@ def quality_row(quality: CsvQuality) -> str:
     return (
         f"| {quality.dataset} | {quality.coverage_label_ratio} | {quality.reliable_label_ratio} | "
         f"{quality.unknown_or_blank_rows} | {quality.negative_unknown_rows} | {quality.missing_raw_label} | "
-        f"{quality.missing_entity_id} | {quality.duplicate_observations} | {quality.invalid_coordinate_rows} | "
-        f"{quality.provisional_label_rows} |"
+        f"{quality.missing_entity_id} | {quality.missing_label_rule} | {quality.missing_source_response_at} | "
+        f"{quality.duplicate_observations} | {quality.invalid_coordinate_rows} | {quality.provisional_label_rows} |"
     )
 
 
