@@ -34,6 +34,21 @@ class BaselineExperimentTest(unittest.TestCase):
         self.assertNotIn("`provisional_roadside_label`", report)
         self.assertNotIn("lot-a,2026", report)
 
+    def test_runs_roadside_baseline_when_relabel_samples_pass_thresholds(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_zip(root / "parking-training-2026-09-24.zip", "2026-09-24", positive=True)
+            write_zip(root / "parking-training-2026-10-01.zip", "2026-10-01", positive=False)
+            config = load_training_config(ROOT / "config" / "training-config.example.json")
+            config.baseline_experiment["minTrainSamples"] = 1
+            config.baseline_experiment["minTestSamples"] = 1
+
+            report = generate_baseline_experiment_report(root, config)
+
+        self.assertIn("| roadside | 30 | `EXPERIMENT_ONLY`", report)
+        self.assertIn("| roadside | 30 | `train_positive_rate` | `EVALUATED`", report)
+        self.assertIn("| roadside | 30 | `current_state_persistence` | `EVALUATED`", report)
+
 
 def write_zip(zip_path: Path, day: str, positive: bool) -> None:
     offstreet_rows = [
@@ -45,6 +60,8 @@ def write_zip(zip_path: Path, day: str, positive: bool) -> None:
     roadside_rows = [
         roadside_row("spot-a", day, "00:00:00", "1"),
         roadside_row("spot-a", day, "00:30:00", "2"),
+        roadside_row("spot-a", day, "01:00:00", "1"),
+        roadside_row("spot-a", day, "01:30:00", "1"),
     ]
     with zipfile.ZipFile(zip_path, "w") as archive:
         archive.writestr(f"offstreet_training_samples_{day}.csv", csv_text(offstreet_rows))

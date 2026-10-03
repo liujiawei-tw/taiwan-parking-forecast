@@ -11,10 +11,15 @@ from pathlib import Path
 from parking_ml.label_dry_run import (
     LabelDryRunSettings,
     LabelStats,
+    is_provisional,
     nearest_observation,
+    nearest_timestamp,
     read_observations,
     run_roadside_dry_run,
+    roadside_timestamp_index,
+    select_candidate_centers,
     settings_from_config,
+    spots_within_radius,
 )
 from parking_ml.training_config import TrainingConfig
 
@@ -66,6 +71,7 @@ def generate_baseline_experiment_report(input_path: Path, config: TrainingConfig
     settings = settings_from_config(config)
     observations = read_observations(input_path)
     offstreet_samples = build_offstreet_samples(observations.offstreet_by_lot, config, settings)
+    roadside_samples = build_roadside_samples(observations.roadside_by_spot, config, settings)
     roadside_stats, _ = run_roadside_dry_run(observations.roadside_by_spot, config.split, settings)
 
     dataset_reports: list[DatasetLeadReport] = []
@@ -86,37 +92,82 @@ def generate_baseline_experiment_report(input_path: Path, config: TrainingConfig
         combined.rejected.update(test_stats.rejected)
         combined.entity_ids.update(train_stats.entity_ids)
         combined.entity_ids.update(test_stats.entity_ids)
-        dataset_reports.append(
-            DatasetLeadReport(
-                dataset="roadside",
-                lead_minutes=lead,
-                status="INSUFFICIENT_DATA",
-                rejection_summary=combined,
-                metrics=[
-                    ExperimentMetrics(
-                        name="not_run",
-                        status="INSUFFICIENT_DATA",
-                        train_samples=train_stats.usable,
-                        test_samples=test_stats.usable,
-                        train_positive_rate=None,
-                        test_positive_rate=None,
-                        reason=roadside_not_run_reason(train_stats, test_stats, config),
-                    )
-                ],
-            )
-        )
+        lead_samples = [sample for sample in roadside_samples if sample.lead_minutes == lead]
+        roadside_report = evaluate_roadside(lead, lead_samples, config)
+        roadside_report.rejection_summary = combined
+        dataset_reports.append(roadside_report)
 
     return render_baseline_report(BaselineExperimentReport(dataset_reports), input_path, config)
 
 
-def roadside_not_run_reason(train_stats: LabelStats, test_stats: LabelStats, config: TrainingConfig) -> str:
+def evaluate_roadside(lead: int, samples: list[LabelSample], config: TrainingConfig) -> DatasetLeadReport:
+    train = [sample for sample in samples if sample.split == "train"]
+    test = [sample for sample in samples if sample.split == "test"]
+    reason = roadside_not_run_reason(train, test, config)
+    if reason:
+        return DatasetLeadReport(
+            dataset="roadside",
+            lead_minutes=lead,
+            status="INSUFFICIENT_DATA",
+            metrics=[
+                ExperimentMetrics(
+                    name="not_run",
+                    status="INSUFFICIENT_DATA",
+                    train_samples=len(train),
+                    test_samples=len(test),
+                    train_positive_rate=positive_rate_or_none(train),
+                    test_positive_rate=positive_rate_or_none(test),
+                    reason=reason,
+                )
+            ],
+        )
+
+    metrics = [
+        evaluate_predictions(
+            "train_positive_rate",
+            train,
+            test,
+            [positive_rate(train)] * len(test),
+        ),
+        evaluate_predictions(
+            "entity_positive_rate",
+            train,
+            test,
+            entity_positive_rate_predictions(train, test),
+        ),
+        evaluate_predictions(
+            "current_state_persistence",
+            train,
+            test,
+            current_state_predictions(train, test),
+        ),
+        evaluate_predictions(
+            "logistic_regression_v1",
+            train,
+            test,
+            logistic_regression_predictions(train, test, config),
+        ),
+    ]
+    status = "EXPERIMENT_ONLY"
+    if any(metric.status == "INSUFFICIENT_DATA" for metric in metrics):
+        status = "PARTIAL_EXPERIMENT"
+    return DatasetLeadReport(dataset="roadside", lead_minutes=lead, status=status, metrics=metrics)
+
+
+def roadside_not_run_reason(train: list[LabelSample], test: list[LabelSample], config: TrainingConfig) -> str | None:
     min_train_samples = int(config.baseline_experiment.get("minTrainSamples", 500))
     min_test_samples = int(config.baseline_experiment.get("minTestSamples", 100))
-    if train_stats.usable < min_train_samples:
+    if len(train) < min_train_samples:
         return "roadside_insufficient_train_labels_after_relabel"
-    if test_stats.usable < min_test_samples:
+    if len(test) < min_test_samples:
         return "roadside_insufficient_test_labels_after_relabel"
-    return "roadside_baseline_not_implemented_after_relabel"
+    if not has_both_classes(train) or not has_both_classes(test):
+        return "roadside_single_class_after_relabel"
+    return None
+
+
+def has_both_classes(samples: list[LabelSample]) -> bool:
+    return {sample.label for sample in samples} == {False, True}
 
 
 def build_offstreet_samples(
@@ -154,6 +205,75 @@ def build_offstreet_samples(
                     )
                 )
     return samples
+
+
+def build_roadside_samples(
+    roadside_by_spot: dict,
+    config: TrainingConfig,
+    settings: LabelDryRunSettings,
+) -> list[LabelSample]:
+    samples: list[LabelSample] = []
+    latest_by_spot = {spot_id: rows[-1] for spot_id, rows in roadside_by_spot.items() if rows}
+    centers = select_candidate_centers(latest_by_spot, settings.max_roadside_candidate_centers)
+    circle_spots = [
+        spots_within_radius(center, latest_by_spot, settings.roadside_radius_meters)
+        for center in centers
+    ]
+    by_timestamp, timestamp_dates = roadside_timestamp_index(roadside_by_spot)
+    timestamps = sorted(by_timestamp)
+
+    for center_index, spot_ids in enumerate(circle_spots):
+        if not spot_ids:
+            continue
+        entity_id = f"circle-{center_index + 1:03d}"
+        for as_of in timestamps:
+            split_name = config.split.split_for(timestamp_dates[as_of])
+            if split_name is None:
+                continue
+            as_of_rows = [
+                by_timestamp[as_of][spot_id]
+                for spot_id in spot_ids
+                if spot_id in by_timestamp[as_of]
+            ]
+            if not reliable_roadside_rows(as_of_rows, settings):
+                continue
+            as_of_labels = [bool(row.is_available) for row in as_of_rows]
+            for lead in settings.lead_minutes:
+                arrival_time = nearest_timestamp(timestamps, as_of + timedelta(minutes=lead), settings.tolerance)
+                if arrival_time is None or arrival_time <= as_of:
+                    continue
+                arrival_rows = [
+                    by_timestamp[arrival_time][spot_id]
+                    for spot_id in spot_ids
+                    if spot_id in by_timestamp[arrival_time]
+                ]
+                if not reliable_roadside_rows(arrival_rows, settings):
+                    continue
+                arrival_labels = [bool(row.is_available) for row in arrival_rows]
+                available_count = sum(1 for label in as_of_labels if label)
+                samples.append(
+                    LabelSample(
+                        split=split_name,
+                        lead_minutes=lead,
+                        entity_id=entity_id,
+                        current_available=available_count > 0,
+                        current_ratio=available_count / len(as_of_labels),
+                        weekday=as_of.weekday(),
+                        hour=as_of.hour,
+                        label=any(arrival_labels),
+                    )
+                )
+    return samples
+
+
+def reliable_roadside_rows(rows: list, settings: LabelDryRunSettings) -> bool:
+    if not rows:
+        return False
+    if any(not row.has_source_response for row in rows):
+        return False
+    if not settings.allow_provisional_roadside_labels and any(is_provisional(row) for row in rows):
+        return False
+    return not any(row.is_available is None for row in rows)
 
 
 def current_available(available_car: int | None, is_unknown: bool) -> bool | None:
@@ -406,7 +526,8 @@ def render_baseline_report(report: BaselineExperimentReport, input_path: Path, c
             "## 判定",
             "",
             "- Offstreet baseline 與簡單 logistic regression 已可用時間切分回測；結果仍只是實驗，不代表可上線服務承諾。",
-            "- Roadside confirmed availability label 已可由 raw status 離線 re-label；本 baseline 階段仍維持 `INSUFFICIENT_DATA` 或 not-run，直到 roadside 專用 baseline／模型與門檻完成。",
+            "- Roadside baseline 已使用 300 公尺候選目的地圓與 confirmed availability label 進行離線回測；結果仍只是實驗，不代表可上線服務承諾。",
+            "- Roadside 目前樣本天數短且正例比例偏低，必須再做更多日期、更多區域與門檻審查，才能進入模型版本化。",
             "- 後續若要進 #65，必須先定義模型版本、schema、門檻、回滾與正式模型產物保存規則。",
         ]
     )
