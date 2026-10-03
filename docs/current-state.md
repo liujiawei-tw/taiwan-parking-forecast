@@ -1,6 +1,14 @@
 # 目前狀態
 
-更新日期：2026-10-02。
+更新日期：2026-10-03。
+
+## 2026-10-03 最新進度：S3-006 collector 訓練資料品質盤點與匯入規格
+
+- 已開始 #62／S3-006。新增 `tools/collector_quality_inventory.py`，可讀取 `parking-data-collector` daily CSV／ZIP 匯出根目錄或單一 ZIP，輸出只含摘要的 Markdown 品質報告；工具不複製原始 CSV／ZIP、不輸出 row-level 資料。
+- 已讀取 sibling repo `parking-data-collector` 的 README、`docs/data-contract.md` 與 Apps Script 欄位規則，確認 `collected_at_utc` 是收集輪次開始時間，`source_api_response_at_utc` 是 API response time 或 fallback，兩者都不是官方逐筆觀測時間。
+- 已從 Google Drive `parking-training-data/exports` 取得 2026-09-24 至 2026-10-02 共 9 包 daily ZIP 做私有盤點；`2026-09-23` 因資料不齊先排除。原始 ZIP、CSV 與完整私有報告放在 `data/private/collector-samples/`，不提交 Git。
+- 新增 `docs/s3-006-collector-quality-inventory.md`，記錄欄位語意、拒絕原因、匯入規格草案、9 天真實樣本摘要與 train/test 日期切分。盤點結果：roadside 728,532 rows、offstreet 50,516 rows，無缺日、parse error、duplicate rows 或 duplicate observations；roadside reliable label 仍為 0%，暫不開始 #64 模型訓練。#63 label generation dry run 採 train=`2026-09-24..2026-09-30`、test=`2026-10-01..2026-10-02`，不可 row-random split。
+- 新增 `ml-training/` 離線模型訓練 workspace 骨架與 `docs/model-training-architecture.md`。目前只包含訓練設定範例、日期切分 helper、計畫預覽 script 與單元測試；不訓練模型、不發布模型產物、不接線上查詢。
 
 ## 2026-10-02 最新進度：S3-005 官方來源端到端刷新寫入與發布量測
 
@@ -36,7 +44,7 @@
 
 ## 階段與角色
 
-目前為 Sprint 1 主系統設計：需求、資料來源／計費查核和技術可行性持續收斂，尚未進入主系統實作。Sponsor 兼開發者是使用者；AI 擔任產品經理、架構師、資料工程師、Scrum 引導者與面試官。主應用程式尚未編碼。獨立收集器已轉為 GitHub Actions 定時擷取、新莊每日 CSV 儲存到 Google Drive；Sponsor 確認排程已開始運作，但後續回報其取得方式有問題、資料不完整，collector 稽核與模型訓練先暫緩。收集器已有 GitHub 遠端，主專案尚無遠端。沒有呼叫使用者的 TDX 金鑰。
+目前為 Sprint 3 預測前置與模型訓練資料治理。Sponsor 兼開發者是使用者；AI 擔任產品／架構／資料工程協作與工程審查夥伴。Sprint 2 主系統基線、官方來源小樣本、查詢契約、前端 Maps／Places 初版、可見頁受控刷新與 Sprint 3 進入條件已完成；Sprint 3 目前聚焦完整 catalog／mapping 治理、官方來源端到端量測、collector 訓練資料品質盤點、訓練標籤、baseline／第一版模型實驗與模型產物版本化。`parking-data-collector` 仍是獨立離線 ML 訓練資料來源，不服務使用者查詢，也不取代主系統 PUBLISHED snapshot。
 
 ## 已完成
 

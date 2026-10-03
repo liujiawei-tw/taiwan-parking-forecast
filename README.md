@@ -16,6 +16,7 @@
 10. [Sprint 0 等待期間工作清單](docs/sprint-0-while-waiting.md)：長區間資料產製時可先完成的工作與交付條件。
 11. [資料來源與預測目標討論稿](docs/data-source-strategy.md)：高額歷史檔的替代方案，以及搜尋／抵達前刷新流程。
 12. [Sprint 3 預測進入條件](docs/sprint-3-entry-criteria.md)：預測開始前必須具備的資料、標籤、回測與推論契約證據。
+13. [模型訓練架構](docs/model-training-architecture.md)：離線訓練 workspace、資料切分與禁止接線上的邊界。
 
 新北市路邊原始 ZIP 與 CSV 放置位置：`data/raw/tdx/new-taipei/on-street-spot-availability/`；該資料夾的 README 會被追蹤，下載的資料檔不會進 Git。
 桃園機場路外停車歷史 CSV 放置位置：`data/raw/tdx/taoyuan-airport/off-street-availability/`；首次盤點見 [桃園機場資料概況](docs/airport-data-profile.md)。
@@ -62,3 +63,12 @@ Current credentials are local placeholder values for development only. Replace t
 - Docker image build：`docker compose build api web`
 
 後續若開始部署到其他 server，再另外新增部署 workflow。
+
+## 離線模型訓練 Workspace
+
+模型訓練相關程式放在 `ml-training/`，只用於離線 label generation、baseline、ML experiment 與模型產物驗證；不服務使用者查詢、不刷新官方來源、不提交 raw CSV／ZIP 或大型模型檔。第一版可用以下命令檢查訓練計畫與日期切分：
+
+```bash
+python ml-training/scripts/plan_training_run.py --config ml-training/config/training-config.example.json
+python -m unittest discover -s ml-training/tests
+```

@@ -12,6 +12,11 @@ target/
 build/
 __pycache__/
 .ipynb_checkpoints/
+ml-training/.venv/
+ml-training/data/
+ml-training/outputs/
+ml-training/models/
+ml-training/reports/private/
 # 保留原始資料夾的說明文件；大型下載檔留在本機，不提交 Git。
 data/raw/**
 !data/raw/tdx/

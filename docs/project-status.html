@@ -297,36 +297,36 @@
 <main>
   <header>
     <h1>台灣停車預測｜專案進度儀表板</h1>
-    <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態，並在資料足夠時提供抵達時預測。</p>
+    <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 300 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
-      <span class="pill doing">目前：S3-005 官方刷新端到端量測</span>
-      <span class="pill">更新：2026-10-02</span>
-      <span class="pill doing">下一步：#61 PR 收斂與 CI</span>
+      <span class="pill doing">目前：S3-006 collector 訓練資料盤點</span>
+      <span class="pill">更新：2026-10-03</span>
+      <span class="pill doing">下一步：取得 daily CSV／ZIP 樣本後重跑盤點</span>
       <span class="pill pending">訓練 collector：暫緩</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。#60 已合併 catalog dry-run 後的受控匯入命令基線；#61 已補路邊與路外各一輪官方端到端刷新寫入與發布量測，含 HTTP、頁數、資料量、品質、發布交易與 query read 耗時。兩類可信預測仍未完成。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。#60、#61 已合併；#62 已新增 collector daily CSV／ZIP 品質盤點工具、9 天真實樣本摘要、離線模型訓練 workspace 骨架與 train/test 日期切分。roadside reliable label 仍為 0%，兩類可信預測仍未完成。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
     <article class="metric">
       <span>後端測試</span>
       <strong>88 / 0 / 0</strong>
-      <p>S3-005 完整後端 Docker Maven 測試：tests / failures / errors。</p>
+      <p>S3-005 完整後端 Docker Maven 測試：tests / failures / errors；#62 目前為工具與文件變更。</p>
     </article>
     <article class="metric">
-      <span>Sprint 2 完成項</span>
-      <strong>S2-001 至 S2-025</strong>
-      <p>S2-025 已校正文件基線與 Sprint 3 預測進入條件。</p>
+      <span>目前 Sprint</span>
+      <strong>Sprint 3</strong>
+      <p>預測前置與模型訓練資料治理；Sprint 2 主系統基線已完成。</p>
     </article>
     <article class="metric">
       <span>最新 merge</span>
-      <strong>PR #67</strong>
-      <p>S3-004 Catalog 受控匯入管理命令。</p>
+      <strong>PR #68</strong>
+      <p>S3-005 官方來源端到端刷新寫入與發布量測。</p>
     </article>
     <article class="metric">
       <span>下一個瓶頸</span>
-      <strong>覆蓋與模型資料</strong>
-      <p>#61 已補 E2E 量測候選；模型線仍需從 collector CSV/ZIP 品質盤點開始。</p>
+      <strong>collector 匯出樣本</strong>
+      <p>#62 已取得 9 天樣本；下一步是 #63 label generation 與 roadside raw status 語意確認。</p>
     </article>
   </section>
 
@@ -465,7 +465,7 @@
   </section>
 
   <section class="panel" aria-labelledby="issue-title">
-    <h2 id="issue-title">Sprint 2 Issue 進度地圖</h2>
+    <h2 id="issue-title">Issue 進度地圖</h2>
     <table class="issue-table">
       <thead>
         <tr>
@@ -503,8 +503,8 @@
         <tr>
           <td>正式目錄與來源量測</td>
           <td>#33、#34、#41、#42、#60、#61</td>
-          <td><span class="pill doing">#61 實作中</span></td>
-          <td>#33 已建立官方小樣本 catalog 與 ID mapping；#34 已完成量測摘要基線與單輪真實量測；#41 已補覆蓋報告、通用 dry-run、NTPC catalog adapter、orchestration、候選匯入方案與預測拒絕規則；#42 已補路邊／路外各 5 輪低頻官方量測、p50／p95 與暫定設定建議；#60 已合併 dry-run 後受控匯入命令基線；#61 已補路邊／路外各一輪 E2E 刷新寫入與發布候選量測。</td>
+          <td><span class="pill done">完成候選</span></td>
+          <td>#33 已建立官方小樣本 catalog 與 ID mapping；#34 已完成量測摘要基線與單輪真實量測；#41 已補覆蓋報告、通用 dry-run、NTPC catalog adapter、orchestration、候選匯入方案與預測拒絕規則；#42 已補路邊／路外各 5 輪低頻官方量測、p50／p95 與暫定設定建議；#60 已合併 dry-run 後受控匯入命令基線；#61 已合併路邊／路外各一輪 E2E 刷新寫入與發布量測。</td>
         </tr>
         <tr>
           <td>查詢 API 契約</td>
@@ -526,9 +526,9 @@
         </tr>
         <tr>
           <td>預測基準</td>
-          <td>#43、#44、#45</td>
-          <td><span class="pill done">完成候選</span></td>
-          <td>#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與規則文件；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。</td>
+          <td>#43、#44、#45、#62</td>
+          <td><span class="pill doing">#62 實作中</span></td>
+          <td>#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與規則文件；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。#62 已新增 collector 品質盤點工具、9 天真實樣本摘要、離線模型訓練 workspace 與 train/test 日期切分；roadside reliable label 仍為 0%，暫不進 #64。</td>
         </tr>
       </tbody>
     </table>
@@ -538,8 +538,8 @@
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
       <ol class="next-list">
-        <li>#61 目前優先：收斂官方端到端刷新寫入與發布量測 PR，確認 CI 與文件驗收。</li>
-        <li>#60 已合併：Catalog dry-run 後受控匯入管理命令基線已完成；真實全量匯入仍需另案審查與人工確認。</li>
+        <li>#62 目前優先：收斂 collector 品質盤點與離線訓練 workspace PR；#63 接續做 label generation dry run 與 roadside raw status 語意確認。</li>
+        <li>#60、#61 已合併：Catalog 受控匯入命令與官方 E2E 刷新發布量測基線已完成；真實全量匯入仍需另案審查與人工確認。</li>
         <li>#40 已完成候選：前端 payload／自動刷新契約測試、GitHub Actions 守門、人工驗收事件面板、Docker smoke 與 Sponsor 真實瀏覽器 Places 人工驗收皆已完成。</li>
         <li>#41 已完成驗收收尾：新莊 catalog／source mapping 覆蓋報告、通用 import dry-run、NTPC catalog adapter、dry-run orchestration、匯入候選方案與預測拒絕規則皆已補齊，目前路邊 0.33%、路外 3.09%，皆維持 PARTIAL。</li>
         <li>#42 已完成候選：路邊／路外各 5 輪低頻官方量測已記錄，含 p50／p95、失敗率、資料量、重複 ID、欄位異常、mapping 覆蓋與暫定設定建議。</li>
