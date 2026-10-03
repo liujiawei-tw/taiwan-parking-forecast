@@ -21,6 +21,7 @@
 | `ml-training/README.md` | 訓練 workspace 使用方式與限制 |
 | `ml-training/config/training-config.example.json` | 第一版訓練資料來源、label policy、日期切分與輸出位置設定範例 |
 | `ml-training/scripts/plan_training_run.py` | 只列印訓練計畫，不訓練、不發布 |
+| `ml-training/scripts/generate_label_dry_run.py` | 產生 aggregate label dry-run 報告，不輸出 row-level labels |
 | `ml-training/src/parking_ml/` | 後續 label generation、feature、baseline、ML experiment 共用程式 |
 | `ml-training/tests/` | 輕量單元測試，先守住日期切分與安全設定 |
 
@@ -55,7 +56,8 @@
 
 ```powershell
 python ml-training/scripts/plan_training_run.py --config ml-training/config/training-config.example.json
+python ml-training/scripts/generate_label_dry_run.py --config ml-training/config/training-config.example.json --input data/private/collector-samples --output data/private/collector-samples/label-dry-run-2026-09-24_2026-10-02.md
 python -m unittest discover -s ml-training/tests
 ```
 
-這些命令只驗證訓練架構與切分規格，不代表模型已開始訓練。
+這些命令只驗證訓練架構、切分規格與 label dry-run，不代表模型已開始訓練。

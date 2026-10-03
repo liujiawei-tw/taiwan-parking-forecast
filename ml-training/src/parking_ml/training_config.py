@@ -20,6 +20,7 @@ class TrainingConfig:
     row_random_split_allowed: bool
     publish_to_online_system: bool
     excluded_dates: tuple[str, ...]
+    label_dry_run: dict[str, Any]
 
     def render_plan(self) -> str:
         excluded = ", ".join(self.excluded_dates) if self.excluded_dates else "none"
@@ -58,6 +59,7 @@ def load_training_config(path: Path) -> TrainingConfig:
         row_random_split_allowed=bool(split["rowRandomSplitAllowed"]),
         publish_to_online_system=bool(outputs["publishToOnlineSystem"]),
         excluded_dates=excluded_dates,
+        label_dry_run=dict(data.get("labelDryRun", {})),
     )
     validate_config(config)
     return config
