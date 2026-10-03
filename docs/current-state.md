@@ -2,12 +2,17 @@
 
 更新日期：2026-10-03。
 
-## 2026-10-03 最新進度：S3-013 roadside 離線 re-label 與 dry-run 重跑
+## 2026-10-03 最新進度：S3-014 roadside baseline 離線回測
+
+- 已在 `ml-training` 加入 roadside 300 公尺候選目的地圓 baseline sample builder，feature side 只使用 `asOf` 當下 circle 內 confirmed available 比例與是否至少一格 confirmed available；label side 只使用 `arrivalAt` 附近是否至少一格 confirmed available。
+- 真實 9 天樣本重跑 S3-008 baseline report 後，roadside 30 分鐘 lead 有 train 10,750／test 3,900 labels，60 分鐘 lead 有 train 10,900／test 3,850 labels；兩者狀態皆為 `EXPERIMENT_ONLY`。
+- Roadside 30／60 分鐘 lead 的 `current_state_persistence` Brier 為 0.0025、log loss 為 0.0513；`entity_positive_rate` 在此 9 天與 50 個 deterministic circles 上也達到 1.0000 accuracy。這是離線實驗證據，不是服務承諾；目前正例比例約 8%，且樣本日期／區域仍太少，需補更多日期、區域泛化、calibration 與門檻審查。
+- 這批工作沒有產生正式模型檔，也沒有接入線上 `predictions`。`is_available=false` 的語意仍是「不確認有一般可停空位」，不得寫成保證沒有空位。
+
+## 2026-10-03 進度：S3-013 roadside 離線 re-label 與 dry-run 重跑
 
 - 已在主系統 `ml-training` 加入 roadside 離線 re-label：對既有舊 collector ZIP 讀取 `parking_status_raw`，套用 `ntpc_roadside_confirmed_available_status_2_else_false_v1`，不改寫原始 ZIP/CSV，不提交 row-level label。
 - 真實 9 天樣本重跑 S3-007 label dry-run 後，roadside offline re-label rows 為 728,532。30 分鐘 lead 有 train 10,750／test 3,900 usable labels，正例分別 860／312；60 分鐘 lead 有 train 10,900／test 3,850 usable labels，正例分別 872／308。
-- S3-008 baseline report 已同步重跑。Roadside 現在不是因 label 數量為 0 被拒絕；目前維持 `INSUFFICIENT_DATA` 的原因是 `roadside_baseline_not_implemented_after_relabel`，也就是尚未實作 roadside 專用 baseline／模型與門檻。
-- `is_available=false` 的語意仍維持保守：代表「不確認有一般可停空位」，不得寫成保證沒有空位。這批工作仍是訓練前資料治理與離線實驗，沒有產生正式模型檔，也沒有接入線上 `predictions`。
 
 ## 2026-10-03 進度：S3-012 collector roadside confirmed availability label
 
@@ -30,7 +35,7 @@
 - 已開始 #64／S3-008。新增 `ml-training/scripts/run_baseline_experiment.py` 與 `parking_ml.baseline_experiment`，可用 #63 相同時間切分與 label pairing 規則產生 aggregate baseline／簡單模型回測報告；不輸出 row-level label、不產生模型檔、不接線上 API。
 - 真實 9 天離線報告已產生於 `data/private/collector-samples/baseline-experiment-2026-09-24_2026-10-02.md`，該路徑為 ignored，不提交 Git。公開摘要寫入 `docs/s3-008-baseline-experiment.md`。
 - Offstreet 30 分鐘 lead：train 8,516 labels、test 3,189 labels；`current_state_persistence` Brier 0.0152、log loss 0.0928。Offstreet 60 分鐘 lead：train 8,638 labels、test 3,148 labels；`current_state_persistence` Brier 0.0182、log loss 0.1028。
-- Roadside 已在 S3-013 透過離線 re-label 產生 usable labels：30 分鐘 lead train 10,750／test 3,900，60 分鐘 lead train 10,900／test 3,850；但 roadside 專用 baseline／模型與門檻尚未實作，狀態仍維持 `INSUFFICIENT_DATA`。目前仍不得輸出線上機率，也尚未進 #65 模型產物版本化。
+- Roadside 已在 S3-013 透過離線 re-label 產生 usable labels，並在 S3-014 補上 300 公尺候選目的地圓 baseline 離線回測。30／60 分鐘 lead 皆可評估，但仍只是 `EXPERIMENT_ONLY`；目前仍不得輸出線上機率，也尚未進 #65 模型產物版本化。
 
 ## 2026-10-03 最新進度：S3-006 collector 訓練資料品質盤點與匯入規格
 
