@@ -46,7 +46,7 @@ public class ParkingQueryService {
     private static final String MVP_SERVICE_AREA = "NEW_TAIPEI_XINZHUANG";
     private static final String MVP_AREA_CODE = "NEW_TAIPEI_XINZHUANG_MVP";
     private static final String LOCAL_CATALOG_SOURCE = "LOCAL_NTPC_CATALOG";
-    private static final int SEARCH_RADIUS_METERS = 300;
+    private static final int SEARCH_RADIUS_METERS = 500;
     private static final int MAX_REQUEST_TOKEN_LENGTH = 120;
     private static final double MVP_MIN_LATITUDE = 25.015;
     private static final double MVP_MAX_LATITUDE = 25.075;
@@ -313,7 +313,7 @@ public class ParkingQueryService {
                     null,
                     null,
                     List.of(),
-                    "No roadside catalog records were found inside 300 meters."
+                    "No roadside catalog records were found inside 500 meters."
             );
         }
 
@@ -353,7 +353,7 @@ public class ParkingQueryService {
                     null,
                     null,
                     List.of(),
-                    "No off street catalog records were found inside 300 meters."
+                    "No off street catalog records were found inside 500 meters."
             );
         }
 

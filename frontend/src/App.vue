@@ -28,6 +28,7 @@ const defaultOrigin = {
   longitude: 121.45,
 }
 const POLL_INTERVAL_MS = 5000
+const DEFAULT_RADIUS_METERS = 500
 
 const mapElement = ref(null)
 const autocompleteHost = ref(null)
@@ -397,7 +398,7 @@ function renderMap() {
   radiusCircle = new window.google.maps.Circle({
     map,
     center: destinationPosition,
-    radius: queryResult.value?.area?.radiusMeters ?? 300,
+    radius: queryResult.value?.area?.radiusMeters ?? DEFAULT_RADIUS_METERS,
     strokeColor: '#1d4ed8',
     strokeOpacity: 0.8,
     strokeWeight: 2,
@@ -619,14 +620,14 @@ function logAcceptanceEvent(type, message, details = {}) {
         <div class="map-toolbar">
           <div>
             <strong>{{ resultDestination.label }}</strong>
-            <span>目的地 300 公尺範圍</span>
+            <span>目的地 {{ queryResult?.area?.radiusMeters ?? DEFAULT_RADIUS_METERS }} 公尺範圍</span>
           </div>
           <button class="utility-button" type="button" @click="renderMap">回到目的地</button>
         </div>
 
         <div v-if="hasGoogleMapsKey" ref="mapElement" class="google-map" aria-label="Google 地圖"></div>
         <div v-else class="map-fallback">
-          <div class="fallback-circle">300m</div>
+          <div class="fallback-circle">{{ queryResult?.area?.radiusMeters ?? DEFAULT_RADIUS_METERS }}m</div>
           <strong>未載入 Google 地圖</strong>
           <span>設定 `VITE_GOOGLE_MAPS_BROWSER_API_KEY` 後才會載入 Maps JavaScript API。</span>
         </div>

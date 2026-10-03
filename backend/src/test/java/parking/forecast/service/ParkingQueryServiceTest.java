@@ -92,7 +92,7 @@ class ParkingQueryServiceTest {
                             "NEW_TAIPEI_XINZHUANG",
                             25.0414214,
                             121.4647633,
-                            300,
+                            500,
                             "STRAIGHT_LINE",
                             List.of(),
                             0,

@@ -526,8 +526,8 @@ def render_baseline_report(report: BaselineExperimentReport, input_path: Path, c
             "## 判定",
             "",
             "- Offstreet baseline 與簡單 logistic regression 已可用時間切分回測；結果仍只是實驗，不代表可上線服務承諾。",
-            "- Roadside baseline 已使用 300 公尺候選目的地圓與 confirmed availability label 進行離線回測；結果仍只是實驗，不代表可上線服務承諾。",
-            "- Roadside 目前樣本天數短且正例比例偏低，必須再做更多日期、更多區域與門檻審查，才能進入模型版本化。",
+            "- Roadside baseline 已使用設定檔半徑的候選目的地圓與 confirmed availability label 進行離線回測；結果仍只是實驗，不代表可上線服務承諾。",
+            "- Roadside 目前樣本天數短，且正例比例會隨查詢半徑大幅改變；必須再做更多日期、更多區域與門檻審查，才能進入模型版本化。",
             "- 後續若要進 #65，必須先定義模型版本、schema、門檻、回滾與正式模型產物保存規則。",
         ]
     )

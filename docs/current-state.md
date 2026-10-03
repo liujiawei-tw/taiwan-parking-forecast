@@ -2,11 +2,19 @@
 
 更新日期：2026-10-03。
 
-## 2026-10-03 最新進度：S3-014 roadside baseline 離線回測
+## 2026-10-03 最新進度：S3-015 查詢半徑改為 500 公尺
 
-- 已在 `ml-training` 加入 roadside 300 公尺候選目的地圓 baseline sample builder，feature side 只使用 `asOf` 當下 circle 內 confirmed available 比例與是否至少一格 confirmed available；label side 只使用 `arrivalAt` 附近是否至少一格 confirmed available。
+- Sponsor 最終指示將目的地周邊範圍改為 500 公尺。主系統 `ParkingQueryService` 固定查詢半徑已改為 500m；前端地圖圓形與 fallback 文案改讀後端 `area.radiusMeters`，未有查詢結果時預設顯示 500m。
+- `ml-training` 設定 `roadsideRadiusMeters` 已改為 500，並重跑 2026-09-24 至 2026-10-02 共 9 天私有 dry-run／baseline report。Roadside candidate centers 仍為 50，500m 圓內格位數最少 33、平均 106.8、最多 194。
+- 500m roadside label dry-run：30 分鐘 lead train 10,750／test 3,900 usable labels，正例 2,150／780；60 分鐘 lead train 10,900／test 3,850 usable labels，正例 2,180／770。
+- 500m roadside baseline：30／60 分鐘 lead 的 `current_state_persistence` Brier 仍為 0.0025、log loss 0.0513；train/test positive rate 約 0.20。這比 300m 的約 0.08 高、比 1000m 的約 0.78 低；後續仍需檢查使用者是否接受 500m 距離成本、以及模型 calibration 是否有產品價值。
+- 這仍不是正式模型訓練，沒有產生模型檔，也沒有接入線上 `predictions`。
+
+## 2026-10-03 進度：S3-014 roadside baseline 離線回測
+
+- 已在 `ml-training` 加入 roadside 候選目的地圓 baseline sample builder，feature side 只使用 `asOf` 當下 circle 內 confirmed available 比例與是否至少一格 confirmed available；label side 只使用 `arrivalAt` 附近是否至少一格 confirmed available。S3-015 後目前設定半徑已改為 500 公尺。
 - 真實 9 天樣本重跑 S3-008 baseline report 後，roadside 30 分鐘 lead 有 train 10,750／test 3,900 labels，60 分鐘 lead 有 train 10,900／test 3,850 labels；兩者狀態皆為 `EXPERIMENT_ONLY`。
-- Roadside 30／60 分鐘 lead 的 `current_state_persistence` Brier 為 0.0025、log loss 為 0.0513；`entity_positive_rate` 在此 9 天與 50 個 deterministic circles 上也達到 1.0000 accuracy。這是離線實驗證據，不是服務承諾；目前正例比例約 8%，且樣本日期／區域仍太少，需補更多日期、區域泛化、calibration 與門檻審查。
+- Roadside 30／60 分鐘 lead 的 `current_state_persistence` Brier 為 0.0025、log loss 為 0.0513；`entity_positive_rate` 在此 9 天與 50 個 deterministic circles 上也達到 1.0000 accuracy。這是離線實驗證據，不是服務承諾；S3-014 原始 300m 正例比例約 8%，S3-015 改 500m 後約 20%，且樣本日期／區域仍太少，需補更多日期、區域泛化、calibration 與門檻審查。
 - 這批工作沒有產生正式模型檔，也沒有接入線上 `predictions`。`is_available=false` 的語意仍是「不確認有一般可停空位」，不得寫成保證沒有空位。
 
 ## 2026-10-03 進度：S3-013 roadside 離線 re-label 與 dry-run 重跑
@@ -35,7 +43,7 @@
 - 已開始 #64／S3-008。新增 `ml-training/scripts/run_baseline_experiment.py` 與 `parking_ml.baseline_experiment`，可用 #63 相同時間切分與 label pairing 規則產生 aggregate baseline／簡單模型回測報告；不輸出 row-level label、不產生模型檔、不接線上 API。
 - 真實 9 天離線報告已產生於 `data/private/collector-samples/baseline-experiment-2026-09-24_2026-10-02.md`，該路徑為 ignored，不提交 Git。公開摘要寫入 `docs/s3-008-baseline-experiment.md`。
 - Offstreet 30 分鐘 lead：train 8,516 labels、test 3,189 labels；`current_state_persistence` Brier 0.0152、log loss 0.0928。Offstreet 60 分鐘 lead：train 8,638 labels、test 3,148 labels；`current_state_persistence` Brier 0.0182、log loss 0.1028。
-- Roadside 已在 S3-013 透過離線 re-label 產生 usable labels，並在 S3-014 補上 300 公尺候選目的地圓 baseline 離線回測。30／60 分鐘 lead 皆可評估，但仍只是 `EXPERIMENT_ONLY`；目前仍不得輸出線上機率，也尚未進 #65 模型產物版本化。
+- Roadside 已在 S3-013 透過離線 re-label 產生 usable labels，並在 S3-014 補上候選目的地圓 baseline 離線回測。S3-015 後目前半徑設定為 500 公尺；30／60 分鐘 lead 皆可評估，但仍只是 `EXPERIMENT_ONLY`；目前仍不得輸出線上機率，也尚未進 #65 模型產物版本化。
 
 ## 2026-10-03 最新進度：S3-006 collector 訓練資料品質盤點與匯入規格
 
@@ -49,7 +57,7 @@
 
 - 已開始 #63／S3-007。新增 `ml-training/scripts/generate_label_dry_run.py`、collector ZIP reader 與 label dry-run pairing 程式，輸出 aggregate Markdown 報告，不輸出 row-level labels。
 - Label 規則固定 `asOf` 只供 feature side 使用，`arrivalAt = asOf + leadTime` 附近觀測只作 label；目前 lead time 為 30／60 分鐘，label window 為 ±15 分鐘。
-- 真實 9 天 dry-run：roadside 50 個 300m candidate centers，candidate centers 內最少 10 格、平均 54.7 格、最多 97 格。S3-013 離線 re-label 後，roadside 30 分鐘 lead 可用 train 10,750、test 3,900；60 分鐘 lead 可用 train 10,900、test 3,850。offstreet 30 分鐘 lead 可用 train 8,516、test 3,189，60 分鐘 lead 可用 train 8,638、test 3,148。
+- 真實 9 天 dry-run：S3-015 後 roadside 半徑設定為 500m，50 個 candidate centers 內最少 33 格、平均 106.8 格、最多 194 格。roadside 30 分鐘 lead 可用 train 10,750、test 3,900；60 分鐘 lead 可用 train 10,900、test 3,850。offstreet 30 分鐘 lead 可用 train 8,516、test 3,189，60 分鐘 lead 可用 train 8,638、test 3,148。
 - 新增 `docs/s3-007-label-generation-dry-run.md`，記錄 label definition、拒絕原因、dry-run 摘要與限制：目前仍不得輸出線上機率；roadside 下一步是專用 baseline／模型與門檻評估。
 
 ## 2026-10-02 最新進度：S3-005 官方來源端到端刷新寫入與發布量測

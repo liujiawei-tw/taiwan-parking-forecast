@@ -8,7 +8,7 @@ This module currently provides:
 
 - Single page app shell.
 - Google Place Autocomplete Widget (New) mount point when a browser key is configured.
-- Google Maps JavaScript API map rendering for the selected destination, 300 meter area, off-street lots, and currently available roadside spots.
+- Google Maps JavaScript API map rendering for the selected destination, 500 meter area, off-street lots, and currently available roadside spots.
 - Manual coordinate fallback when no browser key is configured, so local builds and CI do not call Google.
 - Result summary for ETA, roadside parking, off-street parking, predictions, and refresh state.
 - Environment variable entry points for the backend API and Google Maps browser key.

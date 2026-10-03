@@ -1,6 +1,6 @@
 # S3-008 baseline 與第一版模型訓練實驗報告
 
-更新日期：2026-10-03。狀態：第一版離線 baseline／簡單模型回測，已包含 roadside 離線 re-label 後 300 公尺候選圓 baseline；尚未發布模型、尚未接入線上 API、尚未輸出正式機率。
+更新日期：2026-10-03。狀態：第一版離線 baseline／簡單模型回測，已包含 roadside 離線 re-label 後 500 公尺候選圓 baseline；尚未發布模型、尚未接入線上 API、尚未輸出正式機率。
 
 ## 目的
 
@@ -39,18 +39,18 @@
 
 ## Roadside Metrics
 
-Roadside baseline 使用 deterministic 300 公尺候選目的地圓，feature side 只看 `asOf` 當下 circle 內 confirmed available 比例與是否至少一格 confirmed available，label side 只看 `arrivalAt` 附近是否至少一格 confirmed available。這仍是離線實驗，不是可上線模型。
+Roadside baseline 使用 deterministic 500 公尺候選目的地圓，feature side 只看 `asOf` 當下 circle 內 confirmed available 比例與是否至少一格 confirmed available，label side 只看 `arrivalAt` 附近是否至少一格 confirmed available。這仍是離線實驗，不是可上線模型。
 
 | Lead | Experiment | Train positive | Test positive | Brier | Log loss | Accuracy | Precision | Recall |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 30 | `train_positive_rate` | 0.0800 | 0.0800 | 0.0736 | 0.2788 | 0.9200 | 0.0000 | 0.0000 |
-| 30 | `entity_positive_rate` | 0.0800 | 0.0800 | 0.0000 | 0.0000 | 1.0000 | 1.0000 | 1.0000 |
-| 30 | `current_state_persistence` | 0.0800 | 0.0800 | 0.0025 | 0.0513 | 1.0000 | 1.0000 | 1.0000 |
-| 30 | `logistic_regression_v1` | 0.0800 | 0.0800 | 0.0119 | 0.0706 | 1.0000 | 1.0000 | 1.0000 |
-| 60 | `train_positive_rate` | 0.0800 | 0.0800 | 0.0736 | 0.2788 | 0.9200 | 0.0000 | 0.0000 |
-| 60 | `entity_positive_rate` | 0.0800 | 0.0800 | 0.0000 | 0.0000 | 1.0000 | 1.0000 | 1.0000 |
-| 60 | `current_state_persistence` | 0.0800 | 0.0800 | 0.0025 | 0.0513 | 1.0000 | 1.0000 | 1.0000 |
-| 60 | `logistic_regression_v1` | 0.0800 | 0.0800 | 0.0119 | 0.0706 | 1.0000 | 1.0000 | 1.0000 |
+| 30 | `train_positive_rate` | 0.2000 | 0.2000 | 0.1600 | 0.5004 | 0.8000 | 0.0000 | 0.0000 |
+| 30 | `entity_positive_rate` | 0.2000 | 0.2000 | 0.0000 | 0.0000 | 1.0000 | 1.0000 | 1.0000 |
+| 30 | `current_state_persistence` | 0.2000 | 0.2000 | 0.0025 | 0.0513 | 1.0000 | 1.0000 | 1.0000 |
+| 30 | `logistic_regression_v1` | 0.2000 | 0.2000 | 0.0074 | 0.0734 | 1.0000 | 1.0000 | 1.0000 |
+| 60 | `train_positive_rate` | 0.2000 | 0.2000 | 0.1600 | 0.5004 | 0.8000 | 0.0000 | 0.0000 |
+| 60 | `entity_positive_rate` | 0.2000 | 0.2000 | 0.0000 | 0.0000 | 1.0000 | 1.0000 | 1.0000 |
+| 60 | `current_state_persistence` | 0.2000 | 0.2000 | 0.0025 | 0.0513 | 1.0000 | 1.0000 | 1.0000 |
+| 60 | `logistic_regression_v1` | 0.2000 | 0.2000 | 0.0074 | 0.0734 | 1.0000 | 1.0000 | 1.0000 |
 
 ## Roadside Rejection Summary
 
@@ -64,5 +64,6 @@ Roadside baseline 使用 deterministic 300 公尺候選目的地圓，feature si
 ## 判定
 
 - 路外資料可支撐第一版 baseline 與簡單 logistic regression 的離線時間切分回測；目前最好的候選是 `current_state_persistence`，但這仍是實驗證據，不是服務承諾。
-- 路邊 300 公尺語意沒有被固定路段機率取代；離線 re-label 後已可跑 baseline。結果非常好看，但目前只有 9 天、50 個 deterministic circles，且 positive rate 約 8%，必須補更多日期、區域泛化與 calibration／門檻審查。
+- 路邊 500 公尺語意沒有被固定路段機率取代；離線 re-label 後已可跑 baseline。結果非常好看，但目前只有 9 天、50 個 deterministic circles，且 positive rate 約 20%，必須補更多日期、區域泛化與 calibration／門檻審查。
+- 500m 的「至少一格」正例率介於 300m 與 1000m 之間；後續模型門檻需同時檢查使用者是否真的願意接受 500m 範圍的距離成本。
 - 現在不產生版本化模型檔，也不接入線上 `predictions`。若要進 #65，必須先補模型版本、schema、門檻、產物保存與回滾驗證。
