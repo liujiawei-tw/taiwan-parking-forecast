@@ -1,6 +1,47 @@
 # 目前狀態
 
-更新日期：2026-10-03。
+更新日期：2026-10-04。
+
+## 2026-10-04 最新進度：ETA-aware 模型規劃收斂
+
+- 2026-10-04 晚間已依 Sponsor 指示先停止測試與實作，改做後續規劃並更新 GitHub。新增 GitHub Issue [S3-016](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/77)、[S3-017](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/78)、[S3-018](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/79)、[S3-019](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/80)、[S3-020](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/81)，分別追蹤資料來源覆蓋、完整新莊 catalog／mapping 驗收、PUBLISHED 觀測歷史匯出、ETA-aware 訓練樣本產生器與保守模型評估 gate。
+- `docs/sprint-3-continuation-plan.md` 已改為新的執行順序：S3-016 → S3-017 → S3-018 → S3-019 → S3-020 → S3-009。S3-009 仍是模型產物版本化與回滾，但需等 ETA-aware sample builder 與保守 gate 有證據後才適合開工。
+- 這次更新是規劃與文件整理，未新增後端、前端或 ML 程式碼，也未重新下載 TDX raw data 或啟動模型訓練。
+- Sponsor 明確補充正式產品要預測「從出發地到目的地時仍有車位的機率」，並提出四個模型考量：車程時間、時間週期、外部事件／環境，以及假陽性比假陰性更嚴重的不對稱懲罰。
+- 已更新 `docs/model-training-architecture.md`：30／60 分鐘 lead baseline 定位為資料與流程壓力測試；正式方向改為 ETA-aware sample，讓 `arrivalAt = departureAt + etaDuration`。
+- 短期模型路線改為先比較 ETA-aware persistence、同時段歷史 baseline、logistic regression；資料天數與區域增加後加入 gradient boosting；更長期再評估 survival／hazard model 處理長車程下的車位退縮曲線。
+- 評估門檻補上 false positive rate、near-full subset precision、calibration 與 coverage／abstention。線上顯示「有位」應依 ETA 長短、資料年齡、near-full 與覆蓋狀態套用保守門檻；目前仍不訓練正式模型、不產生模型檔、不接入線上 `predictions`。
+- 已同步 `docs/sprint-3-continuation-plan.md` 與 `docs/decisions.md`。下一步若要開工，建議新增 ETA-aware training sample builder／evaluation gate 的 Issue，而不是直接訓練模型。
+
+## 2026-10-04 進度：TDX 新莊區即時資料低流量 spike
+
+- Sponsor 更新 `.env` 後，TDX 官方 OIDC client credentials token 已可成功取得；驗證過程未輸出、提交或保存 secret/token。
+- TDX 會員模式小量請求顯示 `Parking/OffStreet/CarPark/City/NewTaipei?$top=1` 與 `Parking/OffStreet/ParkingAvailability/City/NewTaipei?$top=1` 皆 HTTP 200，但目前回空集合；`City/NWT` 不是有效 path 參數。先前訪客模式 `City/Taipei?$top=1` 有資料，欄位含 `CarParkID`、`CarParkPosition`、`Address`、`City`、`CityCode`，未在該筆樣本看到 `Town`／`District`。
+- 依 data.gov.tw 指向的 TDX on-street operation 名稱做少量候選路徑測試，尚未找到可用路徑，且第 6 次快速請求觸發 TDX 5 次／分鐘限制；後續需查到官方 OAS 精確 path 後再重試，不能靠猜測路徑。
+- 已用新北市官方 Open Data API 驗證「先抓新北市，再本地篩新莊」可行：路邊全量 30,941 rows／約 11.27 MB，其中 `areacode=65000050` 新莊 2,124 rows；路外 catalog 1,000 rows／約 390 KB，其中 `AREA=新莊區` 100 rows，可用這些 ID join 即時 availability 1,000 rows／約 36 KB，得到新莊路外即時 100 rows。
+- 初步結論：目前不能宣稱 TDX 能直接「只抓新莊區」即時停車資料；MVP 可行路線是使用新北市官方資料，以縣市層級擷取加本地 `areacode`／`AREA`／catalog mapping 篩新莊。若未來改用 TDX，仍需先確認 TDX on-street 精確 endpoint、NewTaipei 覆蓋狀態，以及是否支援可降低用量的 `$filter`。
+
+## 2026-10-04 進度：TDX 歷史資料 2026-09-17..2026-09-23 metadata 驗證
+
+- 已用 TDX 官方歷史停車 OAS 確認 endpoint：路邊格位為 `/api/historical/v1/Historical/Parking/OnStreet/ParkingSpotAvailability/City/NewTaipei`；路外 City availability endpoint 的 City enum 不含 `NewTaipei`。
+- TDX `Meta=true` 顯示新北市路邊格位 2026-09-17 至 2026-09-23 全市資料為 35,480,193 rows／5,403,073,037 bytes；2026-09-23 單日為 5,711,400 rows／869,765,771 bytes。
+- 依 `tdx-data-and-cost.md` 既有歷史服務資料量估算規則，2026-09-23 單日約 869.77 MB，約 43.49 點；7 日約 5,403.07 MB，約 270.15 點。這只是 metadata 與文件規則估算，不是會員中心實扣。
+- 已用本機既有 TDX 歷史 CSV 驗證新北市 Open Data `id=153854` 可對上 TDX `ParkingSpotID=153854`；但對 TDX 歷史 API 試打 `$filter=ParkingSpotID eq '153854'` 時，API 回傳未篩選的前 5 筆，表示此 endpoint 目前不能依 ParkingSpotID 做 server-side 篩選來降低下載量。
+- 本輪未下載完整 TDX raw data，因為下載全新北後本地篩新莊會明顯超過目前免費基礎會員 3 點/月額度，需 Sponsor 另行明確確認。已在 `data/private/collector-samples/tdx-newtaipei-xinzhuang-2026-09-17_2026-09-23-metadata.md` 保存 private metadata 報告；該目錄不進 Git。
+- TDX 歷史路外 NewTaipei 查詢回 400，訊息列出可接受城市為 Taoyuan、Tainan、Kaohsiung、Keelung、YilanCounty、HualienCounty；因此 2026-09-17 至 2026-09-23 的新莊路外訓練資料不能由此 TDX 歷史 City endpoint 取得。
+
+## 2026-10-04 進度：TDX 與新北市即時路邊同格位交叉比對
+
+- 已用同一個新莊路邊格位 ID `153854` 比對 TDX 基礎即時 API 與新北市 Open Data API。TDX 正確 endpoint 為 `/api/basic/v1/Parking/OnStreet/ParkingSpotAvailability/City/NewTaipei`，並可用 `$filter=ParkingSpotID eq '153854'` 回單筆；這點與歷史 API 不同，歷史 API 的同欄位 `$filter` 會被忽略。
+- TDX 即時回應：`ParkingSpotID=153854`、`ParkingSegmentID=R27`、`ServiceStatus=2`、`SpotStatus=254`、`DeviceStatus=1`、`ChargeStatus=1`、`DataCollectTime=2026-10-03T23:56:41+08:00`。
+- 新北市 Open Data 同格位回應：`id=153854`、`roadid=R27`、`cellid=20`、`cellstatus=Y`、`parkingstatus=3`、座標 `25.038868,121.452126`、`areacode=65000050`。
+- 初步判讀：兩邊 source ID 與 road/segment 可對上，且都不是 confirmed available；但 raw 狀態碼不同，不能把 TDX `SpotStatus=254` 與新北市 `parkingstatus=3` 當作完全相同碼表，只能在 canonical layer 保守歸為非 confirmed available／需保留來源原碼。
+
+## 2026-10-04 進度：TDX 與新北市即時路外同停車場比對
+
+- 已選新莊路外停車場 `050193`（捷運迴龍站停車場）做同 ID 比對。新北市 catalog 回 `AREA=新莊區`、`TOTALCAR=254`、`SERVICETIME=0~24時`，即時 availability 回 `AVAILABLECAR=55`。
+- 同一 ID 對 TDX 基礎路外即時 endpoint `/api/basic/v1/Parking/OffStreet/ParkingAvailability/City/NewTaipei?$filter=CarParkID eq '050193'` 查詢，HTTP 200 但 `ParkingAvailabilities=[]`；TDX 路外靜態 `/api/basic/v1/Parking/OffStreet/CarPark/City/NewTaipei?$filter=CarParkID eq '050193'` 也 HTTP 200 但 `CarParks=[]`。
+- 初步判讀：這不是「剩餘位數不一致」，而是 TDX 目前在 NewTaipei 路外 City endpoint 沒有提供可比對的靜態／即時資料；新莊路外 MVP 仍應以新北市官方 API 作為來源，TDX 僅保留為未來覆蓋擴充待驗證來源。
 
 ## 2026-10-03 最新進度：S3-015 查詢半徑改為 500 公尺
 
@@ -40,39 +81,39 @@
 
 ## 2026-10-03 進度：S3-008 baseline 與第一版模型實驗
 
-- 已開始 #64／S3-008。新增 `ml-training/scripts/run_baseline_experiment.py` 與 `parking_ml.baseline_experiment`，可用 #63 相同時間切分與 label pairing 規則產生 aggregate baseline／簡單模型回測報告；不輸出 row-level label、不產生模型檔、不接線上 API。
+- 已開始 S3-008。新增 `ml-training/scripts/run_baseline_experiment.py` 與 `parking_ml.baseline_experiment`，可用 S3-007 相同時間切分與 label pairing 規則產生 aggregate baseline／簡單模型回測報告；不輸出 row-level label、不產生模型檔、不接線上 API。
 - 真實 9 天離線報告已產生於 `data/private/collector-samples/baseline-experiment-2026-09-24_2026-10-02.md`，該路徑為 ignored，不提交 Git。公開摘要寫入 `docs/s3-008-baseline-experiment.md`。
 - Offstreet 30 分鐘 lead：train 8,516 labels、test 3,189 labels；`current_state_persistence` Brier 0.0152、log loss 0.0928。Offstreet 60 分鐘 lead：train 8,638 labels、test 3,148 labels；`current_state_persistence` Brier 0.0182、log loss 0.1028。
-- Roadside 已在 S3-013 透過離線 re-label 產生 usable labels，並在 S3-014 補上候選目的地圓 baseline 離線回測。S3-015 後目前半徑設定為 500 公尺；30／60 分鐘 lead 皆可評估，但仍只是 `EXPERIMENT_ONLY`；目前仍不得輸出線上機率，也尚未進 #65 模型產物版本化。
+- Roadside 已在 S3-013 透過離線 re-label 產生 usable labels，並在 S3-014 補上候選目的地圓 baseline 離線回測。S3-015 後目前半徑設定為 500 公尺；30／60 分鐘 lead 皆可評估，但仍只是 `EXPERIMENT_ONLY`；目前仍不得輸出線上機率，也尚未進 S3-009 模型產物版本化。
 
 ## 2026-10-03 最新進度：S3-006 collector 訓練資料品質盤點與匯入規格
 
-- 已開始 #62／S3-006。新增 `tools/collector_quality_inventory.py`，可讀取 `parking-data-collector` daily CSV／ZIP 匯出根目錄或單一 ZIP，輸出只含摘要的 Markdown 品質報告；工具不複製原始 CSV／ZIP、不輸出 row-level 資料。
+- 已開始 S3-006。新增 `tools/collector_quality_inventory.py`，可讀取 `parking-data-collector` daily CSV／ZIP 匯出根目錄或單一 ZIP，輸出只含摘要的 Markdown 品質報告；工具不複製原始 CSV／ZIP、不輸出 row-level 資料。
 - 已讀取 sibling repo `parking-data-collector` 的 README、`docs/data-contract.md` 與 Apps Script 欄位規則，確認 `collected_at_utc` 是收集輪次開始時間，`source_api_response_at_utc` 是 API response time 或 fallback，兩者都不是官方逐筆觀測時間。
 - 已從 Google Drive `parking-training-data/exports` 取得 2026-09-24 至 2026-10-02 共 9 包 daily ZIP 做私有盤點；`2026-09-23` 因資料不齊先排除。原始 ZIP、CSV 與完整私有報告放在 `data/private/collector-samples/`，不提交 Git。
-- 新增 `docs/s3-006-collector-quality-inventory.md`，記錄欄位語意、拒絕原因、匯入規格草案、9 天真實樣本摘要與 train/test 日期切分。盤點結果：roadside 728,532 rows、offstreet 50,516 rows，無缺日、parse error、duplicate rows 或 duplicate observations；roadside reliable label 仍為 0%，暫不開始 #64 模型訓練。#63 label generation dry run 採 train=`2026-09-24..2026-09-30`、test=`2026-10-01..2026-10-02`，不可 row-random split。
+- 新增 `docs/s3-006-collector-quality-inventory.md`，記錄欄位語意、拒絕原因、匯入規格草案、9 天真實樣本摘要與 train/test 日期切分。盤點結果：roadside 728,532 rows、offstreet 50,516 rows，無缺日、parse error、duplicate rows 或 duplicate observations；roadside reliable label 仍為 0%，暫不開始 S3-008 模型訓練。S3-007 label generation dry run 採 train=`2026-09-24..2026-09-30`、test=`2026-10-01..2026-10-02`，不可 row-random split。
 - 新增 `ml-training/` 離線模型訓練 workspace 骨架與 `docs/model-training-architecture.md`。目前只包含訓練設定範例、日期切分 helper、計畫預覽 script 與單元測試；不訓練模型、不發布模型產物、不接線上查詢。
 
 ## 2026-10-03 進度：S3-007 訓練標籤 dry-run
 
-- 已開始 #63／S3-007。新增 `ml-training/scripts/generate_label_dry_run.py`、collector ZIP reader 與 label dry-run pairing 程式，輸出 aggregate Markdown 報告，不輸出 row-level labels。
+- 已開始 S3-007。新增 `ml-training/scripts/generate_label_dry_run.py`、collector ZIP reader 與 label dry-run pairing 程式，輸出 aggregate Markdown 報告，不輸出 row-level labels。
 - Label 規則固定 `asOf` 只供 feature side 使用，`arrivalAt = asOf + leadTime` 附近觀測只作 label；目前 lead time 為 30／60 分鐘，label window 為 ±15 分鐘。
 - 真實 9 天 dry-run：S3-015 後 roadside 半徑設定為 500m，50 個 candidate centers 內最少 33 格、平均 106.8 格、最多 194 格。roadside 30 分鐘 lead 可用 train 10,750、test 3,900；60 分鐘 lead 可用 train 10,900、test 3,850。offstreet 30 分鐘 lead 可用 train 8,516、test 3,189，60 分鐘 lead 可用 train 8,638、test 3,148。
 - 新增 `docs/s3-007-label-generation-dry-run.md`，記錄 label definition、拒絕原因、dry-run 摘要與限制：目前仍不得輸出線上機率；roadside 下一步是專用 baseline／模型與門檻評估。
 
 ## 2026-10-02 最新進度：S3-005 官方來源端到端刷新寫入與發布量測
 
-- 已開始 #61／S3-005，新增 `RefreshE2eMeasurementCommandRunner` 與 `parking.refresh.measurement.command`，預設 `enabled=false`，只在明確開啟時執行一次性端到端量測。command runner 會直接呼叫官方 refresh service，並量測 HTTP、頁數、response bytes、normalize、品質量測、DB 發布交易、`PUBLISHED` snapshot 查詢讀取與總耗時。
+- 已開始 S3-005，新增 `RefreshE2eMeasurementCommandRunner` 與 `parking.refresh.measurement.command`，預設 `enabled=false`，只在明確開啟時執行一次性端到端量測。command runner 會直接呼叫官方 refresh service，並量測 HTTP、頁數、response bytes、normalize、品質量測、DB 發布交易、`PUBLISHED` snapshot 查詢讀取與總耗時。
 - `RealtimeSourceRefreshService.RefreshExecutionResult` 已補上 `pageCount`、`responseBytes` 與 `RefreshStageTimings`，讓路邊／路外 refresh 結果可重現量測摘要。DB 的 `quality_summary` 維持品質摘要，不把未完成或易混淆的耗時資訊塞進品質欄位。
 - 已用一次性 Docker Maven 容器跑真實新北市官方 Open Data E2E 量測，不啟動或停止既有 Docker Compose，不保存原始 JSON、完整 request／response body 或敏感設定。
 - 路邊 `NTPC_ROADSIDE_SPOT`：1 HTTP request／1 page／11,270,904 bytes／30,941 normalized records；發布成功，7 筆已 mapping、30,934 筆 unmapped、0 failed observations；HTTP 4,692 ms、normalize 39 ms、measurement 1,577 ms、publish transaction 3,044 ms、total 9,353 ms；讀回 `PUBLISHED` snapshot 53 ms，query status 為 `UNKNOWN`。
 - 路外 `NTPC_OFF_STREET_AVAILABILITY`：2 HTTP requests／2 pages／50,608 bytes／1,405 normalized records；發布成功，3 筆已 mapping、1,402 筆 unmapped、0 failed observations；HTTP 872 ms、normalize 8 ms、measurement 1,544 ms、publish transaction 577 ms、total 3,003 ms；讀回 `PUBLISHED` snapshot 40 ms，query status 為 `READY`。
-- 新增 `docs/s3-005-refresh-e2e-measurement.md`，把兩輪量測指令、結果、拒絕／失敗分流、設定依據與限制寫清楚。缺頁拒絕由 `NtpcRealtimeSourceRefreshServiceTest` 覆蓋；品質拒絕不覆蓋既有 `PUBLISHED` snapshot 由 `AvailabilitySnapshotPublishingServiceTest` 覆蓋；重複、來源欄位異常與 mapping 覆蓋則承接 #42 的來源量測文件。
+- 新增 `docs/s3-005-refresh-e2e-measurement.md`，把兩輪量測指令、結果、拒絕／失敗分流、設定依據與限制寫清楚。缺頁拒絕由 `NtpcRealtimeSourceRefreshServiceTest` 覆蓋；品質拒絕不覆蓋既有 `PUBLISHED` snapshot 由 `AvailabilitySnapshotPublishingServiceTest` 覆蓋；重複、來源欄位異常與 mapping 覆蓋則承接 S2-HARDEN-003 的來源量測文件。
 - 驗證：Docker Maven 精準測試 `NtpcRealtimeSourceRefreshServiceTest,SourceRefreshCoordinationServiceTest,AvailabilitySnapshotPublishingServiceTest` 通過 12 tests／0 failures／0 errors；完整後端 Docker Maven `mvn test` 通過 88 tests／0 failures／0 errors／0 skipped。
 
 ## 2026-10-01 最新進度：S3-004 Catalog 匯入管理命令
 
-- 已開始 #60／S3-004，補上 NTPC catalog dry-run 後的受控寫入路徑。新增 `CatalogImportService`，只有 dry-run recommendation 為 `READY_FOR_IMPORT_REVIEW` 時才建立 `parking_place` 與 `source_mapping`，且既有 source mapping 只會跳過，不會覆蓋或改寫。
+- 已開始 S3-004，補上 NTPC catalog dry-run 後的受控寫入路徑。新增 `CatalogImportService`，只有 dry-run recommendation 為 `READY_FOR_IMPORT_REVIEW` 時才建立 `parking_place` 與 `source_mapping`，且既有 source mapping 只會跳過，不會覆蓋或改寫。
 - `NtpcCatalogDryRunService` 的結果現在保留正規化後的 `CatalogSourceRecord`，讓同一份 dry-run 報告可直接餵給後續匯入；新莊仍只是第一個 `scope`，未來新增地區應新增 scope 與 adapter，不複製新莊專用流程。
 - 新增 `NtpcCatalogImportCommandRunner` 與 `parking.catalog.ntpc.command` 設定。預設 `enabled=false`、`confirm-write=false`，啟用命令後也會先輸出 dry-run 摘要；只有明確設定 `confirm-write=true` 且來源 traversal complete 時才嘗試寫入 DB。
 - 目前完成的是「管理命令與保護條件」的程式基線，尚未執行真實官方 dry-run 審查，也尚未把完整新莊 catalog 寫入資料庫。不得宣稱新莊 catalog 已完整；覆蓋狀態仍以既有 7 筆路邊、3 筆路外 verified mapping 為準。
@@ -88,7 +129,7 @@
 
 ## 2026-10-01 後續規劃：S3-004 至 S3-009
 
-- 已建立 GitHub Issues #60 至 #65，規劃完整 catalog／mapping 匯入、官方來源端到端發布量測、collector 訓練資料品質盤點、訓練標籤產生、baseline／第一版模型實驗，以及模型產物版本化與離線推論。
+- 已建立 GitHub Issues S3-004 至 S3-009，規劃完整 catalog／mapping 匯入、官方來源端到端發布量測、collector 訓練資料品質盤點、訓練標籤產生、baseline／第一版模型實驗，以及模型產物版本化與離線推論。
 - 已新增 `docs/sprint-3-continuation-plan.md`，記錄下一批 Issue 順序與模型訓練路線。
 - `parking-data-collector` 只作離線訓練資料來源；不服務使用者查詢，也不取代主系統 PUBLISHED snapshot。模型訓練第一步是資料品質盤點，不直接訓練或接線上 API。
 
@@ -384,7 +425,7 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 此批任務的目的，是在接 Google、新北市官方即時資料與 ML 前，先建立可啟動、可測、可部署、可由 Sponsor 逐張驗收的主系統骨架。草案尚未轉成正式 GitHub Issues，也尚未開始產品程式碼實作。下一步是由 Sponsor 確認 Issue 順序與範圍，再決定是否建立正式 GitHub Issues 並從 S2-001 開始。
 ## 2026-09-25 GitHub Issues 已建立
 
-已將 Sprint 2 第一組草案轉成 GitHub Issues：#1 到 #7，對應 S2-001 至 S2-007。GitHub connector 對 private repo 無 Issue 權限，因此改用本機 GitHub 憑證呼叫 GitHub API 建立，過程未輸出 token。`docs/sprint-2-issue-drafts.md` 已補上正式 Issue 連結。下一步可建立 Sprint 2 實作分支，從 S2-001 開始處理；主系統仍尚未 coding。
+已將 Sprint 2 第一組草案轉成 GitHub Issues：S2-001 至 S2-007。GitHub connector 對 private repo 無 Issue 權限，因此改用本機 GitHub 憑證呼叫 GitHub API 建立，過程未輸出 token。`docs/sprint-2-issue-drafts.md` 已補上正式 Issue 連結。下一步可建立 Sprint 2 實作分支，從 S2-001 開始處理；主系統仍尚未 coding。
 ## 2026-09-25 Sprint 2 實作分支已建立
 
 已從 `main` 建立並推送 Sprint 2 實作分支 `sprint-2-main-system-scaffold`，對應 GitHub Issues 第一組任務。此分支目前只作為 Sprint 2 開發入口，尚未開始主系統產品程式碼實作。下一步可在此分支處理 S2-001 的剩餘工作：確認工作規則、金鑰不進 Git、任務完成檢查與後續 PR／合併流程，再進入 S2-002 後端骨架。
@@ -400,25 +441,25 @@ Sponsor 詢問前端還有何處不清楚、是否可開始後端。盤點結論
 依 Sponsor 回饋，移除 `tw/jiawei` 反向網域命名層級，後端 root package 改為 `parking.forecast`，主類別改為 `ParkingForecastApplication`。同時將 `api/application/infrastructure` 調整為較直覺的 `controller/service/repository`，保留 `domain`、`adapter`、`config`。目前可見結構為 `controller`、`service`、`repository`、`domain`、`adapter`、`config`。執行 `backend/mvnw.cmd test` 通過：2 tests、0 failures。
 ## 2026-09-25 Sprint 2 Issues 用語調整
 
-依 Sponsor 指示，Sprint 2 第一組 Issues 不再使用「面試官角度」或面試相關詞語。`docs/sprint-2-issue-drafts.md` 已改為「工程審查重點」，相關描述改成對外說明、技術說明、作品集專案或展示等中性用語。正式 GitHub Issues #1 到 #7 也同步更新。
+依 Sponsor 指示，Sprint 2 第一組 Issues 不再使用「面試官角度」或面試相關詞語。`docs/sprint-2-issue-drafts.md` 已改為「工程審查重點」，相關描述改成對外說明、技術說明、作品集專案或展示等中性用語。正式 GitHub Issues S2-001 至 S2-007 也同步更新。
 ## 2026-09-25 S2-002 後端骨架驗收完成
 
-S2-002 已完成驗收：`backend/mvnw.cmd test` 通過，結果為 2 tests、0 failures；實際啟動後端後，`GET /api/health` 與 `GET /actuator/health` 均回 `UP`。後端 package 已依 Sponsor 回饋簡化為 `parking.forecast`，並改成 `controller`、`service`、`repository` 三層式可見結構。GitHub Issue #2 已更新並關閉。下一步進入 S2-003 前端骨架。
+S2-002 已完成驗收：`backend/mvnw.cmd test` 通過，結果為 2 tests、0 failures；實際啟動後端後，`GET /api/health` 與 `GET /actuator/health` 均回 `UP`。後端 package 已依 Sponsor 回饋簡化為 `parking.forecast`，並改成 `controller`、`service`、`repository` 三層式可見結構。GitHub Issue S2-002 已更新並關閉。下一步進入 S2-003 前端骨架。
 ## 2026-09-25 S2-003 前端骨架建立
 
 已建立 `frontend/` Vue 3 + Vite 前端骨架，包含目的地搜尋 placeholder、地圖 placeholder、ETA／路邊／路外結果摘要 placeholder，以及 `VITE_API_BASE_URL`、`VITE_GOOGLE_MAPS_BROWSER_API_KEY` 環境變數入口。已新增 `frontend/README.md` 與 `frontend/.env.example`。執行 `npm run build` 通過。尚未接 Google Maps JavaScript API、Places Autocomplete、Routes API 或後端真查詢。
 ## 2026-09-25 S2-003 前端骨架驗收完成
 
-Sponsor 確認 S2-003 前端 placeholder 版面可接受。前端骨架目前包含目的地搜尋 placeholder、地圖 placeholder、ETA／路邊／路外結果摘要 placeholder，以及 `frontend/.env.example`。`npm run build` 已通過，GitHub Issue #3 已關閉。下一步進入 S2-004 Docker Compose 本機開發環境。
+Sponsor 確認 S2-003 前端 placeholder 版面可接受。前端骨架目前包含目的地搜尋 placeholder、地圖 placeholder、ETA／路邊／路外結果摘要 placeholder，以及 `frontend/.env.example`。`npm run build` 已通過，GitHub Issue S2-003 已關閉。下一步進入 S2-004 Docker Compose 本機開發環境。
 ## 2026-09-25 新增 S2-008 CI/CD 基礎檢查 Issue
 
-Sponsor 詢問 CI/CD 對應 Issue。原第一組 Issues 中 S2-007 只涵蓋流程與驗收清單，沒有獨立實作 CI/CD；因此新增 GitHub Issue #8：S2-008 [CI/CD] 建立 GitHub Actions 基礎 CI。第一版範圍為後端 Maven test、前端 npm build，Docker build 視 S2-004 完成狀態加入；不做 Harness、不做遠端部署。
+Sponsor 詢問 CI/CD 對應 Issue。原第一組 Issues 中 S2-007 只涵蓋流程與驗收清單，沒有獨立實作 CI/CD；因此新增 GitHub Issue S2-008：[CI/CD] 建立 GitHub Actions 基礎 CI。第一版範圍為後端 Maven test、前端 npm build，Docker build 視 S2-004 完成狀態加入；不做 Harness、不做遠端部署。
 ## 2026-09-25 S2-004 Docker Compose 本機環境建立
 
 已建立 Docker Compose 本機開發環境，包含 `web`、`api`、`mysql`、`redis`。因本機 3306 與 8080 已被占用或受限，host port 調整為：API `18080 -> 8080`、MySQL `3307 -> 3306`、Web `5173 -> 80`、Redis `6379 -> 6379`。驗證結果：`docker compose build` 成功；`docker compose up -d` 後 api/mysql/redis healthy，`GET http://localhost:18080/api/health` 回 `UP`，`http://localhost:5173` 回 HTTP 200。驗證後已執行 `docker compose down` 停止服務。
 ## 2026-09-25 S2-004 Docker Compose 驗收完成
 
-Sponsor 確認 S2-004 可接受。Docker Compose 本機開發環境已完成並驗證，GitHub Issue #4 已關閉。下一步進入 S2-005：後端 profile、H2 測試邊界與 MySQL 連線設定。
+Sponsor 確認 S2-004 可接受。Docker Compose 本機開發環境已完成並驗證，GitHub Issue S2-004 已關閉。下一步進入 S2-005：後端 profile、H2 測試邊界與 MySQL 連線設定。
 
 ## 2026-09-25：S2-005 後端 profiles、H2 與 MySQL 設定進行中
 
@@ -434,7 +475,7 @@ Sponsor 確認 S2-004 可接受。Docker Compose 本機開發環境已完成並�
 
 ## 2026-09-25：S2-006 驗收完成，S2-007 文件同步開始
 
-Sponsor 確認 S2-006 可繼續，GitHub Issue #6 已以 completed 關閉。GitHub connector 已由 Sponsor 重新連線並恢復 private repo Issue 讀寫能力。已建立 `docs/task-completion-checklist.md` 作為每張 Issue 完成前的共同 Definition of Done，涵蓋範圍、功能、測試、文件、Git 與工程說明驗收。`docs/development-workflow.md` 已連結此清單並修正驗收用語；README 已同步 Sprint 2 實際進度，避免仍描述為尚未開始主系統程式碼。
+Sponsor 確認 S2-006 可繼續，GitHub Issue S2-006 已以 completed 關閉。GitHub connector 已由 Sponsor 重新連線並恢復 private repo Issue 讀寫能力。已建立 `docs/task-completion-checklist.md` 作為每張 Issue 完成前的共同 Definition of Done，涵蓋範圍、功能、測試、文件、Git 與工程說明驗收。`docs/development-workflow.md` 已連結此清單並修正驗收用語；README 已同步 Sprint 2 實際進度，避免仍描述為尚未開始主系統程式碼。
 
 ## 2026-09-25：S2-007 Sponsor 回覆
 
@@ -442,7 +483,7 @@ Sponsor 確認任務完成檢查清單不會太繁瑣，並確認 CI/CD 先使�
 
 ## 2026-09-25：S2-007 驗收完成
 
-Sponsor 確認小修改可不更新文件，只需在回報中說明原因；重要任務仍需同步必要文件。GitHub Issue #7 已以 completed 關閉。Sprint 2 第一組 #1～#7 已完成，後續可進入 S2-008 GitHub Actions 基礎 CI，或依需要先整理 PR／合併回 main。
+Sponsor 確認小修改可不更新文件，只需在回報中說明原因；重要任務仍需同步必要文件。GitHub Issue S2-007 已以 completed 關閉。Sprint 2 第一組 S2-001～S2-007 已完成，後續可進入 S2-008 GitHub Actions 基礎 CI，或依需要先整理 PR／合併回 main。
 
 ## 2026-09-25：Sprint 2 第一組成果 PR 已建立
 
@@ -450,17 +491,17 @@ Sponsor 確認小修改可不更新文件，只需在回報中說明原因；重
 
 ## 2026-09-25：S2-008 GitHub Actions 基礎 CI 進行中
 
-已刪除已合併的 `sprint-2-main-system-scaffold` 本機與遠端分支，並從 `main` 建立 `feature/s2-008-github-actions-ci` 作為 Issue #8 工作分支。已新增 `.github/workflows/ci.yml`，第一版 CI 包含後端 Maven test、前端 npm build，以及 Docker Compose 的 api／web image build；此 workflow 不需要 Google、TDX、新北市 API key 或任何真實機密。本機對照驗證已完成：後端 Maven test 5 tests／0 failures、前端 npm run build 通過、Docker Compose api／web image build 通過。由於 `backend/mvnw` 在 Git 中不是可執行權限，workflow 已加入 `chmod +x ./mvnw` 步驟，避免 Linux runner 權限失敗。已建立 PR #10：S2-008：建立 GitHub Actions 基礎 CI。第一次遠端 CI 中後端 Maven test 與前端 npm build 通過，但 Docker image build 因 Maven Wrapper 執行權限失敗；已補上 Dockerfile 內的 `chmod +x ./mvnw`，並將 `backend/mvnw` 在 Git 中標記為可執行。重新推送後，GitHub Actions pull_request run 已通過：後端 Maven test、前端 npm build、Docker image build 全部成功。PR #10 目前可作為 Issue #8 的驗收候選，等待 Sponsor 確認是否合併回 main。
+已刪除已合併的 `sprint-2-main-system-scaffold` 本機與遠端分支，並從 `main` 建立 `feature/s2-008-github-actions-ci` 作為 S2-008 工作分支。已新增 `.github/workflows/ci.yml`，第一版 CI 包含後端 Maven test、前端 npm build，以及 Docker Compose 的 api／web image build；此 workflow 不需要 Google、TDX、新北市 API key 或任何真實機密。本機對照驗證已完成：後端 Maven test 5 tests／0 failures、前端 npm run build 通過、Docker Compose api／web image build 通過。由於 `backend/mvnw` 在 Git 中不是可執行權限，workflow 已加入 `chmod +x ./mvnw` 步驟，避免 Linux runner 權限失敗。已建立 PR #10：S2-008：建立 GitHub Actions 基礎 CI。第一次遠端 CI 中後端 Maven test 與前端 npm build 通過，但 Docker image build 因 Maven Wrapper 執行權限失敗；已補上 Dockerfile 內的 `chmod +x ./mvnw`，並將 `backend/mvnw` 在 Git 中標記為可執行。重新推送後，GitHub Actions pull_request run 已通過：後端 Maven test、前端 npm build、Docker image build 全部成功。PR #10 目前可作為 S2-008 的驗收候選，等待 Sponsor 確認是否合併回 main。
 
 ## 2026-09-26：S2-008 合併完成，第二組 Issues 已建立
 
-PR #10 已合併回 `main`，merge commit 為 `7e1241c22fbc4c55cac432698ca20e0fb187b6bf`；Issue #8 已透過 `Closes #8` 自動關閉。本機 `main` 已同步，且已刪除 `feature/s2-008-github-actions-ci` 本機與遠端分支。Sprint 2 第一組 #1～#8 到此完成。
+PR #10 已合併回 `main`，merge commit 為 `7e1241c22fbc4c55cac432698ca20e0fb187b6bf`；S2-008 已透過 PR 關閉。本機 `main` 已同步，且已刪除 `feature/s2-008-github-actions-ci` 本機與遠端分支。Sprint 2 第一組 S2-001～S2-008 到此完成。
 
-已建立 Sprint 2 第二組 GitHub Issues：S2-009 到 S2-013，對應 GitHub Issues #11～#15。第二組目標是建立資料庫模型、schema migration、新莊小樣本、300 公尺查詢服務，最後把本地停車目錄結果接入既有 `parking-queries` 流程。此組尚未開始實作；正式 Google ETA、新北市官方即時 API、Redis query state 與 ML 預測仍不在此組範圍內。
+已建立 Sprint 2 第二組 GitHub Issues：S2-009 到 S2-013。第二組目標是建立資料庫模型、schema migration、新莊小樣本、300 公尺查詢服務，最後把本地停車目錄結果接入既有 `parking-queries` 流程。此組尚未開始實作；正式 Google ETA、新北市官方即時 API、Redis query state 與 ML 預測仍不在此組範圍內。
 
 ## 2026-09-26：S2-009 核心資料模型第一輪實作完成
 
-已從 `main` 建立 `feature/s2-009-data-model` 分支，開始處理 GitHub Issue #11。新增核心 JPA Entity 與 Repository：`parking_place`、`source_mapping`、`availability_snapshot`、`availability_observation`、`source_state`、`ingestion_run` 對應的 Java 模型與資料存取介面。此階段只建立資料模型與 repository 邊界，尚未建立正式 migration、seed 流程、300 公尺查詢服務、即時來源介接或前端顯示。
+已從 `main` 建立 `feature/s2-009-data-model` 分支，開始處理 S2-009。新增核心 JPA Entity 與 Repository：`parking_place`、`source_mapping`、`availability_snapshot`、`availability_observation`、`source_state`、`ingestion_run` 對應的 Java 模型與資料存取介面。此階段只建立資料模型與 repository 邊界，尚未建立正式 migration、seed 流程、300 公尺查詢服務、即時來源介接或前端顯示。
 
 Sponsor 發現曾出現錯誤的 `backend/backend/src` 空目錄。已確認該目錄沒有檔案且未被 Git 追蹤，已刪除；正確後端目錄仍為 `backend/src/...`。為避免重複發生，已更新 `AGENTS.md` 與 `docs/development-workflow.md`：建立、移動或刪除檔案前，必須先檢查 repo 架構與 Issue 範圍，後端檔案只放在 `backend/src/...`，前端檔案只放在 `frontend/src/...`。
 
@@ -516,7 +557,7 @@ PR #20 已合併回 `main`，merge commit 為 `ef000d02180794dbf4eb205cf7a4726f4
 
 ## 2026-09-26 S2-014～S2-018 第三組 Issues 建立
 
-已建立 Sprint 2 第三組 GitHub Issues，聚焦官方即時來源與快照發布：#21 S2-014 新北市官方即時來源 Client 與原始 DTO、#22 S2-015 即時資料正規化與資料品質規則、#23 S2-016 候選快照寫入與發布交易、#24 S2-017 `parking-queries` 讀取最新已發布快照、#25 S2-018 受控刷新與 Redis 協調。
+已建立 Sprint 2 第三組 GitHub Issues，聚焦官方即時來源與快照發布：S2-014 新北市官方即時來源 Client 與原始 DTO、S2-015 即時資料正規化與資料品質規則、S2-016 候選快照寫入與發布交易、S2-017 `parking-queries` 讀取最新已發布快照、S2-018 受控刷新與 Redis 協調。
 
 此組尚未 coding。目標是讓主系統自行取得新北市官方即時資料，經正規化、品質檢查與快照發布後，讓使用者查詢讀到可信的目前車位狀態，同時避免多人查詢放大官方 API 呼叫。`parking-data-collector` 仍維持暫緩，且不參與使用者查詢。
 
@@ -588,7 +629,7 @@ PR #30 已合併回 `main`，merge commit 為 `cf8ff2af0a3e9a2b91569b8a51d2c192c
 
 ## 2026-09-29 S2-019 Google ETA Issue 建立
 
-已建立 GitHub Issue #31：S2-019 接入 Google Places／Routes 真實 ETA。範圍聚焦後端 Google Routes API `computeRoutes` client、ETA service、mock ETA 替換與降級狀態；不包含前端 Google Maps JavaScript API、Place Autocomplete Widget 或地圖結果頁，這些保留後續 Issue。Issue 明確要求不提交真實 Google API key，測試以 mock HTTP／fixture 覆蓋成功、timeout、4xx／5xx、外部呼叫停用與無 API key 情境。
+已建立 GitHub Issue S2-019：接入 Google Places／Routes 真實 ETA。範圍聚焦後端 Google Routes API `computeRoutes` client、ETA service、mock ETA 替換與降級狀態；不包含前端 Google Maps JavaScript API、Place Autocomplete Widget 或地圖結果頁，這些保留後續 Issue。Issue 明確要求不提交真實 Google API key，測試以 mock HTTP／fixture 覆蓋成功、timeout、4xx／5xx、外部呼叫停用與無 API key 情境。
 
 ## 2026-09-29 S2-019 後端 Google Routes ETA 初版完成
 
@@ -602,7 +643,7 @@ PR #30 已合併回 `main`，merge commit 為 `cf8ff2af0a3e9a2b91569b8a51d2c192c
 
 ## 2026-09-29 S2-019 PR #32 已建立，待人工驗收
 
-已將 `feature/s2-019-google-eta` 推上 GitHub，並建立 PR #32：<https://github.com/liujiawei-tw/taiwan-parking-forecast/pull/32>。PR 目前包含 1 個 commit：`6cc9385 feat: integrate google routes eta`，並以 `Closes #31` 連結 S2-019 Issue。下一步是針對 PR #32 做 Human-in-the-loop 驗收：使用真實且受限的 `GOOGLE_ROUTES_SERVER_API_KEY` 驗證 `eta.status=READY`，再確認外部呼叫停用或無 key 時回 `eta.status=FAILED` 且不產生假抵達時間。
+已將 `feature/s2-019-google-eta` 推上 GitHub，並建立 PR #32：<https://github.com/liujiawei-tw/taiwan-parking-forecast/pull/32>。PR 目前包含 1 個 commit：`6cc9385 feat: integrate google routes eta`，並連結 S2-019 Issue。下一步是針對 PR #32 做 Human-in-the-loop 驗收：使用真實且受限的 `GOOGLE_ROUTES_SERVER_API_KEY` 驗證 `eta.status=READY`，再確認外部呼叫停用或無 key 時回 `eta.status=FAILED` 且不產生假抵達時間。
 
 ## 2026-09-29 S2-019 PR #32 部分人工驗收完成
 
@@ -620,7 +661,7 @@ Sponsor 已在本機 `.env` 設定不同用途的 Google Maps Platform key，並
 
 ## 2026-09-29 S2-019 合併完成，後端 Google ETA 收尾
 
-PR #32 已合併回 `main`，merge commit 為 `f4612b86b7f48fd9a5c19132deea44d4d1077d04`，並透過 `Closes #31` 關閉 S2-019 Issue。本機 `main` 已同步到 `origin/main`，並已刪除 `feature/s2-019-google-eta` 本機與遠端分支；殘留的本機 `feature/s2-018-refresh-control` 也已清理。
+PR #32 已合併回 `main`，merge commit 為 `f4612b86b7f48fd9a5c19132deea44d4d1077d04`，並關閉 S2-019 Issue。本機 `main` 已同步到 `origin/main`，並已刪除 `feature/s2-019-google-eta` 本機與遠端分支；殘留的本機 `feature/s2-018-refresh-control` 也已清理。
 
 S2-019 完成後，建立查詢已可使用 Google Routes 真實 ETA，並在外部呼叫停用、無 key 或 Google 失敗時明確降級，不再產生固定 18 分鐘 mock ETA。下一步轉向前端 Google Maps／Places 整合、結果頁地圖，以及把 S2-018 已提供的 `TriggerType.VISIBLE_AUTO_REFRESH` 接到前端頁面可見時自動刷新。
 
@@ -638,17 +679,17 @@ Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `f
 
 ## 2026-09-29 下一組 GitHub Issues 已建立
 
-已在 GitHub 建立並加上 `sprint-2` 標籤：#33 S2-020 建立新莊正式停車目錄與來源 ID 對應、#34 S2-021 量測官方即時來源與設定發布品質門檻、#35 S2-022 收斂停車查詢生命週期與 API 契約、#36 S2-023 接入 Google Maps／Places 與停車結果頁、#37 S2-024 接入可見頁受控刷新與端到端驗收、#38 S2-025 校正 Sprint 2 文件基線與 Sprint 3 預測進入條件。順序先確保正式 catalog、mapping 與量測證據，再進行 API 與前端整合；各 Issue 皆明確排除以 collector 當主系統即時來源或在資料不足時輸出預測機率。
+已在 GitHub 建立並加上 `sprint-2` 標籤：S2-020 建立新莊正式停車目錄與來源 ID 對應、S2-021 量測官方即時來源與設定發布品質門檻、S2-022 收斂停車查詢生命週期與 API 契約、S2-023 接入 Google Maps／Places 與停車結果頁、S2-024 接入可見頁受控刷新與端到端驗收、S2-025 校正 Sprint 2 文件基線與 Sprint 3 預測進入條件。順序先確保正式 catalog、mapping 與量測證據，再進行 API 與前端整合；各 Issue 皆明確排除以 collector 當主系統即時來源或在資料不足時輸出預測機率。
 
 ## 2026-09-29 Repo 複查與文件進度同步
 
 本次重新閱讀 `main` 的後端、前端與核心文件後，確認 S2-001 至 S2-019 的程式能力與既有驗收紀錄一致：後端已有資料模型、少量合成 seed、300 公尺查詢、來源 adapter／快照發布、受控刷新，以及 Google Routes ETA 與降級。最近一次已記錄的完整後端驗證為 Docker Maven 53 tests／0 failures／0 errors；本次為文件盤點，未重新執行測試或呼叫外部 API。
 
-同時確認目前不能宣稱正式即時停車服務已完成：目錄只有 3 筆路邊與 2 筆路外合成 seed，正式 source mapping 與來源量測尚未完成；前端仍採固定 mock 起點與佔位地圖，尚未接 Maps JavaScript／Places 或可見頁自動刷新。已同步更新根目錄與前後端 README、實作計畫、路線圖、待確認問題及專案狀態頁；#33 至 #38 保持為下一批尚未開始的工作。
+同時確認目前不能宣稱正式即時停車服務已完成：目錄只有 3 筆路邊與 2 筆路外合成 seed，正式 source mapping 與來源量測尚未完成；前端仍採固定 mock 起點與佔位地圖，尚未接 Maps JavaScript／Places 或可見頁自動刷新。已同步更新根目錄與前後端 README、實作計畫、路線圖、待確認問題及專案狀態頁；S2-020 至 S2-025 保持為下一批尚未開始的工作。
 
 ## 2026-09-29 S2-020 官方目錄小樣本基線完成
 
-已完成 #33／S2-020 初版，將 `R__seed_xinzhuang_parking_catalog.sql` 從 S2-011 的 `SYSTEM` 合成示範資料改為可追溯的新北市官方 Open Data 小樣本。新 seed 目前包含 7 筆新莊路邊一般汽車格位與 3 筆新莊路外汽車停車場，`source_mapping.source_system=NTPC_OPEN_DATA`，路邊使用官方路邊資料的 `id` 作來源 key，路外使用官方路外靜態與即時剩餘位共用的 `ID` 作來源 key。舊的 `SEED-XINZHUANG-*` 合成 mapping 會在 repeatable migration 中清除。
+已完成 S2-020 初版，將 `R__seed_xinzhuang_parking_catalog.sql` 從 S2-011 的 `SYSTEM` 合成示範資料改為可追溯的新北市官方 Open Data 小樣本。新 seed 目前包含 7 筆新莊路邊一般汽車格位與 3 筆新莊路外汽車停車場，`source_mapping.source_system=NTPC_OPEN_DATA`，路邊使用官方路邊資料的 `id` 作來源 key，路外使用官方路外靜態與即時剩餘位共用的 `ID` 作來源 key。舊的 `SEED-XINZHUANG-*` 合成 mapping 會在 repeatable migration 中清除。
 
 本次小量官方核對結果：新北市路邊資料完整回應約 30,941 筆，其中新莊 `areacode=65000050` 有 2,124 筆；路外靜態目錄前 1000 筆中篩到 97 筆新莊汽車場，且這 97 個 ID 均能在路外即時剩餘位資料中對上。官方 API 的 `filter` 參數在本次測試未實際套用，因此目前先以小量全回應後本機篩選作證據，不把平台篩選能力視為已確認。路外 TWD97 座標已轉為 WGS84 寫入 seed，原始 TWD97 值保留在 mapping hint。
 
@@ -658,7 +699,7 @@ Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `f
 
 ## 2026-09-29 S2-021 官方來源量測摘要基線實作
 
-已開始 #34／S2-021 並完成主系統量測摘要基線。`NtpcOpenDataClient` 保留既有 List 回傳方法，另新增 page metadata 版本，記錄單頁 rows、attempts、UTF-8 response bytes 與 client 端 elapsedMillis。`NtpcRealtimeSourceRefreshService` 已改用 page metadata 累計 pages、HTTP attempts、responseBytes 與分頁完整性；若超過 `maxPages`，錯誤訊息會明確包含 dataset、pages、httpRequests、pageSize、maxPages、responseBytes 與 `REJECT_INCOMPLETE_PAGE_TRAVERSAL`，不會進入發布。
+已開始 S2-021 並完成主系統量測摘要基線。`NtpcOpenDataClient` 保留既有 List 回傳方法，另新增 page metadata 版本，記錄單頁 rows、attempts、UTF-8 response bytes 與 client 端 elapsedMillis。`NtpcRealtimeSourceRefreshService` 已改用 page metadata 累計 pages、HTTP attempts、responseBytes 與分頁完整性；若超過 `maxPages`，錯誤訊息會明確包含 dataset、pages、httpRequests、pageSize、maxPages、responseBytes 與 `REJECT_INCOMPLETE_PAGE_TRAVERSAL`，不會進入發布。
 
 新增 `SourceMeasurementService` 將每輪觀測整理成 `sourceMeasurement{...}` 摘要，包含 retries、缺 source ID、重複 source ID、verified mapping 覆蓋、unmapped、failed observation、mappingCoverage 與發布建議。`AvailabilitySnapshotPublishingService` 會將此摘要保存到 `ingestion_run.quality_summary`；`availability_snapshot.quality_reason` 仍保留發布層的簡短 normalized／published／unmapped／failedObservations 結果，避免把量測摘要當成使用者查詢契約。
 
@@ -678,7 +719,7 @@ Sponsor 已將本機 `.env` 的 `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED` 改回 `f
 
 ## 2026-09-29 S2-022 查詢生命週期與 API 契約基線實作
 
-已開始 #35／S2-022 並完成第一輪後端契約收斂。`ParkingQueryMockService` 已改名為 `ParkingQueryService`，查詢生命週期不再以 mock 命名；建立查詢會驗證 `requestToken`、起訖點座標、目的地是否在新莊 MVP 範圍，以及 `NOW`／`SCHEDULED` 出發時間語意。同一個有效 `requestToken` 會回同一個既有 `queryId`，避免網路重試或連點建立重複查詢。
+已開始 S2-022 並完成第一輪後端契約收斂。`ParkingQueryMockService` 已改名為 `ParkingQueryService`，查詢生命週期不再以 mock 命名；建立查詢會驗證 `requestToken`、起訖點座標、目的地是否在新莊 MVP 範圍，以及 `NOW`／`SCHEDULED` 出發時間語意。同一個有效 `requestToken` 會回同一個既有 `queryId`，避免網路重試或連點建立重複查詢。
 
 HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`details`、`retryable`、`nextAllowedAt` 與 `serverTime`。目前已實作 `INVALID_COORDINATE`、`INVALID_REQUEST_TOKEN`、`UNSUPPORTED_AREA`、`INVALID_DEPARTURE_TIME`、`QUERY_NOT_FOUND`、`QUERY_EXPIRED` 與 JSON／Bean validation 的 `INVALID_REQUEST`；前端可依錯誤碼處理流程，不需解析文字訊息。`GET /api/v1/parking-queries/{queryId}` 仍為只讀；`POST /refresh` 只走來源刷新協調並沿用原 Google ETA，不重算 Routes。
 
@@ -688,7 +729,7 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 
 ## 2026-09-29 S2-023 Maps／Places 前端結果頁初版
 
-已開始 #36／S2-023 並完成第一版前端整合。Vue 單頁不再是固定 mock 目的地與佔位地圖；有 `VITE_GOOGLE_MAPS_BROWSER_API_KEY` 時會載入 Google Maps JavaScript API 與 Place Autocomplete Widget (New)，選取目的地後只取 `displayName`、`formattedAddress`、`location` 等前端需要欄位，並在使用者明確按下「規劃停車查詢」時才把起點、目的地座標與出發時間送到主系統 `POST /api/v1/parking-queries`。前端不提交自算 ETA、目前車位數或預測機率，也不直接呼叫政府停車來源。
+已開始 S2-023 並完成第一版前端整合。Vue 單頁不再是固定 mock 目的地與佔位地圖；有 `VITE_GOOGLE_MAPS_BROWSER_API_KEY` 時會載入 Google Maps JavaScript API 與 Place Autocomplete Widget (New)，選取目的地後只取 `displayName`、`formattedAddress`、`location` 等前端需要欄位，並在使用者明確按下「規劃停車查詢」時才把起點、目的地座標與出發時間送到主系統 `POST /api/v1/parking-queries`。前端不提交自算 ETA、目前車位數或預測機率，也不直接呼叫政府停車來源。
 
 結果頁改為地圖優先布局：地圖呈現目的地、300 公尺圈、路外停車場標記，以及後端回傳且 `availableSpots` 內的路邊目前有位格位標記；右側結果面板顯示 query／ETA／預測狀態、路邊與路外資料時間、全部結果清單與外部 Google Maps 路線入口。路邊格位文案明確標示只代表目前觀測，不代表抵達時仍有位；抵達時機率仍依後端 `predictions` 區塊呈現資料不足或未完成狀態。
 
@@ -696,7 +737,7 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 
 ## 2026-09-29 S2-024 可見頁受控刷新初版
 
-已開始 #37／S2-024 並完成前後端接線。`POST /api/v1/parking-queries/{queryId}/refresh` 新增 `trigger` query parameter，預設維持 `MANUAL_REFRESH`；前端可見頁自動刷新使用 `VISIBLE_AUTO_REFRESH`。Controller 只允許 `MANUAL_REFRESH` 與 `VISIBLE_AUTO_REFRESH`，其他 trigger 會回穩定錯誤 `INVALID_REFRESH_TRIGGER`，避免瀏覽器端繞過主系統來源刷新用途。`ParkingQueryService` 會把 trigger 傳給 `SourceRefreshCoordinationService`，讓 `ingestion_run.trigger_type` 能分辨手動與可見頁自動刷新。
+已開始 S2-024 並完成前後端接線。`POST /api/v1/parking-queries/{queryId}/refresh` 新增 `trigger` query parameter，預設維持 `MANUAL_REFRESH`；前端可見頁自動刷新使用 `VISIBLE_AUTO_REFRESH`。Controller 只允許 `MANUAL_REFRESH` 與 `VISIBLE_AUTO_REFRESH`，其他 trigger 會回穩定錯誤 `INVALID_REFRESH_TRIGGER`，避免瀏覽器端繞過主系統來源刷新用途。`ParkingQueryService` 會把 trigger 傳給 `SourceRefreshCoordinationService`，讓 `ingestion_run.trigger_type` 能分辨手動與可見頁自動刷新。
 
 前端在結果頁有 queryId 後監聽 `visibilitychange`：頁面隱藏時停止進度輪詢與自動刷新；頁面重新可見時先用 `GET /api/v1/parking-queries/{queryId}` 只讀恢復狀態，再依最新 `roadside.status`／`offStreet.status` 判斷。若來源狀態為 `STALE` 或 `NO_REALTIME_SNAPSHOT`，且目前沒有 `refreshInProgress`，同一 queryId 與來源狀態組合只送一次 `VISIBLE_AUTO_REFRESH`。冷卻、失敗或仍無 snapshot 時不靠定時器密集重送；使用者手動「更新車位」仍可發起 `MANUAL_REFRESH` 檢查，且同樣受後端 cooldown、Redis 鎖與來源限制。
 
@@ -704,9 +745,9 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 
 ## 2026-09-29 S2-025 文件基線與 Sprint 3 預測進入條件
 
-已開始 #38／S2-025 並完成文件基線校正。新增 `sprint-3-entry-criteria.md`，明確區分目前已完成的主系統能力、仍未完成的資料與人工驗收，以及 Sprint 3 可以開始預測工作的硬性門檻。預測機率輸出前至少需要可重現多輪來源量測、清楚的 catalog／mapping 覆蓋界線、與線上 300 公尺定義一致的訓練標籤、無時間洩漏的回測、基準模型比較、完整推論契約與可回滾模型版本。
+已開始 S2-025 並完成文件基線校正。新增 `sprint-3-entry-criteria.md`，明確區分目前已完成的主系統能力、仍未完成的資料與人工驗收，以及 Sprint 3 可以開始預測工作的硬性門檻。預測機率輸出前至少需要可重現多輪來源量測、清楚的 catalog／mapping 覆蓋界線、與線上 300 公尺定義一致的訓練標籤、無時間洩漏的回測、基準模型比較、完整推論契約與可回滾模型版本。
 
-同步更新 README、backend README、roadmap、implementation plan、open questions 與 project status，移除 #33 至 #38 尚未開始、前端仍為 mock、目錄仍為合成 seed 等過時敘述。當時基線是：S2-020 至 S2-024 已完成官方小樣本 mapping、單輪來源量測、Redis query state、Maps／Places 結果頁與可見頁受控刷新接線；但完整新莊 catalog、多輪 p50／p95、真實 browser key Places 人工驗收、端到端官方刷新人工驗收及兩類預測模型仍未完成。2026-10-01 後多輪官方 API 下載段量測已補齊，端到端刷新寫入與發布量測仍未完成。
+同步更新 README、backend README、roadmap、implementation plan、open questions 與 project status，移除 S2-020 至 S2-025 尚未開始、前端仍為 mock、目錄仍為合成 seed 等過時敘述。當時基線是：S2-020 至 S2-024 已完成官方小樣本 mapping、單輪來源量測、Redis query state、Maps／Places 結果頁與可見頁受控刷新接線；但完整新莊 catalog、多輪 p50／p95、真實 browser key Places 人工驗收、端到端官方刷新人工驗收及兩類預測模型仍未完成。2026-10-01 後多輪官方 API 下載段量測已補齊，端到端刷新寫入與發布量測仍未完成。
 
 驗證：本次為文件任務，未修改產品程式、未呼叫外部 API、未保存原始回應或敏感設定。使用 `git diff --check` 做格式與空白檢查；不重新跑 Maven／前端 build，因為行為程式碼未變更。
 
@@ -714,27 +755,27 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 
 依 Sponsor 指示「不實作，規劃接下來要的事情，並上傳到 GitHub」，本次只做規劃與任務建立，沒有修改產品程式、沒有呼叫官方來源、沒有訓練模型，也沒有新增任何預測機率。
 
-已新增 `sprint-3-next-work-plan.md`，把 S2 hardening 與 Sprint 3 預測前置工作拆成六個 GitHub Issues：#40 補齊真實 Places 與可見頁刷新人工驗收、#41 完整新莊 catalog／source mapping 匯入策略與覆蓋報告、#42 多輪官方來源量測與刷新品質門檻、#43 已發布觀測匯出與標籤 dry run、#44 基準模型與時間切分回測報告、#45 預測推論契約降級與模型版本接點。
+已新增 `sprint-3-next-work-plan.md`，把 S2 hardening 與 Sprint 3 預測前置工作拆成六個 GitHub Issues：S2-HARDEN-001 補齊真實 Places 與可見頁刷新人工驗收、S2-HARDEN-002 完整新莊 catalog／source mapping 匯入策略與覆蓋報告、S2-HARDEN-003 多輪官方來源量測與刷新品質門檻、S3-001 已發布觀測匯出與標籤 dry run、S3-002 基準模型與時間切分回測報告、S3-003 預測推論契約降級與模型版本接點。
 
-規劃順序維持保守：先補前端與刷新人工驗收，再確認 catalog／mapping 覆蓋與來源穩定性，之後才產生訓練標籤 dry run、做 baseline 回測，最後規劃推論契約接點。未完成 #41～#44 前，不應宣稱可輸出可信預測；未完成 #45 前，即使離線有模型結果，也不接入使用者查詢回應。
+規劃順序維持保守：先補前端與刷新人工驗收，再確認 catalog／mapping 覆蓋與來源穩定性，之後才產生訓練標籤 dry run、做 baseline 回測，最後規劃推論契約接點。未完成 S2-HARDEN-002 至 S3-002 前，不應宣稱可輸出可信預測；未完成 S3-003 前，即使離線有模型結果，也不接入使用者查詢回應。
 
 ## 2026-09-30 S2-HARDEN-001 開始實作
 
-已開始 #40／S2-HARDEN-001。前端將查詢 payload 組裝、Google browser key 判斷與可見頁自動刷新決策抽成 `planner.js` 純函式，並新增 `npm run test` 的 Node 測試；GitHub Actions 前端 job 已加入 `npm run test`，使 payload 與自動刷新契約成為 PR 守門檢查。測試覆蓋：placeholder 或空 browser key 不載入 Google、查詢 payload 只包含起訖點座標／label／departure／requestToken、不包含 `placeId`、ETA、目前車位數或預測機率，以及頁面可見且來源狀態為 `STALE`／`NO_REALTIME_SNAPSHOT` 時同一 query/status 組合只觸發一次 `VISIBLE_AUTO_REFRESH`。
+已開始 S2-HARDEN-001。前端將查詢 payload 組裝、Google browser key 判斷與可見頁自動刷新決策抽成 `planner.js` 純函式，並新增 `npm run test` 的 Node 測試；GitHub Actions 前端 job 已加入 `npm run test`，使 payload 與自動刷新契約成為 PR 守門檢查。測試覆蓋：placeholder 或空 browser key 不載入 Google、查詢 payload 只包含起訖點座標／label／departure／requestToken、不包含 `placeId`、ETA、目前車位數或預測機率，以及頁面可見且來源狀態為 `STALE`／`NO_REALTIME_SNAPSHOT` 時同一 query/status 組合只觸發一次 `VISIBLE_AUTO_REFRESH`。
 
-新增 `s2-harden-001-manual-acceptance.md` 作為人工驗收紀錄模板，列出無 key fallback、真實 Places 選取、可見頁受控刷新與手動刷新檢查步驟。當前執行環境沒有 `frontend/.env.local`，因此尚未執行真實 browser key Places 驗收；不可宣稱 #40 完成，只能宣稱自動化契約測試與人工驗收步驟已補上。
+新增 `s2-harden-001-manual-acceptance.md` 作為人工驗收紀錄模板，列出無 key fallback、真實 Places 選取、可見頁受控刷新與手動刷新檢查步驟。當前執行環境沒有 `frontend/.env.local`，因此尚未執行真實 browser key Places 驗收；不可宣稱 S2-HARDEN-001 完成，只能宣稱自動化契約測試與人工驗收步驟已補上。
 
 後續補上前端右側「人工驗收事件」面板，供本機驗收時記錄 Maps/Places 載入、Places 選取、查詢 payload 欄位摘要、`POST /parking-queries`、`GET /parking-queries/{queryId}` 與 `POST /refresh` 的狀態碼與 trigger。事件紀錄只保存狀態、trigger 與欄位摘要，不保存 Google key、requestToken、完整 request／response body 或官方原始回應；人工驗收文件已改用該面板作主要紀錄來源，DevTools Network 只作輔助確認。
 
 使用 Sponsor 本機已設定的 browser-restricted Google key 進行 Docker smoke 驗證時，發現並修正兩個 Docker profile 啟動缺口：`application-docker.yml` 未納入 `db/seed` Flyway location，導致既有 MySQL volume 的 repeatable seed migration 驗證失敗；Redis query state 使用的 `ObjectMapper` 在 production context 未宣告 bean，導致 API 啟動失敗。修正後 Docker Compose 已可啟動 `api`、`web`、`mysql`、`redis`；`GET /actuator/health` 回 `UP`，前端 Docker bundle 確認含 Maps loader 與人工驗收事件面板，且本機 key 已進入 Docker web build。以 Docker API 送出一筆低成本查詢得到 `202` 與 queryId；因未啟用 Google Routes server key，ETA 回 `FAILED`，預測仍為 `INSUFFICIENT_DATA`，這符合目前不把估計冒充正式預測的限制。Docker 容器保留啟動，Sponsor 已接續完成瀏覽器人工驗收並回報 OK。
 
-`s2-harden-001-manual-acceptance.md` 已依 2026-09-30 Sponsor 人工驗證結果補齊，涵蓋真實 Places 選取、payload 邊界、可見頁先 GET 再 `VISIBLE_AUTO_REFRESH`、手動 `MANUAL_REFRESH` 與不重算 Google Routes ETA。#40／S2-HARDEN-001 可視為完成候選；文件只記錄結論、狀態碼摘要與邊界檢查，不保存金鑰、截圖、完整 request／response body 或官方原始回應。
+`s2-harden-001-manual-acceptance.md` 已依 2026-09-30 Sponsor 人工驗證結果補齊，涵蓋真實 Places 選取、payload 邊界、可見頁先 GET 再 `VISIBLE_AUTO_REFRESH`、手動 `MANUAL_REFRESH` 與不重算 Google Routes ETA。S2-HARDEN-001 可視為完成候選；文件只記錄結論、狀態碼摘要與邊界檢查，不保存金鑰、截圖、完整 request／response body 或官方原始回應。
 
 驗證：`frontend/npm run test` 通過，`frontend/npm run build` 通過。未呼叫 Google、未呼叫新北市官方來源，未提交任何 key、原始 API 回應或敏感設定。
 
 ## 2026-09-30 S2-HARDEN-002 開始實作
 
-已開始 #41／S2-HARDEN-002。新增 `CatalogCoverageReportService`，以目前 MySQL catalog／source mapping 與 S2-020／S2-021 已量測的官方基準數產生新莊覆蓋報告。第一版固定目前事實：路邊 active catalog 7／官方新莊路邊基準 2,124，verified mapping 7／2,124，覆蓋率 0.33%；路外 active catalog 3／官方新莊汽車場基準 97，verified mapping 3／97，覆蓋率 3.09%。兩者狀態皆為 `PARTIAL`，因此不得宣稱完整新莊覆蓋，也不得輸出完整 300 公尺路邊區域機率。
+已開始 S2-HARDEN-002。新增 `CatalogCoverageReportService`，以目前 MySQL catalog／source mapping 與 S2-020／S2-021 已量測的官方基準數產生新莊覆蓋報告。第一版固定目前事實：路邊 active catalog 7／官方新莊路邊基準 2,124，verified mapping 7／2,124，覆蓋率 0.33%；路外 active catalog 3／官方新莊汽車場基準 97，verified mapping 3／97，覆蓋率 3.09%。兩者狀態皆為 `PARTIAL`，因此不得宣稱完整新莊覆蓋，也不得輸出完整 300 公尺路邊區域機率。
 
 新增 `s2-harden-002-catalog-coverage.md` 作為覆蓋報告與匯入策略文件，明確列出完整匯入前需要的可重跑輸入、catalog／mapping 分離、缺 ID／重複／座標異常／車種資格不明的分流，以及路邊 2,124、路外 97 的完成候選門檻。此階段未重新呼叫官方 API、未匯入全量 catalog、未保存原始回應；只把已量測基準轉為可測的覆蓋治理證據。
 
@@ -748,11 +789,11 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 
 驗證：使用 Docker JDK 執行精準後端測試 `NtpcCatalogDryRunServiceTest`、`NtpcOpenDataClientTest`、`NtpcCatalogRecordMapperTest`、`CatalogImportDryRunServiceTest`，通過 16 tests／0 failures／0 errors；完整後端 `./mvnw test` 通過 79 tests／0 failures／0 errors／0 skipped。此階段仍未呼叫官方 API，也未提交任何原始回應或敏感設定。
 
-2026-10-01 補齊 #41 驗收文件收斂：`s2-harden-002-catalog-coverage.md` 已列出完整 catalog 匯入候選方案，明確不採手寫全量 repeatable seed 或一次性 migration 作第一選擇，採「NTPC catalog dry-run → 人工審查摘要 → 受控管理命令匯入」方向。覆蓋規則也已拆成 catalog 覆蓋、mapping 覆蓋與 realtime 覆蓋三層；路邊 300 公尺區域預測只有在 catalog／mapping 完整、coverage boundary 可判斷、即時 snapshot 新鮮且模型回測通過時才可輸出 `READY`，否則必須以 `CATALOG_COVERAGE_PARTIAL`、`COVERAGE_BOUNDARY_UNKNOWN`、`REALTIME_SNAPSHOT_EXPIRED`、`MODEL_NOT_READY` 等原因拒絕或標示資料不足。同步更新 `decisions.md` 與 `open-questions.md`。本次為文件收斂，未修改產品程式、未呼叫官方 API、未提交原始回應或敏感設定。
+2026-10-01 補齊 S2-HARDEN-002 驗收文件收斂：`s2-harden-002-catalog-coverage.md` 已列出完整 catalog 匯入候選方案，明確不採手寫全量 repeatable seed 或一次性 migration 作第一選擇，採「NTPC catalog dry-run → 人工審查摘要 → 受控管理命令匯入」方向。覆蓋規則也已拆成 catalog 覆蓋、mapping 覆蓋與 realtime 覆蓋三層；路邊 300 公尺區域預測只有在 catalog／mapping 完整、coverage boundary 可判斷、即時 snapshot 新鮮且模型回測通過時才可輸出 `READY`，否則必須以 `CATALOG_COVERAGE_PARTIAL`、`COVERAGE_BOUNDARY_UNKNOWN`、`REALTIME_SNAPSHOT_EXPIRED`、`MODEL_NOT_READY` 等原因拒絕或標示資料不足。同步更新 `decisions.md` 與 `open-questions.md`。本次為文件收斂，未修改產品程式、未呼叫官方 API、未提交原始回應或敏感設定。
 
 ## 2026-10-01 S2-HARDEN-003 多輪官方來源量測
 
-已開始 #42／S2-HARDEN-003 並完成低頻真實多輪量測紀錄。路邊格位即時狀態 5 輪皆使用新北市官方 Open Data JSON `page=0&size=40000`，每輪 1 request／1 page／30,941 rows／11,270,904 bytes；HTTP 成功 5/5，延遲 p50 5,279 ms、p95 8,575 ms。路外即時剩餘車位 5 輪皆使用 `size=1000` 取 page 0 與 page 1，每輪 2 requests／2 pages／1,405 rows；HTTP 成功 5/5，bytes p50/p95 50,592，延遲 p50 358 ms、p95 667 ms。
+已開始 S2-HARDEN-003 並完成低頻真實多輪量測紀錄。路邊格位即時狀態 5 輪皆使用新北市官方 Open Data JSON `page=0&size=40000`，每輪 1 request／1 page／30,941 rows／11,270,904 bytes；HTTP 成功 5/5，延遲 p50 5,279 ms、p95 8,575 ms。路外即時剩餘車位 5 輪皆使用 `size=1000` 取 page 0 與 page 1，每輪 2 requests／2 pages／1,405 rows；HTTP 成功 5/5，bytes p50/p95 50,592，延遲 p50 358 ms、p95 667 ms。
 
 品質紀錄已分開記錄缺 source ID、重複 source ID、來源欄位異常、mapping 覆蓋與發布建議。路邊缺 source ID 0、重複 source ID rows 288、`cellstatus`／`parkingstatus` 缺值 0；S2-020 seed 的 7 個 verified mapping 皆仍可在官方即時回應找到，但全新莊 verified mapping 仍只有 7/2,124。路外缺 source ID 0、重複 source ID rows 11、`AVAILABLECAR` 缺值 0、負值 979；S2-020 seed 的 3 個 verified mapping 皆仍可在官方即時回應找到，但全新莊 verified mapping 仍只有 3/97。
 
@@ -760,7 +801,7 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 
 ## 2026-10-01 S3-001 標籤 dry run 初版
 
-已開始 #43／S3-001。新增 `TrainingLabelDryRunService`，第一版只讀 `snapshot_status=PUBLISHED` 且位於指定 `system_fetched_at` 時間窗內的 `availability_observation`，查詢條件採起點含括、終點不含括，避免相鄰批次重複取樣。不讀 `CANDIDATE`／`REJECTED` snapshot，不呼叫 Google、新北市官方 API 或 TDX，也不建立大型匯出檔。Repository 新增依 snapshot 狀態、dataset 與時間窗查詢已發布觀測的方法。
+已開始 S3-001。新增 `TrainingLabelDryRunService`，第一版只讀 `snapshot_status=PUBLISHED` 且位於指定 `system_fetched_at` 時間窗內的 `availability_observation`，查詢條件採起點含括、終點不含括，避免相鄰批次重複取樣。不讀 `CANDIDATE`／`REJECTED` snapshot，不呼叫 Google、新北市官方 API 或 TDX，也不建立大型匯出檔。Repository 新增依 snapshot 狀態、dataset 與時間窗查詢已發布觀測的方法。
 
 路邊 dry run 以目的地圓心、直線半徑、`serviceArea`、`ON_STREET_SPOT`、`ACTIVE`、汽車資格 `CONFIRMED` 與有效觀測比例產生區域候選樣本；若 catalog coverage 不是 `COMPLETE`，即使範圍內有目前可用格位，也會拒絕並記 `CATALOG_COVERAGE_PARTIAL`，避免把目前小樣本誤當完整 300 公尺區域標籤。路外 dry run 以單一 verified lot 的已發布觀測建立候選樣本，會分開拒絕類型錯誤、汽車資格不符、資料過期、品質不可用與未知可用數。
 
@@ -768,7 +809,7 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 
 ## 2026-10-01 S3-002 baseline 回測初版
 
-已開始 #44／S3-002。新增 `BaselineBacktestService`，直接接收 S3-001 的 `LabelDryRunReport`，只使用 usable、sample time 與 positive label 皆完整的候選樣本，依時間順序切成 training／validation／test。第一版固定三個可解釋 baseline：訓練窗正樣本率、訓練窗多數類別、訓練窗最後已知標籤。路外同場站樣本可用同一 parking place 的訓練窗最後標籤；路邊區域樣本沒有場站 ID 時使用整體訓練窗最後標籤。
+已開始 S3-002。新增 `BaselineBacktestService`，直接接收 S3-001 的 `LabelDryRunReport`，只使用 usable、sample time 與 positive label 皆完整的候選樣本，依時間順序切成 training／validation／test。第一版固定三個可解釋 baseline：訓練窗正樣本率、訓練窗多數類別、訓練窗最後已知標籤。路外同場站樣本可用同一 parking place 的訓練窗最後標籤；路邊區域樣本沒有場站 ID 時使用整體訓練窗最後標籤。
 
 回測報告輸出 Brier score、log loss、accuracy、precision、recall 與 TP／FP／FN。接受口徑在看結果前定義：若 usable samples、training／validation／test split 不足、test split 只有單一類別、或最佳 test Brier score 高於預先設定門檻，報告一律建議 `INSUFFICIENT_DATA`。新增 `docs/s3-002-baseline-backtest.md` 記錄時間切分、baseline、指標與資料不足規則。
 

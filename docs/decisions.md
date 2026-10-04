@@ -32,6 +32,12 @@
 - **影響**：先做端點、回應大小及每月擷取次數預算；使用者查詢本地資料，不直接觸發 TDX 擷取。詳見 `tdx-data-and-cost.md`。
 - **狀態**：已決定；實際擷取頻率仍待測量。
 
+## 2026-10-04：新莊 MVP 即時停車資料先採新北市官方全量擷取後本地篩選
+
+- **原因**：低流量 spike 顯示 TDX 憑證可用，但 `City/NewTaipei` 路外端點目前回空集合，路邊精確 endpoint 尚待核對；相對地，新北市官方 Open Data 可用一輪縣市資料取得路邊與路外資料，且可用 `areacode=65000050` 與 off-street catalog `AREA=新莊區` 篩出新莊。
+- **影響**：MVP 不等待 TDX 直接行政區查詢能力；主系統以新北市官方資料建立 PUBLISHED snapshot，再用本地 catalog／geometry／行政區 mapping 服務新莊查詢。TDX 保留為全臺擴充方向，需另行確認 endpoint、覆蓋率、`$filter` 能力、5 次／分鐘限制與點數成本。
+- **狀態**：已決定作為 MVP 資料路線；TDX 新北市覆蓋與直接篩選能力仍待驗證。
+
 ## 2026-09-23：AI 補值只作估計，不偽裝成即時觀測
 
 - **原因**：來源缺漏時，模型可能提供參考，但無法把缺失的實際車位數變成確定事實。
@@ -547,8 +553,8 @@
 
 ## 2026-10-01：完整 catalog 匯入採 dry-run 審查後的管理命令方向
 
-- **原因**：#41 要釐清完整新莊 catalog／source mapping 覆蓋界線。直接手寫全量 SQL 或把部分 mapping 包裝成完整覆蓋，會讓後續 300 公尺路邊區域預測失去可解釋性。
-- **決策**：完整 catalog 匯入採「NTPC catalog dry-run → 人工審查摘要 → 受控管理命令匯入」方向。dry-run 必須保留路邊／路外 pages、HTTP attempts、response bytes、elapsed millis、traversal 是否完整、accepted candidates、missing source ID、duplicate source ID、invalid coordinates、unknown eligibility 與 existing verified mappings。正式 DB 寫入不在 #41 強制完成；未來若實作 importer，需先確認 dry-run 完整且拒絕原因可分流。
+- **原因**：S2-HARDEN-002 要釐清完整新莊 catalog／source mapping 覆蓋界線。直接手寫全量 SQL 或把部分 mapping 包裝成完整覆蓋，會讓後續 300 公尺路邊區域預測失去可解釋性。
+- **決策**：完整 catalog 匯入採「NTPC catalog dry-run → 人工審查摘要 → 受控管理命令匯入」方向。dry-run 必須保留路邊／路外 pages、HTTP attempts、response bytes、elapsed millis、traversal 是否完整、accepted candidates、missing source ID、duplicate source ID、invalid coordinates、unknown eligibility 與 existing verified mappings。正式 DB 寫入不在 S2-HARDEN-002 強制完成；未來若實作 importer，需先確認 dry-run 完整且拒絕原因可分流。
 - **影響**：新莊只是第一個 `scope`，未來新增地區應新增 scope 與來源 adapter，不複製新莊專用 service。匯入 PR 不提交官方原始 JSON、大檔、金鑰或敏感設定，只提交程式、設定與審查摘要。未完成完整 catalog／mapping 驗收前，查詢 API 必須維持 `PARTIAL` 語意。
 - **狀態**：已新增 `CatalogImportDryRunService`、`NtpcCatalogRecordMapper` 與 `NtpcCatalogDryRunService` 基線；正式匯入管理命令與 DB 寫入流程仍待後續 Issue。
 
@@ -561,7 +567,7 @@
 
 ## 2026-10-01：官方來源刷新設定先採多輪量測支撐的保守暫定值
 
-- **原因**：#42 多輪量測已補上路邊與路外各 5 輪低頻官方 API 證據，但尚未量到主系統端到端寫入、快照發布、多人併發、跨時段失敗率或長期穩定性。
+- **原因**：S2-HARDEN-003 多輪量測已補上路邊與路外各 5 輪低頻官方 API 證據，但尚未量到主系統端到端寫入、快照發布、多人併發、跨時段失敗率或長期穩定性。
 - **決策**：路邊若沿用新北市 JSON 全量擷取，可先以 `page-size=40000`、`max-pages=1` 作低頻驗證候選；路外以 `page-size=1000`、`max-pages=3` 可取齊目前量測到的 1,405 rows，保守可留 `max-pages=5`。來源最低刷新間隔第一版仍維持 5 分鐘暫定；缺頁或無法確認取齊仍一律拒絕發布，不覆蓋既有 `PUBLISHED` snapshot。
 - **影響**：路邊 HTTP p95 8,575 ms、路外 HTTP p95 667 ms 只能代表官方 API 下載段，不可直接當使用者等待上限或 SLA。失敗冷卻、品質比例門檻、前景等待上限與正式 `nextAllowedRefreshAt` 策略仍需後續端到端量測。
 - **狀態**：已記錄於 `realtime-source-measurement.md`；目前是 Sprint 2 hardening 的暫定設定依據，不是正式服務承諾。
@@ -577,7 +583,7 @@
 
 - **原因**：S3-002 需要先用可解釋 baseline 檢查資料是否有基本可預測性，不能等看到結果後才挑指標或門檻，也不能把小樣本結果直接接進線上推論。
 - **決策**：`BaselineBacktestService` 接收 S3-001 的 label dry run report，只評估 usable labels，依時間排序切成 training／validation／test。第一版 baseline 固定為 `TRAIN_POSITIVE_RATE`、`TRAIN_MAJORITY_CLASS`、`LATEST_TRAINING_LABEL`；指標固定輸出 Brier score、log loss、accuracy、precision、recall 與 TP／FP／FN。若樣本不足、split 不足、test split 單一類別或最佳 test Brier score 高於預先設定門檻，報告狀態維持 `INSUFFICIENT_DATA`。
-- **影響**：這能產出路邊與路外各自的 baseline 回測摘要，但仍不代表模型品質達服務標準；線上 `predictions` 在 #45 前仍維持資料不足或模型未就緒。
+- **影響**：這能產出路邊與路外各自的 baseline 回測摘要，但仍不代表模型品質達服務標準；線上 `predictions` 在 S3-003 前仍維持資料不足或模型未就緒。
 - **狀態**：後端 service 與合成樣本測試已完成初版；實際 MySQL 報告、持久化、notebook／CSV 匯出與模型產物版本化仍待後續決定。
 
 ## 2026-10-01：線上預測在無模型或資料不足時固定可解釋降級
@@ -586,3 +592,10 @@
 - **決策**：查詢回應固定保留 `predictions`，目前無模型時回 `INSUFFICIENT_DATA`、`modelVersion=null`、`probability=null`，並輸出 `generatedAt`、`targetArrivalAt`、`inputSnapshotVersion`、`dataAgeSeconds` 與原因碼。第一版原因碼包含 `MODEL_NOT_LOADED`、`BACKTEST_NOT_VERIFIED`、`ETA_NOT_READY`、`NO_CATALOG_RESULTS`、`CATALOG_COVERAGE_PARTIAL`、`NO_REALTIME_SNAPSHOT`、`REALTIME_SNAPSHOT_EXPIRED`、`UNKNOWN_AVAILABILITY`、`NO_OBSERVATION` 與 `MODEL_INPUT_NOT_READY`。
 - **影響**：模型不可用、ETA 失敗、快照缺失或過期、catalog 覆蓋不足時，只降級 `predictions`；目前車位、ETA 與刷新狀態仍各自顯示。模型版本切換失敗時回滾到無模型狀態，不覆蓋既有 `PUBLISHED` snapshot。
 - **狀態**：S3-003 後端契約初版已實作並文件化；正式模型產物、線上推論程序、模型版本儲存與自動回滾仍待後續任務。
+
+## 2026-10-04：正式預測模型改採 ETA-aware 訓練樣本與保守決策門檻
+
+- **原因**：產品目標是回答「使用者從出發地抵達目的地時仍有車位的機率」，不是固定 30／60 分鐘後的抽象可用率。固定 lead baseline 只能作資料品質與流程壓力測試；正式模型必須反映實際車程時間、時間週期、目前狀態衰減與假陽性代價。
+- **決策**：後續訓練樣本規劃改為 ETA-aware：`arrivalAt = departureAt + etaDuration`。路邊預測維持目的地 500 公尺內至少一格一般汽車格位 confirmed available；路外預測維持單一 verified 停車場抵達時仍有汽車位。短期演算法先比較 ETA-aware persistence、同時段歷史 baseline、logistic regression；資料增加後加入 gradient boosting；更長期才評估 survival／hazard model 以處理長車程下的車位退縮曲線。
+- **影響**：評估指標除 Brier score、log loss、precision、recall 與 calibration 外，必須特別追蹤 false positive rate 與 near-full subset precision。線上顯示「有位」須依 ETA 長短、資料年齡、near-full 狀態與覆蓋品質套用保守門檻；未通過回測時仍回 `INSUFFICIENT_DATA`，不得把 baseline 或目前車位包裝成正式機率。
+- **狀態**：已記錄於 `model-training-architecture.md` 與 `sprint-3-continuation-plan.md`；尚未實作 ETA-aware sample builder、尚未呼叫 Google Routes 產生離線訓練 ETA、尚未訓練或發布模型。

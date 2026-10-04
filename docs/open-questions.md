@@ -1,6 +1,6 @@
 # 待確認問題
 
-更新日期：2026-10-01。每題解決後，將結論移入 `decisions.md`，必要時同步更新需求。
+更新日期：2026-10-04。每題解決後，將結論移入 `decisions.md`，必要時同步更新需求。
 
 **2026-09-23 新查核**：TDX 歷史服務停車清單沒有新北市路外剩餘位歷史項目；新莊路外訓練資料改由官方即時來源累積。交通部標準已查明 TDX `SpotStatus` 與 `SpaceType`；新北市資料集頁沒有列出 `parkingstatus`／`cellstatus` 的數值碼表，仍須取得官方定義。新北市路外官方頁描述用 `AVAILABLE`，主要欄位用 `AVAILABLECAR`，須對實際 API 回應確認；`-9` 已確認代表暫無即時資料。
 
@@ -8,11 +8,11 @@
 2. **實際資料量與點數**：每個即時端點回應有多大？是否能跨縣市一次查詢？各縣市有多少有效即時停車場？會員每月 3 點；最初兩份歷史檔實扣合計 0.68 點。新增格位 8/27 與路段 8/25～31 已購買，頁面預估分別為 0.97、1.02 點，實扣及目前餘額待核對；長區間申請仍待產製狀態更新。
 3. **擷取頻率**：在 3 點／月、5 次／分／金鑰的基礎會員限制下，哪些縣市可維持哪些頻率？是否先下載靜態資料並對熱門區域做較頻繁更新？
 4. **MVP 試點**：已決定路邊車格與路外停車場各做一個試點；桃園機場資料是路外候選，仍需指定展示的具體範圍。
-5. **預測要求**：目標時間已改由 Google Routes ETA 提供；`predictions` 區塊語意已定，路邊為 300 公尺內至少一格可停的區域機率，路外為逐場仍有汽車位機率。Sprint 3 進入條件已整理於 `sprint-3-entry-criteria.md`；#43 已建立標籤 dry run 初版規則，#44 已建立 baseline 回測 service、時間切分與指標初版，#45 已補線上無模型／資料不足時的降級欄位、原因碼與模型版本接點。仍需決定正式最低資料品質數值、機率呈現尺度、模型產物儲存與載入方式、基準模型／ML 模型切換方式，以及無法預測時的前端文案。
+5. **預測要求**：目標時間已改由 Google Routes ETA 提供；`predictions` 區塊語意已定，路邊為 300 公尺內至少一格可停的區域機率，路外為逐場仍有汽車位機率。Sprint 3 進入條件已整理於 `sprint-3-entry-criteria.md`；S3-001 已建立標籤 dry run 初版規則，S3-002 已建立 baseline 回測 service、時間切分與指標初版，S3-003 已補線上無模型／資料不足時的降級欄位、原因碼與模型版本接點。仍需決定正式最低資料品質數值、機率呈現尺度、模型產物儲存與載入方式、基準模型／ML 模型切換方式，以及無法預測時的前端文案。
 6. **路線 ETA 設定**：已決定 Google Routes 算到搜尋目的地的 ETA，起點支援目前位置及手動輸入，出發時間預填當下且可改未來；不做逐停車選項 ETA 或內建導航。仍需決定交通感知模式、重新估算頻率及外部地圖選擇介面。
 7. **搜尋與前端範圍**：Sponsor 要求類 Google Maps 搜尋；需確認第一版是否同時採 Google Places 搜尋建議、Google 互動地圖與停車標記，以及錯誤／無結果畫面。
 8. **20 天範圍**：Sponsor 每天約能投入 5–10 小時，總計約 100–200 小時；需確認目標是面試展示原型還是公開可用服務，並核對是否包含週末。
-9. **GitHub 專案看板**：Repository 與遠端已建立；Sprint 2 的 S2-001 至 S2-025 已完成或進入完成收尾，#33 至 #38 已用於 S2-020 至 S2-025。實際看板仍未建立；目前先以 Issue 與本文件追蹤，待多人協作或工作量增加時再評估 GitHub Project。
+9. **GitHub 專案看板**：Repository 與遠端已建立；Sprint 2 的 S2-001 至 S2-025 已完成或進入完成收尾，S2-020 至 S2-025 已建立對應 GitHub Issue。實際看板仍未建立；目前先以 Issue 與本文件追蹤，待多人協作或工作量增加時再評估 GitHub Project。
 10. **歷史檔申請細節**：網站申請 CSV 是否有日期上限？購買頁已顯示檔案大小與預估點數；`Meta=true` 查詢是否耗點？API 如何取得超過預設 `$top=30` 的完整資料？
 11. **新北市跨日資料**：2026-08-09 已取得 2,938,401 列；何時增加平日與更多週末資料以做跨日驗證？申請前須核對新日期的預估點數。
 12. **桃園機場路外資料語意**：已取得 22 天資料。`SpaceType=5`、同時間不同 `ParkingAreaID` 重複顯示停車場總車位的意義為何？須依官方欄位定義決定去重及建模方式。
@@ -24,7 +24,7 @@
 18. **查詢契約與地點搜尋**：已選 Google Place Autocomplete Widget (New)、Google Maps JavaScript API 與 Routes `computeRoutes`；Sponsor 回報停車 Google Cloud 專案、三項 API、帳單連結及預算通知均已完成，帳單規劃本階段先跳過。目的地 Google ETA 終點與停車查詢圓心採同一座標；起點種類、NOW／指定出發時間、防重送、試點外不呼叫上游、快速回查詢狀態、各區塊陸續補齊、來源狀態統一語意、查詢總回應頂層分層、`query` 區塊生命週期語意、`destination` 區塊目的地與支援判定語意、`area` 區塊 300 公尺範圍與覆蓋語意，以及 `eta` 區塊 Google Routes 時間語意、`roadside` 區塊路邊目前觀測與格位明細語意，以及 `offStreet` 區塊路外目前觀測與逐場資訊語意，以及 `predictions` 區塊抵達時預測語意，以及 `refresh` 區塊來源刷新控制語意已定。已補上查詢 API 範例回應草案，收斂三個查詢端點與 HTTP 語意草案，並定義建立查詢 Request Body 草案；已定義各區塊必填／可空規則與主系統錯誤回應格式；具體 JSON 欄位名、防重送期限、`details` 結構、traceId 是否加入、OpenAPI required 清單、分頁／排序、TTL／限流、長度限制與起點操作細節仍待技術定稿。見 `api-contract-v1-draft.md`、`result-states.md`。
 19. **搜尋範圍與時效**：已決定目的地周圍**直線距離** 300 公尺及成功取得後超過 5 分鐘標過期；附近查詢第一版策略已定；仍需實測候選數、索引欄位順序、查詢延遲、可用汽車格位最低觀測比例及主系統擷取頻率，並處理新莊邊界的來源覆蓋缺口。見 `nearby-search.md`。
 20. **Redis 實際配置**：Sponsor 已決定第一版納入 Redis；短期查詢狀態放 Redis、`parking_query` 第一版不持久化到 MySQL 的方向已記錄。Redis 第一版 key 類型已定，`queryId` TTL 以 2 小時作候選；仍待定短期狀態容量、經驗證結果快取粒度與 TTL、Redis 失效時的前端文案、owner token／心跳，以及多實例刷新鎖是否在本期驗證。MySQL 仍負責完整快照與上游額度／冷卻紀錄；Redis 不代替刷新控制。見 `redis-design.md`、`backend-stack-and-normalization.md`、`engineering/data-model.md`。
-21. **新鮮度服務目標**：Sponsor 已選系統成功取得後超過 5 分鐘先標示過期，並要求查詢時先嘗試受控刷新而非直接把舊「有位」結果交給使用者。#42 已量到低頻官方 API 下載段：路邊 5 輪 p50 5,279 ms／p95 8,575 ms，路外 5 輪 p50 358 ms／p95 667 ms；最低刷新間隔仍暫定 5 分鐘。來源是否提供真正觀測時間、端到端查詢等待上限、每月預算、失敗冷卻與降級文案仍待決定。
+21. **新鮮度服務目標**：Sponsor 已選系統成功取得後超過 5 分鐘先標示過期，並要求查詢時先嘗試受控刷新而非直接把舊「有位」結果交給使用者。S2-HARDEN-003 已量到低頻官方 API 下載段：路邊 5 輪 p50 5,279 ms／p95 8,575 ms，路外 5 輪 p50 358 ms／p95 667 ms；最低刷新間隔仍暫定 5 分鐘。來源是否提供真正觀測時間、端到端查詢等待上限、每月預算、失敗冷卻與降級文案仍待決定。
 22. **過期資料的使用者理解**：5 分鐘是初始測試門檻，尚無證據證明一般使用者可接受。原型需驗證「正在更新」、「暫時無法更新」、最後成功取得時間及舊數值僅供參考的文案，並確認是否需按來源更新頻率分別設定門檻。
 23. **前端服務選型與費用（帳單討論暫跳過）**：Sponsor 已同意 Vue 3＋Vite，後端採 Spring Boot Web／Spring MVC REST；Google 地點搜尋、地圖與路線供應者已選，停車 Cloud 專案、三項 API、有效帳單連結及預算通知已回報完成。帳單與費用規劃由 Sponsor 自行管理，本階段不再追問；金鑰及配額在正式介接前仍須核對。見 `frontend-technology-options.md`、`google-usage-budget.md`、`decisions.md`。
 24. **主系統與模型介面**：查詢 API 欄位、後端 package 分層、MySQL／JPA 資料模型與快照發布交易流程草案已建立；300 公尺地理查詢第一版已決定採矩形預篩與後端精確距離；仍需定模型產物版本及 Java／獨立推論程序的界線。需先以兩類訓練標籤與上游回應實測決定。見 `frontend-backend-review.md`、`backend-stack-and-normalization.md`、`engineering/data-model.md`、`snapshot-validation.md`。
@@ -33,10 +33,10 @@
 27. **遠端 Docker 部署細節**：Docker 映像與可重現部署已是必要交付，不再只做本機展示。第一版部署拓樸已決定以單台伺服器 Docker Compose 作候選，服務為 web、api、mysql、redis；仍待確認目標伺服器作業系統／是否可管理 Docker、網域與 HTTPS 入口、MySQL volume 備份／還原、憑證供應、實際遠端上線是否在 20 天內，以及未來是否需要多實例。見 `docker-deployment.md`。
 28. **主系統目錄與汽車格位資格**：完整 catalog 匯入方向已決定採 dry-run 審查後的管理命令，不採手寫全量 SQL；但新北市路邊 `cellid` 的唯一性與穩定性、`name`／開放日／開放時段／備註的實際值和限制語意、路外靜態與動態 `ID` 對應率，以及路外入口座標是否有可靠來源，均待查。目錄更新週期、單筆消失的停用門檻、條件式格位是否可在 MVP 解析，也待實測決定。見 `parking-catalog-design.md`、`s2-harden-002-catalog-coverage.md`。
 29. **查詢重整與中斷恢復**：同分頁重整可用短期 `queryId` 只讀恢復；鍵過期、Redis 暫失或 Spring Boot 在工作途中重啟時，如何辨識並終止 `pending`？`api-contract-v1-draft.md` 提出 ETA 15 秒、來源工作 60 秒、前密後疏輪詢、`queryId` 2 小時絕對期限等**待量測初值**，尚未決定；未來出發行程隔久返回的體驗也待驗證。頁面重整不得默默重新呼叫 Google ETA 或官方 API。
-30. **可見頁面自動與手動刷新細節**：可見且過期時嘗試一次受控共用刷新、隱藏時暫停、單一「更新車位」入口分別回報兩來源、自動與手動同時發生時共用後端同一輪擷取，以及來源擷取失敗後最多共用自動重試一輪、仍失敗就停止自動重試並改由手動更新，已由 Sponsor 決定；車位刷新不重算 ETA。`refresh` 區塊語意已定，#42 已提供低頻官方 API 下載段 p50／p95，但仍待端到端 refresh 寫入與發布量測、失敗冷卻／用量上限、正式 `nextAllowedRefreshAt` 欄位、錯誤碼、等待上限與不同錯誤類型的冷卻策略。
+30. **可見頁面自動與手動刷新細節**：可見且過期時嘗試一次受控共用刷新、隱藏時暫停、單一「更新車位」入口分別回報兩來源、自動與手動同時發生時共用後端同一輪擷取，以及來源擷取失敗後最多共用自動重試一輪、仍失敗就停止自動重試並改由手動更新，已由 Sponsor 決定；車位刷新不重算 ETA。`refresh` 區塊語意已定，S2-HARDEN-003 已提供低頻官方 API 下載段 p50／p95，但仍待端到端 refresh 寫入與發布量測、失敗冷卻／用量上限、正式 `nextAllowedRefreshAt` 欄位、錯誤碼、等待上限與不同錯誤類型的冷卻策略。
 31. **訓練 collector 資料不完整（暫緩）**：Sponsor 回報資料取得方式有問題，產出不完整；成因、受影響日期／欄位及可修復時間未知。先不檢查匯出或據此訓練，後續恢復時需重新量測成功間隔、完整性與兩類標籤。此問題不阻擋主系統即時來源、統一資料模型及 API 契約討論，但會影響 20 天內可信模型的驗收。
-32. **主系統快照品質門檻**：Sponsor 已決定缺頁或無法確認取齊就不發布，少數逐筆壞值可標未知並計入品質；快照發布交易流程已記錄，使用者查詢只讀已發布快照。#42 已量到路邊 5 輪皆 30,941 rows、288 duplicate source ID rows、缺 source ID 0；路外 5 輪皆 1,405 rows、11 duplicate source ID rows、`AVAILABLECAR` 負值 979、缺 source ID 0。仍待更多跨時段樣本與端到端寫入發布量測後，決定正式比例門檻、異常警示與何時只限制局部預測。訓練 collector 的不完整問題與此主系統快照規則分開。
-33. **主系統運行歷史供未來訓練**：Sponsor 已要求 MySQL 保存可追溯的已發布觀測歷史，且指定使用者服務優先、訓練次要；`availability_observation` 作為未來訓練主要歷史來源的草案已記錄。使用者需求與低頻定時取樣共用受控來源流程。#42 已補每輪官方 HTTP 成本基線：路邊約 1 request／11.27 MB，路外約 2 requests／50 KB。#43 初版 dry run 已決定只讀 `PUBLISHED` snapshot 並排除覆蓋不足、未知、過期與品質不可用樣本；#44 初版 backtest 已固定時間切分、baseline 與指標。待決：保留量、背景間隔／每日上限、保存／歸檔期限、資料庫寫入量與批次效能、實際報告匯出方式、來源資料使用條件及不規則取樣造成的訓練偏差。訓練 collector 目前資料不完整，與主系統歷史累積分開處理。
+32. **主系統快照品質門檻**：Sponsor 已決定缺頁或無法確認取齊就不發布，少數逐筆壞值可標未知並計入品質；快照發布交易流程已記錄，使用者查詢只讀已發布快照。S2-HARDEN-003 已量到路邊 5 輪皆 30,941 rows、288 duplicate source ID rows、缺 source ID 0；路外 5 輪皆 1,405 rows、11 duplicate source ID rows、`AVAILABLECAR` 負值 979、缺 source ID 0。仍待更多跨時段樣本與端到端寫入發布量測後，決定正式比例門檻、異常警示與何時只限制局部預測。訓練 collector 的不完整問題與此主系統快照規則分開。
+33. **主系統運行歷史供未來訓練**：Sponsor 已要求 MySQL 保存可追溯的已發布觀測歷史，且指定使用者服務優先、訓練次要；`availability_observation` 作為未來訓練主要歷史來源的草案已記錄。使用者需求與低頻定時取樣共用受控來源流程。S2-HARDEN-003 已補每輪官方 HTTP 成本基線：路邊約 1 request／11.27 MB，路外約 2 requests／50 KB。S3-001 初版 dry run 已決定只讀 `PUBLISHED` snapshot 並排除覆蓋不足、未知、過期與品質不可用樣本；S3-002 初版 backtest 已固定時間切分、baseline 與指標。待決：保留量、背景間隔／每日上限、保存／歸檔期限、資料庫寫入量與批次效能、實際報告匯出方式、來源資料使用條件及不規則取樣造成的訓練偏差。訓練 collector 目前資料不完整，與主系統歷史累積分開處理。
 
 ## Sprint 1 優先收斂的需求（2026-09-24）
 
@@ -49,3 +49,5 @@
 34. **測試資料庫與整合測試**：Sponsor 已決定開發端測試使用 H2；仍需定 test profile、schema migration 工具、測試資料建立方式，以及哪些案例必須用 Docker MySQL 驗證，例如索引、批次寫入、交易與 300 公尺範圍查詢效能。
 35. **實作任務拆分**：實作順序已確認；開始 coding 前仍需建立 GitHub Issues／Project 欄位、決定開發分支命名、確認是否先 scaffold 主系統 repo 結構，以及每個增量的驗收測試清單。
 36. **GitHub 任務管理與 CI**：PM 拆任務與 Human-in-the-loop 流程已定；仍需建立 GitHub 遠端、Issues／Project board、Issue template、PR template，以及決定第一版 GitHub Actions 的 Maven test、前端 build、Docker build 檢查範圍。Harness 暫不導入，除非後續 Sponsor 明確指定。
+37. **TDX 新莊區即時資料篩選能力**：Sponsor 更新 `.env` 後，TDX token 已可成功取得；會員模式小量請求顯示 TDX 路外 `City/NewTaipei?$top=1` 目前回空集合，`City/Taipei?$top=1` 有資料但樣本未見 `Town`／`District` 欄位。on-street 精確 endpoint 尚未從官方 OAS 查清，候選路徑測試未成功且觸發 5 次／分鐘限制。待確認：TDX on-street 精確 endpoint、NewTaipei 覆蓋狀態、是否支援 `$filter` 依行政區或座標縮小，以及使用 TDX 取代或補充新北市官方來源時的點數／速率成本。
+38. **TDX 2026-09-17..2026-09-23 新莊歷史資料取得方式**：TDX 歷史路邊格位 API 只確認到 NewTaipei city-level metadata，7 日全市為 35,480,193 rows／5,403,073,037 bytes，依 20 MB／點粗估約 270.15 點；單日 2026-09-23 為 5,711,400 rows／869,765,771 bytes，約 43.49 點。本機既有資料顯示新北市 Open Data `id` 可對上 TDX `ParkingSpotID`，但實測 `$filter=ParkingSpotID eq '153854'` 被 endpoint 忽略，回傳未篩選前幾筆；若找不到其他可用 server-side filter，需 Sponsor 明確決定是否願意消耗大量點數下載全新北再本地篩選。TDX 歷史路外 City endpoint 不接受 NewTaipei，需另找來源或維持使用新北市官方即時累積。

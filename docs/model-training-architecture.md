@@ -1,6 +1,6 @@
 # 模型訓練架構
 
-更新日期：2026-10-03。狀態：第一版離線訓練 workspace 骨架；尚未訓練、評估或發布任何模型。
+更新日期：2026-10-04。狀態：第一版離線訓練 workspace 骨架與 ETA-aware 模型規劃；尚未訓練、評估或發布任何正式模型。
 
 ## 目的
 
@@ -33,9 +33,60 @@
 - `ml-training/models/`
 - `ml-training/reports/private/`
 
+## 目前 baseline 定位
+
+目前 30／60 分鐘 lead baseline 是資料與流程壓力測試，不是最終產品模型定義。它用固定 `arrivalAt = asOf + leadTime` 先確認 collector 資料能否產生未來 label、時間切分是否無洩漏、目前狀態 persistence 是否足以成為比較尺，並避免一開始就把 Google Routes 額度、快取與失敗率混進資料品質盤點。
+
+正式產品問題是「使用者從出發地到目的地時，目的地 500 公尺內或指定停車場仍有車位的機率」。因此後續訓練樣本應改為 ETA-aware：`arrivalAt = departureAt + etaDuration`，其中 ETA 由主系統的 Google Routes 或經快取／抽樣的離線路線資料提供。固定 30／60 分鐘可保留作比較桶與壓力測試，但不能宣稱等同真實行程預測。
+
+## ETA-aware 模型方向
+
+第一版正式候選應把模型目標拆成兩類：
+
+| 類型 | 預測目標 | 粒度 |
+| --- | --- | --- |
+| Roadside | 抵達目的地時，500 公尺內至少一格一般汽車路邊格位 confirmed available | 目的地圓形區域 |
+| Offstreet | 抵達目的地時，單一 verified 停車場仍有汽車位 | 單一停車場 |
+
+核心特徵方向：
+
+- 車程時間：`eta_minutes`、lead time bucket、ETA 越長目前狀態權重越低。
+- 時間週期：出發與抵達的 hour、weekday、weekend/holiday、尖峰／離峰 bucket。
+- 目前狀態：目前可用數、可用比例、near-full flag、資料年齡、觀測品質。
+- 變化趨勢：過去 5／15／30 分鐘可用數變化、下降速度、波動程度。
+- 地點脈絡：目的地圓心或停車場的歷史同時段可用率、區域類型；未驗證前不直接使用 raw 地址文字。
+- 外部事件與環境：天氣、活動、商圈促銷等可列為中後期特徵；未建立穩定來源前先不作上線必要條件。
+
+## 演算法路線
+
+短期資料仍少，先以可解釋模型和強 baseline 為主：
+
+1. **ETA-aware persistence baseline**：目前狀態依 ETA bucket 遞減權重，作為正式模型必須超越的比較尺。
+2. **歷史同時段 baseline**：同一停車場或目的地圓心在 weekday/hour/holiday 的歷史有位率。
+3. **Logistic regression**：第一版可解釋 ML 候選，用於檢查 ETA、時間週期、near-full 等特徵方向是否有效。
+4. **Gradient boosting**：資料天數與區域增加後，作為第一個較有戰力的非線性模型候選，處理尖峰、長 ETA、near-full 風險與互動特徵。
+
+資料更齊全後，再評估：
+
+- **Survival／hazard model**：適合處理「目前有位能撐到 X 分鐘後」或「剩餘車位退縮曲線」。
+- **Time-series features + boosting**：先用 rolling features，不急著導入 LSTM／Transformer。
+- **Sequence model**：只有在資料量、跨區域覆蓋、特徵品質與可解釋性門檻都成熟後才評估。
+
+## 保守評估與不對稱懲罰
+
+使用者體驗上，假陽性比假陰性嚴重：模型說「有位」但使用者抵達後客滿，傷害最大。因此模型評估不能只看 accuracy，必須納入：
+
+- Precision：預測有位時實際有位的比例。
+- False positive rate：預測有位但實際無位或不確認有位。
+- Brier score 與 calibration：70% 機率是否真的接近 70%。
+- near-full subset precision：目前剩餘少於門檻（例如 3 格）時的 precision。
+- Coverage／abstention rate：模型願意輸出機率的比例，以及拒絕原因。
+
+線上產品可採模型機率加決策門檻：一般情境可能要求 `p >= 0.65` 才顯示偏正向文案；near-full、資料較舊或 ETA 較長時提高門檻，例如 `p >= 0.85`。這些數值目前只是待回測的門檻候選，不是服務承諾。
+
 ## 第一版資料切分
 
-目前 #62 的 collector 樣本使用 2026-09-24 至 2026-10-02，共 9 天；`2026-09-23` 因資料不齊先排除。第一版採時間順序切分，不做 row-random split：
+目前 S3-006 的 collector 樣本使用 2026-09-24 至 2026-10-02，共 9 天；`2026-09-23` 因資料不齊先排除。第一版採時間順序切分，不做 row-random split：
 
 | Split | 日期範圍 | 用途 |
 | --- | --- | --- |
@@ -46,12 +97,12 @@
 
 ## 後續 Issue 對應
 
-- #62：資料品質盤點與匯入規格，提供可用日期、schema 差異與拒絕原因。
-- #63：在 `ml-training/src/parking_ml/` 補 label generation dry run，輸出 label usable ratio 與 rejection report。
-- #64：加入 baseline 與第一版 ML experiment，至少比較可解釋 baseline 與簡單模型。
+- S3-006：資料品質盤點與匯入規格，提供可用日期、schema 差異與拒絕原因。
+- S3-007：在 `ml-training/src/parking_ml/` 補 label generation dry run，輸出 label usable ratio 與 rejection report。
+- S3-008：加入 baseline 與第一版 ML experiment，至少比較可解釋 baseline 與簡單模型。
 - S3-010：先驗證新北市 roadside `parkingstatus`／`cellstatus` 語意與 relabel 計畫，再重跑 roadside label dry-run。
 - S3-011：建立 ML canonical schema 與 source-specific mapping contract，避免不同地方政府 raw status code 直接混入模型。
-- #65：只有通過門檻後，才建立版本化模型產物、推論輸入 schema 與回滾驗證。
+- S3-009：只有通過門檻後，才建立版本化模型產物、推論輸入 schema 與回滾驗證。
 
 ## 驗證
 

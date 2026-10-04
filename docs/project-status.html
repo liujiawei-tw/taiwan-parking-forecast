@@ -299,12 +299,12 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
-      <span class="pill doing">目前：S3-015 半徑改 500m</span>
-      <span class="pill">更新：2026-10-03</span>
-      <span class="pill doing">下一步：模型版本化門檻</span>
+      <span class="pill doing">目前：Sprint 3 下一批規劃已建 Issue</span>
+      <span class="pill">更新：2026-10-04</span>
+      <span class="pill doing">下一步：S3-016 資料來源覆蓋收斂</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。#62、#63、#64 已完成；S3-015 已將主系統與 ML roadside 半徑改為 500m 並重跑 dry-run／baseline。這仍不是正式模型訓練，尚未產生模型檔或線上機率。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。S3-006、S3-007、S3-008 已完成；S3-015 已將主系統與 ML roadside 半徑改為 500m 並重跑 dry-run／baseline。2026-10-04 已收斂正式模型方向與資料來源路線：MVP 先採新北市官方全量擷取後本地篩新莊；TDX 歷史 9/17–9/23 路邊 metadata 顯示全市 5.4 GB、約 270 點估算，未下載 raw data；TDX 歷史路外不支援 NewTaipei。下一批 GitHub Issue 已建立為 S3-016 至 S3-020，順序是來源覆蓋、完整 catalog／mapping、PUBLISHED 歷史匯出、ETA-aware sample builder、保守模型 gate，最後才進 S3-009 模型產物。尚未產生模型檔或線上機率。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -320,13 +320,13 @@
     </article>
     <article class="metric">
       <span>最新 merge</span>
-      <strong>PR #73</strong>
-      <p>S3-012 collector confirmed availability label 與主系統狀態同步。</p>
+      <strong>PR #76</strong>
+      <p>S3-015 查詢與訓練半徑改為 500 公尺，已合併。</p>
     </article>
     <article class="metric">
       <span>下一個瓶頸</span>
-      <strong>model gate</strong>
-      <p>roadside/offstreet 都有離線回測；仍需版本化、門檻、回滾與更多資料。</p>
+      <strong>S3-016-S3-020</strong>
+      <p>先補來源覆蓋、主系統歷史橋接、ETA-aware 樣本與保守 gate，再做模型產物。</p>
     </article>
   </section>
 
@@ -458,6 +458,9 @@
       <ul>
         <li>collector 匯出只供離線訓練，不進主查詢。</li>
         <li>路外已進 baseline 回測；路邊已完成舊 ZIP 離線 re-label、500 公尺 dry-run 重跑與候選圓 baseline。</li>
+        <li>正式模型方向改為 ETA-aware：依出發地到目的地車程決定 label 時間。</li>
+        <li>新莊 MVP 即時資料路線已確認可用新北市官方全量資料本地篩選；TDX 暫作全臺擴充待驗證來源。</li>
+        <li>TDX 2026-09-17 至 2026-09-23 新北市路邊歷史 raw data 未下載：metadata 顯示全市 35,480,193 筆、5,403.07 MB；需另行確認是否願意消耗大量點數。</li>
         <li>線上仍維持資料不足或無模型降級。</li>
         <li>不可用隨機或假機率作展示。</li>
       </ul>
@@ -502,33 +505,39 @@
         </tr>
         <tr>
           <td>正式目錄與來源量測</td>
-          <td>#33、#34、#41、#42、#60、#61</td>
+          <td>S2-020、S2-021、S2-HARDEN-002、S2-HARDEN-003、S3-004、S3-005</td>
           <td><span class="pill done">完成候選</span></td>
-          <td>#33 已建立官方小樣本 catalog 與 ID mapping；#34 已完成量測摘要基線與單輪真實量測；#41 已補覆蓋報告、通用 dry-run、NTPC catalog adapter、orchestration、候選匯入方案與預測拒絕規則；#42 已補路邊／路外各 5 輪低頻官方量測、p50／p95 與暫定設定建議；#60 已合併 dry-run 後受控匯入命令基線；#61 已合併路邊／路外各一輪 E2E 刷新寫入與發布量測。</td>
+          <td>S2-020 已建立官方小樣本 catalog 與 ID mapping；S2-021 已完成量測摘要基線與單輪真實量測；S2-HARDEN-002 已補覆蓋報告、通用 dry-run、NTPC catalog adapter、orchestration、候選匯入方案與預測拒絕規則；S2-HARDEN-003 已補路邊／路外各 5 輪低頻官方量測、p50／p95 與暫定設定建議；S3-004 已合併 dry-run 後受控匯入命令基線；S3-005 已合併路邊／路外各一輪 E2E 刷新寫入與發布量測。</td>
         </tr>
         <tr>
           <td>查詢 API 契約</td>
-          <td>#35</td>
+          <td>S2-022</td>
           <td><span class="pill done">完成</span></td>
           <td>已完成 requestToken 去重、穩定錯誤回應、queryId TTL、Redis query state 與只讀／刷新邊界。</td>
         </tr>
         <tr>
           <td>前端整合</td>
-          <td>#36、#37</td>
+          <td>S2-023、S2-024</td>
           <td><span class="pill done">完成候選</span></td>
-          <td>#36 已完成 Maps JavaScript API、Places Autocomplete 載入路徑、結果頁與無 key fallback；#37 已完成可見頁只讀恢復與受控自動刷新接線。</td>
+          <td>S2-023 已完成 Maps JavaScript API、Places Autocomplete 載入路徑、結果頁與無 key fallback；S2-024 已完成可見頁只讀恢復與受控自動刷新接線。</td>
         </tr>
         <tr>
           <td>文件與 Sprint 3 門檻</td>
-          <td>#38</td>
+          <td>S2-025</td>
           <td><span class="pill done">完成候選</span></td>
           <td>已校正文件基線，並新增 Sprint 3 預測進入條件；預測仍需資料品質與回測證據才可輸出機率。</td>
         </tr>
         <tr>
           <td>預測基準</td>
-          <td>#43、#44、#45、#62、#63、#64、S3-010、S3-011、S3-012、S3-013、S3-014</td>
-          <td><span class="pill doing">S3-014 完成候選</span></td>
-          <td>#43 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與規則文件；#44 已新增 baseline backtest service；#45 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。#62、#63、#64 已完成；S3-010 已新增 roadside 狀態碼驗證與 relabel 計畫，S3-011 已開始 ML canonical schema 草案；S3-012 已在 collector 合併 confirmed availability label rule；S3-013 已對舊 ZIP 做離線 re-label 並重跑主系統 dry-run；S3-014 已補 roadside baseline；S3-015 已改為 500m 並重跑 ML 摘要。兩類可信線上預測仍未接入。</td>
+          <td>S3-001、S3-002、S3-003、S3-006、S3-007、S3-008、S3-010、S3-011、S3-012、S3-013、S3-014、S3-015</td>
+          <td><span class="pill doing">ETA-aware 規劃完成</span></td>
+          <td>S3-001 已新增只讀 PUBLISHED snapshot 的標籤 dry run service 與規則文件；S3-002 已新增 baseline backtest service；S3-003 已補無模型時的 predictions 降級欄位、原因碼與模型版本接點。S3-006、S3-007、S3-008 已完成；S3-010 已新增 roadside 狀態碼驗證與 relabel 計畫，S3-011 已開始 ML canonical schema 草案；S3-012 已在 collector 合併 confirmed availability label rule；S3-013 已對舊 ZIP 做離線 re-label 並重跑主系統 dry-run；S3-014 已補 roadside baseline；S3-015 已改為 500m 並重跑 ML 摘要。2026-10-04 已補 ETA-aware 模型路線、保守門檻與假陽性風險評估；兩類可信線上預測仍未接入。</td>
+        </tr>
+        <tr>
+          <td>Sprint 3 下一批規劃</td>
+          <td>S3-016、S3-017、S3-018、S3-019、S3-020、S3-009</td>
+          <td><span class="pill doing">已建立 Issue</span></td>
+          <td>S3-016 收斂 TDX／新北市來源覆蓋與 canonical 狀態對照；S3-017 驗收完整新莊 catalog／mapping 與覆蓋邊界；S3-018 定義 PUBLISHED 觀測歷史匯出與 ML 橋接；S3-019 建立 ETA-aware query-like 訓練樣本；S3-020 建立假陽性、near-full、calibration、coverage 與拒絕率 gate；S3-009 只在前述證據足夠後處理模型版本化、離線推論與回滾。</td>
         </tr>
       </tbody>
     </table>
@@ -538,15 +547,21 @@
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
       <ol class="next-list">
-        <li>S3-014 下一步：整理模型版本化、更多日期／區域驗證、calibration、門檻與回滾規則。</li>
+        <li>先做 S3-016：整理 TDX／新北市 API 覆蓋證據、ID 對照與狀態碼差異，正式決定 MVP 來源優先序。</li>
+        <li>接著做 S3-017：用新北市官方完整資料做新莊路邊／路外 catalog 與 mapping dry-run 驗收，列出 accepted、rejected、unknown 與覆蓋邊界。</li>
+        <li>再做 S3-018：定義主系統 PUBLISHED snapshot／observation 匯出給 ML 的契約，避免訓練資料只依賴 collector ZIP。</li>
+        <li>S3-019 建立 ETA-aware sample builder：用出發地、目的地、出發時間與 ETA 產生 query-like training samples。</li>
+        <li>S3-020 建立模型 gate：納入 false positive rate、near-full subset precision、calibration、coverage 與拒絕率。</li>
+        <li>S3-009 延後到 S3-019／S3-020 有證據後再做模型產物版本化、離線推論與回滾。</li>
+        <li>新莊 MVP 來源先沿用新北市官方 API：路邊以 <code>areacode=65000050</code> 篩選，路外以 catalog <code>AREA=新莊區</code> 取得 ID 後 join 即時剩餘位。</li>
         <li>roadside 後續風險：confirmed availability 的 `false` 代表不確認有一般可停空位，不得說成保證沒有空位。</li>
-        <li>#60、#61 已合併：Catalog 受控匯入命令與官方 E2E 刷新發布量測基線已完成；真實全量匯入仍需另案審查與人工確認。</li>
-        <li>#40 已完成候選：前端 payload／自動刷新契約測試、GitHub Actions 守門、人工驗收事件面板、Docker smoke 與 Sponsor 真實瀏覽器 Places 人工驗收皆已完成。</li>
-        <li>#41 已完成驗收收尾：新莊 catalog／source mapping 覆蓋報告、通用 import dry-run、NTPC catalog adapter、dry-run orchestration、匯入候選方案與預測拒絕規則皆已補齊，目前路邊 0.33%、路外 3.09%，皆維持 PARTIAL。</li>
-        <li>#42 已完成候選：路邊／路外各 5 輪低頻官方量測已記錄，含 p50／p95、失敗率、資料量、重複 ID、欄位異常、mapping 覆蓋與暫定設定建議。</li>
-        <li>#43 已完成初版：標籤 dry run 僅讀 PUBLISHED snapshot，路邊 coverage 不完整時拒絕區域標籤，路外逐場分開記錄 unknown／quality 等拒絕原因。</li>
-        <li>#44 已完成初版：baseline backtest 依時間切分，固定 Brier score、log loss、accuracy、precision／recall 等指標，樣本不足時維持 INSUFFICIENT_DATA。</li>
-        <li>#45 已完成候選：線上無模型時回 INSUFFICIENT_DATA、模型版本為空、機率為空，並保留快照版本、資料年齡與拒絕原因。</li>
+        <li>S3-004、S3-005 已合併：Catalog 受控匯入命令與官方 E2E 刷新發布量測基線已完成；真實全量匯入仍需另案審查與人工確認。</li>
+        <li>S2-HARDEN-001 已完成候選：前端 payload／自動刷新契約測試、GitHub Actions 守門、人工驗收事件面板、Docker smoke 與 Sponsor 真實瀏覽器 Places 人工驗收皆已完成。</li>
+        <li>S2-HARDEN-002 已完成驗收收尾：新莊 catalog／source mapping 覆蓋報告、通用 import dry-run、NTPC catalog adapter、dry-run orchestration、匯入候選方案與預測拒絕規則皆已補齊，目前路邊 0.33%、路外 3.09%，皆維持 PARTIAL。</li>
+        <li>S2-HARDEN-003 已完成候選：路邊／路外各 5 輪低頻官方量測已記錄，含 p50／p95、失敗率、資料量、重複 ID、欄位異常、mapping 覆蓋與暫定設定建議。</li>
+        <li>S3-001 已完成初版：標籤 dry run 僅讀 PUBLISHED snapshot，路邊 coverage 不完整時拒絕區域標籤，路外逐場分開記錄 unknown／quality 等拒絕原因。</li>
+        <li>S3-002 已完成初版：baseline backtest 依時間切分，固定 Brier score、log loss、accuracy、precision／recall 等指標，樣本不足時維持 INSUFFICIENT_DATA。</li>
+        <li>S3-003 已完成候選：線上無模型時回 INSUFFICIENT_DATA、模型版本為空、機率為空，並保留快照版本、資料年齡與拒絕原因。</li>
       </ol>
     </div>
     <div class="panel">
