@@ -299,19 +299,19 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
-      <span class="pill doing">目前：Sprint 3 下一批規劃已建 Issue</span>
+      <span class="pill doing">目前：S3-017 dry-run 已完成</span>
       <span class="pill">更新：2026-10-04</span>
-      <span class="pill doing">下一步：S3-017 catalog／mapping dry-run</span>
+      <span class="pill doing">下一步：catalog eligibility 審查</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。S3-006、S3-007、S3-008 已完成；S3-015 已將主系統與 ML roadside 半徑改為 500m 並重跑 dry-run／baseline。S3-016 已收斂來源路線：新莊 MVP 即時來源先採新北市官方全量擷取後本地篩新莊；TDX 暫作全臺擴充與交叉驗證，歷史 9/17–9/23 路邊 metadata 顯示全市 5.4 GB、約 270 點估算，未下載 raw data；TDX 歷史路外不支援 NewTaipei。下一步是 S3-017 完整 catalog／mapping dry-run 驗收。尚未產生模型檔或線上機率。</div>
+    <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。S3-006、S3-007、S3-008 已完成；S3-015 已將主系統與 ML roadside 半徑改為 500m 並重跑 dry-run／baseline。S3-016 已收斂來源路線；S3-017 已完成一輪真實 catalog／mapping dry-run：2,224 筆 scoped rows、2,037 筆 accepted candidates、174 筆 unknown eligibility、verified mapping coverage 0.45%，recommendation 仍為 REVIEW_ELIGIBILITY_RULES。下一步是審查 eligibility 規則，不是直接寫入完整 catalog。尚未產生模型檔或線上機率。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
     <article class="metric">
       <span>後端測試</span>
-      <strong>6 / 0 / 0</strong>
-      <p>S3-014 ml-training 單元測試：tests / failures / errors；後端主系統未變更。</p>
+      <strong>2 suites OK</strong>
+      <p>S3-017 API image 重建通過；CatalogImportServiceTest 與 NtpcCatalogDryRunServiceTest 通過。</p>
     </article>
     <article class="metric">
       <span>目前 Sprint</span>
@@ -325,8 +325,8 @@
     </article>
     <article class="metric">
       <span>下一個瓶頸</span>
-      <strong>S3-017</strong>
-      <p>以新北市官方來源做完整新莊 catalog／mapping dry-run 與覆蓋邊界。</p>
+      <strong>Eligibility</strong>
+      <p>S3-017 已量到 174 筆資格不明，需先審查規則再允許完整寫入。</p>
     </article>
   </section>
 
@@ -391,7 +391,7 @@
       <div class="panel">
         <h2>目前不可宣稱</h2>
         <ul class="risk-list">
-          <li>完整新莊 catalog 尚未正式寫入 DB；目前只完成受控匯入命令基線。</li>
+          <li>完整新莊 catalog 尚未正式寫入 DB；S3-017 dry-run 已完成，但 recommendation 仍為 <code>REVIEW_ELIGIBILITY_RULES</code>。</li>
           <li>端到端刷新寫入與發布已有單輪候選量測，但尚未形成正式 SLA。</li>
           <li>路外與 roadside 都已有離線 baseline 回測；線上抵達時預測尚未有版本化可信模型。</li>
           <li>訓練 collector 不參與使用者查詢。</li>
@@ -459,7 +459,7 @@
         <li>collector 匯出只供離線訓練，不進主查詢。</li>
         <li>路外已進 baseline 回測；路邊已完成舊 ZIP 離線 re-label、500 公尺 dry-run 重跑與候選圓 baseline。</li>
         <li>正式模型方向改為 ETA-aware：依出發地到目的地車程決定 label 時間。</li>
-        <li>新莊 MVP 即時資料路線已確認可用新北市官方全量資料本地篩選；TDX 暫作全臺擴充待驗證來源。</li>
+        <li>新莊 MVP 即時資料路線已確認可用新北市官方全量資料本地篩選；S3-017 已量到 catalog 候選 2,037 筆，但 eligibility unknown 仍需審查。</li>
         <li>TDX 2026-09-17 至 2026-09-23 新北市路邊歷史 raw data 未下載：metadata 顯示全市 35,480,193 筆、5,403.07 MB；需另行確認是否願意消耗大量點數。</li>
         <li>線上仍維持資料不足或無模型降級。</li>
         <li>不可用隨機或假機率作展示。</li>
@@ -537,7 +537,7 @@
           <td>Sprint 3 下一批規劃</td>
           <td>S3-016、S3-017、S3-018、S3-019、S3-020、S3-009</td>
           <td><span class="pill doing">已建立 Issue</span></td>
-          <td>S3-016 已收斂 TDX／新北市來源覆蓋與 canonical 狀態對照；S3-017 驗收完整新莊 catalog／mapping 與覆蓋邊界；S3-018 定義 PUBLISHED 觀測歷史匯出與 ML 橋接；S3-019 建立 ETA-aware query-like 訓練樣本；S3-020 建立假陽性、near-full、calibration、coverage 與拒絕率 gate；S3-009 只在前述證據足夠後處理模型版本化、離線推論與回滾。</td>
+          <td>S3-016 已收斂 TDX／新北市來源覆蓋與 canonical 狀態對照；S3-017 已完成一輪完整新莊 catalog／mapping dry-run，結果為 2,037 筆 accepted candidates、174 筆 unknown eligibility、verified mapping coverage 0.45%，仍需 eligibility 審查；S3-018 定義 PUBLISHED 觀測歷史匯出與 ML 橋接；S3-019 建立 ETA-aware query-like 訓練樣本；S3-020 建立假陽性、near-full、calibration、coverage 與拒絕率 gate；S3-009 只在前述證據足夠後處理模型版本化、離線推論與回滾。</td>
         </tr>
       </tbody>
     </table>
@@ -548,7 +548,8 @@
       <h2 id="next-title">下一步建議</h2>
       <ol class="next-list">
         <li>S3-016 已收斂：新莊 MVP 即時來源以新北市官方 Open Data 為主，TDX 暫作全臺擴充與交叉驗證。</li>
-        <li>接著做 S3-017：用新北市官方完整資料做新莊路邊／路外 catalog 與 mapping dry-run 驗收，列出 accepted、rejected、unknown 與覆蓋邊界。</li>
+        <li>S3-017 已完成一輪真實 dry-run：scoped rows 2,224、accepted candidates 2,037、unknown eligibility 174、verified mapping coverage 0.45%。</li>
+        <li>接著審查 S3-017 eligibility 規則：在 recommendation 變成 <code>READY_FOR_IMPORT_REVIEW</code> 前，不做完整 catalog <code>confirm-write=true</code>。</li>
         <li>再做 S3-018：定義主系統 PUBLISHED snapshot／observation 匯出給 ML 的契約，避免訓練資料只依賴 collector ZIP。</li>
         <li>S3-019 建立 ETA-aware sample builder：用出發地、目的地、出發時間與 ETA 產生 query-like training samples。</li>
         <li>S3-020 建立模型 gate：納入 false positive rate、near-full subset precision、calibration、coverage 與拒絕率。</li>

@@ -40,11 +40,17 @@ public class NtpcCatalogImportCommandRunner implements ApplicationRunner {
         try {
             var dryRun = ntpcCatalogDryRunService.dryRun(properties.getServiceArea());
             LOGGER.info(
-                    "NTPC catalog dry-run completed: serviceArea={}, scopedRows={}, acceptedCandidates={}, existingVerifiedMappings={}, recommendation={}, roadsidePages={}, roadsideHttpRequests={}, roadsideBytes={}, roadsideLatencyMs={}, offStreetPages={}, offStreetHttpRequests={}, offStreetBytes={}, offStreetLatencyMs={}, traversalComplete={}",
+                    "NTPC catalog dry-run completed: serviceArea={}, scopedRows={}, acceptedCandidates={}, missingSourceIds={}, duplicateSourceIds={}, invalidCoordinates={}, unknownEligibility={}, existingVerifiedMappings={}, acceptedCandidatePercent={}, verifiedMappingCoveragePercent={}, recommendation={}, roadsidePages={}, roadsideHttpRequests={}, roadsideBytes={}, roadsideLatencyMs={}, offStreetPages={}, offStreetHttpRequests={}, offStreetBytes={}, offStreetLatencyMs={}, traversalComplete={}",
                     dryRun.serviceArea(),
                     dryRun.report().scopedRows(),
                     dryRun.report().acceptedCandidates(),
+                    dryRun.report().missingSourceIds(),
+                    dryRun.report().duplicateSourceIds(),
+                    dryRun.report().invalidCoordinates(),
+                    dryRun.report().unknownEligibility(),
                     dryRun.report().existingVerifiedMappings(),
+                    dryRun.report().acceptedCandidatePercent(),
+                    dryRun.report().verifiedMappingCoveragePercent(),
                     dryRun.report().recommendation(),
                     dryRun.roadside().pages(),
                     dryRun.roadside().httpRequests(),

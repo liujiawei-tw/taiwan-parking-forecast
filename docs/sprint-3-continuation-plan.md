@@ -25,7 +25,7 @@
 - S3-020 在模型接線上前先建立保守 gate，特別處理假陽性與快滿場景。
 - S3-009 只處理通過 gate 後的模型版本化與回滾，不再承擔資料來源、樣本產生與評估門檻的工作。
 
-2026-10-04 進度：S3-016 已新增 `s3-016-data-source-coverage-decision.md`，確認新莊 MVP 即時來源以新北市官方 Open Data 為主，TDX 暫作全臺擴充與交叉驗證。下一步進入 S3-017，做完整新莊 catalog／mapping dry-run 與覆蓋邊界驗收。
+2026-10-04 進度：S3-016 已新增 `s3-016-data-source-coverage-decision.md`，確認新莊 MVP 即時來源以新北市官方 Open Data 為主，TDX 暫作全臺擴充與交叉驗證。S3-017 已完成一輪真實官方 catalog／mapping dry-run，新增 `s3-017-catalog-mapping-dry-run.md`；結果為 scoped rows 2,224、accepted candidates 2,037、unknown eligibility 174、verified mapping coverage 0.45%，recommendation 仍是 `REVIEW_ELIGIBILITY_RULES`。下一步不是直接寫入完整 catalog，而是先審查 eligibility 規則，讓 dry-run 可進入 `READY_FOR_IMPORT_REVIEW`。
 
 ## 模型訓練路線
 

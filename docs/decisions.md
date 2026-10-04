@@ -606,3 +606,10 @@
 - **決策**：新莊 MVP 即時路邊採新北市官方路邊資料全量擷取後以 `areacode=65000050` 篩選；即時路外採新北市官方靜態 catalog 以 `AREA=新莊區` 篩 ID，再 join 即時剩餘位。TDX 保留為全臺擴充候選與交叉驗證來源，不作目前新莊 MVP 的主要即時來源。TDX 歷史 2026-09-17 至 2026-09-23 不下載全新北 raw data；除非 Sponsor 另行確認大量點數消耗，否則只保留 metadata 與既有小樣本作成本與對照證據。
 - **影響**：S3-017 的完整 catalog／mapping dry-run 應以新北市官方來源為主；TDX 欄位只作交叉驗證，不得直接覆蓋新北市 raw status。跨來源狀態碼必須先轉成 canonical availability state，前端與模型不得直接混用 `parkingstatus`、`SpotStatus` 或 `AVAILABLECAR`。
 - **狀態**：已新增 `s3-016-data-source-coverage-decision.md` 並同步 `data-source-strategy.md`；尚未寫入完整 catalog，尚未修改產品程式。
+
+## 2026-10-04：完整新莊 catalog 寫入前必須先解決 eligibility unknown
+
+- **原因**：S3-017 真實 dry-run 顯示來源完整性已可重現量測，但仍有 174 筆 `unknownEligibility`，recommendation 為 `REVIEW_ELIGIBILITY_RULES`。若此時直接寫入 DB，會把一般汽車資格不明的來源列混入 catalog 覆蓋判定。
+- **決策**：在 dry-run recommendation 變成 `READY_FOR_IMPORT_REVIEW` 前，不執行完整 catalog `confirm-write=true`。下一步先審查車種／一般汽車資格規則，必要時擴充 dry-run report，讓 `UNKNOWN`、`NOT_ELIGIBLE` 與其他非 confirmed eligibility 可分開記錄。
+- **影響**：目前 accepted candidates 2,037 只能視為匯入候選，不是已發布 catalog。既有 verified mappings 仍為 10 筆，coverage 0.45%，查詢與預測仍維持 `PARTIAL`／資料不足保護。
+- **狀態**：S3-017 已新增 `s3-017-catalog-mapping-dry-run.md`；尚未寫入完整 catalog。

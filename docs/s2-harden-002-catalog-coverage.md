@@ -168,7 +168,7 @@ Dry run result 會包含：
 - 若 dry-run recommendation 不是 `READY_FOR_IMPORT_REVIEW`，匯入服務會拒絕並回報 `REJECTED_DRY_RUN_NOT_READY`。
 - 這是一次性管理命令；command 執行完成後會關閉 Spring context，不會把 dry-run/import 模式誤留成常駐 API server。
 
-這個命令是 #60／S3-004 的程式基線，不等於已完成完整新莊 catalog 匯入。正式匯入前仍需先跑真實 dry-run，審查 pages、HTTP attempts、bytes、latency、scope rows、accepted candidates、缺 ID、重複、座標異常、資格不明與既有 mapping 覆蓋，再決定是否使用 `confirm-write=true`。
+這個命令是 S3-004 的程式基線，不等於已完成完整新莊 catalog 匯入。S3-017 已完成一輪真實 dry-run，審查 pages、HTTP attempts、bytes、latency、scope rows、accepted candidates、缺 ID、重複、座標異常、資格不明與既有 mapping 覆蓋；因 recommendation 仍為 `REVIEW_ELIGIBILITY_RULES`，目前仍不得使用 `confirm-write=true` 寫入完整 catalog。
 
 ## 待驗證
 
@@ -176,7 +176,7 @@ Dry run result 會包含：
 - 路邊 `name`、開放日、開放時段、備註是否足以判斷一般汽車資格與條件式可停。
 - 路外靜態目錄是否需要全量分頁取得，避免只使用前 1,000 筆造成假完整。
 - 路外 TWD97 座標轉 WGS84 已有單元測試基線；仍需以更多真實點驗證誤差與入口座標策略。
-- `NtpcCatalogImportCommandRunner` 已提供受控管理命令基線，但尚未跑真實官方 dry-run 與 confirm-write 寫入驗收。
+- `NtpcCatalogImportCommandRunner` 已提供受控管理命令基線；S3-017 已跑真實官方 dry-run，但因 eligibility unknown 仍需審查，尚未做 confirm-write 寫入驗收。
 - catalog 更新時，單筆暫時消失應標 `INACTIVE`、保留上一版或等待多輪確認。
 - 新莊服務區的可信覆蓋邊界仍需定義；目前只知道行政區 scope，不足以判定任意 300 公尺圓是否完整位於已收錄範圍。
 
