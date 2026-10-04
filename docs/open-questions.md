@@ -17,8 +17,8 @@
 11. **新北市跨日資料**：2026-08-09 已取得 2,938,401 列；何時增加平日與更多週末資料以做跨日驗證？申請前須核對新日期的預估點數。
 12. **桃園機場路外資料語意**：已取得 22 天資料。`SpaceType=5`、同時間不同 `ParkingAreaID` 重複顯示停車場總車位的意義為何？須依官方欄位定義決定去重及建模方式。
 13. **長區間歷史資料申請**：Sponsor 已申請新北市 2024-04-01 至 2026-07-31，仍在產製；預估點數、是否購買、實扣、檔案大小和分檔方式待記錄。2026-08-01 至 08-31 已產製，預估 23.23 點，是否購買待確認。
-14. **新北市狀態語意與時間品質**：`SpotStatus=1/2/254`、`ServiceStatus=1/2` 的官方意義為何？須檢查每格位的觀測間隔、重複鍵、缺口及無路段 ID 的列。
-15. **免費官方即時來源**：新北市資料開放平臺的路邊格位／路外停車場資料，ID 能否對應 TDX 歷史資料？取得頻率、長期保存與服務穩定性是否適合試點？
+14. **新北市狀態語意與時間品質**：TDX `SpotStatus=1/2/254` 與 `ServiceStatus=1/2` 已有官方標準與本機樣本交叉證據；新北市 `parkingstatus`／`cellstatus` 仍缺完整官方 enum 字典。須持續檢查每格位的觀測間隔、重複鍵、缺口、無路段 ID 的列，以及 `parkingstatus=3/5` 的正式語意。
+15. **免費官方即時來源**：S3-016 已決定新莊 MVP 即時來源以新北市官方 Open Data 為主；路邊可用 `areacode=65000050` 篩新莊，路外可用 `AREA=新莊區` catalog join 即時剩餘位。待確認的是長期保存策略、服務穩定性、跨時段覆蓋波動，以及 S3-017 完整 catalog／mapping dry-run 的 accepted／rejected／unknown 分布。
 16. **預測事件與抵達前刷新**：搜尋結果要以單格位、路段「至少一格」或停車場「至少一位」何者為主要排序依據？接近抵達時的資料更新門檻與顯示方式如何定義？
 17. **主系統即時資料入口**：已確認訓練 collector 不作為用戶即時資料來源。主系統採需求觸發的受控刷新，或再加低頻預熱排程？需量測首筆等待時間、資料年齡、上游呼叫數及來源限制。
 18. **查詢契約與地點搜尋**：已選 Google Place Autocomplete Widget (New)、Google Maps JavaScript API 與 Routes `computeRoutes`；Sponsor 回報停車 Google Cloud 專案、三項 API、帳單連結及預算通知均已完成，帳單規劃本階段先跳過。目的地 Google ETA 終點與停車查詢圓心採同一座標；起點種類、NOW／指定出發時間、防重送、試點外不呼叫上游、快速回查詢狀態、各區塊陸續補齊、來源狀態統一語意、查詢總回應頂層分層、`query` 區塊生命週期語意、`destination` 區塊目的地與支援判定語意、`area` 區塊 300 公尺範圍與覆蓋語意，以及 `eta` 區塊 Google Routes 時間語意、`roadside` 區塊路邊目前觀測與格位明細語意，以及 `offStreet` 區塊路外目前觀測與逐場資訊語意，以及 `predictions` 區塊抵達時預測語意，以及 `refresh` 區塊來源刷新控制語意已定。已補上查詢 API 範例回應草案，收斂三個查詢端點與 HTTP 語意草案，並定義建立查詢 Request Body 草案；已定義各區塊必填／可空規則與主系統錯誤回應格式；具體 JSON 欄位名、防重送期限、`details` 結構、traceId 是否加入、OpenAPI required 清單、分頁／排序、TTL／限流、長度限制與起點操作細節仍待技術定稿。見 `api-contract-v1-draft.md`、`result-states.md`。
@@ -49,5 +49,5 @@
 34. **測試資料庫與整合測試**：Sponsor 已決定開發端測試使用 H2；仍需定 test profile、schema migration 工具、測試資料建立方式，以及哪些案例必須用 Docker MySQL 驗證，例如索引、批次寫入、交易與 300 公尺範圍查詢效能。
 35. **實作任務拆分**：實作順序已確認；開始 coding 前仍需建立 GitHub Issues／Project 欄位、決定開發分支命名、確認是否先 scaffold 主系統 repo 結構，以及每個增量的驗收測試清單。
 36. **GitHub 任務管理與 CI**：PM 拆任務與 Human-in-the-loop 流程已定；仍需建立 GitHub 遠端、Issues／Project board、Issue template、PR template，以及決定第一版 GitHub Actions 的 Maven test、前端 build、Docker build 檢查範圍。Harness 暫不導入，除非後續 Sponsor 明確指定。
-37. **TDX 新莊區即時資料篩選能力**：Sponsor 更新 `.env` 後，TDX token 已可成功取得；會員模式小量請求顯示 TDX 路外 `City/NewTaipei?$top=1` 目前回空集合，`City/Taipei?$top=1` 有資料但樣本未見 `Town`／`District` 欄位。on-street 精確 endpoint 尚未從官方 OAS 查清，候選路徑測試未成功且觸發 5 次／分鐘限制。待確認：TDX on-street 精確 endpoint、NewTaipei 覆蓋狀態、是否支援 `$filter` 依行政區或座標縮小，以及使用 TDX 取代或補充新北市官方來源時的點數／速率成本。
+37. **TDX 新莊區即時資料篩選能力**：Sponsor 更新 `.env` 後，TDX token 已可成功取得；TDX 基礎即時路邊正確 endpoint 已確認為 `/api/basic/v1/Parking/OnStreet/ParkingSpotAvailability/City/NewTaipei`，且可用 `$filter=ParkingSpotID eq '153854'` 查單格位。TDX NewTaipei 路外靜態與即時 endpoint 目前回空集合，不能作新莊 MVP 路外來源。待確認：TDX 是否有正式行政區／座標 server-side filter、NewTaipei 路外空集合是否長期狀態，以及未來用 TDX 擴充全臺時的點數／速率成本。
 38. **TDX 2026-09-17..2026-09-23 新莊歷史資料取得方式**：TDX 歷史路邊格位 API 只確認到 NewTaipei city-level metadata，7 日全市為 35,480,193 rows／5,403,073,037 bytes，依 20 MB／點粗估約 270.15 點；單日 2026-09-23 為 5,711,400 rows／869,765,771 bytes，約 43.49 點。本機既有資料顯示新北市 Open Data `id` 可對上 TDX `ParkingSpotID`，但實測 `$filter=ParkingSpotID eq '153854'` 被 endpoint 忽略，回傳未篩選前幾筆；若找不到其他可用 server-side filter，需 Sponsor 明確決定是否願意消耗大量點數下載全新北再本地篩選。TDX 歷史路外 City endpoint 不接受 NewTaipei，需另找來源或維持使用新北市官方即時累積。

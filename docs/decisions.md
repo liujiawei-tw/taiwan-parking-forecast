@@ -599,3 +599,10 @@
 - **決策**：後續訓練樣本規劃改為 ETA-aware：`arrivalAt = departureAt + etaDuration`。路邊預測維持目的地 500 公尺內至少一格一般汽車格位 confirmed available；路外預測維持單一 verified 停車場抵達時仍有汽車位。短期演算法先比較 ETA-aware persistence、同時段歷史 baseline、logistic regression；資料增加後加入 gradient boosting；更長期才評估 survival／hazard model 以處理長車程下的車位退縮曲線。
 - **影響**：評估指標除 Brier score、log loss、precision、recall 與 calibration 外，必須特別追蹤 false positive rate 與 near-full subset precision。線上顯示「有位」須依 ETA 長短、資料年齡、near-full 狀態與覆蓋品質套用保守門檻；未通過回測時仍回 `INSUFFICIENT_DATA`，不得把 baseline 或目前車位包裝成正式機率。
 - **狀態**：已記錄於 `model-training-architecture.md` 與 `sprint-3-continuation-plan.md`；尚未實作 ETA-aware sample builder、尚未呼叫 Google Routes 產生離線訓練 ETA、尚未訓練或發布模型。
+
+## 2026-10-04：新莊 MVP 即時來源以新北市官方 Open Data 為主，TDX 暫作擴充與交叉驗證
+
+- **原因**：S3-016 需要先釐清 TDX 與新北市官方 API 的覆蓋能力，避免未來新增地區時把新莊客製規則寫死，也避免把 TDX 歷史資料成本或空集合誤認為可用來源。
+- **決策**：新莊 MVP 即時路邊採新北市官方路邊資料全量擷取後以 `areacode=65000050` 篩選；即時路外採新北市官方靜態 catalog 以 `AREA=新莊區` 篩 ID，再 join 即時剩餘位。TDX 保留為全臺擴充候選與交叉驗證來源，不作目前新莊 MVP 的主要即時來源。TDX 歷史 2026-09-17 至 2026-09-23 不下載全新北 raw data；除非 Sponsor 另行確認大量點數消耗，否則只保留 metadata 與既有小樣本作成本與對照證據。
+- **影響**：S3-017 的完整 catalog／mapping dry-run 應以新北市官方來源為主；TDX 欄位只作交叉驗證，不得直接覆蓋新北市 raw status。跨來源狀態碼必須先轉成 canonical availability state，前端與模型不得直接混用 `parkingstatus`、`SpotStatus` 或 `AVAILABLECAR`。
+- **狀態**：已新增 `s3-016-data-source-coverage-decision.md` 並同步 `data-source-strategy.md`；尚未寫入完整 catalog，尚未修改產品程式。

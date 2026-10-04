@@ -25,6 +25,8 @@
 - S3-020 在模型接線上前先建立保守 gate，特別處理假陽性與快滿場景。
 - S3-009 只處理通過 gate 後的模型版本化與回滾，不再承擔資料來源、樣本產生與評估門檻的工作。
 
+2026-10-04 進度：S3-016 已新增 `s3-016-data-source-coverage-decision.md`，確認新莊 MVP 即時來源以新北市官方 Open Data 為主，TDX 暫作全臺擴充與交叉驗證。下一步進入 S3-017，做完整新莊 catalog／mapping dry-run 與覆蓋邊界驗收。
+
 ## 模型訓練路線
 
 第一階段先使用 `parking-data-collector` 的 Google Drive daily ZIP／CSV 做離線資料品質盤點。collector 是訓練資料來源，不是主系統即時查詢來源；其 `collected_at_utc` 是收集時間，不是官方逐筆觀測時間。模型資料匯入必須保留 raw status、label rule、source response time 與 unknown／negative 狀態，不能把未知補成 0。

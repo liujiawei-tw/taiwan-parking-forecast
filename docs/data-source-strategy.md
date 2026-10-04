@@ -1,6 +1,14 @@
 # 停車資料來源與預測目標討論稿
 
-更新日期：2026-09-23。新莊區試點與獨立收集器已開始；預測半徑、模型標籤、跨來源 ID 仍待確認。
+更新日期：2026-10-04。新莊區試點與獨立收集器已開始；S3-016 已收斂新莊 MVP 即時來源優先序，預測模型仍需 ETA-aware 標籤、跨來源 canonical mapping 與回測 gate。
+
+## 2026-10-04 S3-016 來源決策
+
+新莊 MVP 的即時停車來源以新北市官方 Open Data 為主：路邊抓全量後以 `areacode=65000050` 篩新莊，路外以靜態 catalog 的 `AREA=新莊區` 取得場站 ID，再 join 即時剩餘位。TDX 保留為未來全臺擴充與交叉驗證來源，但目前不作新莊 MVP 的主要即時來源。
+
+TDX 的限制已實測：NewTaipei 路外基礎 endpoint 目前回空集合；歷史路外 City endpoint 不含 `NewTaipei`；歷史路邊 2026-09-17 至 2026-09-23 city-level metadata 約 5.4 GB，依 20 MB／點粗估約 270 點，且 `ParkingSpotID` server-side filter 實測未能降低資料量。因此本階段不下載完整 TDX raw data，不把 TDX 當新莊路外訓練資料來源。
+
+完整證據與狀態碼對照見 `s3-016-data-source-coverage-decision.md`。
 
 ## 使用情境與候選預測標籤
 
