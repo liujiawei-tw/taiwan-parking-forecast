@@ -11,6 +11,13 @@ export function hasUsableGoogleMapsKey(apiKey) {
   return Boolean(apiKey && apiKey !== PLACEHOLDER_GOOGLE_MAPS_KEY)
 }
 
+export function locationErrorMessage(error) {
+  if (error?.code === 1) return '定位權限未開啟，請在下方手動輸入起點或使用測試座標。'
+  if (error?.code === 2) return '目前無法取得位置，請在下方手動輸入起點或使用測試座標。'
+  if (error?.code === 3) return '定位逾時，請在下方手動輸入起點或使用測試座標。'
+  return '無法取得目前位置，請在下方手動輸入起點或使用測試座標。'
+}
+
 export function buildRequestToken(cryptoObject = globalThis.crypto, now = Date.now, random = Math.random) {
   if (cryptoObject?.randomUUID) return `web-${cryptoObject.randomUUID()}`
   return `web-${now()}-${random().toString(16).slice(2)}`

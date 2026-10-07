@@ -304,7 +304,7 @@
       <span class="pill pending">後續：S3-024 遠端部署</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>S3-023 已在本機驗證 Google Places／Routes ETA、500m、兩類官方目前資料、受控刷新與桌面／手機畫面；97 個後端測試通過。路邊 1,857、路外 96 筆經審查 mapping 可查，但來源品質為部分通過，模型機率仍為空。截圖保存、定位拒絕、查詢過期及來源拒絕等瀏覽器證據尚缺，S3-023 未完成；完整新莊覆蓋留 S3-017，遠端部署留 S3-024。</div>
+    <div class="notice"><strong>目前結論：</strong>S3-023 已在本機驗證 Google Places／Routes ETA、500m、兩類官方目前資料、受控刷新與桌面／手機畫面；97 個後端測試通過。受控故障測試證實來源連線失敗、品質拒絕均不覆蓋既有 PUBLISHED，短 TTL 查詢回 410。路邊 1,857、路外 96 筆經審查 mapping 可查，但來源品質為部分通過，模型機率仍為空。前端失敗恢復與真正隱藏頁的瀏覽器證據、截圖保存仍缺，S3-023 未完成；完整新莊覆蓋留 S3-017，遠端部署留 S3-024。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -546,7 +546,7 @@
   <section class="layout" aria-labelledby="next-title">
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
-      <p>2026-10-08：S3-023 本機主流程、Google ETA 與桌面／手機檢查進行中；97 個後端測試通過，模型維持空機率。截圖與若干失敗路徑尚未驗收，先完成 S3-023，再進 S3-024 遠端部署；完整新莊覆蓋仍留 S3-017。</p>
+      <p>2026-10-08：S3-023 主流程、桌面／手機及受控失敗保護的 API／DB 驗收已有證據；模型維持空機率。前端失敗恢復、真正隱藏頁與截圖保存尚未完整驗收；S3-024 可先準備部署設定，遠端放行仍以 S3-023 收尾為前置。完整新莊覆蓋留 S3-017。</p>
       <ol>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/82">S3-021</a> 模型實驗證據與限制交接；S3-017 資格分類／審查可並行。</li>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/83">S3-022</a> 審查後目錄匯入與可展示範圍，不繞過寫入保護。</li>

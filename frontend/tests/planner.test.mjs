@@ -7,6 +7,7 @@ import {
   buildParkingQueryPayload,
   buildRequestToken,
   hasUsableGoogleMapsKey,
+  locationErrorMessage,
   roadsideCountLabel,
   shouldAutoRefresh,
 } from '../src/planner.js'
@@ -31,6 +32,9 @@ function queryResult({
 assert.equal(hasUsableGoogleMapsKey(''), false)
 assert.equal(hasUsableGoogleMapsKey('replace-with-local-browser-key'), false)
 assert.equal(hasUsableGoogleMapsKey('browser-key-for-local-test'), true)
+assert.equal(locationErrorMessage({ code: 1 }), '定位權限未開啟，請在下方手動輸入起點或使用測試座標。')
+assert.equal(locationErrorMessage({ code: 3 }), '定位逾時，請在下方手動輸入起點或使用測試座標。')
+assert.equal(locationErrorMessage({ code: 99 }), '無法取得目前位置，請在下方手動輸入起點或使用測試座標。')
 assert.equal(roadsideCountLabel(null, 0), '路邊尚未查詢')
 assert.equal(roadsideCountLabel('STALE', 0), '路邊目前有位：未知')
 assert.equal(roadsideCountLabel('NO_CATALOG_RESULTS', 0), '路邊目前有位：未知')

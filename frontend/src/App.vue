@@ -8,6 +8,7 @@ import {
   buildParkingQueryPayload,
   buildRequestToken,
   hasUsableGoogleMapsKey,
+  locationErrorMessage,
   roadsideCountLabel,
   shouldAutoRefresh,
 } from './planner.js'
@@ -56,6 +57,7 @@ let radiusCircle
 let infoWindow
 let parkingMarkers = []
 let pollTimer
+let locationRequestId = 0
 const markersById = new Map()
 
 const roadsideSpotCount = computed(() => queryResult.value?.roadside?.availableSpots?.length ?? 0)
@@ -156,6 +158,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  locationRequestId++
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   clearProgressPolling()
 })
@@ -545,8 +548,10 @@ function useCurrentLocation() {
 
   locating.value = true
   errorMessage.value = ''
+  const requestId = ++locationRequestId
   navigator.geolocation.getCurrentPosition(
     (position) => {
+      if (requestId !== locationRequestId) return
       origin.value = {
         label: '裝置目前位置',
         latitude: position.coords.latitude,
@@ -555,7 +560,8 @@ function useCurrentLocation() {
       locating.value = false
     },
     (error) => {
-      errorMessage.value = `無法取得目前位置：${error.message}`
+      if (requestId !== locationRequestId) return
+      errorMessage.value = locationErrorMessage(error)
       locating.value = false
     },
     {
@@ -564,6 +570,17 @@ function useCurrentLocation() {
       maximumAge: 60000,
     },
   )
+}
+
+function cancelLocationRequest() {
+  locationRequestId++
+  locating.value = false
+  errorMessage.value = ''
+}
+
+function useTestOrigin() {
+  cancelLocationRequest()
+  origin.value = { ...defaultOrigin }
 }
 
 function openExternalRoute(item) {
@@ -640,14 +657,14 @@ function logAcceptanceEvent(type, message, details = {}) {
           <button class="utility-button" type="button" :disabled="locating" @click="useCurrentLocation">
             {{ locating ? '定位中' : '使用目前位置' }}
           </button>
-          <button class="utility-button" type="button" @click="origin = { ...defaultOrigin }">
+          <button class="utility-button" type="button" @click="useTestOrigin">
             測試座標
           </button>
         </div>
         <div class="manual-grid compact">
-          <input v-model="origin.label" type="text" aria-label="起點名稱">
-          <input v-model.number="origin.latitude" type="number" step="0.000001" aria-label="起點緯度">
-          <input v-model.number="origin.longitude" type="number" step="0.000001" aria-label="起點經度">
+          <input v-model="origin.label" type="text" aria-label="起點名稱" @input="cancelLocationRequest">
+          <input v-model.number="origin.latitude" type="number" step="0.000001" aria-label="起點緯度" @input="cancelLocationRequest">
+          <input v-model.number="origin.longitude" type="number" step="0.000001" aria-label="起點經度" @input="cancelLocationRequest">
         </div>
       </div>
 
