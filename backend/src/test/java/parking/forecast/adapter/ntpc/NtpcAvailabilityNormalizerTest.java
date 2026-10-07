@@ -22,14 +22,14 @@ class NtpcAvailabilityNormalizerTest {
 
     @Test
     void normalizesAvailableRoadsideCarSpotAsRecommendable() {
-        var observation = normalizer.normalizeRoadside(roadside("NTPC-001", "CELL-001", "小型車格", "0"), FETCHED_AT);
+        var observation = normalizer.normalizeRoadside(roadside("NTPC-001", "CELL-001", "小型車格", "2"), FETCHED_AT);
 
         assertThat(observation.sourceSystem()).isEqualTo(SourceSystem.NTPC_OPEN_DATA);
         assertThat(observation.datasetCode()).isEqualTo(DatasetCode.NTPC_ROADSIDE_SPOT);
         assertThat(observation.sourcePlaceId()).isEqualTo("NTPC-001");
         assertThat(observation.availabilityStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
         assertThat(observation.availableSpot()).isTrue();
-        assertThat(observation.rawStatusCode()).isEqualTo("0");
+        assertThat(observation.rawStatusCode()).isEqualTo("2");
         assertThat(observation.qualityStatus()).isEqualTo(QualityStatus.PASS);
         assertThat(observation.carEligibleStatus()).isEqualTo(EligibilityStatus.CONFIRMED);
         assertThat(observation.currentlyRecommendable()).isTrue();
@@ -37,7 +37,7 @@ class NtpcAvailabilityNormalizerTest {
 
     @Test
     void doesNotRecommendAvailableRoadsideSpotWhenCarEligibilityIsUnknown() {
-        var observation = normalizer.normalizeRoadside(roadside("NTPC-002", "CELL-002", "一般格位", "0"), FETCHED_AT);
+        var observation = normalizer.normalizeRoadside(roadside("NTPC-002", "CELL-002", "一般格位", "2"), FETCHED_AT);
 
         assertThat(observation.availabilityStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
         assertThat(observation.availableSpot()).isTrue();
@@ -64,7 +64,7 @@ class NtpcAvailabilityNormalizerTest {
         assertThat(observation.availabilityStatus()).isEqualTo(AvailabilityStatus.UNKNOWN);
         assertThat(observation.availableSpot()).isNull();
         assertThat(observation.qualityStatus()).isEqualTo(QualityStatus.UNKNOWN);
-        assertThat(observation.qualityReason()).isEqualTo("UNKNOWN_ROADSIDE_CELL_STATUS");
+        assertThat(observation.qualityReason()).isEqualTo("UNKNOWN_ROADSIDE_PARKING_STATUS");
         assertThat(observation.currentlyRecommendable()).isFalse();
     }
 
@@ -131,7 +131,20 @@ class NtpcAvailabilityNormalizerTest {
         assertThat(observation.currentlyRecommendable()).isFalse();
     }
 
-    private NtpcRoadsideParkingAvailabilityDto roadside(String id, String cellId, String name, String cellStatus) {
+    @Test
+    void doesNotTreatLegacyZeroOrSpecialStatusesAsConfirmedAvailable() {
+        for (String status : new String[] { "0", "3", "5" }) {
+            var observation = normalizer.normalizeRoadside(roadside("1", "1", "汽車停車位", status), FETCHED_AT);
+            assertThat(observation.availabilityStatus()).isEqualTo(AvailabilityStatus.UNKNOWN);
+            assertThat(observation.availableSpot()).isNull();
+            assertThat(observation.currentlyRecommendable()).isFalse();
+        }
+        var dedicated = normalizer.normalizeRoadside(roadside("1", "1", "汽車身心障礙專用", "2"), FETCHED_AT);
+        assertThat(dedicated.carEligibleStatus()).isEqualTo(EligibilityStatus.NOT_ELIGIBLE);
+        assertThat(dedicated.currentlyRecommendable()).isFalse();
+    }
+
+    private NtpcRoadsideParkingAvailabilityDto roadside(String id, String cellId, String name, String parkingStatus) {
         return new NtpcRoadsideParkingAvailabilityDto(
                 id,
                 cellId,
@@ -143,9 +156,9 @@ class NtpcAvailabilityNormalizerTest {
                 "示範",
                 "R001",
                 "新莊路",
-                cellStatus,
+                "N",
                 "1",
-                "0",
+                parkingStatus,
                 "25.0372",
                 "121.4525",
                 "65000",

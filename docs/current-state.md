@@ -2,6 +2,13 @@
 
 更新日期：2026-10-07。
 
+## 2026-10-07 最新完成：S3-022 審查子集匯入
+
+- 共用一般汽車資格規則；新莊路邊 1,857 confirmed、164 unknown／需審查、103 排除；路外 96 confirmed、4 排除。全體 gate 仍拒絕完整匯入；新增 manifest 綁定的獨立子集 gate，不把未知寫成 verified。
+- 隔離 Docker project s3022demo 匯入 1,953 筆 verified mapping（保留既有 10、新增 1,943），重跑新增 0。兩類官方來源均 PUBLISHED，500m 查詢、空目錄、邊界、未知與過期降級有可重現 smoke；94 個後端測試通過。交接見 s3-022-reviewed-catalog-demo.md。
+- 修正主系統路邊空位判斷讀錯欄位：改用已驗證 parkingstatus=2／1，其他保留未知。來源重複 ID、路邊發布交易約 48 秒、77 個路外未知位數及矩形支援範圍已記錄；非服務承諾，非完整新莊覆蓋。
+- 下一件 S3-023：實際 API 刷新設定／品質、Google ETA、前端桌面手機與失敗流程。S3-017 仍未完成；模型停在 S3-021 離線交接，沒有正式機率。Docker 保留供人工檢查。
+
 ## 2026-10-07 最新完成：S3-021 模型實驗收尾
 
 - 新增離線 audit 工具與 s3-021-model-experiment-handoff.md；重現舊 baseline 的 20 列狀態／指標一致，10 個 ML workspace 測試通過。無外部資料請求、無模型產物／線上推論變更。

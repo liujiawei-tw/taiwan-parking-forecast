@@ -51,16 +51,19 @@ public class NtpcCatalogRecordMapper {
                 firstNonBlank(row.roadName(), row.name(), fallback("路邊格位", row.cellId())),
                 parseCoordinate(row.latitude()),
                 parseCoordinate(row.longitude()),
-                inferRoadsideCarEligibility(row),
+                NtpcRoadsideCarEligibility.classify(row),
                 "roadName=%s; cellId=%s; roadId=%s".formatted(
                         nullToEmpty(row.roadName()),
                         nullToEmpty(row.cellId()),
                         nullToEmpty(row.roadId())),
-                "areaCode=%s; name=%s; latitude=%s; longitude=%s".formatted(
+                "areaCode=%s; name=%s; latitude=%s; longitude=%s; memo=%s; day=%s; hour=%s".formatted(
                         nullToEmpty(row.areaCode()),
                         nullToEmpty(row.name()),
                         nullToEmpty(row.latitude()),
-                        nullToEmpty(row.longitude()))
+                        nullToEmpty(row.longitude()),
+                        nullToEmpty(row.memo()),
+                        nullToEmpty(row.day()),
+                        nullToEmpty(row.hour()))
         );
     }
 
@@ -85,24 +88,15 @@ public class NtpcCatalogRecordMapper {
         );
     }
 
-    private EligibilityStatus inferRoadsideCarEligibility(NtpcRoadsideParkingAvailabilityDto row) {
-        var joinedText = "%s %s %s".formatted(nullToEmpty(row.name()), nullToEmpty(row.memo()), nullToEmpty(row.payCash()));
-        if (joinedText.contains("機車")) {
-            return EligibilityStatus.NOT_ELIGIBLE;
-        }
-        if (joinedText.contains("小型車") || joinedText.contains("汽車")) {
-            return EligibilityStatus.CONFIRMED;
-        }
-        return EligibilityStatus.UNKNOWN;
-    }
-
     private EligibilityStatus inferOffStreetCarEligibility(String totalCarValue) {
         var totalCar = trimToNull(totalCarValue);
         if (totalCar == null) {
             return EligibilityStatus.UNKNOWN;
         }
         try {
-            return Integer.parseInt(totalCar) > 0 ? EligibilityStatus.CONFIRMED : EligibilityStatus.NOT_ELIGIBLE;
+            int capacity = Integer.parseInt(totalCar);
+            return capacity > 0 ? EligibilityStatus.CONFIRMED
+                    : capacity == 0 ? EligibilityStatus.NOT_ELIGIBLE : EligibilityStatus.UNKNOWN;
         } catch (NumberFormatException exception) {
             return EligibilityStatus.UNKNOWN;
         }

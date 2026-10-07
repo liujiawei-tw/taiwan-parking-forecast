@@ -13,6 +13,18 @@ public class NtpcCatalogImportCommandProperties {
 
     private boolean confirmWrite = false;
 
+    private boolean reviewedSubset = false;
+
+    private String expectedManifestSha256 = "";
+
+    public boolean isReviewedSubset() { return reviewedSubset; }
+
+    public void setReviewedSubset(boolean reviewedSubset) { this.reviewedSubset = reviewedSubset; }
+
+    public String getExpectedManifestSha256() { return expectedManifestSha256; }
+
+    public void setExpectedManifestSha256(String value) { this.expectedManifestSha256 = value; }
+
     @NotBlank
     private String serviceArea = "NEW_TAIPEI_XINZHUANG";
 

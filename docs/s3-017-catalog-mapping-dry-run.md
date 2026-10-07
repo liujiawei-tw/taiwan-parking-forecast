@@ -2,6 +2,8 @@
 
 更新日期：2026-10-04。狀態：已完成一輪真實官方 dry-run；尚未寫入完整 catalog，尚未把新莊覆蓋宣稱為完整。
 
+2026-10-07 續作：S3-022 已完成一般汽車子集分類／匯入，見 `s3-022-reviewed-catalog-demo.md`。本文件以下保留 10/04 歷史量測；最新為路邊 confirmed 1,857、unknown 164、排除 103，路外 confirmed 96、排除 4，已匯入子集 mapping 1,953。S3-017 全量資格與行政區邊界驗收仍未完成，不能以子集完成關閉。
+
 ## 目的
 
 S3-017 驗證新莊 MVP 是否能用新北市官方 Open Data 建立完整 catalog／source mapping 的候選清單，並分開記錄來源完整性、資料品質、車種資格與既有 verified mapping 覆蓋。

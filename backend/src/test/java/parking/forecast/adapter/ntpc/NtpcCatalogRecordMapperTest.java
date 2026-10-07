@@ -21,6 +21,31 @@ class NtpcCatalogRecordMapperTest {
     private final NtpcCatalogRecordMapper mapper = new NtpcCatalogRecordMapper();
 
     @Test
+    void generalCarRulesDoNotInferEligibilityFromFeesOrDedicatedSpaces() {
+        var records = mapper.toRoadsideCatalogRecords(XINZHUANG_SCOPE, "65000050", List.of(
+                roadside("1", "1", "65000050", "路", "25", "121", "汽車停車位"),
+                roadside("2", "2", "65000050", "路", "25", "121", "汽車身心障礙專用"),
+                roadside("3", "3", "65000050", "路", "25", "121", "家長接送區"),
+                roadside("4", "4", "65000050", "路", "25", "121", "時段性禁停停車位"),
+                roadside("5", "5", "65000050", "路", "25", "121", "裝卸貨專用停車位"),
+                roadside("6", "6", "65000050", "路", "25", "121", "大型車停車位"),
+                roadside("7", "7", "65000050", "路", "25", "121", "未知汽車類型")
+        ));
+        assertThat(records).extracting(record -> record.carEligibleStatus()).containsExactly(
+                EligibilityStatus.CONFIRMED, EligibilityStatus.NOT_ELIGIBLE,
+                EligibilityStatus.UNKNOWN, EligibilityStatus.UNKNOWN, EligibilityStatus.UNKNOWN,
+                EligibilityStatus.NOT_ELIGIBLE, EligibilityStatus.UNKNOWN);
+        assertThat(records.get(3).rawLocationHint()).contains("memo=時段性禁停停車位", "day=1-5");
+    }
+
+    @Test
+    void negativeOffstreetCapacityIsUnknownRatherThanNoCarSpaces() {
+        var records = mapper.toOffStreetCatalogRecords(XINZHUANG_SCOPE, "新莊區", List.of(
+                offStreet("P", "新莊區", "場", "路", "296239.5", "2770049", "-9")));
+        assertThat(records.get(0).carEligibleStatus()).isEqualTo(EligibilityStatus.UNKNOWN);
+    }
+
+    @Test
     void mapsRoadsideRowsInsideConfiguredAreaToCatalogSourceRecords() {
         var records = mapper.toRoadsideCatalogRecords(
                 XINZHUANG_SCOPE,

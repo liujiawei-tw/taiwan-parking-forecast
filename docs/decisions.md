@@ -2,6 +2,12 @@
 
 以下只記錄已明確採納的方向。草案與尚待驗證的選項請放到 `open-questions.md`。
 
+## 2026-10-07：S3-022 獨立審查子集，不放寬全體 gate
+
+- 一般汽車分類共用於 catalog／即時來源；專用與條件式格位不推定一般可停。審查子集須完整遍歷、全體 ID／座標品質通過、獨立 READY_FOR_IMPORT_REVIEW 與相同 manifest，並顯式 confirm-write；保留原完整匯入保護。
+- 子集 1,953 筆在隔離 Docker 完成匯入／冪等驗證；未知 164 與完整地理覆蓋仍留 S3-017。展示範圍保持 PARTIAL／NO_CATALOG_RESULTS，不以空目錄或未知位數當客滿。
+- 修正主系統路邊使用 parkingstatus=2 作 confirmed available、1 作 occupied，其餘未知，與已驗證離線規則一致；不把 collector 作主系統即時來源。來源重複與發布延遲交 S3-023 續驗。
+
 ## 2026-10-07：S3-021 完成實驗交接，舊分數不作模型准入
 
 - 路邊資料狀態不變與圈重疊已實測，且路邊／路外 train labels 使用 test 日期觀測。凍結舊計算供重現，不以其高分宣稱獨立泛化。

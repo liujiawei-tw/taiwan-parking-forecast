@@ -53,6 +53,8 @@ parking:
       command:
         enabled: ${NTPC_CATALOG_IMPORT_COMMAND_ENABLED:false}
         confirm-write: ${NTPC_CATALOG_IMPORT_CONFIRM_WRITE:false}
+        reviewed-subset: ${NTPC_CATALOG_IMPORT_REVIEWED_SUBSET:false}
+        expected-manifest-sha256: ${NTPC_CATALOG_IMPORT_EXPECTED_MANIFEST_SHA256:}
         service-area: ${NTPC_CATALOG_IMPORT_SERVICE_AREA:NEW_TAIPEI_XINZHUANG}
       scopes:
         - service-area: ${NTPC_CATALOG_SCOPE_0_SERVICE_AREA:NEW_TAIPEI_XINZHUANG}

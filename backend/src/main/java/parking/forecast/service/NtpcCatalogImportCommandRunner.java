@@ -20,17 +20,20 @@ public class NtpcCatalogImportCommandRunner implements ApplicationRunner {
 
     private final NtpcCatalogDryRunService ntpcCatalogDryRunService;
     private final CatalogImportService catalogImportService;
+    private final CatalogSubsetReviewService subsetReviewService;
     private final NtpcCatalogImportCommandProperties properties;
     private final ConfigurableApplicationContext applicationContext;
 
     public NtpcCatalogImportCommandRunner(
             NtpcCatalogDryRunService ntpcCatalogDryRunService,
             CatalogImportService catalogImportService,
+            CatalogSubsetReviewService subsetReviewService,
             NtpcCatalogImportCommandProperties properties,
             ConfigurableApplicationContext applicationContext
     ) {
         this.ntpcCatalogDryRunService = ntpcCatalogDryRunService;
         this.catalogImportService = catalogImportService;
+        this.subsetReviewService = subsetReviewService;
         this.properties = properties;
         this.applicationContext = applicationContext;
     }
@@ -63,6 +66,11 @@ public class NtpcCatalogImportCommandRunner implements ApplicationRunner {
                     dryRun.sourceTraversalComplete()
             );
 
+            var review = subsetReviewService.review(dryRun);
+            LOGGER.info("NTPC catalog subset review: ruleVersion={}, manifestSha256={}, classifications={}, selected={}, excluded={}, subsetRecommendation={}, readyForReview={}",
+                    CatalogSubsetReviewService.RULE_VERSION, review.manifestSha256(), review.classifications(),
+                    review.selectedRecords().size(), dryRun.sourceRecords().size() - review.selectedRecords().size(),
+                    review.subsetReport().recommendation(), review.readyForReview());
             if (!properties.isConfirmWrite()) {
                 LOGGER.info("NTPC catalog import write skipped because confirm-write=false");
                 return;
@@ -72,10 +80,9 @@ public class NtpcCatalogImportCommandRunner implements ApplicationRunner {
                 return;
             }
 
-            CatalogImportResult importResult = catalogImportService.importVerifiedMappings(
-                    dryRun.report(),
-                    dryRun.sourceRecords()
-            );
+            CatalogImportResult importResult = properties.isReviewedSubset()
+                    ? subsetReviewService.importReviewedSubset(dryRun, properties.getExpectedManifestSha256())
+                    : catalogImportService.importVerifiedMappings(dryRun.report(), dryRun.sourceRecords());
             LOGGER.info(
                     "NTPC catalog import completed: serviceArea={}, status={}, createdPlaces={}, createdMappings={}, skippedExistingMappings={}, rejectedCandidates={}, verifiedMappingsBeforeImport={}, verifiedMappingsAfterImport={}",
                     importResult.serviceArea(),

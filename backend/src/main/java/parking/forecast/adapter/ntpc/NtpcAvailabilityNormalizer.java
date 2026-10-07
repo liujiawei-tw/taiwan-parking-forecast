@@ -16,7 +16,7 @@ import parking.forecast.domain.SourceSystem;
 @Component
 public class NtpcAvailabilityNormalizer {
 
-    private static final String ROADSIDE_AVAILABLE_CODE = "0";
+    private static final String ROADSIDE_AVAILABLE_CODE = "2";
     private static final String ROADSIDE_OCCUPIED_CODE = "1";
     private static final String OFF_STREET_OUT_OF_SERVICE_VALUE = "-9";
 
@@ -24,8 +24,8 @@ public class NtpcAvailabilityNormalizer {
             NtpcRoadsideParkingAvailabilityDto dto,
             Instant systemFetchedAt) {
         var sourcePlaceId = resolveRoadsideSourcePlaceId(dto);
-        var rawStatusCode = trimToNull(dto.cellStatus());
-        var carEligibleStatus = inferRoadsideCarEligibility(dto);
+        var rawStatusCode = trimToNull(dto.parkingStatus());
+        var carEligibleStatus = NtpcRoadsideCarEligibility.classify(dto);
         var base = NormalizedAvailabilityObservation.builder()
                 .sourceSystem(SourceSystem.NTPC_OPEN_DATA)
                 .datasetCode(DatasetCode.NTPC_ROADSIDE_SPOT)
@@ -48,7 +48,7 @@ public class NtpcAvailabilityNormalizer {
                     .availabilityStatus(AvailabilityStatus.UNKNOWN)
                     .availableSpot(null)
                     .qualityStatus(QualityStatus.FAIL)
-                    .qualityReason("MISSING_ROADSIDE_CELL_STATUS")
+                    .qualityReason("MISSING_ROADSIDE_PARKING_STATUS")
                     .currentlyRecommendable(false)
                     .build();
         }
@@ -75,7 +75,7 @@ public class NtpcAvailabilityNormalizer {
                 .availabilityStatus(AvailabilityStatus.UNKNOWN)
                 .availableSpot(null)
                 .qualityStatus(QualityStatus.UNKNOWN)
-                .qualityReason("UNKNOWN_ROADSIDE_CELL_STATUS")
+                .qualityReason("UNKNOWN_ROADSIDE_PARKING_STATUS")
                 .currentlyRecommendable(false)
                 .build();
     }
@@ -156,17 +156,6 @@ public class NtpcAvailabilityNormalizer {
                 .build();
     }
 
-    private EligibilityStatus inferRoadsideCarEligibility(NtpcRoadsideParkingAvailabilityDto dto) {
-        var joinedText = "%s %s %s".formatted(nullToEmpty(dto.name()), nullToEmpty(dto.memo()), nullToEmpty(dto.payCash()));
-        if (joinedText.contains("機車")) {
-            return EligibilityStatus.NOT_ELIGIBLE;
-        }
-        if (joinedText.contains("小型車") || joinedText.contains("汽車")) {
-            return EligibilityStatus.CONFIRMED;
-        }
-        return EligibilityStatus.UNKNOWN;
-    }
-
     private String resolveRoadsideSourcePlaceId(NtpcRoadsideParkingAvailabilityDto dto) {
         var systemId = trimToNull(dto.id());
         if (systemId != null) {
@@ -183,7 +172,4 @@ public class NtpcAvailabilityNormalizer {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private String nullToEmpty(String value) {
-        return value == null ? "" : value;
-    }
 }
