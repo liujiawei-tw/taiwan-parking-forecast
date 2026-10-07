@@ -299,9 +299,9 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
-      <span class="pill doing">目前：DEMO 收斂規劃已同步 GitHub</span>
+      <span class="pill done">目前：S3-021 模型實驗交接完成</span>
       <span class="pill">更新：2026-10-07</span>
-      <span class="pill doing">下一步：S3-021 模型階段收尾</span>
+      <span class="pill doing">下一步：S3-022／S3-017 資格審查</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
     <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。S3-006、S3-007、S3-008 已完成；S3-015 已將主系統與 ML roadside 半徑改為 500m 並重跑 dry-run／baseline。S3-016 已收斂來源路線；S3-017 已完成一輪真實 catalog／mapping dry-run：2,224 筆 scoped rows、2,037 筆 accepted candidates、174 筆 unknown eligibility、verified mapping coverage 0.45%，recommendation 仍為 REVIEW_ELIGIBILITY_RULES。下一步是審查 eligibility 規則，不是直接寫入完整 catalog。尚未產生模型檔或線上機率。</div>
@@ -546,7 +546,7 @@
   <section class="layout" aria-labelledby="next-title">
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
-      <p>2026-10-07 順序取代下方舊建議：新增任務僅完成規劃，尚未實作或驗收。</p>
+      <p>2026-10-07：S3-021 已重現舊指標並完成交接，10 個 ML 測試通過。路邊 2,124 格／343 輪狀態不變、圈重疊與訓練標籤跨 test 日期已確認；根因與修正交後續模型 Issue。正式模型仍不合格，下一件 S3-022。</p>
       <ol>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/82">S3-021</a> 模型實驗證據與限制交接；S3-017 資格分類／審查可並行。</li>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/83">S3-022</a> 審查後目錄匯入與可展示範圍，不繞過寫入保護。</li>

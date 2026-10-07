@@ -4,7 +4,7 @@
 
 ## DEMO 優先停點
 
-S3-021 先做既有實驗證據、roadside 時序／重疊／來源更新疑點與限制交接；完成後暫停演算法擴張。此收尾尚未驗收，線上仍為空機率與資料不足。DEMO 發布驗收 S3-025 後再做 S3-018 → S3-019 → S3-020 → S3-026 → S3-009 → S3-027。詳細 GitHub 連結、前置與驗收見 sprint-3-continuation-plan.md。已有 test 曾參與評估，下一階段補 validation／新日期 holdout。
+S3-021 已完成實驗重現與限制交接，見 s3-021-model-experiment-handoff.md。路邊所有格位狀態不變、圈重疊與 train labels 跨入 test 已確認；來源更新根因仍待查。暫停演算法擴張，線上維持空機率與資料不足。DEMO 發布驗收 S3-025 後再做 S3-018 → S3-019 → S3-020 → S3-026 → S3-009 → S3-027。S3-019 先修跨 split 標籤、catalog asOf、臺北時間與 coverage；後續新增 validation／未用過的日期 holdout。
 
 ## 目的
 

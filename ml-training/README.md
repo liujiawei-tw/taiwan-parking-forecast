@@ -55,6 +55,15 @@ This is about 75/25 with the current nine-day sample. It avoids row-random
 leakage while staying close to a common train/test ratio. When more days are
 available, move to a chronological 80/20 split or rolling-window evaluation.
 
+## Frozen Experiment Audit (S3-021)
+
+Run scripts/audit_frozen_experiment.py with --config, --input, and --output.
+The output must be under data/private, ml-training/reports/private, or
+ml-training/outputs. It reports aggregate state changes, circle overlap, split
+boundary contamination, input hashes, and collection gaps; it fits no model.
+Legacy baseline scores remain reproducible but are not admission evidence.
+See docs/s3-021-model-experiment-handoff.md for results and follow-up conditions.
+
 ## Commands
 
 Preview the current training plan:

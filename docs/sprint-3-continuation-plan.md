@@ -22,7 +22,7 @@ S3-021 無新增實作前置；[S3-017](https://github.com/liujiawei-tw/taiwan-p
 
 S3-021 整理已有 9 天 baseline／logistic regression 實驗，核對可重現命令、設定、時間切分與 aggregate 指標。路外 logistic regression Brier 未優於 persistence；路邊 entity baseline accuracy=1 需查 label 時序變化、有效觀測、重疊圈與來源更新，不能視為泛化證據。false 只代表未確認一般可停空位。
 
-交付實驗限制與續作資料需求後暫停演算法擴張，線上保持空機率與 INSUFFICIENT_DATA。這是規劃的停點，收尾審查尚未執行。既有 test 已參與評估，後續補 validation／新日期 holdout，不能反覆調參後宣稱獨立測試。
+S3-021 已完成交接，見 s3-021-model-experiment-handoff.md：路邊格位與圈 label 完全不變，重疊與跨 split train label 已實測；來源更新根因仍待查。舊分數不作上線 gate，暫停演算法擴張，線上保持空機率與 INSUFFICIENT_DATA。後續補 validation／新日期 holdout，先修時間／catalog／coverage 條件。下一件為 S3-022（前置 S3-017 資格審查）。
 
 ## DEMO 後模型順序
 
