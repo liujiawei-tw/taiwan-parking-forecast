@@ -8,12 +8,14 @@ import {
   buildParkingQueryPayload,
   buildRequestToken,
   hasUsableGoogleMapsKey,
+  roadsideCountLabel,
   shouldAutoRefresh,
 } from './planner.js'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY || ''
 const hasGoogleMapsKey = hasUsableGoogleMapsKey(googleMapsApiKey)
+const destinationMode = ref(hasGoogleMapsKey ? 'PLACES' : 'COORDINATES')
 
 const defaultDestination = {
   label: '新莊體育館',
@@ -42,6 +44,7 @@ const locating = ref(false)
 const errorMessage = ref('')
 const refreshMessage = ref('')
 const mapStatus = ref(hasGoogleMapsKey ? '正在載入 Google 地圖' : '未設定瀏覽器 Google Maps key，使用手動座標模式')
+const mapReady = ref(false)
 const selectedItemId = ref('')
 const autoRefreshAttemptKey = ref('')
 const acceptanceEvents = ref([])
@@ -66,8 +69,35 @@ const autoRefreshEligibleSources = computed(() => getAutoRefreshDecision().sourc
 const etaMessage = computed(() => {
   const eta = queryResult.value?.eta
   if (!eta) return '送出查詢後由後端 Google Routes 估算'
-  if (eta.status === 'READY') return `預估抵達：${formatDateTime(eta.estimatedArrivalAt)}`
-  return eta.message || 'ETA 暫時無法估算'
+  if (eta.status === 'READY' && new Date(eta.estimatedArrivalAt).getTime() < Date.now()) {
+    return '原預計抵達時間已過，請重新規劃'
+  }
+  if (eta.status === 'READY') return `Google 預估抵達：${formatDateTime(eta.estimatedArrivalAt)}`
+  return 'Google 路線無法估算，請調整起點後重新規劃；目前車位仍可參考'
+})
+const roadsideMessage = computed(() => {
+  const status = queryResult.value?.roadside?.status
+  if (status === 'READY') return '已讀取官方路邊目前觀測；格位狀態可能隨時變動。'
+  if (status === 'STALE') return '路邊資料已過期，請更新後再參考。'
+  if (status === 'NO_CATALOG_RESULTS') return '此範圍尚無已審查的路邊格位資料。'
+  return '附近路邊格位目前無法確認是否有位。'
+})
+const offStreetMessage = computed(() => {
+  const status = queryResult.value?.offStreet?.status
+  if (status === 'READY') return '已讀取官方停車場目前資料；剩餘位數可能隨時變動。'
+  if (status === 'STALE') return '停車場資料已過期，請更新後再參考。'
+  if (status === 'NO_CATALOG_RESULTS') return '此範圍尚無已審查的停車場資料。'
+  return '附近停車場目前資料不足。'
+})
+const predictionMessage = computed(() => {
+  if (queryResult.value?.eta?.status !== 'READY') {
+    return '尚無抵達時間，無法估算抵達時車位機率。'
+  }
+  const arrivalAt = queryResult.value?.predictions?.targetArrivalAt
+  if (arrivalAt && new Date(arrivalAt).getTime() < Date.now()) {
+    return '原預計抵達時間已過，請重新規劃。'
+  }
+  return '尚無合格的抵達時車位機率；以下僅顯示目前資料。'
 })
 const resultItems = computed(() => {
   const lots = queryResult.value?.offStreet?.parkingLots ?? []
@@ -87,7 +117,11 @@ const resultItems = computed(() => {
         : `${lot.availableCarSpaces} 位`,
       systemCollectedAt: lot.systemCollectedAt,
       navigationAvailable: lot.navigationAvailable,
-      message: lot.message,
+      message: queryResult.value?.offStreet?.status === 'STALE'
+        ? '資料已過期，請更新後再參考。'
+        : lot.availableCarSpaces === null || lot.availableCarSpaces === undefined
+          ? '目前剩餘位數未知。'
+          : '目前回報剩餘位數，不代表抵達時仍有位。',
     })),
     ...spots.map((spot) => ({
       id: `spot-${spot.id}`,
@@ -163,7 +197,7 @@ async function createParkingQuery() {
     })
 
     if (!response.ok) {
-      throw new Error(await readApiError(response))
+      throw await readApiError(response)
     }
 
     queryResult.value = await response.json()
@@ -200,17 +234,22 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
     })
 
     if (!response.ok) {
-      throw new Error(await readApiError(response))
+      throw await readApiError(response)
     }
 
     queryResult.value = await response.json()
-    refreshMessage.value = trigger === 'VISIBLE_AUTO_REFRESH'
-      ? '已完成可見頁受控自動刷新檢查。'
-      : '已完成手動更新檢查。'
+    refreshMessage.value = [
+      formatSourceRefresh('路邊', queryResult.value.refresh?.roadside),
+      formatSourceRefresh('路外', queryResult.value.refresh?.offStreet),
+    ].join('；')
     renderMap()
   } catch (error) {
     errorMessage.value = `更新車位失敗：${error.message}`
     refreshMessage.value = '本次更新未完成；不會自動密集重試。'
+    if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
+      queryResult.value = null
+      clearProgressPolling()
+    }
   } finally {
     loading.value = false
   }
@@ -227,13 +266,16 @@ async function readParkingQuery() {
       ok: response.ok,
     })
     if (!response.ok) {
-      throw new Error(await readApiError(response))
+      throw await readApiError(response)
     }
     queryResult.value = await response.json()
     refreshMessage.value = '已讀取最新查詢狀態。'
   } catch (error) {
     errorMessage.value = `讀取查詢狀態失敗：${error.message}`
     clearProgressPolling()
+    if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
+      queryResult.value = null
+    }
   }
 }
 
@@ -293,9 +335,19 @@ function isPageVisible() {
 async function readApiError(response) {
   try {
     const payload = await response.json()
-    return payload?.error?.message || payload?.error?.code || `API 回應 ${response.status}`
+    const code = payload?.error?.code
+    const messages = {
+      QUERY_EXPIRED: '查詢已過期，請重新規劃行程。',
+      QUERY_NOT_FOUND: '查詢已失效，請重新規劃行程。',
+      UNSUPPORTED_AREA: '目的地超出目前支援範圍，請選擇其他目的地。',
+      INVALID_DEPARTURE_TIME: '出發時間無效，請重新選擇。',
+      SERVICE_TEMPORARILY_UNAVAILABLE: '查詢暫時無法使用，請稍後重試。',
+    }
+    const error = new Error(messages[code] || payload?.error?.message || `API 回應 ${response.status}`)
+    error.code = code
+    return error
   } catch {
-    return `API 回應 ${response.status}`
+    return new Error(`API 回應 ${response.status}`)
   }
 }
 
@@ -313,6 +365,7 @@ async function initializeGoogleMap() {
   })
   infoWindow = new window.google.maps.InfoWindow()
   mapStatus.value = 'Google 地圖已載入'
+  mapReady.value = true
   logAcceptanceEvent('MAPS_LOADED', 'Google Maps JavaScript API 與 Places library 已載入。')
 
   setupPlaceAutocomplete()
@@ -335,6 +388,7 @@ function loadGoogleMapsScript() {
     script.async = true
     script.onerror = () => {
       delete window[callbackName]
+      googleMapsPromise = undefined
       reject(new Error('無法載入 Maps JavaScript API'))
     }
     document.head.appendChild(script)
@@ -529,6 +583,15 @@ function formatDateTime(value) {
   }).format(date)
 }
 
+function formatSourceRefresh(label, refresh) {
+  const action = refresh?.action || ''
+  if (action.startsWith('REFRESHED')) return `${label}：已更新`
+  if (action === 'COOLDOWN') return `${label}：冷卻中，可於 ${formatDateTime(refresh.nextAllowedAt)} 後再試`
+  if (action === 'JOINED_RUNNING_REFRESH') return `${label}：正在共用既有更新`
+  if (action.startsWith('FAILED')) return `${label}：更新失敗，保留上次資料`
+  return `${label}：目前無法確認更新結果`
+}
+
 function logAcceptanceEvent(type, message, details = {}) {
   acceptanceEvents.value = appendAcceptanceEvent(acceptanceEvents.value, {
     type,
@@ -546,16 +609,20 @@ function logAcceptanceEvent(type, message, details = {}) {
         <h1 id="app-title">新莊停車抵達預測</h1>
       </div>
       <div class="service-status">
-        <span class="status-dot" :class="{ ready: hasGoogleMapsKey }" aria-hidden="true"></span>
-        {{ hasGoogleMapsKey ? 'Maps / Places 可載入' : '手動座標模式' }}
+        <span class="status-dot" :class="{ ready: mapReady }" aria-hidden="true"></span>
+        {{ mapReady ? '地圖與地點搜尋已載入' : '地圖尚未載入' }}
       </div>
     </section>
 
     <section class="planner-panel" aria-label="行程規劃">
       <div class="field-group destination-field">
         <label>目的地</label>
-        <div v-if="hasGoogleMapsKey" ref="autocompleteHost" class="autocomplete-host"></div>
-        <div v-else class="manual-grid">
+        <div v-if="hasGoogleMapsKey" class="segmented-control destination-mode" role="group" aria-label="目的地輸入方式">
+          <button type="button" :class="{ active: destinationMode === 'PLACES' }" @click="destinationMode = 'PLACES'">搜尋地點</button>
+          <button type="button" :class="{ active: destinationMode === 'COORDINATES' }" @click="destinationMode = 'COORDINATES'">手動座標</button>
+        </div>
+        <div v-if="hasGoogleMapsKey" v-show="destinationMode === 'PLACES'" ref="autocompleteHost" class="autocomplete-host"></div>
+        <div v-if="destinationMode === 'COORDINATES'" class="manual-grid">
           <input v-model="selectedDestination.label" type="text" aria-label="目的地名稱">
           <input v-model.number="selectedDestination.latitude" type="number" step="0.000001" aria-label="目的地緯度">
           <input v-model.number="selectedDestination.longitude" type="number" step="0.000001" aria-label="目的地經度">
@@ -626,16 +693,17 @@ function logAcceptanceEvent(type, message, details = {}) {
         </div>
 
         <div v-if="hasGoogleMapsKey" ref="mapElement" class="google-map" aria-label="Google 地圖"></div>
-        <div v-else class="map-fallback">
+        <div v-if="!mapReady" class="map-fallback" :class="{ overlay: hasGoogleMapsKey }">
           <div class="fallback-circle">{{ queryResult?.area?.radiusMeters ?? DEFAULT_RADIUS_METERS }}m</div>
-          <strong>未載入 Google 地圖</strong>
-          <span>設定 `VITE_GOOGLE_MAPS_BROWSER_API_KEY` 後才會載入 Maps JavaScript API。</span>
+          <strong>{{ mapStatus }}</strong>
+          <span>下方結果列表仍可查看目前車位與資料時間。</span>
         </div>
 
         <div class="map-summary" aria-live="polite">
           <span>{{ mapStatus }}</span>
           <span>{{ etaMessage }}</span>
-          <span>路外 {{ parkingLotCount }} 座，路邊目前有位格位 {{ roadsideSpotCount }} 個</span>
+          <span>路外 {{ parkingLotCount }} 座，{{ roadsideCountLabel(queryResult?.roadside?.status, roadsideSpotCount) }}</span>
+          <span v-if="queryResult && queryResult.area?.coverageStatus !== 'COMPLETE'">涵蓋範圍：{{ queryResult.area?.coverageStatus === 'NO_CATALOG_RESULTS' ? '尚無已審查目錄資料' : '部分區域，資料仍需驗證' }}</span>
         </div>
       </section>
 
@@ -649,7 +717,7 @@ function logAcceptanceEvent(type, message, details = {}) {
             class="utility-button"
             type="button"
             :disabled="loading || !queryResult"
-            @click="refreshParkingAvailability"
+            @click="refreshParkingAvailability()"
           >
             更新車位
           </button>
@@ -663,30 +731,30 @@ function logAcceptanceEvent(type, message, details = {}) {
             </div>
             <div>
               <span>ETA</span>
-              <strong>{{ queryResult.eta.status }}</strong>
+              <strong>{{ queryResult.eta.status === 'READY' ? '已估算' : '無法估算' }}</strong>
             </div>
             <div>
               <span>預測</span>
-              <strong>{{ queryResult.predictions.status }}</strong>
+              <strong>{{ queryResult.predictions.status === 'INSUFFICIENT_DATA' ? '資料不足' : queryResult.predictions.status }}</strong>
             </div>
           </div>
 
           <article class="result-card">
             <strong>路邊區域</strong>
-            <span>{{ queryResult.roadside.message }}</span>
+            <span>{{ roadsideMessage }}</span>
             <span>目前可用：{{ queryResult.roadside.currentlyAvailableSpaces ?? '未知' }}</span>
             <span>資料時間：{{ formatDateTime(queryResult.roadside.systemCollectedAt) }}</span>
           </article>
 
           <article class="result-card">
             <strong>路外停車場</strong>
-            <span>{{ queryResult.offStreet.message }}</span>
+            <span>{{ offStreetMessage }}</span>
             <span>資料時間：{{ formatDateTime(queryResult.offStreet.systemCollectedAt) }}</span>
           </article>
 
           <article class="result-card warning">
             <strong>抵達時預測</strong>
-            <span>{{ queryResult.predictions.message }}</span>
+            <span>{{ predictionMessage }}</span>
             <span>目標抵達：{{ formatDateTime(queryResult.predictions.targetArrivalAt) }}</span>
           </article>
 

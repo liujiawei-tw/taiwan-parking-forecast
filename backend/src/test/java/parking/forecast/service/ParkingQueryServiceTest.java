@@ -1,5 +1,6 @@
 package parking.forecast.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -63,6 +64,20 @@ class ParkingQueryServiceTest {
                 .refresh(DatasetCode.NTPC_ROADSIDE_SPOT, TriggerType.VISIBLE_AUTO_REFRESH);
         verify(fixture.sourceRefreshCoordinationService)
                 .refresh(DatasetCode.NTPC_OFF_STREET_AVAILABILITY, TriggerType.VISIBLE_AUTO_REFRESH);
+    }
+
+    @Test
+    void refreshAfterArrivalPreservesEtaAndMarksPredictionExpired() {
+        TestFixture fixture = new TestFixture();
+        var created = fixture.service.create(mockRequestNearSeedCatalog());
+        fixture.clock.advance(Duration.ofMinutes(21));
+
+        var refreshed = fixture.service.refresh(created.query().queryId());
+
+        assertThat(refreshed.eta()).isEqualTo(created.eta());
+        assertThat(refreshed.predictions().reasons()).contains("ETA_EXPIRED");
+        assertThat(refreshed.predictions().roadside().probability()).isNull();
+        verify(fixture.googleEtaService).estimate(any(), any(), any(), anyBoolean());
     }
 
     private CreateParkingQueryRequest mockRequestNearSeedCatalog() {

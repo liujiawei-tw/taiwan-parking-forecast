@@ -1,6 +1,12 @@
 export const AUTO_REFRESH_SOURCE_STATUSES = new Set(['STALE', 'NO_REALTIME_SNAPSHOT'])
 export const PLACEHOLDER_GOOGLE_MAPS_KEY = 'replace-with-local-browser-key'
 
+export function roadsideCountLabel(status, count) {
+  if (!status) return '路邊尚未查詢'
+  if (status !== 'READY') return '路邊目前有位：未知'
+  return `路邊目前有位格位 ${count} 個`
+}
+
 export function hasUsableGoogleMapsKey(apiKey) {
   return Boolean(apiKey && apiKey !== PLACEHOLDER_GOOGLE_MAPS_KEY)
 }

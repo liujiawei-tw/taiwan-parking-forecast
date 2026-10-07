@@ -7,6 +7,7 @@ import {
   buildParkingQueryPayload,
   buildRequestToken,
   hasUsableGoogleMapsKey,
+  roadsideCountLabel,
   shouldAutoRefresh,
 } from '../src/planner.js'
 
@@ -30,6 +31,10 @@ function queryResult({
 assert.equal(hasUsableGoogleMapsKey(''), false)
 assert.equal(hasUsableGoogleMapsKey('replace-with-local-browser-key'), false)
 assert.equal(hasUsableGoogleMapsKey('browser-key-for-local-test'), true)
+assert.equal(roadsideCountLabel(null, 0), '路邊尚未查詢')
+assert.equal(roadsideCountLabel('STALE', 0), '路邊目前有位：未知')
+assert.equal(roadsideCountLabel('NO_CATALOG_RESULTS', 0), '路邊目前有位：未知')
+assert.equal(roadsideCountLabel('READY', 0), '路邊目前有位格位 0 個')
 
 assert.equal(
   buildRequestToken({ randomUUID: () => '00000000-0000-4000-8000-000000000001' }),

@@ -21,10 +21,10 @@ public class RefreshControlProperties {
     private Duration lockTtl = Duration.ofSeconds(90);
 
     @Min(1)
-    private int pageSize = 500;
+    private int pageSize = 40000;
 
     @Min(1)
-    private int maxPages = 20;
+    private int maxPages = 3;
 
     public Duration getSourceCooldown() {
         return sourceCooldown;

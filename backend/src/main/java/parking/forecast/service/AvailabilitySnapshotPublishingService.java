@@ -2,7 +2,9 @@ package parking.forecast.service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,8 +67,15 @@ public class AvailabilitySnapshotPublishingService {
 
         AvailabilitySnapshotEntity snapshot = createCandidateSnapshot(command, ingestionRun);
         List<AvailabilityObservationEntity> entities = new ArrayList<>();
+        Map<String, SourceMappingEntity> verifiedMappings = new HashMap<>();
+        for (SourceMappingEntity mapping : sourceMappingRepository.findBySourceSystemAndDatasetCodeAndMappingStatus(
+                command.sourceSystem(), command.datasetCode(), MappingStatus.VERIFIED)) {
+            verifiedMappings.put(mapping.getSourcePlaceId(), mapping);
+        }
+        Map<String, NormalizedAvailabilityObservation> mappedObservations = new HashMap<>();
         int unmappedCount = 0;
         int failedObservationCount = 0;
+        int duplicateMappedRows = 0;
 
         for (NormalizedAvailabilityObservation observation : command.observations()) {
             validateObservationSource(command, observation);
@@ -74,28 +83,38 @@ public class AvailabilitySnapshotPublishingService {
                 failedObservationCount++;
             }
 
-            SourceMappingEntity mapping = findVerifiedMapping(observation);
+            SourceMappingEntity mapping = verifiedMappings.get(observation.sourcePlaceId());
             if (mapping == null) {
                 unmappedCount++;
                 continue;
             }
-            entities.add(toEntity(snapshot, mapping, observation, command.completedAt()));
+            NormalizedAvailabilityObservation previous = mappedObservations.putIfAbsent(observation.sourcePlaceId(), observation);
+            if (previous != null) {
+                if (!sameAvailability(previous, observation)) {
+                    String reason = "Conflicting duplicate source place ID in one refresh.";
+                    rejectCandidate(snapshot, command.completedAt(), reason);
+                    return reject(command, ingestionRun, reason, 0, QualityStatus.FAIL);
+                }
+                duplicateMappedRows++;
+                if (observation.sourceObservedAt() != null && (previous.sourceObservedAt() == null
+                        || observation.sourceObservedAt().isAfter(previous.sourceObservedAt()))) {
+                    mappedObservations.put(observation.sourcePlaceId(), observation);
+                }
+            }
+        }
+
+        for (var entry : mappedObservations.entrySet()) {
+            entities.add(toEntity(snapshot, verifiedMappings.get(entry.getKey()), entry.getValue(), command.completedAt()));
         }
 
         if (entities.isEmpty()) {
-            snapshot.setSnapshotStatus(SnapshotStatus.REJECTED);
-            snapshot.setFinishedAt(command.completedAt());
-            snapshot.setSystemFetchedAt(command.completedAt());
-            snapshot.setActualRecordCount(0);
-            snapshot.setQualityStatus(QualityStatus.FAIL);
-            snapshot.setQualityReason(NO_MAPPED_OBSERVATIONS_REASON);
-            availabilitySnapshotRepository.save(snapshot);
+            rejectCandidate(snapshot, command.completedAt(), NO_MAPPED_OBSERVATIONS_REASON);
             return reject(command, ingestionRun, NO_MAPPED_OBSERVATIONS_REASON, 0, QualityStatus.FAIL);
         }
 
         availabilityObservationRepository.saveAll(entities);
-        QualityStatus snapshotQuality = resolveSnapshotQuality(command.observations().size(), unmappedCount, failedObservationCount);
-        String qualityReason = buildQualityReason(command.observations().size(), entities.size(), unmappedCount, failedObservationCount);
+        QualityStatus snapshotQuality = resolveSnapshotQuality(command.observations().size(), unmappedCount, failedObservationCount, duplicateMappedRows);
+        String qualityReason = buildQualityReason(command.observations().size(), entities.size(), unmappedCount, failedObservationCount, duplicateMappedRows);
 
         snapshot.setSnapshotStatus(SnapshotStatus.PUBLISHED);
         snapshot.setFinishedAt(command.completedAt());
@@ -170,6 +189,16 @@ public class AvailabilitySnapshotPublishingService {
         return availabilitySnapshotRepository.save(snapshot);
     }
 
+    private void rejectCandidate(AvailabilitySnapshotEntity snapshot, Instant completedAt, String reason) {
+        snapshot.setSnapshotStatus(SnapshotStatus.REJECTED);
+        snapshot.setFinishedAt(completedAt);
+        snapshot.setSystemFetchedAt(completedAt);
+        snapshot.setActualRecordCount(0);
+        snapshot.setQualityStatus(QualityStatus.FAIL);
+        snapshot.setQualityReason(reason);
+        availabilitySnapshotRepository.save(snapshot);
+    }
+
     private PublishSnapshotResult reject(
             PublishSnapshotCommand command,
             IngestionRunEntity ingestionRun,
@@ -217,16 +246,15 @@ public class AvailabilitySnapshotPublishingService {
         }
     }
 
-    private SourceMappingEntity findVerifiedMapping(NormalizedAvailabilityObservation observation) {
-        if (!StringUtils.hasText(observation.sourcePlaceId())) {
-            return null;
-        }
-        return sourceMappingRepository.findBySourceSystemAndDatasetCodeAndSourcePlaceId(
-                observation.sourceSystem(),
-                observation.datasetCode(),
-                observation.sourcePlaceId()
-        ).filter(mapping -> mapping.getMappingStatus() == MappingStatus.VERIFIED)
-                .orElse(null);
+    private boolean sameAvailability(NormalizedAvailabilityObservation first, NormalizedAvailabilityObservation second) {
+        return first.availabilityStatus() == second.availabilityStatus()
+                && Objects.equals(first.availableCarSpaces(), second.availableCarSpaces())
+                && Objects.equals(first.availableSpot(), second.availableSpot())
+                && Objects.equals(first.rawStatusCode(), second.rawStatusCode())
+                && Objects.equals(first.rawAvailabilityValue(), second.rawAvailabilityValue())
+                && first.qualityStatus() == second.qualityStatus()
+                && first.carEligibleStatus() == second.carEligibleStatus()
+                && first.currentlyRecommendable() == second.currentlyRecommendable();
     }
 
     private AvailabilityObservationEntity toEntity(
@@ -255,8 +283,8 @@ public class AvailabilitySnapshotPublishingService {
         return entity;
     }
 
-    private QualityStatus resolveSnapshotQuality(int totalCount, int unmappedCount, int failedObservationCount) {
-        if (unmappedCount == 0 && failedObservationCount == 0) {
+    private QualityStatus resolveSnapshotQuality(int totalCount, int unmappedCount, int failedObservationCount, int duplicateMappedRows) {
+        if (unmappedCount == 0 && failedObservationCount == 0 && duplicateMappedRows == 0) {
             return QualityStatus.PASS;
         }
         if (unmappedCount < totalCount) {
@@ -265,12 +293,13 @@ public class AvailabilitySnapshotPublishingService {
         return QualityStatus.FAIL;
     }
 
-    private String buildQualityReason(int totalCount, int publishedCount, int unmappedCount, int failedObservationCount) {
-        return "normalized=%d, published=%d, unmapped=%d, failedObservations=%d".formatted(
+    private String buildQualityReason(int totalCount, int publishedCount, int unmappedCount, int failedObservationCount, int duplicateMappedRows) {
+        return "normalized=%d, published=%d, unmapped=%d, failedObservations=%d, duplicateMappedRows=%d".formatted(
                 totalCount,
                 publishedCount,
                 unmappedCount,
-                failedObservationCount
+                failedObservationCount,
+                duplicateMappedRows
         );
     }
 

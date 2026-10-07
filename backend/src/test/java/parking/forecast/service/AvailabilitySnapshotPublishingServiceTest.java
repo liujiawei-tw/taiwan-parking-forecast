@@ -148,6 +148,38 @@ class AvailabilitySnapshotPublishingServiceTest {
     }
 
     @Test
+    void identicalMappedDuplicatesPublishOneObservationWithPartialQuality() {
+        createMappedPlace("NTPC-SPOT-DUP", "新莊測試重複格位");
+        NormalizedAvailabilityObservation observation = availableObservation("NTPC-SPOT-DUP");
+
+        PublishSnapshotResult result = publishingService.publish(command(List.of(observation, observation)));
+
+        assertThat(result.published()).isTrue();
+        assertThat(result.publishedObservationCount()).isEqualTo(1);
+        assertThat(result.qualityStatus()).isEqualTo(QualityStatus.PARTIAL_PASS);
+        assertThat(result.reason()).contains("duplicateMappedRows=1");
+        var snapshot = availabilitySnapshotRepository.findById(result.snapshotId()).orElseThrow();
+        assertThat(availabilityObservationRepository.findBySnapshot(snapshot)).hasSize(1);
+    }
+
+    @Test
+    void conflictingMappedDuplicatesRejectCandidateAndPreservePublishedSnapshot() {
+        createMappedPlace("NTPC-SPOT-CONFLICT", "新莊測試衝突格位");
+        PublishSnapshotResult first = publishingService.publish(command(List.of(availableObservation("NTPC-SPOT-CONFLICT"))));
+        var previousSnapshot = availabilitySnapshotRepository.findById(first.snapshotId()).orElseThrow();
+
+        PublishSnapshotResult conflicting = publishingService.publish(command(List.of(
+                availableObservation("NTPC-SPOT-CONFLICT"), occupiedObservation("NTPC-SPOT-CONFLICT"))));
+
+        assertThat(conflicting.published()).isFalse();
+        assertThat(conflicting.reason()).contains("Conflicting duplicate");
+        assertThat(sourceStateRepository.findBySourceSystemAndDatasetCode(SOURCE_SYSTEM, DATASET_CODE)
+                .orElseThrow().getActiveSnapshot().getId()).isEqualTo(previousSnapshot.getId());
+        assertThat(availabilitySnapshotRepository.findBySourceSystemAndDatasetCodeAndSnapshotStatus(
+                SOURCE_SYSTEM, DATASET_CODE, SnapshotStatus.REJECTED)).hasSize(1);
+    }
+
+    @Test
     void emptyObservationListRecordsRejectedRunAndDoesNotPublishSnapshot() {
         PublishSnapshotResult result = publishingService.publish(command(List.of()));
 
@@ -207,6 +239,22 @@ class AvailabilitySnapshotPublishingServiceTest {
                 .systemFetchedAt(COMPLETED_AT)
                 .qualityStatus(QualityStatus.FAIL)
                 .qualityReason("cellstatus is missing")
+                .carEligibleStatus(EligibilityStatus.CONFIRMED)
+                .currentlyRecommendable(false)
+                .build();
+    }
+
+    private NormalizedAvailabilityObservation occupiedObservation(String sourcePlaceId) {
+        return NormalizedAvailabilityObservation.builder()
+                .sourceSystem(SOURCE_SYSTEM)
+                .datasetCode(DATASET_CODE)
+                .sourcePlaceId(sourcePlaceId)
+                .availabilityStatus(AvailabilityStatus.OCCUPIED)
+                .availableSpot(false)
+                .rawStatusCode("1")
+                .sourceObservedAt(STARTED_AT.plusSeconds(1))
+                .systemFetchedAt(COMPLETED_AT)
+                .qualityStatus(QualityStatus.PASS)
                 .carEligibleStatus(EligibilityStatus.CONFIRMED)
                 .currentlyRecommendable(false)
                 .build();

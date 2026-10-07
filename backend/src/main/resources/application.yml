@@ -64,8 +64,8 @@ parking:
   refresh:
     source-cooldown: ${PARKING_REFRESH_SOURCE_COOLDOWN:5m}
     lock-ttl: ${PARKING_REFRESH_LOCK_TTL:90s}
-    page-size: ${PARKING_REFRESH_PAGE_SIZE:500}
-    max-pages: ${PARKING_REFRESH_MAX_PAGES:20}
+    page-size: ${PARKING_REFRESH_PAGE_SIZE:40000}
+    max-pages: ${PARKING_REFRESH_MAX_PAGES:3}
     measurement:
       command:
         enabled: ${PARKING_REFRESH_MEASUREMENT_COMMAND_ENABLED:false}

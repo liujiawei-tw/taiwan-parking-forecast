@@ -299,12 +299,12 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
-      <span class="pill done">目前：S3-022 審查子集匯入完成</span>
-      <span class="pill">更新：2026-10-07</span>
-      <span class="pill doing">下一步：S3-023 端到端驗收</span>
+      <span class="pill doing">目前：S3-023 本機驗收進行中</span>
+      <span class="pill">更新：2026-10-08</span>
+      <span class="pill pending">後續：S3-024 遠端部署</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>S3-021 模型實驗交接完成；S3-022 在隔離 Docker 匯入經審查一般汽車子集：路邊 1,857、路外 96 筆 verified mapping，重跑無新增，94 個後端測試通過。兩類官方來源發布與 500m 查詢 smoke 已驗證，未知／過期／空目錄不補零。164 筆條件式格位、來源重複 ID、發布延遲與矩形邊界仍有限制，完整新莊覆蓋留 S3-017。下一步 S3-023 前端、Google ETA 與刷新端到端驗收；尚未產生模型檔或線上機率，遠端部署尚未完成。</div>
+    <div class="notice"><strong>目前結論：</strong>S3-023 已在本機驗證 Google Places／Routes ETA、500m、兩類官方目前資料、受控刷新與桌面／手機畫面；97 個後端測試通過。路邊 1,857、路外 96 筆經審查 mapping 可查，但來源品質為部分通過，模型機率仍為空。截圖保存、定位拒絕、查詢過期及來源拒絕等瀏覽器證據尚缺，S3-023 未完成；完整新莊覆蓋留 S3-017，遠端部署留 S3-024。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -546,7 +546,7 @@
   <section class="layout" aria-labelledby="next-title">
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
-      <p>2026-10-07：S3-021 模型交接及 S3-022 子集匯入完成，94 個後端測試通過；路邊 1,857、路外 96 筆 mapping 可供隔離環境查詢，重跑無新增。條件式格位、重複來源 ID、發布延遲及矩形邊界仍有限制；模型維持空機率。下一件 S3-023，完整新莊驗收仍留 S3-017。</p>
+      <p>2026-10-08：S3-023 本機主流程、Google ETA 與桌面／手機檢查進行中；97 個後端測試通過，模型維持空機率。截圖與若干失敗路徑尚未驗收，先完成 S3-023，再進 S3-024 遠端部署；完整新莊覆蓋仍留 S3-017。</p>
       <ol>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/82">S3-021</a> 模型實驗證據與限制交接；S3-017 資格分類／審查可並行。</li>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/83">S3-022</a> 審查後目錄匯入與可展示範圍，不繞過寫入保護。</li>

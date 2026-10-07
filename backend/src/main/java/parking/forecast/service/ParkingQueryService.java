@@ -577,7 +577,7 @@ public class ParkingQueryService {
             OffStreetSection offStreetSection,
             OffsetDateTime generatedAt
     ) {
-        List<String> commonReasons = predictionReasons(eta);
+        List<String> commonReasons = predictionReasons(eta, generatedAt);
         boolean hasRoadsideCatalog = nearby.places().stream()
                 .anyMatch(place -> place.placeType() == ParkingPlaceType.ON_STREET_SPOT);
         List<String> roadsideReasons = new ArrayList<>(commonReasons);
@@ -626,10 +626,12 @@ public class ParkingQueryService {
         );
     }
 
-    private List<String> predictionReasons(EtaSection eta) {
+    private List<String> predictionReasons(EtaSection eta, OffsetDateTime generatedAt) {
         List<String> reasons = new ArrayList<>(List.of("MODEL_NOT_LOADED", "BACKTEST_NOT_VERIFIED"));
         if (!"READY".equals(eta.status()) || eta.estimatedArrivalAt() == null) {
             reasons.add("ETA_NOT_READY");
+        } else if (!eta.estimatedArrivalAt().isAfter(generatedAt)) {
+            reasons.add("ETA_EXPIRED");
         }
         return reasons;
     }
