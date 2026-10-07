@@ -1,6 +1,10 @@
 # 模型訓練架構
 
-更新日期：2026-10-04。狀態：第一版離線訓練 workspace 骨架與 ETA-aware 模型規劃；尚未訓練、評估或發布任何正式模型。
+更新日期：2026-10-07。狀態：已有 baseline／簡單 logistic regression 離線實驗，正式模型尚未發布。
+
+## DEMO 優先停點
+
+S3-021 先做既有實驗證據、roadside 時序／重疊／來源更新疑點與限制交接；完成後暫停演算法擴張。此收尾尚未驗收，線上仍為空機率與資料不足。DEMO 發布驗收 S3-025 後再做 S3-018 → S3-019 → S3-020 → S3-026 → S3-009 → S3-027。詳細 GitHub 連結、前置與驗收見 sprint-3-continuation-plan.md。已有 test 曾參與評估，下一階段補 validation／新日期 holdout。
 
 ## 目的
 

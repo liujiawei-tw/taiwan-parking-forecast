@@ -1,6 +1,10 @@
 # Docker 與部署架構草案（Sprint 1）
 
-更新日期：2026-09-25。狀態：第一版部署拓樸已決定為單台伺服器 Docker Compose 候選；尚未建立 Dockerfile 或 compose 檔，沒有主系統 coding。
+更新日期：2026-10-07。狀態：已具備本機 Dockerfile、Compose、healthcheck 與 MySQL volume；遠端 DEMO 部署尚未驗收，以下早期拓樸仍含待實作內容。
+
+## 遠端 DEMO 收斂待辦
+
+S3-024 承接遠端部署。現有基礎 docker-compose.yml 前端使用 http://localhost:18080、DB／Redis 埠對外映射、密碼為本機占位值；frontend/nginx.conf 尚無 /api 代理。須核對 override 並補遠端同源 API、HTTPS、環境機密、僅 web 對外、用量控制、備份還原與重啟演練，不能直接使用開發設定宣稱遠端已完成。主機、網域與成本上限仍待確定，Issue 連結見 sprint-3-continuation-plan.md。
 
 ## 第一版部署目標
 

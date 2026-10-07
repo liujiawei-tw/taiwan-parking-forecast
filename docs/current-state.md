@@ -1,6 +1,21 @@
 # 目前狀態
 
-更新日期：2026-10-04。
+更新日期：2026-10-07。
+
+## 2026-10-07 最新規劃：DEMO 優先
+
+本輪已閱讀 repo 與 GitHub，建立 S3-021～S3-027，調整既有 S3-017～S3-020、S3-009 的優先順序。只更新規劃，沒有產品實作、來源擷取、模型訓練或遠端部署；所有新增任務尚未驗收。
+
+DEMO 目標：已審查展示範圍的目的地搜尋、Google Routes ETA、500 公尺路邊／路外目前資訊、資料時間、受控刷新與可解釋的預測降級。正式抵達機率仍未完成。
+
+DEMO 前順序：S3-021 模型階段收尾 → S3-022 審查後目錄匯入 → S3-023 端到端驗收 → S3-024 遠端部署與維運 → S3-025 發布驗收。S3-017 資格分類／審查可與 S3-021 並行，是 S3-022 前置；完整覆蓋原驗收仍保留。現有 10 筆 verified mapping、174 筆 unknown eligibility 仍需處理，子集展示不得宣稱完整新莊覆蓋。
+
+模型停點為 S3-021 的實驗證據與限制交接：已有 baseline／logistic regression 離線實驗，尚未產生合格正式模型。需查核 roadside label 時序、重疊圈與來源更新疑點。線上維持 probability=null、modelVersion=null、INSUFFICIENT_DATA。
+
+DEMO 後順序：S3-018 匯出契約與可用資料 → S3-019 ETA-aware 樣本 → S3-020 gate → S3-026 候選訓練與獨立回測 → S3-009 產物／離線推論 → S3-027 線上推論。各件開工條件與 GitHub 連結見 sprint-3-continuation-plan.md。
+
+部署已有 Dockerfile／Compose，但基礎設定仍使用 localhost API、暴露 DB／Redis 埠與本機占位密碼，Nginx 無 /api 代理；遠端驗收尚未完成。S3-024 需核對 override 並完成遠端設定與演練。
+
 
 ## 2026-10-04 最新進度：ETA-aware 模型規劃收斂
 

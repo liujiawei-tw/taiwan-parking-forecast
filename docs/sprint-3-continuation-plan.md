@@ -1,8 +1,45 @@
 # Sprint 3 後續規劃與模型訓練路線
 
-更新日期：2026-10-04。狀態：規劃文件；本文件只記錄 GitHub Issue 順序與模型訓練方法，不代表已開始實作、訓練模型或輸出線上機率。
+更新日期：2026-10-07。狀態：DEMO 優先規劃已同步 GitHub，新增任務尚未實作或驗收。
 
-## GitHub Issue 順序
+## 目前執行順序（取代 2026-10-04 舊順序）
+
+DEMO 目標：已審查展示範圍的官方目前車位、目的地 ETA、500 公尺查詢、資料時間與受控刷新；預測區塊保留資料不足說明。本版尚不提供合格的抵達機率。
+
+| 階段／順序 | Issue |
+| --- | --- |
+| DEMO 前 1 | [S3-021 模型階段收尾、實驗證據與續作條件](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/82) |
+| DEMO 前 2 | [S3-022 經審查目錄匯入與可展示範圍](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/83) |
+| DEMO 前 3 | [S3-023 主流程與降級狀態端到端驗收](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/84) |
+| DEMO 前 4 | [S3-024 遠端部署設定、用量控制與維運演練](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/85) |
+| DEMO 前 5 | [S3-025 發布驗收、展示腳本與版本交付](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/86) |
+
+S3-021 無新增實作前置；[S3-017](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/78) 資格分類／審查可並行，是 S3-022 前置。之後依序 S3-023、S3-024、S3-025；主機／網域選擇可提前整理。各件 GitHub 內列出前置、停點、驗收證據與後續項目。
+
+完整覆蓋未必阻擋有限範圍 DEMO，但已審查真實資料可查與範圍說明是必要條件。子集匯入需 manifest、完整遍歷、資格證據與獨立品質門檻，不能繞過 READY_FOR_IMPORT_REVIEW 保護；S3-017 未通過原驗收仍保留。
+
+## 模型本階段停點
+
+S3-021 整理已有 9 天 baseline／logistic regression 實驗，核對可重現命令、設定、時間切分與 aggregate 指標。路外 logistic regression Brier 未優於 persistence；路邊 entity baseline accuracy=1 需查 label 時序變化、有效觀測、重疊圈與來源更新，不能視為泛化證據。false 只代表未確認一般可停空位。
+
+交付實驗限制與續作資料需求後暫停演算法擴張，線上保持空機率與 INSUFFICIENT_DATA。這是規劃的停點，收尾審查尚未執行。既有 test 已參與評估，後續補 validation／新日期 holdout，不能反覆調參後宣稱獨立測試。
+
+## DEMO 後模型順序
+
+| 順序 | Issue | 開工條件 |
+| --- | --- | --- |
+| 模型1 | [S3-018 匯出契約與受控匯出](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/79) | S3-025 後，交接 S3-021 疑點；交付契約、保留策略、export runner／dry-run 與可用資料 |
+| 模型2 | [S3-019 ETA-aware 樣本](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/80) | S3-018 契約與資料，真實／抽樣／模擬 ETA 分開說明 |
+| 模型3 | [S3-020 保守 gate](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/81) | 樣本 dry-run 後、訓練／最終 test 前固定門檻與 validation 策略 |
+| 模型4 | [S3-026 候選訓練與獨立回測](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/87) | 資料充分性與 S3-019／S3-020 完成；分 ETA、near-full、calibration 與假陽性評估 |
+| 模型5 | [S3-009 產物與離線推論](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/65) | S3-026 有通過 gate 的候選，不能只因既有分數好看就發布 |
+| 模型6 | [S3-027 線上推論與回滾](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/88) | S3-009、評估與對應範圍 coverage 證據齊全；路邊／路外分開准入 |
+
+資料不足或未通過 gate 可停在實驗，不阻擋目前車位 DEMO。天氣、活動、其他縣市、survival／hazard／sequence model 等後續資料與證據成熟再排專項。主機、網域、成本上限與保存策略在 S3-024 確定，未知資源不能視為遠端部署完成。
+
+
+
+## 2026-10-04 舊順序（已由上方規劃取代）
 
 | 順序 | Issue | 目的 |
 | --- | --- | --- |

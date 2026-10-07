@@ -299,9 +299,9 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
-      <span class="pill doing">目前：S3-017 dry-run 已完成</span>
-      <span class="pill">更新：2026-10-04</span>
-      <span class="pill doing">下一步：catalog eligibility 審查</span>
+      <span class="pill doing">目前：DEMO 收斂規劃已同步 GitHub</span>
+      <span class="pill">更新：2026-10-07</span>
+      <span class="pill doing">下一步：S3-021 模型階段收尾</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
     <div class="notice"><strong>目前結論：</strong>後端已具備快照讀取、受控刷新、Google Routes ETA、可追溯的新北市官方 Open Data 小樣本 catalog／source mapping、來源刷新量測摘要基線，並已完成路邊／路外各 5 輪低頻真實來源量測。S3-006、S3-007、S3-008 已完成；S3-015 已將主系統與 ML roadside 半徑改為 500m 並重跑 dry-run／baseline。S3-016 已收斂來源路線；S3-017 已完成一輪真實 catalog／mapping dry-run：2,224 筆 scoped rows、2,037 筆 accepted candidates、174 筆 unknown eligibility、verified mapping coverage 0.45%，recommendation 仍為 REVIEW_ELIGIBILITY_RULES。下一步是審查 eligibility 規則，不是直接寫入完整 catalog。尚未產生模型檔或線上機率。</div>
@@ -546,6 +546,16 @@
   <section class="layout" aria-labelledby="next-title">
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
+      <p>2026-10-07 順序取代下方舊建議：新增任務僅完成規劃，尚未實作或驗收。</p>
+      <ol>
+        <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/82">S3-021</a> 模型實驗證據與限制交接；S3-017 資格分類／審查可並行。</li>
+        <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/83">S3-022</a> 審查後目錄匯入與可展示範圍，不繞過寫入保護。</li>
+        <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/84">S3-023</a> 主流程、刷新與降級的桌面／手機端到端驗收。</li>
+        <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/85">S3-024</a> 遠端 HTTPS、同源 API、用量上限與備份還原演練。</li>
+        <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/86">S3-025</a> 固定版本、實際遠端人工驗收與發布交付。</li>
+      </ol>
+      <p>模型停在可重現離線實驗與限制交接，線上仍為空機率與資料不足。DEMO 後順序：S3-018 → S3-019 → S3-020 → <a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/87">S3-026</a> → S3-009 → <a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/88">S3-027</a>。完整新莊覆蓋與正式抵達機率尚未完成。</p>
+      <h3>2026-10-04 舊建議（保留歷史）</h3>
       <ol class="next-list">
         <li>S3-016 已收斂：新莊 MVP 即時來源以新北市官方 Open Data 為主，TDX 暫作全臺擴充與交叉驗證。</li>
         <li>S3-017 已完成一輪真實 dry-run：scoped rows 2,224、accepted candidates 2,037、unknown eligibility 174、verified mapping coverage 0.45%。</li>
