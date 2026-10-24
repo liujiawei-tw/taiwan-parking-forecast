@@ -20,12 +20,14 @@ import {
 } from './mapMarkers.js'
 import {
   applyMapDisplayFreshness,
+  createLoadingRequestOwner,
   createMapDataRequestCache,
   createQueryRequestGuard,
   getRoadsideDisplaySummary,
   hasDestinationChanged,
   isMapSourceDisplayStale,
   MAP_DISPLAY_FRESHNESS_MS,
+  shouldApplyQueryResult,
   snapshotDestination,
 } from './mapDataLifecycle.js'
 
@@ -84,6 +86,7 @@ let mapDataRetryTimer
 let mapDataRetryAttemptKey = ''
 let mapFreshnessTimer
 const queryRequestGuard = createQueryRequestGuard()
+const loadingRequestOwner = createLoadingRequestOwner()
 const mapDataRequestCache = createMapDataRequestCache()
 let map
 let destinationMarker
@@ -242,7 +245,7 @@ watch([resultDestination, visibleMapItems], () => {
 watch(() => snapshotDestination(selectedDestination.value), (next, previous) => {
   if (hasDestinationChanged(next, previous)) {
     queryRequestGuard.invalidate()
-    loading.value = false
+    cancelLoading()
     if (queryResult.value) {
       queryResult.value = null
       clearMapDataState()
@@ -267,7 +270,7 @@ watch(queryResult, () => {
 async function createParkingQuery() {
   const submittedDestination = { ...selectedDestination.value }
   const requestContext = queryRequestGuard.start(submittedDestination)
-  loading.value = true
+  const loadingRequestId = startLoading()
   errorMessage.value = ''
 
   try {
@@ -312,8 +315,7 @@ async function createParkingQuery() {
       errorMessage.value = `建立查詢失敗：${error.message}`
     }
   } finally {
-    if (queryRequestGuard.isCurrent(requestContext, selectedDestination.value)) {
-      loading.value = false
+    if (finishLoading(loadingRequestId, requestContext)) {
       await maybeAutoRefresh('created-query')
     }
   }
@@ -321,10 +323,10 @@ async function createParkingQuery() {
 
 async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
   const requestQueryId = queryId.value
-  if (!requestQueryId) return
+  if (!requestQueryId || loading.value) return
   const requestContext = queryRequestGuard.capture(selectedDestination.value, requestQueryId)
+  const loadingRequestId = startLoading()
 
-  loading.value = true
   errorMessage.value = ''
   refreshMessage.value = trigger === 'VISIBLE_AUTO_REFRESH'
     ? '頁面可見且資料需更新，正在發起受控自動刷新。'
@@ -347,6 +349,7 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
 
     const result = await response.json()
     if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) return
+    if (!shouldApplyQueryResult(queryResult.value, result)) return
 
     queryResult.value = result
     await loadMapData(true)
@@ -367,15 +370,30 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
       }
     }
   } finally {
-    if (queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) {
-      loading.value = false
-    }
+    finishLoading(loadingRequestId, requestContext)
   }
+}
+
+function startLoading() {
+  loading.value = true
+  return loadingRequestOwner.acquire()
+}
+
+function finishLoading(requestId, requestContext) {
+  if (!queryRequestGuard.isGenerationCurrent(requestContext, selectedDestination.value)) return false
+  if (!loadingRequestOwner.release(requestId)) return false
+  loading.value = false
+  return true
+}
+
+function cancelLoading() {
+  loadingRequestOwner.invalidate()
+  loading.value = false
 }
 
 async function readParkingQuery(forceMapData = false) {
   const requestQueryId = queryId.value
-  if (!requestQueryId) return
+  if (!requestQueryId || loading.value) return
   const requestContext = queryRequestGuard.capture(selectedDestination.value, requestQueryId)
 
   try {
@@ -390,6 +408,7 @@ async function readParkingQuery(forceMapData = false) {
     }
     const result = await response.json()
     if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) return
+    if (!shouldApplyQueryResult(queryResult.value, result)) return
 
     queryResult.value = result
     await loadMapData(forceMapData)
@@ -906,7 +925,7 @@ function getDestinationLatLng() {
 
 function useDefaultDestination() {
   queryRequestGuard.invalidate()
-  loading.value = false
+  cancelLoading()
   selectedDestination.value = { ...defaultDestination }
   queryResult.value = null
   clearMapDataState()

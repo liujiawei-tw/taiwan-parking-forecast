@@ -67,31 +67,78 @@ export function hasDestinationChanged(next, previous) {
 
 export function createQueryRequestGuard() {
   let generation = 0
+  let requestSequence = 0
+  const isGenerationCurrent = (context, destination) => Boolean(context)
+    && context.generation === generation
+    && !hasDestinationChanged(snapshotDestination(destination), context.destination)
 
   return {
     start(destination) {
       generation += 1
+      requestSequence += 1
       return {
         generation,
+        requestSequence,
         destination: snapshotDestination(destination),
         queryId: null,
       }
     },
     capture(destination, queryId = null) {
+      requestSequence += 1
       return {
         generation,
+        requestSequence,
         destination: snapshotDestination(destination),
         queryId,
       }
     },
     invalidate() {
       generation += 1
+      requestSequence += 1
     },
+    isGenerationCurrent,
     isCurrent(context, destination, queryId = null) {
-      return Boolean(context)
-        && context.generation === generation
-        && !hasDestinationChanged(snapshotDestination(destination), context.destination)
+      return isGenerationCurrent(context, destination)
+        && context.requestSequence === requestSequence
         && (context.queryId === null || context.queryId === queryId)
+    },
+  }
+}
+
+export function shouldApplyQueryResult(current, incoming) {
+  const currentId = current?.query?.queryId
+  const incomingId = incoming?.query?.queryId
+  if (!currentId || currentId !== incomingId) return true
+
+  const currentUpdatedAt = Date.parse(current?.query?.updatedAt ?? '')
+  const incomingUpdatedAt = Date.parse(incoming?.query?.updatedAt ?? '')
+  if (Number.isFinite(currentUpdatedAt) && !Number.isFinite(incomingUpdatedAt)) return false
+  if (Number.isFinite(currentUpdatedAt) && Number.isFinite(incomingUpdatedAt)) {
+    return incomingUpdatedAt >= currentUpdatedAt
+  }
+  return true
+}
+
+export function createLoadingRequestOwner() {
+  let nextRequestId = 0
+  let currentRequestId = 0
+
+  return {
+    acquire() {
+      currentRequestId = ++nextRequestId
+      return currentRequestId
+    },
+    release(requestId) {
+      if (currentRequestId !== requestId) return false
+      currentRequestId = 0
+      return true
+    },
+    invalidate() {
+      currentRequestId = 0
+      nextRequestId += 1
+    },
+    isOwner(requestId) {
+      return currentRequestId === requestId
     },
   }
 }
