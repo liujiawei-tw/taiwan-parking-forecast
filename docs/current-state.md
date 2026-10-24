@@ -9,7 +9,7 @@
 - 根目錄 `docker-compose.yml` 成為唯一 Compose 設定：`api`、`web`、`mysql`、`redis` 四服務；Web 預設只綁 `127.0.0.1:18088`，API／MySQL／Redis 不發布主機埠；Nginx 提供同源 `/api`。Routes 外部呼叫預設關閉，browser key 僅在前端 image build、Routes key 僅在 API runtime，MySQL 使用具 fail-fast 密碼檢查的 named volume。`.env.demo.example`、`docker-compose.demo.yml` 和舊 demo smoke 名稱已由中性設定／名稱取代。
 - Docker 主機盤點後，依使用者授權停止 `taiwan-parking-forecast` 的四個容器；既有 `taiwan-parking-forecast_mysql-data` 完整保留。舊 `s3022demo_mysql-data` 的資料用途及有效備份／移轉狀態未能證實，故保留；未移除其他 project 的容器、網路、映像或 volume。
 - GPT Relay 第一輪對 exact HEAD `6a3f07a7d2c8f1542eb74ef048211a2e5c721df9` 結論為 NOT PASS（1 項 P1、2 項 P2）：指出既有 MySQL volume 帳密需明確遷移、catalog smoke 需符合 Nginx 建立查詢限流，以及重設目的地時要作廢尚未完成的 Places 選取。已在工作樹修正三項並新增競態測試；更新部署文件並以新隔離 Compose project 模擬舊帳密 volume，MySQL 容器重建後新帳密可用，schema 初始化後四服務健康、同源 API 200，新增測試資料列可由新 root 讀回。隔離測試 volume 已確認 project label 後清除；實際兩個舊資料 volume 未變更。
-- Catalog smoke 每次 POST 間隔至少 13 秒以遵守 5 次／分鐘與 burst=2 限流；修正後 PowerShell 解析通過。已知空資料庫因缺少已發布 snapshot／審核 mapping 而使資料斷言失敗；修正後未在具完整 snapshot 的環境重跑。新 HEAD 尚未 commit／push，也未建立 PR；正等待同一 GPT Relay 對話對更新差異進行第二輪審查。
+- Catalog smoke 每次 POST 間隔至少 13 秒以遵守 5 次／分鐘與 burst=2 限流；修正後 PowerShell 解析通過。已知空資料庫因缺少已發布 snapshot／審核 mapping 而使資料斷言失敗；修正後未在具完整 snapshot 的環境重跑。三項修正與文件已 commit／push 至 `codex/unify-place-search-compose`，尚未建立 PR；正等待同一 GPT Relay 對話對更新差異進行第二輪審查。
 - 此紀錄隨 PR 驗證更新；目前依實際執行記錄分列 PASS、FAIL、BLOCKED 與 NOT RUN。隔離 image 使用空 Google browser key；本機既有 key 未確認為受限測試 key，因此 Places 互動未執行；停車模型機率仍為 null／`INSUFFICIENT_DATA`。
 
 ## 2026-10-24 進行中：即時車位地圖標記與 ParkBoss 版面參考
