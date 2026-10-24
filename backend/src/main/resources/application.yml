@@ -6,6 +6,9 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  # The API is reachable only from the web proxy in Compose. Nginx replaces
+  # client-supplied forwarding metadata with its validated proxy view.
+  forward-headers-strategy: framework
 
 management:
   endpoints:

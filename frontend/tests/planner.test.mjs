@@ -4,6 +4,7 @@ import {
   summarizeParkingQueryPayload,
 } from '../src/acceptanceLog.js'
 import {
+  buildDeparture,
   buildParkingQueryPayload,
   buildAutoRefreshAttemptKey,
   buildRequestToken,
@@ -98,6 +99,54 @@ assert.equal(JSON.stringify(payload).includes('predictionProbability'), false)
 assert.equal(JSON.stringify(payload).includes('currentlyAvailableSpaces'), false)
 assert.equal(JSON.stringify(payload).includes('eta'), false)
 
+const scheduledDeparture = new Date(Date.now() + 120_000)
+const scheduledDepartureLocal = new Date(scheduledDeparture.getTime() - scheduledDeparture.getTimezoneOffset() * 60_000)
+  .toISOString()
+  .slice(0, 16)
+assert.deepEqual(buildDeparture('SCHEDULED', scheduledDepartureLocal), {
+  type: 'SCHEDULED',
+  departureAt: new Date(scheduledDepartureLocal).toISOString(),
+})
+assert.throws(
+  () => buildDeparture('SCHEDULED', ''),
+  (error) => error.code === 'INVALID_DEPARTURE_TIME',
+  'an empty scheduled departure must not silently become NOW',
+)
+assert.throws(
+  () => buildDeparture('SCHEDULED', 'not-a-date'),
+  (error) => error.code === 'INVALID_DEPARTURE_TIME',
+)
+const pastDeparture = new Date(Date.now() - 120_000)
+const pastDepartureLocal = new Date(pastDeparture.getTime() - pastDeparture.getTimezoneOffset() * 60_000)
+  .toISOString()
+  .slice(0, 16)
+assert.throws(
+  () => buildDeparture('SCHEDULED', pastDepartureLocal),
+  (error) => error.code === 'INVALID_DEPARTURE_TIME',
+)
+assert.throws(
+  () => buildParkingQueryPayload({
+    requestToken: 'token-2',
+    origin: { label: '起點', latitude: '', longitude: 121.45 },
+    destination: { label: '目的地', latitude: 25.036, longitude: 121.4505 },
+    departureType: 'NOW',
+    scheduledDepartureLocal: '',
+  }),
+  (error) => error.code === 'INVALID_COORDINATE',
+  'empty coordinates must be rejected before a request is sent',
+)
+assert.throws(
+  () => buildParkingQueryPayload({
+    requestToken: 'token-3',
+    origin: { label: '   ', latitude: 25.03633, longitude: 121.45336 },
+    destination: { label: '目的地', latitude: 25.036, longitude: 121.4505 },
+    departureType: 'NOW',
+    scheduledDepartureLocal: '',
+  }),
+  (error) => error.code === 'INVALID_REQUEST',
+  'empty labels must be rejected before a request is sent',
+)
+
 assert.deepEqual(summarizeParkingQueryPayload(payload), {
   topLevelFields: ['departure', 'destination', 'origin', 'requestToken'],
   originFields: ['label', 'latitude', 'longitude'],
@@ -127,8 +176,13 @@ const acceptanceEvents = appendAcceptanceEvent([], {
     status: 200,
     requestToken: 'secret-ish-token',
     responseBody: { raw: true },
+    operation: 'create',
+    errorCode: 'UNSUPPORTED_AREA',
+    origin: { label: '精確位置', latitude: 25.123456, longitude: 121.123456 },
+    clientIp: '192.0.2.12',
     nested: {
       googleKey: 'must-not-be-logged',
+      address: '不得記錄的地址',
       ok: true,
     },
   },
@@ -140,6 +194,8 @@ assert.deepEqual(acceptanceEvents, [{
   details: {
     method: 'POST',
     status: 200,
+    operation: 'create',
+    errorCode: 'UNSUPPORTED_AREA',
     nested: {
       ok: true,
     },

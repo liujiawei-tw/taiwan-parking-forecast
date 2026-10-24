@@ -7,6 +7,7 @@ const FORBIDDEN_PAYLOAD_FIELDS = [
   'predictionProbability',
   'availableCarSpaces',
 ]
+const SENSITIVE_EVENT_DETAIL_KEYS = /key|secret|token|body|response|latitude|longitude|address|label|location|origin|destination|ip/i
 
 export function appendAcceptanceEvent(events, event, limit = ACCEPTANCE_EVENT_LIMIT) {
   return [
@@ -34,7 +35,7 @@ export function summarizeParkingQueryPayload(payload) {
 function sanitizeDetails(details) {
   return Object.fromEntries(
     Object.entries(details)
-      .filter(([key]) => !/key|secret|token|body|response/i.test(key))
+      .filter(([key]) => !SENSITIVE_EVENT_DETAIL_KEYS.test(key))
       .map(([key, value]) => [key, normalizeValue(value)]),
   )
 }

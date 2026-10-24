@@ -32,14 +32,48 @@ export function buildRequestToken(cryptoObject = globalThis.crypto, now = Date.n
   return `web-${now()}-${random().toString(16).slice(2)}`
 }
 
-export function buildDeparture(departureType, scheduledDepartureLocal) {
-  if (departureType === 'SCHEDULED' && scheduledDepartureLocal) {
-    return {
-      type: 'SCHEDULED',
-      departureAt: new Date(scheduledDepartureLocal).toISOString(),
-    }
+function inputError(code, message) {
+  return Object.assign(new Error(message), { code })
+}
+
+function normalizeLocation(location, name) {
+  const label = typeof location?.label === 'string' ? location.label.trim() : ''
+  if (!label) {
+    throw inputError('INVALID_REQUEST', `請確認${name}名稱完整後再試。`)
   }
-  return { type: 'NOW' }
+
+  const latitudeInput = location?.latitude
+  const longitudeInput = location?.longitude
+  const latitude = Number(latitudeInput)
+  const longitude = Number(longitudeInput)
+  if (latitudeInput === null || latitudeInput === undefined || String(latitudeInput).trim() === ''
+      || longitudeInput === null || longitudeInput === undefined || String(longitudeInput).trim() === ''
+      || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
+      || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    throw inputError('INVALID_COORDINATE', `請重新選取有效的${name}位置。`)
+  }
+
+  return { label, latitude, longitude }
+}
+
+export function buildDeparture(departureType, scheduledDepartureLocal, now = Date.now()) {
+  if (departureType === 'NOW') return { type: 'NOW' }
+  if (departureType !== 'SCHEDULED') {
+    throw inputError('INVALID_DEPARTURE_TIME', '出發時間類型無效，請重新選擇。')
+  }
+  if (typeof scheduledDepartureLocal !== 'string' || !scheduledDepartureLocal.trim()) {
+    throw inputError('INVALID_DEPARTURE_TIME', '請選擇指定出發時間，或改用「立即」。')
+  }
+
+  const departureAt = new Date(scheduledDepartureLocal)
+  if (!Number.isFinite(departureAt.getTime()) || departureAt.getTime() <= now) {
+    throw inputError('INVALID_DEPARTURE_TIME', '指定出發時間無效或已過去，請選擇未來時間。')
+  }
+
+  return {
+    type: 'SCHEDULED',
+    departureAt: departureAt.toISOString(),
+  }
 }
 
 export function buildParkingQueryPayload({
@@ -49,18 +83,14 @@ export function buildParkingQueryPayload({
   departureType,
   scheduledDepartureLocal,
 }) {
+  if (typeof requestToken !== 'string' || !requestToken.trim()) {
+    throw inputError('INVALID_REQUEST', '查詢資料不完整，請重新規劃。')
+  }
+
   return {
-    requestToken,
-    origin: {
-      label: origin.label,
-      latitude: Number(origin.latitude),
-      longitude: Number(origin.longitude),
-    },
-    destination: {
-      label: destination.label,
-      latitude: Number(destination.latitude),
-      longitude: Number(destination.longitude),
-    },
+    requestToken: requestToken.trim(),
+    origin: normalizeLocation(origin, '起點'),
+    destination: normalizeLocation(destination, '目的地'),
     departure: buildDeparture(departureType, scheduledDepartureLocal),
   }
 }

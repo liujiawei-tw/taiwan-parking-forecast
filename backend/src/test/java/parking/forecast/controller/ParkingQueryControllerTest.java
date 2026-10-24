@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
 import parking.forecast.controller.dto.CreateParkingQueryRequest;
@@ -364,6 +365,61 @@ class ParkingQueryControllerTest {
     }
 
     @Test
+    void createQueryAcceptsSameOriginBrowserOriginIncludingNonDefaultPort() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries")
+                        .with(publicRequest("127.0.0.1", 18088))
+                        .header("Origin", "http://127.0.0.1:18088")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validCreateRequestJson("cors-same-origin-" + UUID.randomUUID())))
+                .andExpect(status().isAccepted());
+    }
+
+    @Test
+    void createQueryAllowsConfiguredViteDevelopmentOrigin() throws Exception {
+        for (String origin : List.of("http://localhost:5173", "http://127.0.0.1:5173")) {
+            mockMvc.perform(post("/api/v1/parking-queries")
+                            .with(publicRequest("127.0.0.1", 18088))
+                            .header("Origin", origin)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(validCreateRequestJson("cors-vite-" + UUID.randomUUID())))
+                    .andExpect(status().isAccepted())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .header().string("Access-Control-Allow-Origin", origin));
+        }
+    }
+
+    @Test
+    void createQueryRejectsUnapprovedExternalOriginThroughMvcCorsProcessor() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries")
+                        .with(publicRequest("127.0.0.1", 18088))
+                        .header("Origin", "https://attacker.invalid")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validCreateRequestJson("cors-denied-" + UUID.randomUUID())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createQueryRecognizesForwardedHttpsSchemeAndNonDefaultPort() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries")
+                        .with(publicRequest("parking.example.com", 80))
+                        .header("X-Forwarded-Proto", "https")
+                        .header("X-Forwarded-Port", "8443")
+                        .header("Origin", "https://parking.example.com:8443")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validCreateRequestJson("cors-forwarded-https-" + UUID.randomUUID())))
+                .andExpect(status().isAccepted());
+    }
+
+    @Test
+    void createQueryReturnsStableInvalidRequestForMalformedJson() throws Exception {
+        mockMvc.perform(post("/api/v1/parking-queries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
     void createQueryRejectsInvalidCoordinateWithStableError() throws Exception {
         mockMvc.perform(post("/api/v1/parking-queries")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -429,6 +485,17 @@ class ParkingQueryControllerTest {
     }
 
     @Test
+    void refreshAcceptsSameOriginBrowserOriginWithoutCallingExternalSources() throws Exception {
+        var created = controller.create(mockRequestNearSeedCatalog()).getBody();
+
+        mockMvc.perform(post("/api/v1/parking-queries/{queryId}/refresh", created.query().queryId())
+                        .with(publicRequest("127.0.0.1", 18088))
+                        .header("Origin", "http://127.0.0.1:18088"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.query.queryId").value(created.query().queryId()));
+    }
+
+    @Test
     void refreshRejectsUnsupportedTriggerWithStableError() throws Exception {
         var created = controller.create(mockRequestNearSeedCatalog()).getBody();
 
@@ -441,6 +508,27 @@ class ParkingQueryControllerTest {
 
     private void publishRoadsideSnapshot(Instant fetchedAt, List<AvailabilityObservationEntity> observations) {
         publishSnapshot(DatasetCode.NTPC_ROADSIDE_SPOT, fetchedAt, observations);
+    }
+
+    private String validCreateRequestJson(String requestToken) {
+        return """
+                {
+                  "requestToken": "%s",
+                  "origin": { "label": "起點", "latitude": 25.03633, "longitude": 121.45336 },
+                  "destination": { "label": "新莊體育館", "latitude": 25.036, "longitude": 121.4505 },
+                  "departure": { "type": "NOW" }
+                }
+                """.formatted(requestToken);
+    }
+
+    private RequestPostProcessor publicRequest(String serverName, int serverPort) {
+        return request -> {
+            request.setScheme("http");
+            request.setServerName(serverName);
+            request.setServerPort(serverPort);
+            request.setSecure(false);
+            return request;
+        };
     }
 
     private void publishOffStreetSnapshot(Instant fetchedAt, List<AvailabilityObservationEntity> observations) {

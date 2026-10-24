@@ -19,6 +19,10 @@ Compose project name 固定為 taiwan-parking-forecast，MySQL named volume 為 
 
 Nginx 將 /api/... 原樣代理給 Spring Boot，瀏覽器使用相對 /api 路徑。Web 的查詢建立入口保留來源 IP 限流：每分鐘 5 次、額外 burst 2 次，超量回 429、RATE_LIMITED 與 Retry-After。前置代理必須傳送正確的用戶端 IP 與 HTTPS scheme；Nginx 只信任指定私有網路的 forwarded IP。限流是基本濫用保護，不取代 WAF 或帳號級配額。
 
+代理來源資訊依下列邊界處理：Nginx 將瀏覽器原始 `Host`（含非預設 port）傳給 Spring；一般 HTTP 不額外送 `X-Forwarded-Proto`，避免 Spring 以預設 port 80 覆蓋原始 port。只有連線來源位於既有 `set_real_ip_from` 私有網段、且其 `X-Forwarded-Proto` 值恰為 `https` 時，Nginx 才將 `https` 傳給 Spring；此時若原始 Host 含明確 port，Nginx 會從 Host 合成對應的 `X-Forwarded-Port`，否則清除該標頭並由 Spring 使用 HTTPS 預設 port。`X-Forwarded-Host`、`X-Forwarded-Prefix` 與標準 `Forwarded` 一律由 Nginx 清除；用戶端提供的 `X-Forwarded-Port` 也不會轉送。`X-Forwarded-For` 只傳 Nginx 已解析的單一用戶端位址。Spring 的 `forward-headers-strategy=framework` 因此只會處理 Nginx 正規化後的 scheme／port／client IP。HTTPS 前置代理需保留瀏覽器原始 Host，並從上述可信來源送出單一 `X-Forwarded-Proto: https`；Nginx 不接受任意 client-supplied forwarded host 或 port。
+
+Controller 仍只允許 `http://localhost:5173` 與 `http://127.0.0.1:5173` 作為 Vite 開發來源。Docker Web 的同源請求依實際 scheme、host 與 port 判斷，不需將 `18088` 加入 CORS allowlist。
+
 主機公開網站時，讓 Caddy 或既有 HTTPS reverse proxy 終止 TLS，並只反向代理至 loopback：
 
 ~~~caddy
@@ -180,9 +184,12 @@ docker compose --env-file .env up -d --build
 ~~~powershell
 ./tools/parking_query_flow_smoke.ps1
 ./tools/parking_catalog_smoke.ps1
+./tools/parking_query_proxy_smoke.ps1
 ~~~
 
 Smoke 會建立停車查詢並檢查 500 公尺、來源快照、資料不足、預測機率為 null、限流／刷新契約。Routes 停用或缺少有效 key 時 ETA 降級屬預期結果，不會單獨判定 Compose 部署失敗；有意啟用真 Routes 時才將 ETA READY 列為額外驗收。Smoke 可能觸發官方來源的受控刷新，請勿密集重複執行。
+
+`parking_query_proxy_smoke.ps1` 專門對照不帶 Origin 與同源瀏覽器 Origin 的建立 POST，並驗證兩個 Vite origin 的 preflight、外部 Origin 拒絕、偽造 Forwarded 標頭無法改寫來源，以及同源 refresh 路徑可通過 CORS。另以可信上游 forwarded 標頭模擬 HTTPS 非預設 port，檢查 Nginx 對 Host port 和 client-supplied forwarded port 的處理；這不取代實際 TLS 入口驗收。它只建立兩筆短效 query、不發起官方來源 refresh 或 Google Routes；請確認 Routes 外部呼叫維持停用。
 
 Catalog smoke 會在每次建立查詢間隔至少 13 秒，以符合 Nginx 每分鐘 5 次及 burst=2 的正式限流設定；完整資料 smoke 因此需要較長時間。
 

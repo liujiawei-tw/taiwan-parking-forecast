@@ -2,6 +2,16 @@
 
 更新日期：2026-10-25。
 
+## 2026-10-25 Issue #94 同源規劃查詢 403 修復與驗證
+
+- **診斷基準**：乾淨工作樹從 `main@ea7e930aff28c5fa2c32c7bd4a072b028594a43a` 切到遠端既有的 `codex/fix-parking-query-403`。修正前，本機 Docker Web `POST /api/v1/parking-queries` 無 `Origin` 回 `202` 並建立 `queryId`；相同 JSON 加 `Origin: http://127.0.0.1:18088` 回 `403 Invalid CORS request`。因此根因是 Spring MVC CORS 對代理後 request origin 的判定，不是 API 業務驗證或 Nginx 限流。
+- **根因證據**：Nginx 原設定以 `$host` 傳 `Host`，丟掉 `:18088`；Spring 因此看見預設 HTTP port，無法將瀏覽器 Origin 視為同源。另一次單變因測試證明若 Nginx 把內部 HTTP 傳成 `X-Forwarded-Proto: http`，Spring `ForwardedHeaderFilter` 會正規化至預設 port 80；無 port Origin 進到 API 回 `404 QUERY_NOT_FOUND`，含 `:18088` 仍回 403。基準設定也會原樣轉送 client 提供的 forwarded host/proto，故修正同時收窄此信任邊界。
+- **修正**：Nginx 保留原始 `Host` 含 port；平常 HTTP 不送 `X-Forwarded-Proto`，只有來源位於既有可信私有網段且上游值恰為 `https` 時才轉送該 scheme；若 Host 明確帶 port，才合成相同的 `X-Forwarded-Port`。清除 client-supplied forwarded host／port、prefix 與標準 `Forwarded`，`X-Forwarded-For` 改傳 Nginx 已解析的單一用戶端位址。Spring 使用 framework forwarded-header strategy。Vite 兩個明確 allowlist 不變，外部 Origin 仍拒絕，Nginx 5 次／分鐘、burst 2 與 429 JSON 未放寬。
+- **HTTP 驗收**：修正後同一 Compose Web 無 Origin 與帶同源 Origin 的建立 POST 均回 `202`；Vite preflight 回 `200` 並列出明確 `Access-Control-Allow-Origin`；外部 Origin 及偽造 forwarded host/proto 均回 `403`；同源 refresh 通過 CORS 到達 API。以可信上游標頭模擬 `https://parking.example.com:8443`，Nginx 保留 Host port 並清除偽造 forwarded host／port，請求到達 API 回 `404 QUERY_NOT_FOUND`；這只驗證標頭處理，不代表 TLS 已端到端驗收。業務拒絕情境實際回 `400 INVALID_REQUEST`、`400 INVALID_COORDINATE`、`422 UNSUPPORTED_AREA`、`422 INVALID_DEPARTURE_TIME`。重置 Nginx 限流區後，前三筆非法來源 POST 回 `403`、第 4 筆回 `429 RATE_LIMITED`。
+- **前端與隱私**：非 JSON 403、有穩定 error code 的 400／422／429、`QUERY_NOT_FOUND`／`QUERY_EXPIRED` 皆有繁體中文提示。指定時間空白、非法或已過去會在送出前拒絕，不再靜默改為 `NOW`；空白 label／座標也先擋下。查詢建立／刷新事件記錄 operation、HTTP status 與已知 error code；移除 Places 選取事件中的精確地點，sanitizer 過濾地址、座標、token、完整 body、key、IP 等敏感欄位。
+- **驗證**：Nginx→Spring 可重跑腳本 `tools/parking_query_proxy_smoke.ps1` 修正前以同源 POST 403 失敗，修正後通過；後端完整 Maven suite 108 tests／0 failures／0 errors，前端 `npm test`、`npm run build`、Compose config quiet、API/Web image build 及 `git diff --check` 通過。Spring 測試 profile 關閉 Google／新北市外部呼叫，並以有效 query 驗證 refresh 回 `202`；Docker HTTP smoke 的 refresh 使用不存在 query，只確認同源請求通過 CORS 並到達 API，未呼叫新北市來源。既有 MySQL volume、schema、刷新冷卻、Routes 外部呼叫設定及資料契約未變。
+- **尚未驗證**：沒有可用的實際 HTTPS 前置代理，故反向代理 TLS 終止至 Nginx 的端到端 HTTPS 僅由 Spring MVC forwarded-scheme 測試覆蓋；正式部署仍需確認代理保留原 Host 並來自設定的可信來源網段。見 `docker-deployment.md` 與 `open-questions.md`。
+
 ## 2026-10-25 本機 Compose 啟動與舊 MySQL volume 帳密復原
 
 - **已確認原因**：初始 `docker compose ps` 沒有執行中的容器。使用目前 `.env` 啟動後，MySQL 本身已 ready，但健康檢查以目前 root 密碼登入既有 `taiwan-parking-forecast_mysql-data` 時收到 `Access denied`，因此 API／Web 被 `service_healthy` 依賴條件擋住。應用帳號目前密碼也與 volume 內帳密不符；依部署文件所載舊版本機初始化帳密可唯讀登入，確認是既有 volume 保留舊帳密，修改 `.env` 不會自動輪替 MySQL 內帳號。

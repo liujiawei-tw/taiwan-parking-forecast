@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { readApiError, requestFailureMessage } from './apiErrors.js'
 import {
   appendAcceptanceEvent,
   summarizeParkingQueryPayload,
@@ -114,11 +115,7 @@ const originPlaceSelectionHandler = createPlaceSelectionHandler({
   isSelectionCurrent: (updateId) => originUpdateCoordinator.isCurrent(updateId),
   onSelected(place) {
     origin.value = place
-    logAcceptanceEvent('ORIGIN_PLACE_SELECTED', '已選取 Google Places 出發地。', {
-      label: place.label,
-      latitude: Number(place.latitude.toFixed(6)),
-      longitude: Number(place.longitude.toFixed(6)),
-    })
+    logAcceptanceEvent('ORIGIN_PLACE_SELECTED', '已選取 Google Places 出發地。')
   },
   onError: (message) => { originPlaceError.value = message },
 })
@@ -132,11 +129,7 @@ const destinationPlaceSelectionHandler = createPlaceSelectionHandler({
   isSelectionCurrent: (version) => version === destinationSelectionVersion,
   onSelected(place) {
     selectedDestination.value = place
-    logAcceptanceEvent('PLACE_SELECTED', '已選取 Google Places 目的地。', {
-      label: place.label,
-      latitude: Number(place.latitude.toFixed(6)),
-      longitude: Number(place.longitude.toFixed(6)),
-    })
+    logAcceptanceEvent('PLACE_SELECTED', '已選取 Google Places 目的地。')
   },
   onError: (message) => { destinationPlaceError.value = message },
 })
@@ -348,15 +341,16 @@ async function createParkingQuery() {
       },
       body: JSON.stringify(payload),
     })
+    const apiError = response.ok ? null : await readApiError(response)
     logAcceptanceEvent('QUERY_POST', '建立停車查詢 API 已回應。', {
+      operation: 'create',
       method: 'POST',
       status: response.status,
       ok: response.ok,
+      errorCode: apiError?.code,
     })
 
-    if (!response.ok) {
-      throw await readApiError(response)
-    }
+    if (apiError) throw apiError
 
     const result = await response.json()
     if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value)) return
@@ -370,7 +364,13 @@ async function createParkingQuery() {
     renderMap()
   } catch (error) {
     if (queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value)) {
-      errorMessage.value = `建立查詢失敗：${error.message}`
+      if (error.code && !Number.isInteger(error.status)) {
+        logAcceptanceEvent('QUERY_VALIDATION_FAILED', '查詢條件未送出。', {
+          operation: 'create',
+          errorCode: error.code,
+        })
+      }
+      errorMessage.value = `建立查詢失敗：${requestFailureMessage(error)}`
     }
   } finally {
     if (finishLoading(loadingRequestId, requestContext)) {
@@ -394,16 +394,17 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
     const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${requestQueryId}/refresh?trigger=${encodeURIComponent(trigger)}`, {
       method: 'POST',
     })
+    const apiError = response.ok ? null : await readApiError(response)
     logAcceptanceEvent('REFRESH_POST', '刷新 API 已回應。', {
+      operation: 'refresh',
       method: 'POST',
       trigger,
       status: response.status,
       ok: response.ok,
+      errorCode: apiError?.code,
     })
 
-    if (!response.ok) {
-      throw await readApiError(response)
-    }
+    if (apiError) throw apiError
 
     const result = await response.json()
     if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) return
@@ -419,7 +420,7 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
     renderMap()
   } catch (error) {
     if (queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) {
-      errorMessage.value = `更新車位失敗：${error.message}`
+      errorMessage.value = `更新車位失敗：${requestFailureMessage(error)}`
       refreshMessage.value = '本次更新未完成；不會自動密集重試。'
       if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
         queryResult.value = null
@@ -456,14 +457,15 @@ async function readParkingQuery(forceMapData = false) {
 
   try {
     const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${requestQueryId}`)
+    const apiError = response.ok ? null : await readApiError(response)
     logAcceptanceEvent('QUERY_GET', '已讀取查詢狀態。', {
+      operation: 'read',
       method: 'GET',
       status: response.status,
       ok: response.ok,
+      errorCode: apiError?.code,
     })
-    if (!response.ok) {
-      throw await readApiError(response)
-    }
+    if (apiError) throw apiError
     const result = await response.json()
     if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) return
     if (!shouldApplyQueryResult(queryResult.value, result)) return
@@ -477,7 +479,7 @@ async function readParkingQuery(forceMapData = false) {
     refreshMessage.value = '已讀取最新查詢狀態。'
   } catch (error) {
     if (queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) {
-      errorMessage.value = `讀取查詢狀態失敗：${error.message}`
+      errorMessage.value = `讀取查詢狀態失敗：${requestFailureMessage(error)}`
       clearProgressPolling()
       if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
         queryResult.value = null
@@ -683,26 +685,6 @@ function getAutoRefreshDecision() {
 
 function isPageVisible() {
   return typeof document === 'undefined' || document.visibilityState === 'visible'
-}
-
-async function readApiError(response) {
-  try {
-    const payload = await response.json()
-    const code = payload?.error?.code
-    const messages = {
-      QUERY_EXPIRED: '查詢已過期，請重新規劃行程。',
-      QUERY_NOT_FOUND: '查詢已失效，請重新規劃行程。',
-      RATE_LIMITED: '建立查詢次數已達限制，請稍後再試。',
-      UNSUPPORTED_AREA: '目的地超出目前支援範圍，請選擇其他目的地。',
-      INVALID_DEPARTURE_TIME: '出發時間無效，請重新選擇。',
-      SERVICE_TEMPORARILY_UNAVAILABLE: '查詢暫時無法使用，請稍後重試。',
-    }
-    const error = new Error(messages[code] || payload?.error?.message || `API 回應 ${response.status}`)
-    error.code = code
-    return error
-  } catch {
-    return new Error(`API 回應 ${response.status}`)
-  }
 }
 
 async function initializeGoogleMap() {

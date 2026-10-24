@@ -11,7 +11,7 @@
 
 - S3-021 已量到 roadside 全 2,124 格／343 輪狀態不變與圈重疊；根因是官方來源、快取或 collector 重用仍未知。S3-019 續查來源更新鏈，並修正跨 split 標籤（路邊 50／100、路外 41／82 筆）、UTC 時間特徵、未來 catalog 與正式 coverage 條件。
 - S3-022 已完成子集 manifest／獨立 gate 與隔離匯入；S3-017 尚有 164 筆條件式格位需審查（新分類排除 103 筆路邊專用／非一般車格、4 筆路外零容量）。完整行政區邊界仍未驗證。S3-023 續驗跨行政區重複 ID 的去重／衝突策略、約 48 秒發布交易與 API 分頁設定；詳見 s3-022-reviewed-catalog-demo.md。
-- 唯一 Compose 已使用 `WEB_HTTP_PORT`、loopback Web 與同源 `/api`，並保留具名 MySQL volume。要上遠端主機仍需 DNS／防火牆／HTTPS proxy、正式受限 keys、來源連線、備份還原及版本回退演練；本次 build/config 不構成遠端部署驗收。
+- 唯一 Compose 已使用 `WEB_HTTP_PORT`、loopback Web 與同源 `/api`，並保留具名 MySQL volume。同源 Nginx→Spring 的 Host port 與 CORS 已在本機 Docker HTTP 驗證；遠端 HTTPS 尚未實測。正式前置代理需保留原始 Host、從已設定的可信私有來源送出單一 `X-Forwarded-Proto: https`，並確認來源 IP 位於 Nginx 信任清單。要上遠端主機仍需 DNS／防火牆／HTTPS proxy、正式受限 keys、來源連線、備份還原及版本回退演練；本次 build/config 不構成遠端部署驗收。
 - 本機保留 `s3022demo_mysql-data`，因本次盤點無法證實其中資料已備份、移轉或可丟棄。需由資料負責人確認用途與備份後再決定是否清理；本次不執行 volume 移除。
 - S3-025：有限覆蓋與無正式機率是否通過實際遠端人工驗收？目前只有發布規劃，尚未放行。
 - DEMO 後：資料有效變化、長 ETA、near-full 負例、新日期 holdout 與 S3-020 gate 通過才推進模型，不能以 row 數或舊 test 反覆調參代替證據。
@@ -45,7 +45,7 @@
 24. **主系統與模型介面**：查詢 API 欄位、後端 package 分層、MySQL／JPA 資料模型與快照發布交易流程草案已建立；300 公尺地理查詢第一版已決定採矩形預篩與後端精確距離；仍需定模型產物版本及 Java／獨立推論程序的界線。需先以兩類訓練標籤與上游回應實測決定。見 `frontend-backend-review.md`、`backend-stack-and-normalization.md`、`engineering/data-model.md`、`snapshot-validation.md`。
 25. **地圖優先布局的細節**：Sponsor 已看過草圖對照並同意電腦版第一版採地圖優先、固定路邊區域摘要與「查看全部結果」入口；常駐清單只保留為比較基準。仍需驗證停車場能否比較、標記重疊、詳情面板尺寸及鍵盤操作。手機版採上地圖／下清單，具體高度與連動仍待定。見 `ui-wireframe-comparison.md`。
 26. **導航到路邊格位的資格與降級**：Sponsor 已決定標記小資訊卡直接提供外部「查看路線」入口，前提是目前回報有位、一般汽車適用性及位置已核實且資料仍在可接受時效內。來源過期時是否保留中性的路線入口？需核對座標精度、道路可進入側、特殊格位排除及 Google／Apple 選擇方式；不能承諾格位到達時仍空著。見 `ui-layout-proposal.md`。
-27. **遠端 Docker 部署細節**：Docker 映像與可重現部署已是必要交付，不再只做本機展示。第一版部署拓樸已決定以單台伺服器 Docker Compose 作候選，服務為 web、api、mysql、redis；仍待確認目標伺服器作業系統／是否可管理 Docker、網域與 HTTPS 入口、MySQL volume 備份／還原、憑證供應、實際遠端上線是否在 20 天內，以及未來是否需要多實例。見 `docker-deployment.md`。
+27. **遠端 Docker 部署細節**：Docker 映像與可重現部署已是必要交付，不再只做本機展示。第一版部署拓樸已決定以單台伺服器 Docker Compose 作候選，服務為 web、api、mysql、redis；仍待確認目標伺服器作業系統／是否可管理 Docker、網域與 HTTPS 入口、MySQL volume 備份／還原、憑證供應、正式前置代理實際轉送 Host／HTTPS scheme 是否符合 `docker-deployment.md` 的信任邊界、實際遠端上線是否在 20 天內，以及未來是否需要多實例。見 `docker-deployment.md`。
 28. **主系統目錄與汽車格位資格**：完整 catalog 匯入方向已決定採 dry-run 審查後的管理命令，不採手寫全量 SQL；S3-017 已證明本輪缺 source ID、重複 source ID 與座標異常皆為 0，但仍有 174 筆 eligibility unknown，另有少量非 confirmed eligibility 候選需要細分。新北市路邊 `cellid` 的唯一性與穩定性、`name`／開放日／開放時段／備註的限制語意、路外靜態與動態 `ID` 對應率，以及路外入口座標是否有可靠來源，仍待查。目錄更新週期、單筆消失的停用門檻、條件式格位是否可在 MVP 解析，也待實測決定。見 `parking-catalog-design.md`、`s2-harden-002-catalog-coverage.md`、`s3-017-catalog-mapping-dry-run.md`。
 29. **查詢重整與中斷恢復**：同分頁重整可用短期 `queryId` 只讀恢復；鍵過期、Redis 暫失或 Spring Boot 在工作途中重啟時，如何辨識並終止 `pending`？`api-contract-v1-draft.md` 提出 ETA 15 秒、來源工作 60 秒、前密後疏輪詢、`queryId` 2 小時絕對期限等**待量測初值**，尚未決定；未來出發行程隔久返回的體驗也待驗證。頁面重整不得默默重新呼叫 Google ETA 或官方 API。
 30. **可見頁面自動與手動刷新細節**：可見且過期時嘗試一次受控共用刷新、隱藏時暫停、單一「更新車位」入口分別回報兩來源、自動與手動同時發生時共用後端同一輪擷取，以及來源擷取失敗後最多共用自動重試一輪、仍失敗就停止自動重試並改由手動更新，已由 Sponsor 決定；車位刷新不重算 ETA。`refresh` 區塊語意已定，S2-HARDEN-003 已提供低頻官方 API 下載段 p50／p95，但仍待端到端 refresh 寫入與發布量測、失敗冷卻／用量上限、正式 `nextAllowedRefreshAt` 欄位、錯誤碼、等待上限與不同錯誤類型的冷卻策略。

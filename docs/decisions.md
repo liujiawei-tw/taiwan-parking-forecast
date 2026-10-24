@@ -2,6 +2,13 @@
 
 以下只記錄已明確採納的方向。草案與尚待驗證的選項請放到 `open-questions.md`。
 
+## 2026-10-25：同源 API 代理保留 Host port 並限制 Forwarded 標頭
+
+- **決策**：Web Nginx 以原始 `Host`（含 port）代理 API。正常 HTTP 不送 `X-Forwarded-Proto`；只有已列入 Nginx 既有私有 `set_real_ip_from` 網段的上游，送出值恰為 `https` 時，才將該 scheme 傳給 Spring，並只在原始 Host 明確帶 port 時合成相同的 `X-Forwarded-Port`。Nginx 清除 client-supplied `X-Forwarded-Host`／`X-Forwarded-Port`、prefix 與標準 `Forwarded`，並只轉送已解析的單一 client IP。Spring 使用 `forward-headers-strategy=framework` 處理這組正規化標頭。
+- **原因**：同源判定需使用瀏覽器實際的 scheme、host 與 port；把 HTTP 轉送成 `X-Forwarded-Proto: http` 會令 Spring 將自訂 port 正規化成 80。HTTPS 在前置代理終止時，仍須安全保留原 scheme；不可依賴任意 client-supplied forwarded host/proto。
+- **CORS**：保留只供 Vite 開發使用的 `http://localhost:5173` 與 `http://127.0.0.1:5173` allowlist；本機同源 Web 不額外列入 allowlist，其他外部 Origin 維持拒絕。
+- **驗證狀態**：本機 Docker HTTP 已以含／不含 Origin 的實際 POST 驗證；代理後 HTTPS 尚無可用環境，仍待正式前置代理人工驗收。
+
 ## 2026-10-24：兩端使用隔離的 Places 搜尋，Docker 使用唯一安全 Compose
 
 - **地點搜尋**：出發地和目的地均以 Google Places Autocomplete (New) 的搜尋與候選選取介面設定位置；各自持有 autocomplete host 與 selection callback。出發地預設使用捷運新莊站 O18；[臺北市政府捷運工程局](https://www.dorts.gov.taipei/cp.aspx?n=122C012A85C41404&s=33245A586D747A2C)確認站名與中正路 138 號地址，座標採 [OpenStreetMap station node 3812564402](https://www.openstreetmap.org/node/3812564402) 的 25.03633, 121.45336。沒有 browser key 時明確顯示搜尋不可用，不把手動座標作為降級 UI。
