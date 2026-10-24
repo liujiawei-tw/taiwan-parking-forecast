@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -135,7 +136,38 @@ class ParkingQueryControllerTest {
                     assertThat(item.availabilityStatus()).isEqualTo("STALE");
                     assertThat(item.availableCarSpaces()).isNull();
                     assertThat(item.navigationAvailable()).isFalse();
+                    assertThat(item.navigationLatitude()).isNull();
+                    assertThat(item.navigationLongitude()).isNull();
                 });
+    }
+
+    @Test
+    void offStreetMapNavigationUsesTheSameEntranceCoordinatesAsTheExistingQueryResponse() {
+        ParkingPlaceEntity parkingLot = parkingPlaceRepository.findById(920101L).orElseThrow();
+        parkingLot.setEntranceLatitude(new BigDecimal("25.0425000"));
+        parkingLot.setEntranceLongitude(new BigDecimal("121.4598000"));
+        publishOffStreetSnapshot(FRESH_FETCHED_AT, List.of(
+                offStreetObservation(920101L, AvailabilityStatus.AVAILABLE, 12)
+        ));
+        var query = controller.create(mockRequestNearSeedCatalog()).getBody();
+
+        var legacyParkingLot = query.offStreet().parkingLots().stream()
+                .filter(lot -> lot.id().equals("920101"))
+                .findFirst()
+                .orElseThrow();
+        var mapMarker = controller.getMapData(query.query().queryId()).items().stream()
+                .filter(item -> item.id().equals("lot-920101"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(legacyParkingLot.navigationAvailable()).isTrue();
+        assertThat(mapMarker.navigationAvailable()).isTrue();
+        assertThat(mapMarker.latitude()).isEqualTo(parkingLot.getLatitude().doubleValue());
+        assertThat(mapMarker.longitude()).isEqualTo(parkingLot.getLongitude().doubleValue());
+        assertThat(mapMarker.navigationLatitude()).isEqualTo(legacyParkingLot.latitude());
+        assertThat(mapMarker.navigationLongitude()).isEqualTo(legacyParkingLot.longitude());
+        assertThat(mapMarker.navigationLatitude()).isNotEqualTo(mapMarker.latitude());
+        assertThat(mapMarker.navigationLongitude()).isNotEqualTo(mapMarker.longitude());
     }
 
     @Test

@@ -13,6 +13,14 @@ import {
   shouldAutoRefresh,
 } from './planner.js'
 import { countMapMarkerCategories, describeMapMarker, filterMapMarkers } from './mapMarkers.js'
+import {
+  applyMapDisplayFreshness,
+  createMapDataRequestCache,
+  hasDestinationChanged,
+  isMapSourceDisplayStale,
+  MAP_DISPLAY_FRESHNESS_MS,
+  snapshotDestination,
+} from './mapDataLifecycle.js'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 const apiBaseUrlLabel = apiBaseUrl || '同源 /api'
@@ -34,6 +42,7 @@ const defaultOrigin = {
 }
 const POLL_INTERVAL_MS = 5000
 const DEFAULT_RADIUS_METERS = 500
+const MAP_DATA_RETRY_DELAY_MS = 15000
 
 const mapElement = ref(null)
 const autocompleteHost = ref(null)
@@ -54,6 +63,7 @@ const acceptanceEvents = ref([])
 const mapData = ref(null)
 const mapDataLoading = ref(false)
 const mapDataError = ref('')
+const mapFreshnessNow = ref(Date.now())
 const activeMapPanel = ref('')
 const showResultPanel = ref(false)
 const mapFilters = ref({
@@ -63,7 +73,10 @@ const mapFilters = ref({
 
 let googleMapsPromise
 let mapDataRequestId = 0
-let mapDataRequestKey = ''
+let mapDataRetryTimer
+let mapDataRetryAttemptKey = ''
+let mapFreshnessTimer
+const mapDataRequestCache = createMapDataRequestCache()
 let map
 let destinationMarker
 let radiusCircle
@@ -117,7 +130,16 @@ const predictionMessage = computed(() => {
 const resultItems = computed(() => {
   if (mapData.value && queryResult.value?.query?.queryId
       && mapData.value.queryId === queryResult.value.query.queryId) {
-    return mapData.value.items.map((item) => ({
+    const freshItems = applyMapDisplayFreshness(
+      mapData.value.items,
+      mapFreshnessNow.value,
+      {
+        roadside: mapData.value.roadside?.systemCollectedAt,
+        offStreet: mapData.value.offStreet?.systemCollectedAt,
+      },
+      MAP_DISPLAY_FRESHNESS_MS,
+    )
+    return freshItems.map((item) => ({
       ...item,
       rawId: item.id.replace(/^(spot-|lot-)/, ''),
       currentValue: describeMapMarker(item).value,
@@ -192,30 +214,27 @@ onBeforeUnmount(() => {
   locationRequestId++
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   clearProgressPolling()
+  clearMapFreshnessTimer()
+  clearMapDataRetryTimer(true)
 })
 
 watch([resultDestination, visibleMapItems], () => {
   renderMap()
 }, { deep: true })
 
-watch(selectedDestination, (next, previous) => {
-  const destinationChanged = previous && (
-    next.latitude !== previous.latitude
-      || next.longitude !== previous.longitude
-      || next.label !== previous.label
-  )
-  if (destinationChanged && queryResult.value) {
+watch(() => snapshotDestination(selectedDestination.value), (next, previous) => {
+  if (hasDestinationChanged(next, previous) && queryResult.value) {
     queryResult.value = null
-    mapData.value = null
-    mapDataError.value = ''
-    mapDataRequestKey = ''
+    clearMapDataState()
     selectedItemId.value = ''
     showResultPanel.value = false
     clearProgressPolling()
   }
-  if (map) map.panTo(getDestinationLatLng())
+  if (map && Number.isFinite(next.latitude) && Number.isFinite(next.longitude)) {
+    map.panTo({ lat: next.latitude, lng: next.longitude })
+  }
   renderMap()
-}, { deep: true })
+})
 
 watch(queryResult, () => {
   scheduleProgressPolling()
@@ -255,9 +274,7 @@ async function createParkingQuery() {
 
     queryResult.value = await response.json()
     selectedItemId.value = ''
-    mapData.value = null
-    mapDataError.value = ''
-    mapDataRequestKey = ''
+    clearMapDataState()
     refreshMessage.value = ''
     await nextTick()
     await loadMapData()
@@ -306,9 +323,7 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
     refreshMessage.value = '本次更新未完成；不會自動密集重試。'
     if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
       queryResult.value = null
-      mapData.value = null
-      mapDataError.value = ''
-      mapDataRequestKey = ''
+      clearMapDataState()
       clearProgressPolling()
     }
   } finally {
@@ -316,7 +331,7 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
   }
 }
 
-async function readParkingQuery() {
+async function readParkingQuery(forceMapData = false) {
   if (!queryResult.value?.query?.queryId) return
 
   try {
@@ -330,7 +345,7 @@ async function readParkingQuery() {
       throw await readApiError(response)
     }
     queryResult.value = await response.json()
-    await loadMapData()
+    await loadMapData(forceMapData)
     if (errorMessage.value.startsWith('讀取查詢狀態失敗：')) {
       errorMessage.value = ''
     }
@@ -340,14 +355,12 @@ async function readParkingQuery() {
     clearProgressPolling()
     if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
       queryResult.value = null
-      mapData.value = null
-      mapDataError.value = ''
-      mapDataRequestKey = ''
+      clearMapDataState()
     }
   }
 }
 
-async function loadMapData(force = false) {
+async function loadMapData(force = false, retryAfterFailure = true) {
   const id = queryId.value
   if (!id) return
 
@@ -359,13 +372,15 @@ async function loadMapData(force = false) {
     queryResult.value?.offStreet?.snapshotId ?? '',
     queryResult.value?.offStreet?.systemCollectedAt ?? '',
   ].join(':')
-  if (!force && responseKey === mapDataRequestKey) return
+  if (!mapDataRequestCache.shouldLoad(responseKey, force)) return
 
-  if (responseKey !== mapDataRequestKey && mapData.value?.queryId === id) {
+  if (force && retryAfterFailure) clearMapDataRetryTimer(true)
+  if (responseKey !== mapDataRequestCache.loadedKey && mapData.value?.queryId === id) {
     mapData.value = null
+    clearMapFreshnessTimer()
   }
-  mapDataRequestKey = responseKey
   const requestId = ++mapDataRequestId
+  mapDataRequestCache.begin(responseKey)
   mapDataLoading.value = true
   mapDataError.value = ''
 
@@ -374,11 +389,18 @@ async function loadMapData(force = false) {
     if (!response.ok) throw await readApiError(response)
     const payload = await response.json()
     if (requestId !== mapDataRequestId || queryId.value !== id) return
+    mapDataRequestCache.complete(responseKey)
+    clearMapDataRetryTimer(true)
+    mapFreshnessNow.value = Date.now()
     mapData.value = payload
+    scheduleMapFreshnessTimer()
     renderMap()
+    await maybeAutoRefresh('map-data-loaded')
   } catch (error) {
     if (requestId !== mapDataRequestId || queryId.value !== id) return
+    mapDataRequestCache.fail(responseKey, Date.now() + MAP_DATA_RETRY_DELAY_MS)
     mapDataError.value = `完整地圖標記載入失敗：${error.message}`
+    if (retryAfterFailure) scheduleMapDataRetry(responseKey, id)
   } finally {
     if (requestId === mapDataRequestId) mapDataLoading.value = false
   }
@@ -387,15 +409,19 @@ async function loadMapData(force = false) {
 async function handleVisibilityChange() {
   if (!isPageVisible()) {
     clearProgressPolling()
+    clearMapFreshnessTimer()
+    clearMapDataRetryTimer(true)
     refreshMessage.value = '頁面已隱藏，暫停自動刷新與進度輪詢。'
     return
   }
   if (!queryResult.value?.query?.queryId) return
 
+  mapFreshnessNow.value = Date.now()
   refreshMessage.value = '頁面重新可見，先讀取最新查詢狀態。'
-  await readParkingQuery()
+  await readParkingQuery(true)
   await maybeAutoRefresh('visible-again')
   scheduleProgressPolling()
+  scheduleMapFreshnessTimer()
 }
 
 function scheduleProgressPolling() {
@@ -414,6 +440,71 @@ function clearProgressPolling() {
   pollTimer = undefined
 }
 
+function clearMapFreshnessTimer() {
+  if (!mapFreshnessTimer) return
+  window.clearTimeout(mapFreshnessTimer)
+  mapFreshnessTimer = undefined
+}
+
+function scheduleMapFreshnessTimer() {
+  clearMapFreshnessTimer()
+  if (!mapData.value || !isPageVisible()) return
+
+  const timestamps = mapData.value.items
+    .filter((item) => ['AVAILABLE', 'OCCUPIED', 'FULL'].includes(item.availabilityStatus))
+    .map((item) => item.systemCollectedAt
+      ?? mapData.value[item.type === 'ROADSIDE' ? 'roadside' : 'offStreet']?.systemCollectedAt)
+  for (const sourceName of ['roadside', 'offStreet']) {
+    const source = mapData.value[sourceName]
+    if (['READY', 'PARTIAL'].includes(source?.status) && source.systemCollectedAt) {
+      timestamps.push(source.systemCollectedAt)
+    }
+  }
+
+  const now = Date.now()
+  const nextExpiry = timestamps
+    .map((timestamp) => Date.parse(timestamp ?? '') + MAP_DISPLAY_FRESHNESS_MS + 1)
+    .filter((deadline) => Number.isFinite(deadline) && deadline > now)
+    .sort((left, right) => left - right)[0]
+  if (!nextExpiry) return
+
+  mapFreshnessTimer = window.setTimeout(() => {
+    mapFreshnessTimer = undefined
+    mapFreshnessNow.value = Date.now()
+    scheduleMapFreshnessTimer()
+    void maybeAutoRefresh('map-snapshot-expired')
+  }, Math.max(0, nextExpiry - now))
+}
+
+function clearMapDataRetryTimer(resetAttempt = false) {
+  if (mapDataRetryTimer) {
+    window.clearTimeout(mapDataRetryTimer)
+    mapDataRetryTimer = undefined
+  }
+  if (resetAttempt) mapDataRetryAttemptKey = ''
+}
+
+function scheduleMapDataRetry(responseKey, id) {
+  if (!isPageVisible() || mapDataRetryAttemptKey === responseKey) return
+  mapDataRetryAttemptKey = responseKey
+  mapDataRetryTimer = window.setTimeout(() => {
+    mapDataRetryTimer = undefined
+    if (!isPageVisible() || queryId.value !== id) return
+    void loadMapData(true, false)
+  }, MAP_DATA_RETRY_DELAY_MS)
+}
+
+function clearMapDataState() {
+  mapDataRequestId++
+  mapDataRequestCache.invalidate()
+  mapData.value = null
+  mapDataLoading.value = false
+  mapDataError.value = ''
+  mapFreshnessNow.value = Date.now()
+  clearMapFreshnessTimer()
+  clearMapDataRetryTimer(true)
+}
+
 async function maybeAutoRefresh(reason) {
   const decision = getAutoRefreshDecision()
   if (!decision.shouldRefresh) return
@@ -424,8 +515,31 @@ async function maybeAutoRefresh(reason) {
 }
 
 function getAutoRefreshDecision() {
+  const currentQuery = queryResult.value
+  if (!currentQuery) {
+    return shouldAutoRefresh({
+      queryResult: currentQuery,
+      loading: loading.value,
+      visible: isPageVisible(),
+      refreshInProgress: refreshInProgress.value,
+      lastAttemptKey: autoRefreshAttemptKey.value,
+    })
+  }
+
+  const refreshableQuery = { ...currentQuery }
+  for (const sourceName of ['roadside', 'offStreet']) {
+    const source = mapData.value?.[sourceName] ?? currentQuery[sourceName]
+    if (!isMapSourceDisplayStale(source, mapFreshnessNow.value, MAP_DISPLAY_FRESHNESS_MS)) continue
+    refreshableQuery[sourceName] = {
+      ...currentQuery[sourceName],
+      status: 'STALE',
+      snapshotId: source?.snapshotId ?? currentQuery[sourceName]?.snapshotId,
+      systemCollectedAt: source?.systemCollectedAt ?? currentQuery[sourceName]?.systemCollectedAt,
+    }
+  }
+
   return shouldAutoRefresh({
-    queryResult: queryResult.value,
+    queryResult: refreshableQuery,
     loading: loading.value,
     visible: isPageVisible(),
     refreshInProgress: refreshInProgress.value,
@@ -733,9 +847,7 @@ function getDestinationLatLng() {
 function useDefaultDestination() {
   selectedDestination.value = { ...defaultDestination }
   queryResult.value = null
-  mapData.value = null
-  mapDataError.value = ''
-  mapDataRequestKey = ''
+  clearMapDataState()
   selectedItemId.value = ''
   renderMap()
 }
@@ -784,7 +896,9 @@ function useTestOrigin() {
 }
 
 function buildExternalRouteUrl(item) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${item.latitude},${item.longitude}`)}&travelmode=driving`
+  const latitude = item.navigationLatitude ?? item.latitude
+  const longitude = item.navigationLongitude ?? item.longitude
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${latitude},${longitude}`)}&travelmode=driving`
 }
 
 function openExternalRoute(item) {

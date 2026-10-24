@@ -5,9 +5,11 @@
 ## 2026-10-24 進行中：即時車位地圖標記與 ParkBoss 版面參考
 
 - 在 `feature/realtime-parking-map-markers`（base `5e11fc7db832c346dcae23975b0f488fad774a08`）新增只讀 `GET /api/v1/parking-queries/{queryId}/map-data`，使用原查詢的 500 公尺半徑、附近索引與已發布快照；只接受唯一且 VERIFIED 的來源 mapping，保留狀態、一般汽車資格、品質、新鮮度及來源時間。路線入口仍只對有位、資格已確認且資料品質／時效合格的標記開放；限制路邊 400、路外 100 個標記，省略筆數回報於回應。
+- 依獨立 Code Review 修正：前端以系統取得時間執行五分鐘的本機展示時效，時間到期或分頁恢復時將標記降為過期並嘗試重新讀取；`/map-data` GET 失敗後使用短冷卻重試，與後端官方來源刷新協調／冷卻分離。目的地監聽改比較巢狀座標快照，避免同物件修改被漏判。路外標記保留場站中心作展示座標，另傳導航座標並維持入口優先；路邊導航座標不變。
+- `findMapData()` 改為先查唯一 VERIFIED mapping，再依距離與停車場 ID 穩定排序及套用路邊 400／路外 100 上限；mapping 以每批最多 500 個 ID 查詢，發布快照只載入最後入選標記的觀測值。回應統計分開表示候選、唯一驗證候選、排除、上限省略及實際回傳數量。
 - Vue 地圖改採 ParkBoss 風格的地圖優先資訊層級：左側浮動結果／篩選／圖例工具、覆蓋式篩選面板、可收合清單與按類型及狀態篩選；標記以穩定 ID 增量更新，讀取快照不清空標記或重設使用者地圖位置。手機版截圖發現資料類型標籤被壓成直排，已修正為水平排列並擴大篩選面板可視高度。
 - 參考觀察：新北市官方頁以格位狀態色與逐格 popup 呈現車種、費率、限制及時間；官方資料集 metadata 提及 2 分鐘更新，不足以證明網頁輪詢頻率。ParkBoss 的主要互動是滿版地圖、左側浮動工具、狀態／類型篩選與清單模式；畫面內可見部分資料時間較舊，不能據此推定其 API 來源或刷新頻率。兩者的頁面與標記皆以可見 UI 觀察，REA MCP 在本工作環境不可用，故沒有網站程式碼／封包輪詢層的 REA 證據。
-- 驗證：`ParkingQueryControllerTest`＋`ParkingQueryServiceTest` 20 項通過；前端 planner 與 map marker 測試均通過，`npm run build` 通過；本機 fallback 頁已目視檢查桌面與 375×812 手機版浮動面板。Google Maps browser key 未設定，Compose DEMO 容器不存在，所以真實 Google 底圖、marker InfoWindow、完整官方來源與遠端 API 瀏覽器流程未驗證。此功能的 map-data GET 不觸發官方來源刷新或 Routes。
+- 本輪 Review 修正驗證：`ParkingQueryControllerTest`＋`ParkingQueryServiceTest` 22 項通過，新增入口座標 parity 與 515 候選／400 標記 cap 回歸測試；前端 planner、map marker、map data lifecycle 三組測試通過，`npm run build` 與 `git diff --check` 通過。尚待 commit／push 後由指定 GPT 對精確 HEAD 複審。原本 Google Maps browser key 未設定、Compose DEMO 容器不存在，因此真實 Google 底圖與遠端 API 瀏覽器流程仍未驗證；`map-data` GET 不會觸發官方來源刷新或 Routes。
 - `npm ci` 稽核回報 2 項 high severity；本次未升級或更動依賴。設計與待驗證事項分別記於 `decisions.md`、`open-questions.md`。
 
 ## 2026-10-24 進行中：S3-024 最小 DEMO 遠端部署

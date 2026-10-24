@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -17,6 +19,8 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -119,6 +123,81 @@ class ParkingQueryServiceTest {
     }
 
     @Test
+    void mapDataFiltersVerifiedMappingsBeforeApplyingStableDistanceCap() {
+        TestFixture fixture = new TestFixture();
+        var created = fixture.service.create(mockRequestNearSeedCatalog());
+        long firstId = 930_000L;
+        List<NearbyParkingPlace> places = new ArrayList<>();
+        for (int index = 0; index < 10; index++) {
+            places.add(roadsidePlace(firstId + index, index + 1));
+        }
+        for (int verifiedIndex = 0; verifiedIndex < 399; verifiedIndex++) {
+            places.add(roadsidePlace(firstId + 10 + verifiedIndex, 11 + verifiedIndex));
+        }
+        // Put the higher id first in the equal-distance boundary pair. Stable id ordering must keep the lower one.
+        places.add(roadsidePlace(firstId + 410, 410));
+        places.add(roadsidePlace(firstId + 409, 410));
+        for (int verifiedIndex = 401; verifiedIndex < 505; verifiedIndex++) {
+            places.add(roadsidePlace(firstId + 10 + verifiedIndex, 10 + verifiedIndex));
+        }
+        when(fixture.nearbyParkingSearchService.findNearby(any()))
+                .thenReturn(new NearbyParkingSearchResult(
+                        "NEW_TAIPEI_XINZHUANG",
+                        25.0414214,
+                        121.4647633,
+                        500,
+                        "STRAIGHT_LINE",
+                        places,
+                        places.size(),
+                        0
+                ));
+        List<Integer> mappingBatchSizes = new ArrayList<>();
+        long ambiguousPlaceId = firstId + 9;
+        when(fixture.sourceMappingRepository.findBySourceSystemAndDatasetCodeAndMappingStatusAndParkingPlace_IdIn(
+                eq(SourceSystem.NTPC_OPEN_DATA),
+                eq(DatasetCode.NTPC_ROADSIDE_SPOT),
+                eq(MappingStatus.VERIFIED),
+                any()
+        )).thenAnswer(invocation -> {
+            Collection<Long> ids = invocation.getArgument(3);
+            mappingBatchSizes.add(ids.size());
+            List<SourceMappingEntity> mappings = new ArrayList<>();
+            ids.stream()
+                    .filter(id -> id >= firstId + 10 || id == ambiguousPlaceId)
+                    .forEach(id -> {
+                        mappings.add(verifiedMapping(id));
+                        if (id == ambiguousPlaceId) mappings.add(verifiedMapping(id));
+                    });
+            return mappings;
+        });
+        clearInvocations(fixture.sourceMappingRepository, fixture.publishedAvailabilitySnapshotService);
+
+        var data = fixture.service.findMapData(created.query().queryId());
+
+        assertThat(data.candidateCount()).isEqualTo(515);
+        assertThat(data.verifiedCandidateCount()).isEqualTo(505);
+        assertThat(data.excludedUnverifiedCount()).isEqualTo(10);
+        assertThat(data.omittedItemCount()).isEqualTo(105);
+        assertThat(data.returnedItemCount()).isEqualTo(400);
+        assertThat(data.items()).hasSize(400);
+        assertThat(data.items()).extracting(item -> item.id())
+                .contains("spot-" + (firstId + 409))
+                .doesNotContain("spot-" + (firstId + 410), "spot-" + ambiguousPlaceId);
+
+        verify(fixture.sourceMappingRepository, times(2))
+                .findBySourceSystemAndDatasetCodeAndMappingStatusAndParkingPlace_IdIn(
+                        eq(SourceSystem.NTPC_OPEN_DATA),
+                        eq(DatasetCode.NTPC_ROADSIDE_SPOT),
+                        eq(MappingStatus.VERIFIED),
+                        any()
+                );
+        assertThat(mappingBatchSizes).containsExactly(500, 15);
+
+        verify(fixture.publishedAvailabilitySnapshotService)
+                .findLatest(eq(DatasetCode.NTPC_ROADSIDE_SPOT), argThat(ids -> ids.size() == 400));
+    }
+
+    @Test
     void findByIdRejectsExpiredQuery() {
         TestFixture fixture = new TestFixture();
 
@@ -170,6 +249,29 @@ class ParkingQueryServiceTest {
                 new LocationInput("目前位置", 25.04000, 121.45000),
                 new LocationInput("IKEA 新莊", 25.0414214, 121.4647633),
                 new DepartureInput("NOW", null));
+    }
+
+    private NearbyParkingPlace roadsidePlace(long id, int distanceMeters) {
+        return new NearbyParkingPlace(
+                id,
+                ParkingPlaceType.ON_STREET_SPOT,
+                "路邊格位 " + id,
+                25.043188,
+                121.464997,
+                null,
+                null,
+                EligibilityStatus.CONFIRMED,
+                distanceMeters
+        );
+    }
+
+    private SourceMappingEntity verifiedMapping(Long parkingPlaceId) {
+        SourceMappingEntity mapping = mock(SourceMappingEntity.class);
+        ParkingPlaceEntity place = mock(ParkingPlaceEntity.class);
+        when(mapping.getParkingPlace()).thenReturn(place);
+        when(place.getId()).thenReturn(parkingPlaceId);
+        when(mapping.getSourcePlaceId()).thenReturn("verified-" + parkingPlaceId);
+        return mapping;
     }
 
     private static class TestFixture {

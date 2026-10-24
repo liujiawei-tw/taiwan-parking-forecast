@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -62,6 +63,7 @@ public class ParkingQueryService {
     private static final int SEARCH_RADIUS_METERS = 500;
     private static final int MAX_ROADSIDE_MAP_MARKERS = 400;
     private static final int MAX_OFF_STREET_MAP_MARKERS = 100;
+    private static final int SOURCE_MAPPING_QUERY_BATCH_SIZE = 500;
     private static final int MAX_REQUEST_TOKEN_LENGTH = 120;
     private static final double MVP_MIN_LATITUDE = 25.015;
     private static final double MVP_MAX_LATITUDE = 25.075;
@@ -206,24 +208,31 @@ public class ParkingQueryService {
         List<NearbyParkingPlace> offStreetPlaces = nearby.places().stream()
                 .filter(place -> place.placeType() == ParkingPlaceType.OFF_STREET_LOT)
                 .toList();
-        List<NearbyParkingPlace> selectedRoadside = roadsidePlaces.stream().limit(MAX_ROADSIDE_MAP_MARKERS).toList();
-        List<NearbyParkingPlace> selectedOffStreet = offStreetPlaces.stream().limit(MAX_OFF_STREET_MAP_MARKERS).toList();
-
         Map<Long, SourceMappingEntity> roadsideMappings = findUniqueVerifiedMappings(
                 DatasetCode.NTPC_ROADSIDE_SPOT,
-                selectedRoadside
+                roadsidePlaces
         );
         Map<Long, SourceMappingEntity> offStreetMappings = findUniqueVerifiedMappings(
                 DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
-                selectedOffStreet
+                offStreetPlaces
+        );
+        List<NearbyParkingPlace> selectedRoadside = selectVerifiedMapPlaces(
+                roadsidePlaces,
+                roadsideMappings,
+                MAX_ROADSIDE_MAP_MARKERS
+        );
+        List<NearbyParkingPlace> selectedOffStreet = selectVerifiedMapPlaces(
+                offStreetPlaces,
+                offStreetMappings,
+                MAX_OFF_STREET_MAP_MARKERS
         );
         PublishedAvailabilityView roadsideAvailability = publishedAvailabilitySnapshotService.findLatest(
                 DatasetCode.NTPC_ROADSIDE_SPOT,
-                List.copyOf(roadsideMappings.keySet())
+                selectedRoadside.stream().map(NearbyParkingPlace::parkingPlaceId).toList()
         );
         PublishedAvailabilityView offStreetAvailability = publishedAvailabilitySnapshotService.findLatest(
                 DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
-                List.copyOf(offStreetMappings.keySet())
+                selectedOffStreet.stream().map(NearbyParkingPlace::parkingPlaceId).toList()
         );
 
         List<MapMarker> items = new ArrayList<>();
@@ -239,17 +248,21 @@ public class ParkingQueryService {
                 .thenComparing(MapMarker::label)
                 .thenComparing(MapMarker::id));
 
-        int selectedCount = selectedRoadside.size() + selectedOffStreet.size();
-        int cappedCount = roadsidePlaces.size() + offStreetPlaces.size() - selectedCount;
-        int unverifiedCount = selectedCount - roadsideMappings.size() - offStreetMappings.size();
+        int candidateCount = roadsidePlaces.size() + offStreetPlaces.size();
+        int verifiedCandidateCount = roadsideMappings.size() + offStreetMappings.size();
+        int returnedItemCount = items.size();
+        int omittedItemCount = verifiedCandidateCount - returnedItemCount;
+        int excludedUnverifiedCount = candidateCount - verifiedCandidateCount;
         return new MapDataResponse(
                 queryId,
                 SEARCH_RADIUS_METERS,
                 storedQuery.response().area().coverageStatus(),
                 OffsetDateTime.now(clock),
-                nearby.places().size(),
-                unverifiedCount,
-                cappedCount,
+                candidateCount,
+                verifiedCandidateCount,
+                excludedUnverifiedCount,
+                omittedItemCount,
+                returnedItemCount,
                 "標記只讀取新莊審查目錄與 500 公尺內最新已發布快照；此端點不會觸發官方來源刷新。",
                 toMapSource(roadsideAvailability),
                 toMapSource(offStreetAvailability),
@@ -264,24 +277,43 @@ public class ParkingQueryService {
         if (sourceMappingRepository == null || places.isEmpty()) {
             return Map.of();
         }
-        List<Long> parkingPlaceIds = places.stream().map(NearbyParkingPlace::parkingPlaceId).toList();
-        List<SourceMappingEntity> mappings = sourceMappingRepository
-                .findBySourceSystemAndDatasetCodeAndMappingStatusAndParkingPlace_IdIn(
-                        SourceSystem.NTPC_OPEN_DATA,
-                        datasetCode,
-                        MappingStatus.VERIFIED,
-                        parkingPlaceIds
-                );
         Map<Long, SourceMappingEntity> uniqueMappings = new HashMap<>();
         Set<Long> duplicatePlaceIds = new HashSet<>();
-        mappings.forEach(mapping -> {
-            Long parkingPlaceId = mapping.getParkingPlace().getId();
-            if (uniqueMappings.putIfAbsent(parkingPlaceId, mapping) != null) {
-                duplicatePlaceIds.add(parkingPlaceId);
-            }
-        });
+        List<Long> parkingPlaceIds = places.stream().map(NearbyParkingPlace::parkingPlaceId).toList();
+        for (int start = 0; start < parkingPlaceIds.size(); start += SOURCE_MAPPING_QUERY_BATCH_SIZE) {
+            List<Long> batchIds = parkingPlaceIds.subList(
+                    start,
+                    Math.min(start + SOURCE_MAPPING_QUERY_BATCH_SIZE, parkingPlaceIds.size())
+            );
+            List<SourceMappingEntity> mappings = sourceMappingRepository
+                    .findBySourceSystemAndDatasetCodeAndMappingStatusAndParkingPlace_IdIn(
+                            SourceSystem.NTPC_OPEN_DATA,
+                            datasetCode,
+                            MappingStatus.VERIFIED,
+                            batchIds
+                    );
+            mappings.forEach(mapping -> {
+                Long parkingPlaceId = mapping.getParkingPlace().getId();
+                if (uniqueMappings.putIfAbsent(parkingPlaceId, mapping) != null) {
+                    duplicatePlaceIds.add(parkingPlaceId);
+                }
+            });
+        }
         duplicatePlaceIds.forEach(uniqueMappings::remove);
         return Map.copyOf(uniqueMappings);
+    }
+
+    private List<NearbyParkingPlace> selectVerifiedMapPlaces(
+            List<NearbyParkingPlace> places,
+            Map<Long, SourceMappingEntity> verifiedMappings,
+            int maxMarkers
+    ) {
+        return places.stream()
+                .filter(place -> verifiedMappings.containsKey(place.parkingPlaceId()))
+                .sorted(Comparator.comparingInt(NearbyParkingPlace::distanceMeters)
+                        .thenComparing(NearbyParkingPlace::parkingPlaceId))
+                .limit(maxMarkers)
+                .toList();
     }
 
     private MapMarker toMapMarker(
@@ -321,6 +353,16 @@ public class ParkingQueryService {
                 && usableQuality
                 && place.carEligibleStatus() == EligibilityStatus.CONFIRMED
                 && AvailabilityStatus.AVAILABLE.name().equals(status);
+        Double navigationLatitude = null;
+        Double navigationLongitude = null;
+        if (navigationAvailable) {
+            navigationLatitude = roadside || place.entranceLatitude() == null
+                    ? place.latitude()
+                    : place.entranceLatitude();
+            navigationLongitude = roadside || place.entranceLongitude() == null
+                    ? place.longitude()
+                    : place.entranceLongitude();
+        }
         String dataSource = availability.snapshotId() == null ? LOCAL_CATALOG_SOURCE : "NTPC_OPEN_DATA";
         String itemId = (roadside ? "spot-" : "lot-") + place.parkingPlaceId();
         return new MapMarker(
@@ -329,6 +371,8 @@ public class ParkingQueryService {
                 place.displayName(),
                 place.latitude(),
                 place.longitude(),
+                navigationLatitude,
+                navigationLongitude,
                 place.distanceMeters(),
                 status,
                 availableCarSpaces,
