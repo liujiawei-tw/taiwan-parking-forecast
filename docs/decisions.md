@@ -2,6 +2,21 @@
 
 以下只記錄已明確採納的方向。草案與尚待驗證的選項請放到 `open-questions.md`。
 
+## 2026-10-24：兩端使用隔離的 Places 搜尋，Docker 使用唯一安全 Compose
+
+- **地點搜尋**：出發地和目的地均以 Google Places Autocomplete (New) 的搜尋與候選選取介面設定位置；各自持有 autocomplete host 與 selection callback。出發地預設使用捷運新莊站 O18；[臺北市政府捷運工程局](https://www.dorts.gov.taipei/cp.aspx?n=122C012A85C41404&s=33245A586D747A2C)確認站名與中正路 138 號地址，座標採 [OpenStreetMap station node 3812564402](https://www.openstreetmap.org/node/3812564402) 的 25.03633, 121.45336。沒有 browser key 時明確顯示搜尋不可用，不把手動座標作為降級 UI。
+- **查詢與狀態**：僅使用者明確提交規劃時建立後端 query。起點、目的地或出發時間有變更時，既有 route／ETA 不再代表目前輸入；非同步定位／Place 選取須避免舊回應覆蓋較新選擇。Query payload 保持既有欄位，不傳 Place ID、地址或前端 ETA。
+- **部署**：`docker-compose.yml` 是本機、展示、單機部署唯一設定。Web 預設 loopback `127.0.0.1:18088`，其餘服務不發布主機埠；主機 HTTPS 由 Caddy 或既有反向代理終止並代理 loopback。MySQL 保留 named volume，DB 密碼必填，Routes 外部呼叫預設關閉；Browser key 僅提供 Web build、Routes key 僅提供 API runtime。
+- **原因與影響**：避免起終點結果串寫、舊 ETA 冒充新行程、手動座標與 Places 形成兩套行為，並讓開發與部署使用同一網路／機密邊界。無 Places key 時已核實的預設位置仍可用於既有查詢契約，但真實候選搜尋須等受限測試 key 做瀏覽器人工驗收。資料庫 volume 不因切換 Compose 或停機清除；沒有核實舊 volume 備份／移轉前保留原資料。
+- **狀態**：依分支實際驗證結果更新。模型輸出維持 `INSUFFICIENT_DATA` 與 null probability；部署 build 或降級結果不代表 Routes 或停車預測通過。
+
+## 2026-10-24：沿用 MySQL volume 時須明確遷移既有帳密
+
+- **原因**：MySQL 官方 image 的 `MYSQL_PASSWORD` 與 `MYSQL_ROOT_PASSWORD` 只在空資料目錄初始化帳號；沿用既有 `taiwan-parking-forecast_mysql-data` 時，修改 `.env` 不會替資料庫內的帳號換密碼。
+- **決策**：MySQL 新建空 volume 明確設定 `MYSQL_ROOT_HOST=localhost`，避免建立遠端 root。升級既有 volume 時先以資料庫當下有效帳密備份並在隔離 volume 驗證，再將 `parking_app` 與 `root@localhost` 輪替至私有 `.env` 新值，移除不需要的 `root@'%'` 並核對其他非 localhost root；確認新認證、healthcheck 與 API 連線後才啟動整組服務。若舊 MySQL 已停止，使用 repo 外私有環境檔內目前有效的舊帳密只啟動 MySQL，先完成備份與隔離還原才輪替。不得以 `down -v` 或刪除 volume 解決帳密不一致。
+- **影響**：資料庫帳密輪替會持續留在 volume，Git 回退本身不會反轉帳密；仍寫死舊帳密的 Compose 不可直接回退啟動。新建空 volume 照一般部署設定即可。
+- **狀態**：升級順序與 root Host 處理記錄於 `docker-deployment.md`；隔離測試驗證新 volume root 限定 localhost、舊遠端 root 輪替移除、應用 TCP 新密碼可用與舊 root TCP 認證失敗、停止後以舊認證重新啟動與備份成功。實際正式 volume 未執行輪替。
+
 ## 2026-10-24：地圖標記使用獨立唯讀資料端點與 ParkBoss 式地圖優先控制
 
 - **原因**：既有查詢回應偏向列表需要，地圖需要每個候選位置的座標、可解釋狀態、資料時效、品質及一般汽車資格；地圖互動也需要在地圖上直接操作圖層、狀態與清單。

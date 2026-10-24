@@ -9,6 +9,7 @@ on:
       - main
       - feature/**
       - sprint-**
+      - codex/**
 
 permissions:
   contents: read
@@ -72,4 +73,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build API and web images
-        run: docker compose build api web
+        run: |
+          docker compose --env-file .env.example config --quiet
+          docker compose --env-file .env.example build api web

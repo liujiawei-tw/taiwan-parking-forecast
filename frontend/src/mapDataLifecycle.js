@@ -65,30 +65,53 @@ export function hasDestinationChanged(next, previous) {
   )
 }
 
+export function snapshotPlanningInputs({
+  origin,
+  destination,
+  departureType,
+  scheduledDepartureLocal,
+}) {
+  return {
+    origin: snapshotDestination(origin),
+    destination: snapshotDestination(destination),
+    departureType: String(departureType ?? ''),
+    scheduledDepartureLocal: String(scheduledDepartureLocal ?? ''),
+  }
+}
+
+export function hasPlanningInputsChanged(next, previous) {
+  return Boolean(previous) && (
+    hasDestinationChanged(next.origin, previous.origin)
+      || hasDestinationChanged(next.destination, previous.destination)
+      || next.departureType !== previous.departureType
+      || next.scheduledDepartureLocal !== previous.scheduledDepartureLocal
+  )
+}
+
 export function createQueryRequestGuard() {
   let generation = 0
   let requestSequence = 0
-  const isGenerationCurrent = (context, destination) => Boolean(context)
+  const isGenerationCurrent = (context, planningInputs) => Boolean(context)
     && context.generation === generation
-    && !hasDestinationChanged(snapshotDestination(destination), context.destination)
+    && !hasPlanningInputsChanged(snapshotPlanningInputs(planningInputs), context.planningInputs)
 
   return {
-    start(destination) {
+    start(planningInputs) {
       generation += 1
       requestSequence += 1
       return {
         generation,
         requestSequence,
-        destination: snapshotDestination(destination),
+        planningInputs: snapshotPlanningInputs(planningInputs),
         queryId: null,
       }
     },
-    capture(destination, queryId = null) {
+    capture(planningInputs, queryId = null) {
       requestSequence += 1
       return {
         generation,
         requestSequence,
-        destination: snapshotDestination(destination),
+        planningInputs: snapshotPlanningInputs(planningInputs),
         queryId,
       }
     },
@@ -97,8 +120,8 @@ export function createQueryRequestGuard() {
       requestSequence += 1
     },
     isGenerationCurrent,
-    isCurrent(context, destination, queryId = null) {
-      return isGenerationCurrent(context, destination)
+    isCurrent(context, planningInputs, queryId = null) {
+      return isGenerationCurrent(context, planningInputs)
         && context.requestSequence === requestSequence
         && (context.queryId === null || context.queryId === queryId)
     },

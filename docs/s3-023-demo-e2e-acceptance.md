@@ -16,14 +16,13 @@
 - 2026-10-08 受控品質拒絕：另開暫時 API（18081）只連本機 `tools/ntpc_unmapped_stub.mjs`（18082），各來源只回 1 筆格式有效但沒有 verified mapping 的假資料，不呼叫官方 API。刷新兩來源均回 `FAILED`，路邊／路外各新增一筆 `REJECTED / FAIL` 候選及 `REJECTED` ingestion run，原因皆為 `No observations could be mapped to known parking places.`；active snapshot 保持 11／12，既有兩筆 `PUBLISHED / PARTIAL_PASS` 仍在。這驗證品質拒絕與來源連線失敗分開記錄；假來源與暫時 API 測後移除。
 - 故障後正常恢復：等候原本 5 分鐘冷卻後執行 `tools/demo_flow_smoke.ps1`，兩來源首次刷新 `REFRESHED`、再次刷新 `COOLDOWN`；active snapshot 更新為路邊 15／路外 16，來源狀態皆回 `IDLE`、連續失敗數 0。新快照仍為 `PARTIAL_PASS`（路邊 1,857、路外 96 筆），先前 `REJECTED` 紀錄仍在。DEMO 四個容器持續運行。
 
-## 重現方式
+## 當前重現方式
 
-1. 在本機 `s3022demo` 保留 MySQL／Redis 資料卷及已審查 mapping；根目錄 `.env` 與 `frontend/.env` 分別提供後端及 browser-restricted Google key，檔案不入 Git。
-2. 執行 `$env:GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED='true'`，再執行 `docker compose --env-file .env --env-file frontend/.env -p s3022demo up -d --build`。請勿在公開或共用網路沿用此本機 Compose 的開放埠／占位設定。
-3. 開啟 `http://localhost:5173`，以搜尋地點或手動座標查詢新莊體育館；核對 500m、ETA、來源資料時間、部分覆蓋、空機率；按「更新車位」兩次核對冷卻。API 在 `http://localhost:18080`；可執行 `./tools/demo_flow_smoke.ps1` 做最小請求 smoke。
-4. 單元測試：`cd backend; ./mvnw test` 與 `cd frontend; npm test; npm run build`。後端測試亦可用現有 Java 21 Docker image 執行。
+本節只保留 S3-023 的驗收範圍；舊 `s3022demo` Compose 操作指引已退役。該 project 的 `s3022demo_mysql-data` 仍保留，未確認備份／移轉前不得用新 Compose 以相同 project 名稱連接它。唯一 Compose 的一般啟停、loopback Web URL 與維運指令見 [`docs/docker-deployment.md`](docker-deployment.md)。
 
-故障驗收須在隔離資料庫進行，不對正式服務覆蓋來源設定。暫時 API 可用 `docker compose -p s3022demo run -d --no-deps -p 18081:8080 -e GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=false -e NTPC_OPEN_DATA_BASE_URL=http://127.0.0.1:9 -e PARKING_QUERY_STATE_TTL=15s api` 重現連線失敗與查詢過期。品質拒絕先執行 `node tools/ntpc_unmapped_stub.mjs`，將暫時 API 的 `NTPC_OPEN_DATA_BASE_URL` 改為 `http://host.docker.internal:18082`；等待既有 5 分鐘來源冷卻後，僅對 18081 建立查詢並刷新。前後比對 `source_state.active_snapshot_id`、`availability_snapshot.snapshot_status`、`ingestion_run.run_status`，最後移除暫時 API／stub。勿改動主 API 的官方來源 URL，勿把測試錯誤狀態描述成生產事故。
+目前 smoke script 名稱為 [`tools/parking_query_flow_smoke.ps1`](../tools/parking_query_flow_smoke.ps1) 與 [`tools/parking_catalog_smoke.ps1`](../tools/parking_catalog_smoke.ps1)，均透過 Web 同源 `/api` 呼叫。兩者要求可用的 published snapshot／審查 mapping；全新空資料庫沒有該前置資料時，snapshot 斷言會失敗，這不代表 Compose 服務 health 失敗。Routes 外部呼叫若保持預設停用，ETA `FAILED` 是有效降級，smoke 不要求真實 ETA；需要驗收官方 snapshot 時，請在已盤點的新隔離資料庫中，依部署文件與來源冷卻限制進行一次受控刷新。
+
+故障驗收須在新建且與任何保留資料 volume 分離的隔離資料庫進行，不對正式服務覆蓋來源設定。歷史暫時 API／stub 操作只用來說明當次故障注入方法，不是目前的一鍵重現步驟；不得重新掛載已保留的 `s3022demo_mysql-data`。前後比較 `source_state.active_snapshot_id`、`availability_snapshot.snapshot_status`、`ingestion_run.run_status`；勿改動主 API 的官方來源 URL，勿把測試錯誤狀態描述成生產事故。
 
 ## 2026-10-24 最小 UI 驗收續作
 

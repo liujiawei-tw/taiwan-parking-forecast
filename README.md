@@ -27,11 +27,11 @@
 
 資料來源：[TDX API 使用指引](https://tdx.transportdata.tw/api-service/swagger)、[TDX 官方範例](https://github.com/tdxmotc/SampleCode)、[TDX 訂閱收費](https://tdx.transportdata.tw/pricing)。
 
-## Sprint 2 目前狀態
+## 目前狀態
 
-更新至 2026-10-03：Sprint 2 的 S2-001 至 S2-025 已完成可展示主系統基線、來源量測證據與文件基線。核心資料表與 Flyway、附近目錄查詢（目前產品半徑 500 公尺）、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為、Redis query state、前端 Google Maps／Places 載入路徑、無 key fallback、頁面可見時的受控自動刷新接線，以及 Sprint 3 預測進入條件均已存在。
+更新至 2026-10-24：Sprint 2 主系統基線與 Sprint 3 預測前置工作已存在。核心資料表與 Flyway、附近目錄查詢（目前產品半徑 500 公尺）、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為、Redis query state、Google Maps／Places 載入路徑、頁面可見時的受控自動刷新，以及 Sprint 3 預測進入條件均已存在。此分支統一起訖點 Places 搜尋並將 Docker Compose 收斂為單一安全預設設定；PR 審查結果及其精確驗證狀態以本次交付記錄為準。
 
-現階段的目錄已從少量合成種子資料推進為可追溯的新北市官方 Open Data 小樣本與來源 ID 對應，但仍不是完整新莊目錄；前端可在有瀏覽器 Google key 時載入 Maps／Places，無 key 時以手動座標 fallback 驗證主系統契約。因此目前不能把畫面上的資料視為完整正式即時停車資訊，真實 browser key Places 與可見頁官方刷新仍需人工驗收，預測模型也尚未開始輸出機率。
+現階段目錄已從少量合成種子資料推進為可追溯的新北市官方 Open Data 小樣本與來源 ID 對應，但仍不是完整新莊目錄。設定受限 browser key 時可載入 Maps／Places；沒有 key 時搜尋會明確顯示不可用，已核實的新莊捷運站預設地點仍可使用，畫面不提供手動座標欄位。真實 Places 候選互動與可見頁官方刷新仍需人工驗收，預測模型尚未開始輸出機率。
 
 GitHub Issues [#33](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/33) 至 [#38](https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/38) 已作為 S2-020 至 S2-025 收斂：正式目錄與來源 ID 小樣本、官方來源量測、查詢契約、Maps/Places 前端、受控刷新接線，以及文件基線與 Sprint 3 進入條件。下一批應以 Sprint 3 的標籤 dry run、基準模型回測與推論降級契約為主，不直接宣稱預測完成。
 
@@ -39,28 +39,33 @@ GitHub Issues [#33](https://github.com/liujiawei-tw/taiwan-parking-forecast/issu
 
 ## Docker Compose
 
-本機開發沿用原本的 Compose：
+根目錄的 `docker-compose.yml` 是唯一設定，本機測試、展示與單機部署都使用相同服務與網路安全邊界。第一次設定：
 
-```bash
-docker compose up --build
+```powershell
+Copy-Item .env.example .env
 ```
 
-- `web`：Nginx 提供前端，網址為 `http://localhost:5173`。
-- `api`：Spring Boot API，網址為 `http://localhost:18080`。
-- `mysql`：MySQL 8.4，主機埠 `3307`，資料保存在 `mysql-data` volume。
-- `redis`：Redis，主機埠 `6379`。
+將 `.env` 中的 `PARKING_DB_PASSWORD` 與 `MYSQL_ROOT_PASSWORD` 換成不同的長隨機值，再啟動：
 
-遠端單機 DEMO 使用隔離設定 `docker-compose.demo.yml`，只將 web 綁定主機 loopback，由主機 Caddy／既有反向代理提供 HTTPS；API、MySQL 與 Redis 不發布主機埠。該設定使用同源 `/api` 代理、MySQL 持久 volume、部署環境密碼及查詢建立 IP 限流。啟動、停止、健康狀態、logs、回退、備份／隔離還原與最小 smoke 步驟見 [`docs/docker-deployment.md`](docs/docker-deployment.md)。
+```bash
+docker compose --env-file .env up -d --build
+```
 
-遠端部署目前只完成可重現設定與文件，尚無主機、網域、憑證及正式金鑰，因此實際 HTTPS、真 ETA、備份還原與遠端瀏覽器驗收尚未完成，不可宣稱已上線。不要將 `.env.demo` 或真實機密提交至 Git。
+- Web 預設網址為 `http://127.0.0.1:18088`，只綁定主機 loopback；可用 `WEB_HTTP_PORT` 調整主機 port。
+- 瀏覽器透過 Nginx 同源 `/api` 呼叫 API。API、MySQL 與 Redis 只在 Compose 網路內使用，不發布主機埠。
+- 主機公開網站時，由 Caddy 或既有 HTTPS reverse proxy 終止 TLS，並代理到 `127.0.0.1:18088`；網域、防火牆與 HTTPS 設定見 [`docs/docker-deployment.md`](docs/docker-deployment.md)。
+- MySQL 資料保存在 `taiwan-parking-forecast_mysql-data` named volume。一般 `stop`／`down` 不刪除資料；不要使用 `down -v` 清除正式資料。
+- Routes 外部付費呼叫預設停用；無真實 Places key 時搜尋明確顯示不可用，不提供座標欄位。
+
+完整的 config、啟停、health、logs、備份／隔離還原、回退與 smoke 命令皆以 [`docs/docker-deployment.md`](docs/docker-deployment.md) 為準。遠端 HTTPS、真 Routes ETA、正式金鑰與備份還原演練仍需相應資源和人工驗收，不能由 image build 推定已通過。
 
 ## GitHub Actions CI
 
-第一版 CI 使用 GitHub Actions，不做部署，也不需要任何真實 API key。檢查項目包含：
+第一版 CI 使用 GitHub Actions，不做部署，也不需要任何真實 API key。使用非敏感 `.env.example` 執行 Compose config 與 image build，並執行：
 
 - 後端 Maven 測試：`backend/mvnw test`
 - 前端建置：`npm ci` 與 `npm run build`
-- Docker image build：`docker compose build api web`
+- Compose 設定與 Docker image build：`docker compose --env-file .env.example -f docker-compose.yml config --quiet`、`docker compose --env-file .env.example -f docker-compose.yml build api web`
 
 後續若開始部署到其他 server，再另外新增部署 workflow。
 

@@ -2,6 +2,17 @@
 
 更新日期：2026-10-24。
 
+## 2026-10-24 進行中：起訖點 Places 與單一 Docker Compose 整合
+
+- 此 Sprint 3 整合分支以 `origin/main` 為基礎，統一出發地與目的地 Places 搜尋。出發地預設為捷運新莊站 O18：官方站名／地址為新北市新莊區中正路 138 號；預設座標採 OSM station node 3812564402（25.03633, 121.45336）。Places host 與選取 callback 分開，使用者明確按下「規劃停車查詢」才建立新的後端查詢；前端不擴充 API payload，也不把未回應／過時的 Places 與定位結果當成有效選取。
+- 出發地、目的地與出發時間變更會失效目前行程／ETA；Places 載入或 `fetchFields` 失敗、無 browser key、沒有有效 `location` 時需明確提示，不回退到公開座標欄位。定位失敗保留最後有效出發地。沒有受限 browser key 時，真實 Places 候選選取屬未驗收項目。
+- 根目錄 `docker-compose.yml` 成為唯一 Compose 設定：`api`、`web`、`mysql`、`redis` 四服務；Web 預設只綁 `127.0.0.1:18088`，API／MySQL／Redis 不發布主機埠；Nginx 提供同源 `/api`。Routes 外部呼叫預設關閉，browser key 僅在前端 image build、Routes key 僅在 API runtime，MySQL 使用具 fail-fast 密碼檢查的 named volume。`.env.demo.example`、`docker-compose.demo.yml` 和舊 demo smoke 名稱已由中性設定／名稱取代。
+- Docker 主機盤點後，依使用者授權停止 `taiwan-parking-forecast` 的四個容器；既有 `taiwan-parking-forecast_mysql-data` 完整保留。舊 `s3022demo_mysql-data` 的資料用途及有效備份／移轉狀態未能證實，故保留；未移除其他 project 的容器、網路、映像或 volume。
+- GPT Relay 第一輪對 exact HEAD `6a3f07a7d2c8f1542eb74ef048211a2e5c721df9` 結論為 NOT PASS（1 項 P1、2 項 P2）：指出既有 MySQL volume 帳密需明確遷移、catalog smoke 需符合 Nginx 建立查詢限流，以及重設目的地時要作廢尚未完成的 Places 選取。已在工作樹修正三項並新增競態測試；更新部署文件並以新隔離 Compose project 模擬舊帳密 volume，MySQL 容器重建後新帳密可用，schema 初始化後四服務健康、同源 API 200，新增測試資料列可由新 root 讀回。隔離測試 volume 已確認 project label 後清除；實際兩個舊資料 volume 未變更。
+- Catalog smoke 每次 POST 間隔至少 13 秒以遵守 5 次／分鐘與 burst=2 限流；修正後 PowerShell 解析通過。已知空資料庫因缺少已發布 snapshot／審核 mapping 而使資料斷言失敗；修正後未在具完整 snapshot 的環境重跑。第一輪三項修正已 commit／push 至 `codex/unify-place-search-compose`；第二輪對 SHA `d24c07fedc91caf3cdf96447e6a7ddf819ce441a` 回覆 NOT PASS，指出 MySQL 遠端 root 帳號未處理，以及舊 MySQL 停止時缺少可操作的備份啟動順序。
+- 第二輪修正：正式 Compose 將 MySQL 新 volume 的 `MYSQL_ROOT_HOST` 固定為 `localhost`；部署文件要求舊 volume 先盤點、以目前有效舊帳密啟動 MySQL、完成備份與隔離還原後，再輪替 `parking_app`／`root@localhost` 並移除不需要的 `root@'%'` 及核對其他非 localhost root。隔離驗證確認新 volume 僅有 localhost root；舊 root 遠端帳號移除後，新 root socket 認證與應用帳號 TCP 認證通過、舊 root TCP 認證失敗；舊 MySQL 停止後用隔離的舊環境檔重啟、healthcheck 與備份測試資料均通過。完整四服務隔離 `up --build` 全部 healthy，同源 `/api/health` 為 UP、Web 僅綁 loopback，MySQL restart 後測試列仍存在；所有測試 project／volume 已按 project label 清理，實際既有 volume 未動。前端 `npm ci`、五組測試與 build、後端 102 tests、Compose config／api-web build、Git diff check 均通過。分支已推送至 `origin/codex/unify-place-search-compose`；GPT Relay 第三輪已核對精確 HEAD `1901deb1f030b2ef56c65eb23b6f027e181a1d57` 並回覆 PASS（0 項阻擋 Finding，可建立以 `main` 為 base 的待審 PR；不代表可 merge）。隔離空資料庫 smoke 因缺少已發布 snapshot 而未通過資料斷言；具完整 snapshot／審核 mapping 的 smoke、真實 Places 與 Routes、正式備份還原、遠端 HTTPS 及正式回退仍未驗收。
+- 此紀錄隨 PR 驗證更新；目前依實際執行記錄分列 PASS、FAIL、BLOCKED 與 NOT RUN。隔離 image 使用空 Google browser key；本機既有 key 未確認為受限測試 key，因此 Places 互動未執行；停車模型機率仍為 null／`INSUFFICIENT_DATA`。
+
 ## 2026-10-24 進行中：即時車位地圖標記與 ParkBoss 版面參考
 
 - 在 `feature/realtime-parking-map-markers`（base `5e11fc7db832c346dcae23975b0f488fad774a08`）新增只讀 `GET /api/v1/parking-queries/{queryId}/map-data`，使用原查詢的 500 公尺半徑、附近索引與已發布快照；只接受唯一且 VERIFIED 的來源 mapping，保留狀態、一般汽車資格、品質、新鮮度及來源時間。路線入口仍只對有位、資格已確認且資料品質／時效合格的標記開放；限制路邊 400、路外 100 個標記，省略筆數回報於回應。

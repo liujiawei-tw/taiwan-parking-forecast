@@ -1,6 +1,15 @@
 export const AUTO_REFRESH_SOURCE_STATUSES = new Set(['STALE', 'NO_REALTIME_SNAPSHOT'])
 export const PLACEHOLDER_GOOGLE_MAPS_KEY = 'replace-with-local-browser-key'
 
+// Taipei MRT O18 station address is listed by Taipei City DORTS; map point is
+// the OpenStreetMap public-transport station node 3812564402.
+export const DEFAULT_ORIGIN = Object.freeze({
+  label: '捷運新莊站（O18）',
+  address: '新北市新莊區中正路138號',
+  latitude: 25.03633,
+  longitude: 121.45336,
+})
+
 export function roadsideCountLabel(status, count) {
   if (!status) return '路邊尚未查詢'
   if (status !== 'READY') return '路邊目前有位：未知'
@@ -12,10 +21,10 @@ export function hasUsableGoogleMapsKey(apiKey) {
 }
 
 export function locationErrorMessage(error) {
-  if (error?.code === 1) return '定位權限未開啟，請在下方手動輸入起點或使用測試座標。'
-  if (error?.code === 2) return '目前無法取得位置，請在下方手動輸入起點或使用測試座標。'
-  if (error?.code === 3) return '定位逾時，請在下方手動輸入起點或使用測試座標。'
-  return '無法取得目前位置，請在下方手動輸入起點或使用測試座標。'
+  if (error?.code === 1) return '定位權限未開啟，請改用地點搜尋選擇起點。'
+  if (error?.code === 2) return '目前無法取得位置，請改用地點搜尋選擇起點。'
+  if (error?.code === 3) return '定位逾時，請改用地點搜尋選擇起點。'
+  return '無法取得目前位置，請改用地點搜尋選擇起點。'
 }
 
 export function buildRequestToken(cryptoObject = globalThis.crypto, now = Date.now, random = Math.random) {

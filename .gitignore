@@ -3,7 +3,6 @@
 .env
 .env.*
 !.env.example
-!.env.demo.example
 application-local.yml
 !backend/src/main/resources/application-local.yml
 application-local.yaml

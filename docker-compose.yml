@@ -1,15 +1,16 @@
+name: taiwan-parking-forecast
+
 services:
   api:
     build:
       context: ./backend
-    ports:
-      - "18080:8080"
+    restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8080
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/taiwan_parking_forecast?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Taipei
       SPRING_DATASOURCE_USERNAME: parking_app
-      SPRING_DATASOURCE_PASSWORD: change-me-locally
+      SPRING_DATASOURCE_PASSWORD: ${PARKING_DB_PASSWORD:?請設定 PARKING_DB_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       GOOGLE_ROUTES_SERVER_API_KEY: ${GOOGLE_ROUTES_SERVER_API_KEY:-}
@@ -32,27 +33,35 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_BASE_URL: http://localhost:18080
+        # 空 base 會讓瀏覽器經由 Nginx 同源 /api 呼叫 API。
+        VITE_API_BASE_URL: ""
         VITE_GOOGLE_MAPS_BROWSER_API_KEY: ${VITE_GOOGLE_MAPS_BROWSER_API_KEY:-}
+    restart: unless-stopped
     ports:
-      - "5173:80"
+      - "127.0.0.1:${WEB_HTTP_PORT:-18088}:80"
     depends_on:
       api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   mysql:
     image: mysql:8.4
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: taiwan_parking_forecast
       MYSQL_USER: parking_app
-      MYSQL_PASSWORD: change-me-locally
-      MYSQL_ROOT_PASSWORD: change-root-locally
-    ports:
-      - "3307:3306"
+      MYSQL_PASSWORD: ${PARKING_DB_PASSWORD:?請設定 PARKING_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?請設定 MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_HOST: localhost
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pchange-root-locally"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" | grep alive"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -60,8 +69,7 @@ services:
 
   redis:
     image: redis:8-alpine
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

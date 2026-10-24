@@ -1,145 +1,191 @@
 # Docker Compose 部署
 
-更新日期：2026-10-24。狀態：本機開發設定保留；S3-024 已提供可重現的單機 DEMO 部署設定與 smoke 步驟。沒有實際主機、網域與部署金鑰，因此遠端 HTTPS、正式 ETA、備份還原及外部瀏覽器驗收仍為 **BLOCKED／未驗收**，不可視為已上線。
+更新日期：2026-10-24。狀態：唯一正式設定為根目錄的 docker-compose.yml；本機、作品展示與單機部署共用四個服務、網路隔離、同源 API 與 MySQL 持久化。沒有遠端主機與正式金鑰時，服務仍可按降級契約運行，但不代表 Routes ETA 或停車機率已驗收。
 
-## 本機開發
+## 唯一 Compose 與網路
 
-沿用既有開發 Compose，不需建立 DEMO 環境檔：
+使用同一份 docker-compose.yml 啟動：
 
 ~~~bash
-docker compose up --build
+docker compose --env-file .env up -d --build
 ~~~
 
-- Web：http://localhost:5173
-- API：http://localhost:18080；前端 local build 保留此直連 fallback。
-- MySQL：主機埠 3307，資料在 mysql-data volume。
-- Redis：主機埠 6379。
+Compose project name 固定為 taiwan-parking-forecast，MySQL named volume 為 taiwan-parking-forecast_mysql-data。此名稱沿用現有主系統資料 volume；Compose stop、down 與 image 重建都不會刪除該 volume。API、MySQL、Redis 不發布主機埠，只有 Web 可從主機 loopback 連線：
 
-本機 Compose 的映射埠與占位密碼只供開發，勿用於遠端。既有 docker-compose.yml 未因 S3-024 改變。
+- Web：http://127.0.0.1:18088
+- 同源 API health：http://127.0.0.1:18088/api/health
+- Web 主機埠可用 WEB_HTTP_PORT 設定，預設 18088。
+- API 的 8080、MySQL 的 3306 與 Redis 的 6379 僅在 Compose 網路內可用。
 
-## 單機 DEMO 架構
+Nginx 將 /api/... 原樣代理給 Spring Boot，瀏覽器使用相對 /api 路徑。Web 的查詢建立入口保留來源 IP 限流：每分鐘 5 次、額外 burst 2 次，超量回 429、RATE_LIMITED 與 Retry-After。前置代理必須傳送正確的用戶端 IP 與 HTTPS scheme；Nginx 只信任指定私有網路的 forwarded IP。限流是基本濫用保護，不取代 WAF 或帳號級配額。
 
-遠端使用獨立 docker-compose.demo.yml，避免覆蓋本機設定：
-
-- 只有 Nginx Web 對主機發佈埠，且綁定 127.0.0.1:18088（可用 DEMO_HTTP_PORT 更換）。部署主機上的 Caddy 或既有 HTTPS 反向代理轉送至此 loopback 入口；TLS 憑證與自動續期由主機反向代理管理。
-- 建議 Caddy 設定：
+主機公開網站時，讓 Caddy 或既有 HTTPS reverse proxy 終止 TLS，並只反向代理至 loopback：
 
 ~~~caddy
-demo.example.com {
+parking.example.com {
     reverse_proxy 127.0.0.1:18088
 }
 ~~~
 
-  將 demo.example.com 換成實際網域，DNS 指向主機，防火牆只允許必要的 80／443 入口。不要把 Compose 的 loopback 埠改成 0.0.0.0 公開映射。反向代理需正確設定／覆寫 X-Forwarded-For 與 X-Forwarded-Proto；Nginx 只信任私有網路來源的 forwarded IP。
-- API、MySQL、Redis 沒有主機埠映射，只能由 Compose 網路內部存取。web 的 /api/... 代理使用不帶 URI 的 proxy_pass http://api:8080，完整保留 /api/v1/... 路徑。
-- MySQL 資料保存在 Compose named volume parking-demo_mysql-data（專案名固定為 parking-demo 時）。Redis 僅供短期查詢狀態與共享鎖；來源冷卻仍由既有 MySQL／Redis 協調邏輯控制為五分鐘，不另建排程。
-- 查詢建立入口以來源 IP 套用 Nginx 限流：每分鐘 5 次，另允許最多 2 次立即 burst；超過回 HTTP 429、JSON RATE_LIMITED 與 Retry-After: 60。這是 DEMO 的基本濫用底線，不是帳號級配額或完整 WAF。不要把前置代理設定成共用錯誤的 client IP，否則所有用戶會共用同一限額。
+DNS 應指向主機，防火牆只開放必要的 80／443。不要把 Compose 的 Web port 改綁 0.0.0.0；HTTP port 是主機內部入口，不是公開 TLS port。正式網站使用 HTTPS，因瀏覽器定位等能力需要安全環境。
 
-## 機密與啟動
+## 環境變數與機密
 
-在部署主機的 repo checkout 目錄建立私有環境檔。不要將 .env.demo、資料庫備份或含密碼的 Compose 輸出提交或貼到 Issue／CI log。
+在 repo 根目錄建立私有 .env。Windows PowerShell 可在檔案不存在時複製範例：
 
-~~~bash
-cp -n .env.demo.example .env.demo
-chmod 600 .env.demo
-$EDITOR .env.demo
+~~~powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+notepad .env
 ~~~
 
-至少將兩組資料庫密碼替換成不同的長隨機值（可分別執行 openssl rand -hex 32 產生）。cp -n 會保留既有環境檔；若已有 .env.demo，請只編輯需要調整的值。變數使用方式：
-
-- PARKING_DB_PASSWORD 與 MYSQL_ROOT_PASSWORD：只在部署環境；API 容器取得應用帳號密碼，MySQL 容器取得初始化密碼。
-- GOOGLE_ROUTES_SERVER_API_KEY：只注入 API 容器，不傳入前端 build。沒有有效 key 時留空並維持 GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=false；只有完成預算／配額確認及 key 的 server-side 限制後才啟用 Routes 呼叫。若密碼或 key 含美元符號，請依 Compose dotenv 語法用單引號包住整個值。
-- VITE_GOOGLE_MAPS_BROWSER_API_KEY：瀏覽器可見且會包含在 web image／bundle。於 Google Cloud 僅允許正式 HTTPS 網域 referrer，並限制到實際使用的 Maps JavaScript／Places API；不可把它當成秘密。
-- DEMO_HTTP_PORT：主機 loopback 使用的 HTTP 埠，不是公開 TLS 埠。
-
-Compose 展開設定會包含環境變數值，執行 config 時不要把完整輸出公開。先以範例假值確認設定，再在已填好機密的主機執行：
+Linux 主機可使用：
 
 ~~~bash
-docker compose -p parking-demo --env-file .env.demo -f docker-compose.demo.yml config --quiet
-docker compose -p parking-demo --env-file .env.demo -f docker-compose.demo.yml up -d --build
-docker compose -p parking-demo --env-file .env.demo -f docker-compose.demo.yml ps
+cp -n .env.example .env
+chmod 600 .env
+$EDITOR .env
 ~~~
 
-Compose build 會把瀏覽器 Maps key 編入 web 靜態 bundle；它只能是已限制 referrer／API 的 browser key。Routes server key 與資料庫密碼是 runtime environment，沒有傳給 Docker build args、Dockerfile、Git 或前端。Redis／MySQL 官方來源的既有刷新協調保持不變。
+Compose 會要求 PARKING_DB_PASSWORD 與 MYSQL_ROOT_PASSWORD 非空；沒有提供時 config／up 會立即失敗。將兩者改成彼此不同的長隨機值，例如各自執行 openssl rand -hex 32。範例檔的資料庫字串只供本機 config／CI 測試，不能用於部署。不要提交 .env、資料庫備份或含完整設定展開值的 log。
 
-## 健康狀態、log 與停止
+變數用途：
+
+- PARKING_DB_PASSWORD：API 與 MySQL 應用帳號共用的資料庫密碼。
+- MYSQL_ROOT_PASSWORD：MySQL root 初始化密碼。
+- VITE_GOOGLE_MAPS_BROWSER_API_KEY：只作 Web image build argument，會出現在可下載的前端 bundle。只用受限 browser key，限制正式網域 referrer 與實際使用的 Google API。留空時 Places 搜尋顯示不可用；已驗證的預設起點與目的地仍可送出查詢，畫面不提供座標輸入。
+- GOOGLE_ROUTES_SERVER_API_KEY：只注入 API runtime，不傳給 Web build。
+- GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED：預設 false。確認 Google 額度、預算與 server key 限制後才可手動設 true；停用或無有效 key 時 ETA 應明確顯示失敗／不可估算，機率仍維持 null 與 INSUFFICIENT_DATA。
+- WEB_HTTP_PORT：Web loopback HTTP port，預設 18088。
+- GOOGLE_ROUTES_TIMEOUT、GOOGLE_ROUTES_ROUTING_PREFERENCE：後端 Routes 設定。
+
+Compose 解析可能包含環境變數值，因此檢查只使用 quiet 模式：
 
 ~~~bash
-# 透過 HTTPS 入口檢查 Spring API 健康端點
-curl -fsS https://demo.example.com/api/health
-
-# 看服務 health 與個別服務 log
-docker compose -p parking-demo --env-file .env.demo -f docker-compose.demo.yml ps
-docker compose -p parking-demo --env-file .env.demo -f docker-compose.demo.yml logs --tail=100 web api mysql redis
-docker compose -p parking-demo --env-file .env.demo -f docker-compose.demo.yml logs -f api
-
-# 暫停或移除容器／網路；named volume 會保留
-docker compose -p parking-demo --env-file .env.demo -f docker-compose.demo.yml stop
-docker compose -p parking-demo --env-file .env.demo -f docker-compose.demo.yml down
+docker compose --env-file .env config --quiet
 ~~~
 
-不要在正式 DEMO 使用 down -v，它會刪除 MySQL volume。
+不要把 docker compose config 的完整輸出貼到 CI、Issue、PR 或聊天。
+
+## 從舊版 MySQL volume 升級
+
+舊版根目錄 Compose 曾以 `change-me-locally` 初始化 `parking_app`，並以 `change-root-locally` 初始化 root。MySQL image 只在空資料目錄套用 `MYSQL_PASSWORD` 與 `MYSQL_ROOT_PASSWORD`；若 volume 已存在，改 `.env` 不會自動輪替資料庫內的密碼。舊版也會建立 `root@'%'`；新版 Compose 明確設定 `MYSQL_ROOT_HOST=localhost`，只影響新建的空資料目錄，不會替既有帳號移除遠端 root。新版沿用 `taiwan-parking-forecast_mysql-data`，因此不可直接把新的隨機密碼當成已完成遷移。
+
+先確認 project 名稱、Compose volume 名稱與資料掛載用途：本專案預設 project 是 `taiwan-parking-forecast`，主系統 volume 是 `taiwan-parking-forecast_mysql-data`。先備份目前仍可登入的資料庫，並在隔離 project 還原核對資料表及紀錄可讀。舊 MySQL 若仍在執行，使用該資料庫目前有效的帳密備份；不可先用新 `.env` 重建 MySQL，因為 MySQL 內的舊密碼尚未改變。
+
+若舊 MySQL 已停止，先在 repo 以外的受保護路徑建立私有 `.env.legacy`，只填入該既有 volume 目前有效的 `PARKING_DB_PASSWORD` 與 `MYSQL_ROOT_PASSWORD`。若從未輪替，使用該部署版本的初始帳密；不要假設新版 `.env` 的值已套用，也不要將帳密貼入終端記錄或 CI。不要提交此檔案。再次檢查上述 project 與 volume 身分後，只啟動 MySQL：
+
+~~~bash
+docker compose --env-file /secure/path/.env.legacy up -d mysql
+docker compose --env-file /secure/path/.env.legacy ps mysql
+~~~
+
+等 MySQL healthcheck 通過後，以 `.env.legacy` 中目前有效的帳密完成下方備份；備份成功並在隔離 project 還原核對前，不要開始密碼輪替。如此即使舊服務容器已停止，備份仍會由使用正確舊認證的 MySQL 執行。還原隔離資料庫時使用包含新隨機密碼的另一份私有環境檔，不能把正式 volume 掛入 restore project。
+
+完成備份和還原核對後，建立包含彼此不同新隨機密碼的私有 `.env`。若原 MySQL 使用 `.env.legacy` 啟動，以新 `.env` 只重建 MySQL service，API 仍保持停止：
+
+~~~bash
+docker compose --env-file .env up -d mysql
+~~~
+
+容器會沿用原 volume；切換 `.env` 後，在輪替完成前 healthcheck 可能尚未通過。透過本機 socket 使用舊 root 密碼登入，並將 `REPLACE_...` 替換為新 `.env` 的值。關閉 MySQL client history，避免將輪替語句寫入 client history：
+
+~~~bash
+docker compose --env-file .env exec -e MYSQL_HISTFILE=/dev/null mysql mysql -uroot -p
+~~~
+
+先盤點所有 root 帳號 Host：
+
+~~~sql
+SELECT User, Host FROM mysql.user WHERE User = 'root' ORDER BY Host;
+~~~
+
+執行帳密輪替並移除不需要的遠端 root 帳號；正式 Compose 不發布 MySQL 主機埠，API 使用 `parking_app`，不需要 `root@'%'`：
+
+~~~sql
+ALTER USER 'parking_app'@'%' IDENTIFIED BY 'REPLACE_WITH_PARKING_DB_PASSWORD';
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'REPLACE_WITH_MYSQL_ROOT_PASSWORD';
+DROP USER IF EXISTS 'root'@'%';
+~~~
+
+如盤點到其他非 localhost 的 root 帳號，也需在繼續前移除，或依實際管理需求改為唯一的新強密碼並限制來源；不得保留仍可使用舊密碼的 root。退出 client 後以新 root 本機認證、應用帳號的新 TCP 認證、服務 healthcheck 及同源 API 驗證輪替結果；再啟動其他服務。若輪替中斷，不要刪除或重建原 volume，先檢查實際帳號與已驗證備份，再安排復原。新建的空 volume 不需執行此遷移步驟。
+
+## 狀態、記錄與停止
+
+~~~bash
+docker compose --env-file .env ps
+docker compose --env-file .env logs --tail=100 web api mysql redis
+docker compose --env-file .env logs -f api
+~~~
+
+以 Web 同源路徑檢查 API：
+
+~~~bash
+curl -fsS http://127.0.0.1:18088/api/health
+~~~
+
+停止與移除容器／網路時，MySQL volume 仍保留：
+
+~~~bash
+docker compose --env-file .env stop
+docker compose --env-file .env down
+~~~
+
+正式資料庫不可使用 down -v，也不要對沒有辨識 project 與資料用途的 volume 執行刪除。若曾使用舊 Demo project，先用 docker volume ls、docker volume inspect 與 container mounts 核對 project／volume 標籤。舊 parking-demo 或 s3022demo 的 volume 不會自動遷移至新的 taiwan-parking-forecast_mysql-data；未確認備份有效與資料已移轉／可捨棄前，必須保留。
 
 ## MySQL 備份與隔離還原
 
-先用唯讀資料庫傾印備份到受保護目錄。備份含資料，不得提交 Git；依部署主機的磁碟與法規政策另行加密／異地保存。
+先將備份寫入 Git 工作目錄以外的受保護目錄；備份含資料與個資風險，應依部署環境政策加密及異地保存。以下命令供 Linux 主機或 Git Bash 使用，請先將路徑改成部署主機的私有備份位置：
 
 ~~~bash
+BACKUP_DIR=/srv/private-backups/taiwan-parking-forecast
+COMPOSE_ENV_FILE=.env
+# 舊 MySQL 已停止並以目前有效舊帳密重新啟動時，改用受保護路徑的 .env.legacy。
+# COMPOSE_ENV_FILE=/secure/path/.env.legacy
 umask 077
-mkdir -p backups
-docker compose -p parking-demo --env-file .env.demo -f docker-compose.demo.yml exec -T mysql sh -c 'mysqldump --single-transaction --routines --triggers -uroot -p"$MYSQL_ROOT_PASSWORD" taiwan_parking_forecast' > "backups/parking-demo-$(date +%Y%m%d%H%M%S).sql"
+mkdir -p "$BACKUP_DIR"
+docker compose --env-file "$COMPOSE_ENV_FILE" exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqldump --single-transaction --routines --triggers -uroot taiwan_parking_forecast' > "$BACKUP_DIR/taiwan-parking-$(date +%Y%m%d%H%M%S).sql"
 ~~~
 
-還原演練使用另一個 Compose project name，確保建立 parking-demo-restore_mysql-data 隔離 volume，不會掛到正式資料：
+還原演練指定全新 project name，使用獨立的 taiwan-parking-forecast-restore_mysql-data volume，不會連到預設主系統 volume：
 
 ~~~bash
-BACKUP=backups/選擇一份備份.sql
-RESTORE_PROJECT=parking-demo-restore
-docker compose -p "$RESTORE_PROJECT" --env-file .env.demo -f docker-compose.demo.yml up -d mysql
-until docker compose -p "$RESTORE_PROJECT" --env-file .env.demo -f docker-compose.demo.yml exec -T mysql sh -c 'mysqladmin ping -h localhost -uroot -p"$MYSQL_ROOT_PASSWORD"' >/dev/null 2>&1; do sleep 2; done
-docker compose -p "$RESTORE_PROJECT" --env-file .env.demo -f docker-compose.demo.yml exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" taiwan_parking_forecast' < "$BACKUP"
-# 完成隔離驗證後才移除 restore 專案與其專用 volume
-docker compose -p "$RESTORE_PROJECT" --env-file .env.demo -f docker-compose.demo.yml down -v
+BACKUP=/srv/private-backups/taiwan-parking-forecast/選擇一份備份.sql
+RESTORE_PROJECT=taiwan-parking-forecast-restore
+docker compose -p "$RESTORE_PROJECT" --env-file .env up -d mysql
+until docker compose -p "$RESTORE_PROJECT" --env-file .env exec -T mysql sh -c 'mysqladmin ping -h localhost -uroot -p"$MYSQL_ROOT_PASSWORD"' >/dev/null 2>&1; do sleep 2; done
+docker compose -p "$RESTORE_PROJECT" --env-file .env exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" taiwan_parking_forecast' < "$BACKUP"
+docker compose -p "$RESTORE_PROJECT" --env-file .env exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW TABLES" taiwan_parking_forecast'
 ~~~
 
-檢查還原資料時，不要把 restore project 改名為 parking-demo，也不要對正式專案使用 down -v。S3-024 尚未取得遠端主機，以上備份／還原程序僅有文件與 Compose volume 設計，尚無實際演練證據。
+人工核對還原結果後，以 docker volume inspect 確認 restore volume 標籤及名稱。不要將 restore project 改名為 taiwan-parking-forecast，不要將 restore volume 掛入正式服務；完成後可 stop/down 隔離容器，但保留資料 volume 直到明確確認可刪除。備份／還原目前只有可重現步驟，實際演練須另外記錄。
 
 ## 版本發布與回退
 
-先記錄目前部署的 commit SHA 並在升版前備份。部署某個已審查 SHA 的步驟：
+部署前記錄目前完整 commit SHA 並先備份資料。以已審查的 SHA 部署：
 
 ~~~bash
 git fetch origin
-git checkout <要部署的完整 commit SHA>
-docker compose -p parking-demo --env-file .env.demo -f docker-compose.demo.yml up -d --build
+git checkout <已審查的完整 commit SHA>
+docker compose --env-file .env up -d --build
 ~~~
 
-回退時 checkout 上一個已知可用 SHA，再以相同 Compose 命令重建；named volume 會保留。若新版 Flyway migration 已改變資料結構，舊版程式未必能讀新 schema；需先評估 migration 相容性。必要時將升版前備份還原至隔離 volume，驗證後再規劃資料回復窗口，不能直接把隔離 volume 指向正式服務。
+回退時 checkout 上一個可用 SHA，再以相同 Compose project name、.env 與啟動命令重建。MySQL volume 會保留；若新版本包含 Flyway schema migration，舊版程式可能無法讀取新版 schema，必須先檢查 migration 相容性，必要時還原至隔離 volume 後再安排資料回復。回退不等同把舊 volume 或 restore volume 直接掛入服務。
 
-## 最小遠端 Smoke
+資料庫密碼輪替會保留在 MySQL volume，Git 回退不會反轉帳密。已輪替密碼後，不能直接啟動仍寫死舊帳密的舊版 Compose；回退前需先確認回退版能使用目前 `.env`，或完成有備份的資料庫帳密回復，並驗證後再啟動。
 
-只對已設定 TLS、API 與資料來源的 demo 網域執行。此流程建立一筆查詢並送出兩次人工刷新；刷新沿用既有官方來源呼叫與五分鐘冷卻，請勿為了 smoke 重複建立查詢。需要 curl、jq；若 Routes server key 與外部呼叫已由部署者啟用，單次建立查詢會消耗 Routes 額度。
+## Smoke 與目前限制
 
-~~~bash
-BASE_URL=https://demo.example.com
-curl -fsS "$BASE_URL/api/health" | jq .
-REQUEST_TOKEN="smoke-$(date +%s)"
-QUERY=$(curl -fsS -X POST "$BASE_URL/api/v1/parking-queries" \
-  -H 'Content-Type: application/json' \
-  --data-binary "{\"requestToken\":\"$REQUEST_TOKEN\",\"origin\":{\"label\":\"測試起點\",\"latitude\":25.04,\"longitude\":121.45},\"destination\":{\"label\":\"新莊體育館\",\"latitude\":25.036,\"longitude\":121.4505},\"departure\":{\"type\":\"NOW\"}}")
-echo "$QUERY" | jq -e '.area.radiusMeters == 500 and .predictions.status == "INSUFFICIENT_DATA" and .predictions.roadside.probability == null and all(.predictions.offStreet[]; .probability == null)'
-echo "$QUERY" | jq '{eta, roadside: {status: .roadside.status, currentlyAvailableSpaces: .roadside.currentlyAvailableSpaces, systemCollectedAt: .roadside.systemCollectedAt}, offStreet: {status: .offStreet.status, systemCollectedAt: .offStreet.systemCollectedAt}, predictions: {status: .predictions.status, roadside: .predictions.roadside, offStreet: .predictions.offStreet}}'
-if [ "${EXPECT_ETA:-false}" = true ]; then echo "$QUERY" | jq -e '.eta.status == "READY"'; else echo "ETA 未驗收：未啟用有效 Routes key。"; fi
-QUERY_ID=$(echo "$QUERY" | jq -r '.query.queryId')
-curl -fsS -X POST "$BASE_URL/api/v1/parking-queries/$QUERY_ID/refresh?trigger=MANUAL_REFRESH" | jq '{roadside: .refresh.roadside.action, offStreet: .refresh.offStreet.action}'
-curl -fsS -X POST "$BASE_URL/api/v1/parking-queries/$QUERY_ID/refresh?trigger=MANUAL_REFRESH" | jq -e '(.refresh.roadside.action == "COOLDOWN" or .refresh.roadside.action == "JOINED_RUNNING_REFRESH") and (.refresh.offStreet.action == "COOLDOWN" or .refresh.offStreet.action == "JOINED_RUNNING_REFRESH")'
+本機 smoke 以唯一 Web URL 的同源 /api 執行：
+
+~~~powershell
+./tools/parking_query_flow_smoke.ps1
+./tools/parking_catalog_smoke.ps1
 ~~~
 
-驗收時記錄：API health 為 UP、查詢半徑 500m、兩來源目前狀態及時間（若來源尚未發布快照，應如實顯示未知／無資料）、預測狀態為 INSUFFICIENT_DATA 且機率為 null。Routes key 有效且已啟用時須另外確認 eta.status=READY；無 key 或 Routes 呼叫停用時，記為 ETA 未驗收，不可宣稱真 ETA 成功。第一次刷新會嘗試官方來源更新；第二次應顯示共享 COOLDOWN（併入既有刷新時可見 JOINED_RUNNING_REFRESH）。HTTP 429 的重試提示由 Nginx 提供，勿為驗證刻意大量呼叫。
+Smoke 會建立停車查詢並檢查 500 公尺、來源快照、資料不足、預測機率為 null、限流／刷新契約。Routes 停用或缺少有效 key 時 ETA 降級屬預期結果，不會單獨判定 Compose 部署失敗；有意啟用真 Routes 時才將 ETA READY 列為額外驗收。Smoke 可能觸發官方來源的受控刷新，請勿密集重複執行。
 
-## 實際狀態與限制
+Catalog smoke 會在每次建立查詢間隔至少 13 秒，以符合 Nginx 每分鐘 5 次及 burst=2 的正式限流設定；完整資料 smoke 因此需要較長時間。
 
-- 已實作但未經遠端主機驗收：隔離 Compose、MySQL named volume、loopback web 入口、同源 API proxy、查詢建立 IP 限流、資料庫密碼必要環境變數與 Routes key 僅後端注入。
-- 本機開發 Compose 行為保留；本機 Docker UI、Google Routes 與來源刷新既有證據詳見 docs/current-state.md 舊紀錄。
-- 尚未驗收／BLOCKED：真實主機與網域、HTTPS 憑證與反向代理轉送、browser key referrer/API restriction、Routes server key 與真 ETA、遠端來源 API 網路連線、MySQL 備份／隔離還原實測、遠端 smoke、外部瀏覽器及發佈回退。
-- S3-024 交付不代表上線；正式公開 demo 前仍需部署資源與人工驗收。
+這兩支 smoke 需要審查後的目錄 mapping 及已發布 snapshot；全新空資料庫尚無這些前置資料時，snapshot 斷言會失敗。應將其報告為「來源資料前置條件未滿足」，不要混同 Web／API／MySQL／Redis health 或同源代理失敗。不得為了通過 smoke 而沿用未盤點的舊 Demo named volume。
+
+以 `.env.example` 建置的本次隔離 image 未配置 Google browser key，可驗證預設位置、查詢 API、Places 不可用提示與手機無水平溢出；本機既有 key 尚未確認為受限測試 key，真實 Places 候選及選取未執行，待取得受限測試 key 後在可連線瀏覽器人工驗收。遠端 DNS／TLS、主機反向代理、正式 key 限制、真 ETA、官方來源連線、備份還原演練及實際版本回退都不能只靠 Compose build 宣稱通過。
