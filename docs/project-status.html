@@ -305,7 +305,7 @@
       <span class="pill pending">遠端實機驗收：BLOCKED</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>S3-024 已提供獨立單機 DEMO Compose、loopback Web 入口、同源 /api 代理、查詢建立限流、MySQL 持久化及維運／smoke 文件；Compose config、前端 production build 與 mock API 的 Nginx 路徑／429 驗證通過。GitHub Actions run #126 的三個 job 均在約 2 秒內失敗且沒有 runner／steps／logs；base 與交接文件提交也有同樣結果，CI 執行環境待 repository 管理者查明。沒有遠端主機、網域、HTTPS 入口及正式金鑰，故遠端發布、Routes 真 ETA、備份還原與瀏覽器驗收皆為 BLOCKED，不能宣稱已上線。S3-023 仍有前端失敗恢復、隱藏頁及截圖證據待補；模型機率維持空值，完整新莊覆蓋仍留 S3-017。</div>
+    <div class="notice"><strong>目前結論：</strong>S3-024 已提供獨立單機 DEMO Compose、loopback Web 入口、同源 /api 代理、查詢建立限流、MySQL 持久化及維運／smoke 文件；Compose config、前端 production build 與 mock API 的 Nginx 路徑／429 驗證通過。GitHub Actions run #126 的三個 job 均在約 2 秒內失敗且沒有 runner／steps／logs；base 與交接文件提交也有同樣結果，CI 執行環境待 repository 管理者查明。沒有遠端主機、網域、HTTPS 入口及正式金鑰，故遠端發布、Routes 真 ETA、備份還原與瀏覽器驗收皆為 BLOCKED，不能宣稱已上線。S3-023 桌面畫面已檢查並修正查詢成功後殘留舊錯誤提示；手機 viewport、隱藏頁與可交付截圖仍待人工驗收。模型機率維持空值，完整新莊覆蓋仍留 S3-017。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -547,7 +547,7 @@
   <section class="layout" aria-labelledby="next-title">
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
-      <p>2026-10-24：可重現部署設定與本機必要驗證已完成並推送。GitHub Actions run #126 三個工作失敗，但都沒有 runner、步驟或 logs，且 base／前一提交也相同；需由 repository 管理者確認 CI 執行設定，不能當作程式驗證成功。遠端主機、網域、HTTPS 反向代理與金鑰尚未提供，S3-024 的實機 smoke、真 ETA、備份還原及回退演練仍待部署資源；在驗收前不可宣稱上線。S3-023 尚待補前端失敗恢復、真正隱藏頁與截圖證據；完整新莊覆蓋留 S3-017。</p>
+      <p>2026-10-24：可重現部署設定與本機必要驗證已完成並推送。GitHub Actions run #126 三個工作失敗，但都沒有 runner、步驟或 logs，且 base／前一提交也相同；需由 repository 管理者確認 CI 執行設定，不能當作程式驗證成功。遠端主機、網域、HTTPS 反向代理與金鑰尚未提供，S3-024 的實機 smoke、真 ETA、備份還原及回退演練仍待部署資源；在驗收前不可宣稱上線。S3-023 的桌面檢查與查詢錯誤恢復修正已完成；手機 viewport、真正隱藏頁與可交付截圖仍待驗收。完整新莊覆蓋留 S3-017。</p>
       <ol>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/82">S3-021</a> 模型實驗證據與限制交接；S3-017 資格分類／審查可並行。</li>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/83">S3-022</a> 審查後目錄匯入與可展示範圍，不繞過寫入保護。</li>

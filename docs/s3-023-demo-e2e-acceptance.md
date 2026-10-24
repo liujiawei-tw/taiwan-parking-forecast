@@ -25,6 +25,12 @@
 
 故障驗收須在隔離資料庫進行，不對正式服務覆蓋來源設定。暫時 API 可用 `docker compose -p s3022demo run -d --no-deps -p 18081:8080 -e GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=false -e NTPC_OPEN_DATA_BASE_URL=http://127.0.0.1:9 -e PARKING_QUERY_STATE_TTL=15s api` 重現連線失敗與查詢過期。品質拒絕先執行 `node tools/ntpc_unmapped_stub.mjs`，將暫時 API 的 `NTPC_OPEN_DATA_BASE_URL` 改為 `http://host.docker.internal:18082`；等待既有 5 分鐘來源冷卻後，僅對 18081 建立查詢並刷新。前後比對 `source_state.active_snapshot_id`、`availability_snapshot.snapshot_status`、`ingestion_run.run_status`，最後移除暫時 API／stub。勿改動主 API 的官方來源 URL，勿把測試錯誤狀態描述成生產事故。
 
+## 2026-10-24 最小 UI 驗收續作
+
+- Chrome 本機桌面畫面顯示 Places 目的地「雙鳳路」、手動測試起點、500 公尺範圍、`Query READY`、停車結果及資料時間。Google Routes 外部呼叫保持關閉，ETA 為「無法估算」時路外結果仍可見，預測維持 `INSUFFICIENT_DATA`，符合預期降級；本次未重跑 API 驗收、未觸發新的 Google Routes 或官方資料請求。
+- 人工驗收事件中成功的 `QUERY_GET`（HTTP 200）之後，畫面仍顯示先前 `Failed to fetch` 的紅色錯誤。已修正 `readParkingQuery()` 成功後清除同類舊錯誤；`frontend/npm test` 與 `frontend/npm run build` 通過。未新增 PR，修正 commit 等待 GPT Review。
+- 桌面版已目視檢查；目前 Computer Use session 未提供可用的 Chrome 手機 viewport 模擬控制，手機版未驗收，沒有保存截圖檔。建議人工在 Chrome 開啟 DevTools 的裝置工具列，選擇約 375×812 viewport，確認結果卡片及地圖不需橫向捲動，且 ETA 降級提示與停車資料仍同時可見。
+
 ## 尚未通過／交接
 
 - 補存桌面、手機、定位權限拒絕、ETA 失敗、空目錄、查詢過期、品質拒絕等畫面截圖；對照 UI 事件、API 回應及來源 run ID。不要把 API／DB 測試代替真實瀏覽器證據。

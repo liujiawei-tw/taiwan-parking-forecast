@@ -865,3 +865,9 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 回測報告輸出 Brier score、log loss、accuracy、precision、recall 與 TP／FP／FN。接受口徑在看結果前定義：若 usable samples、training／validation／test split 不足、test split 只有單一類別、或最佳 test Brier score 高於預先設定門檻，報告一律建議 `INSUFFICIENT_DATA`。新增 `docs/s3-002-baseline-backtest.md` 記錄時間切分、baseline、指標與資料不足規則。
 
 驗證：使用 Docker Maven 執行精準測試 `BaselineBacktestServiceTest`，通過 3 tests／0 failures／0 errors。此階段不接線上推論、不輸出正式預測機率、不呼叫官方 API、不提交原始 API 回應或敏感設定。
+
+## 2026-10-24 S3-023 最小 UI 驗收續作
+
+Chrome 本機 DEMO 桌面畫面確認 Places 目的地「雙鳳路」、測試起點、500 公尺查詢、`Query READY`、來源資料時間及附近路外結果皆可見。Google Routes 外部呼叫維持關閉，因此 ETA 顯示無法估算；停車資料仍可查看，預測保持 `INSUFFICIENT_DATA`，沒有機率或模型版本。此為預期降級，不重新執行官方刷新或 API 驗收。
+
+畫面同時殘留舊的 `讀取查詢狀態失敗：Failed to fetch`，但人工驗收事件後續已有 `QUERY_GET` HTTP 200。確認成功讀取分支未清除先前的讀取錯誤，造成成功資料與紅色錯誤提示矛盾；已在 `readParkingQuery()` 最小修正，只在成功讀取後清除同類舊錯誤。前端 `npm test` 與 `npm run build` 通過。尚未能以目前瀏覽器工具設定手機 viewport，因此手機版仍待人工檢查；未保存截圖檔。
