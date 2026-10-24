@@ -68,28 +68,46 @@ docker compose --env-file .env config --quiet
 
 ## 從舊版 MySQL volume 升級
 
-舊版根目錄 Compose 曾以 `change-me-locally` 初始化 `parking_app`，並以 `change-root-locally` 初始化 root。MySQL image 只在空資料目錄套用 `MYSQL_PASSWORD` 與 `MYSQL_ROOT_PASSWORD`；若 volume 已存在，改 `.env` 不會自動輪替資料庫內的密碼。新版 Compose 沿用 `taiwan-parking-forecast_mysql-data`，因此不可直接把新的隨機密碼當成已完成遷移。
+舊版根目錄 Compose 曾以 `change-me-locally` 初始化 `parking_app`，並以 `change-root-locally` 初始化 root。MySQL image 只在空資料目錄套用 `MYSQL_PASSWORD` 與 `MYSQL_ROOT_PASSWORD`；若 volume 已存在，改 `.env` 不會自動輪替資料庫內的密碼。舊版也會建立 `root@'%'`；新版 Compose 明確設定 `MYSQL_ROOT_HOST=localhost`，只影響新建的空資料目錄，不會替既有帳號移除遠端 root。新版沿用 `taiwan-parking-forecast_mysql-data`，因此不可直接把新的隨機密碼當成已完成遷移。
 
-既有資料升級前，先依下方備份流程備份資料，並將備份還原到隔離 project 後確認資料表及紀錄可讀。確認 Compose project、volume 名稱和掛載用途後，建立含新隨機密碼的私有 `.env`；先只啟動 MySQL，避免 API 以新密碼連線：
+先確認 project 名稱、Compose volume 名稱與資料掛載用途：本專案預設 project 是 `taiwan-parking-forecast`，主系統 volume 是 `taiwan-parking-forecast_mysql-data`。先備份目前仍可登入的資料庫，並在隔離 project 還原核對資料表及紀錄可讀。舊 MySQL 若仍在執行，使用該資料庫目前有效的帳密備份；不可先用新 `.env` 重建 MySQL，因為 MySQL 內的舊密碼尚未改變。
+
+若舊 MySQL 已停止，先在 repo 以外的受保護路徑建立私有 `.env.legacy`，只填入該既有 volume 目前有效的 `PARKING_DB_PASSWORD` 與 `MYSQL_ROOT_PASSWORD`。若從未輪替，使用該部署版本的初始帳密；不要假設新版 `.env` 的值已套用，也不要將帳密貼入終端記錄或 CI。不要提交此檔案。再次檢查上述 project 與 volume 身分後，只啟動 MySQL：
+
+~~~bash
+docker compose --env-file /secure/path/.env.legacy up -d mysql
+docker compose --env-file /secure/path/.env.legacy ps mysql
+~~~
+
+等 MySQL healthcheck 通過後，以 `.env.legacy` 中目前有效的帳密完成下方備份；備份成功並在隔離 project 還原核對前，不要開始密碼輪替。如此即使舊服務容器已停止，備份仍會由使用正確舊認證的 MySQL 執行。還原隔離資料庫時使用包含新隨機密碼的另一份私有環境檔，不能把正式 volume 掛入 restore project。
+
+完成備份和還原核對後，建立包含彼此不同新隨機密碼的私有 `.env`。若原 MySQL 使用 `.env.legacy` 啟動，以新 `.env` 只重建 MySQL service，API 仍保持停止：
 
 ~~~bash
 docker compose --env-file .env up -d mysql
 ~~~
 
-MySQL 容器會沿用舊 volume，此時 healthcheck 可能尚未通過。使用互動式 MySQL client 輸入舊 root 密碼（未自行更改舊版預設時為 `change-root-locally`），再把以下兩個 `REPLACE_...` 位置替換成私有 `.env` 中的新值。先前舊版若曾手動改過帳密，請使用目前資料庫實際密碼。關閉 MySQL client history，避免把輪替語句寫入 client history：
+容器會沿用原 volume；切換 `.env` 後，在輪替完成前 healthcheck 可能尚未通過。透過本機 socket 使用舊 root 密碼登入，並將 `REPLACE_...` 替換為新 `.env` 的值。關閉 MySQL client history，避免將輪替語句寫入 client history：
 
 ~~~bash
 docker compose --env-file .env exec -e MYSQL_HISTFILE=/dev/null mysql mysql -uroot -p
 ~~~
 
-在 MySQL 提示符執行：
+先盤點所有 root 帳號 Host：
+
+~~~sql
+SELECT User, Host FROM mysql.user WHERE User = 'root' ORDER BY Host;
+~~~
+
+執行帳密輪替並移除不需要的遠端 root 帳號；正式 Compose 不發布 MySQL 主機埠，API 使用 `parking_app`，不需要 `root@'%'`：
 
 ~~~sql
 ALTER USER 'parking_app'@'%' IDENTIFIED BY 'REPLACE_WITH_PARKING_DB_PASSWORD';
 ALTER USER 'root'@'localhost' IDENTIFIED BY 'REPLACE_WITH_MYSQL_ROOT_PASSWORD';
+DROP USER IF EXISTS 'root'@'%';
 ~~~
 
-確認兩個值與私有 `.env` 完全一致後退出，再啟動其餘服務並檢查健康狀態與同源 API。若輪替中斷，不要刪除或重建原 volume；先檢查實際資料庫帳密，必要時將已驗證的備份還原到隔離 volume 後再安排資料回復。新建的空 volume 不需執行此遷移步驟。
+如盤點到其他非 localhost 的 root 帳號，也需在繼續前移除，或依實際管理需求改為唯一的新強密碼並限制來源；不得保留仍可使用舊密碼的 root。退出 client 後以新 root 本機認證、應用帳號的新 TCP 認證、服務 healthcheck 及同源 API 驗證輪替結果；再啟動其他服務。若輪替中斷，不要刪除或重建原 volume，先檢查實際帳號與已驗證備份，再安排復原。新建的空 volume 不需執行此遷移步驟。
 
 ## 狀態、記錄與停止
 
@@ -120,9 +138,12 @@ docker compose --env-file .env down
 
 ~~~bash
 BACKUP_DIR=/srv/private-backups/taiwan-parking-forecast
+COMPOSE_ENV_FILE=.env
+# 舊 MySQL 已停止並以目前有效舊帳密重新啟動時，改用受保護路徑的 .env.legacy。
+# COMPOSE_ENV_FILE=/secure/path/.env.legacy
 umask 077
 mkdir -p "$BACKUP_DIR"
-docker compose --env-file .env exec -T mysql sh -c 'mysqldump --single-transaction --routines --triggers -uroot -p"$MYSQL_ROOT_PASSWORD" taiwan_parking_forecast' > "$BACKUP_DIR/taiwan-parking-$(date +%Y%m%d%H%M%S).sql"
+docker compose --env-file "$COMPOSE_ENV_FILE" exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqldump --single-transaction --routines --triggers -uroot taiwan_parking_forecast' > "$BACKUP_DIR/taiwan-parking-$(date +%Y%m%d%H%M%S).sql"
 ~~~
 
 還原演練指定全新 project name，使用獨立的 taiwan-parking-forecast-restore_mysql-data volume，不會連到預設主系統 volume：

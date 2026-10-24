@@ -305,7 +305,7 @@
       <span class="pill pending">Places 真實候選人工驗收：NOT RUN</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>分支 <code>codex/unify-place-search-compose</code> 從最新 <code>main</code> 整合出發地／目的地 Places 隔離選取、O18 預設起點與單一安全 Compose。前端 5 組測試／production build、後端 102 個測試、Compose config／API 與 Web image build、隔離 runtime health、同源 <code>/api/health</code> 和 MySQL volume 重啟持久化均通過；Web 僅綁 <code>127.0.0.1:18088</code>，API／MySQL／Redis 無 host port。GPT RELAY 第一輪對 SHA <code>6a3f07a</code> 回覆 NOT PASS（1 P1、2 P2），已修正既有 MySQL volume 密碼遷移文件與隔離驗證、catalog smoke 限流間距、目的地重設時作廢 Places 舊回應；新 HEAD 等待第二輪審查，尚未建立 PR。兩支 smoke 在隔離空資料庫因沒有已發布 snapshot 而未通過資料斷言，修正後尚未在具完整 snapshot 的環境重跑。以空 key 建置的 375px 手機畫面沒有水平溢出；真實 Places 候選標為 NOT RUN。原 <code>taiwan-parking-forecast_mysql-data</code> 與未確認用途的 <code>s3022demo_mysql-data</code> 均保留；正式停車預測機率仍為 null／資料不足。</div>
+    <div class="notice"><strong>目前結論：</strong>分支 <code>codex/unify-place-search-compose</code> 從最新 <code>main</code> 整合出發地／目的地 Places 隔離選取、O18 預設起點與單一安全 Compose。前端 5 組測試／production build、後端 102 個測試、Compose config／API 與 Web image build、隔離 runtime health、同源 <code>/api/health</code> 和 MySQL volume 重啟持久化均通過；Web 僅綁 <code>127.0.0.1:18088</code>，API／MySQL／Redis 無 host port。GPT RELAY 第一輪三項已修，第二輪對 SHA <code>d24c07f</code> 回覆 NOT PASS（1 P1、1 P2）：須限制新 volume 的 root 為 localhost、升級既有 volume 時移除或輪替遠端 root，並說明如何以舊有效帳密啟動已停止的 MySQL 以先備份，再執行隔離還原與帳密輪替。修正後新 volume root 限定 localhost、遠端舊 root TCP 認證失敗、舊認證停機備份、四服務 health、同源 API 與 MySQL 重啟持久化均在隔離環境驗證通過；測試資源已按 project label 清除，實際 volume 保留。現在待 commit／push 並送同一 GPT 對話第三輪審查，尚未建立 PR。兩支 smoke 在隔離空資料庫因沒有已發布 snapshot 而未通過資料斷言，修正後尚未在具完整 snapshot 的環境重跑。以空 key 建置的 375px 手機畫面沒有水平溢出；真實 Places 候選標為 NOT RUN。原 <code>taiwan-parking-forecast_mysql-data</code> 與未確認用途的 <code>s3022demo_mysql-data</code> 均保留；正式停車預測機率仍為 null／資料不足。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -547,7 +547,7 @@
   <section class="layout" aria-labelledby="next-title">
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
-      <p>2026-10-24：GPT RELAY 第一輪對 SHA <code>6a3f07a</code> 為 NOT PASS，發現三項問題；工作樹已修正並完成前端測試／build、PowerShell parser 與隔離 MySQL 密碼輪替／資料保留驗證，現在等待同一對話審查新 HEAD。僅在 GPT 明確回覆 PASS 後建立唯一 PR，停於 PR Review，不合併。兩支 smoke 在空隔離 DB 因無已發布 snapshot 而未通過資料斷言；修正後未在具完整 snapshot 的環境重跑。真實 Places 候選、遠端 DNS／HTTPS、Routes ETA、正式備份還原及版本回退仍為 NOT RUN；預測模型與完整新莊覆蓋不在此變更內。</p>
+      <p>2026-10-24：GPT RELAY 第二輪對 SHA <code>d24c07f</code> 為 NOT PASS，指出既有 volume 的遠端 root 帳號與停止後備份順序兩項問題。已完成根目錄 Compose 的 MYSQL_ROOT_HOST 與升級備份／還原／帳密輪替文件修正，以及隔離 MySQL 舊密碼失效、新 root／應用認證、停機後備份及完整四服務持久化驗證；待提交同一功能分支並再次送交該對話 Code Review。僅在 GPT 明確回覆 PASS 後建立唯一 PR，停於 PR Review，不合併。兩支 smoke 在空隔離 DB 因無已發布 snapshot 而未通過資料斷言；修正後未在具完整 snapshot 的環境重跑。真實 Places 候選、遠端 DNS／HTTPS、Routes ETA、正式備份還原及版本回退仍為 NOT RUN；預測模型與完整新莊覆蓋不在此變更內。</p>
       <ol>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/82">S3-021</a> 模型實驗證據與限制交接；S3-017 資格分類／審查可並行。</li>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/83">S3-022</a> 審查後目錄匯入與可展示範圍，不繞過寫入保護。</li>

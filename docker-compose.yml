@@ -57,6 +57,7 @@ services:
       MYSQL_USER: parking_app
       MYSQL_PASSWORD: ${PARKING_DB_PASSWORD:?請設定 PARKING_DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?請設定 MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_HOST: localhost
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:

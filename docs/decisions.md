@@ -13,9 +13,9 @@
 ## 2026-10-24：沿用 MySQL volume 時須明確遷移既有帳密
 
 - **原因**：MySQL 官方 image 的 `MYSQL_PASSWORD` 與 `MYSQL_ROOT_PASSWORD` 只在空資料目錄初始化帳號；沿用既有 `taiwan-parking-forecast_mysql-data` 時，修改 `.env` 不會替資料庫內的帳號換密碼。
-- **決策**：部署轉換前先備份並在隔離 volume 驗證，再以目前資料庫帳密連線，將 `parking_app` 與 root 輪替至私有 `.env` 的新值；確認 healthcheck 與 API 連線後才啟動整組服務。不得以 `down -v` 或刪除 volume 解決帳密不一致。
+- **決策**：MySQL 新建空 volume 明確設定 `MYSQL_ROOT_HOST=localhost`，避免建立遠端 root。升級既有 volume 時先以資料庫當下有效帳密備份並在隔離 volume 驗證，再將 `parking_app` 與 `root@localhost` 輪替至私有 `.env` 新值，移除不需要的 `root@'%'` 並核對其他非 localhost root；確認新認證、healthcheck 與 API 連線後才啟動整組服務。若舊 MySQL 已停止，使用 repo 外私有環境檔內目前有效的舊帳密只啟動 MySQL，先完成備份與隔離還原才輪替。不得以 `down -v` 或刪除 volume 解決帳密不一致。
 - **影響**：資料庫帳密輪替會持續留在 volume，Git 回退本身不會反轉帳密；仍寫死舊帳密的 Compose 不可直接回退啟動。新建空 volume 照一般部署設定即可。
-- **狀態**：升級程序記錄於 `docker-deployment.md`，並用隔離 Compose volume 模擬舊預設帳密、輪替、服務重啟與資料保留；實際既有 volume 未執行輪替。
+- **狀態**：升級順序與 root Host 處理記錄於 `docker-deployment.md`；隔離測試驗證新 volume root 限定 localhost、舊遠端 root 輪替移除、應用 TCP 新密碼可用與舊 root TCP 認證失敗、停止後以舊認證重新啟動與備份成功。實際正式 volume 未執行輪替。
 
 ## 2026-10-24：地圖標記使用獨立唯讀資料端點與 ParkBoss 式地圖優先控制
 
