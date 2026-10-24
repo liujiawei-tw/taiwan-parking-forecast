@@ -7,7 +7,7 @@
 - 已從 GitHub fetch `feature/s3-024-minimal-demo-deploy`，在乾淨本機工作樹切換；任務分支目前包含文件交接提交 `012d24f`，base 為 `main@0ef5343`。已完整讀取 Issue #85、`docs/s3-024-codex-task.md` 與部署相關架構。
 - 依 Issue 保持本機 `docker-compose.yml` 行為，新增獨立 demo Compose、同源 `/api` Nginx 代理、只綁 loopback 的 Web 埠、MySQL 持久 volume、查詢建立 IP 限流與部署環境機密設定；前端遠端 build 使用相對 `/api/v1/...`，local fallback 仍保留。
 - 已更新 README、部署維運與 smoke 文件。驗證證據：本機與 demo Compose 均通過 `config --quiet`；範例環境檔只含假資料；解析 Compose 結果確認只有 web 發布 `127.0.0.1:18088`，API／MySQL／Redis 無主機埠，MySQL 掛 named volume。`npm run build` 與 demo web image build 通過；mock API 驗證 Nginx 原樣轉送 `/api/v1/parking-queries?probe=kept`，POST 建立路徑 200、200、200、429，429 JSON 為 `RATE_LIMITED` 且帶 `Retry-After: 60`；production bundle 沒有 `http://localhost:8080`。
-- 基準檢查時，GitHub Issue 文件提交 `012d24f` 未附 CI status 或 PR workflow run；本分支 push 後須再確認新的 Actions 結果。未執行後端完整測試、政府來源 refresh、Routes 真 ETA 或遠端 smoke，交由 CI／有遠端資源後驗收。
+- GitHub Actions run [#126](https://github.com/liujiawei-tw/taiwan-parking-forecast/actions/runs/40082785631) 對本次提交 `58389cd` 的 Backend Maven test、Frontend npm build、Docker image build 全部回報 failure；每個 job 約 2 秒結束，GitHub job API 未列出任何 step／runner，log endpoint 回 404。前一筆 task 文件提交 `012d24f` 與 base `0ef5343` 的 run #125／#124 也同樣在 2–3 秒內失敗，顯示這是既有 Actions 執行問題的強烈跡象；但無 step/log，具體原因仍無法驗證，應由 repository 管理者檢查 Actions／hosted runner 設定。未執行後端完整測試、政府來源 refresh、Routes 真 ETA 或遠端 smoke。
 - `npm ci` 的套件稽核訊息回報 2 項 high severity vulnerabilities；本任務未改依賴，應由後續依賴安全工作確認影響與修補版本。
 - 已確認的限制：目前沒有遠端主機、網域、TLS 反向代理、browser key 或 Routes server key 可供實測；因此遠端 HTTPS、真 ETA、外部瀏覽器 smoke、備份還原演練及實際版本回退都未驗收，不能稱為已部署。建議使用 Caddy 終止 TLS 是工作假設，部署者可沿用其他既有 HTTPS 反向代理。
 - 分支交付遵守 Issue #85：只 Commit／Push 到 `feature/s3-024-minimal-demo-deploy`，不開 PR、不 Merge、不修改 main；GPT Review 後續依 exact SHA 進行。
