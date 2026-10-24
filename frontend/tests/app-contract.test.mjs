@@ -11,5 +11,12 @@ assert.match(app, /v-if="hasGoogleMapsKey" ref="originAutocompleteHost"/)
 assert.match(app, /v-else class="places-help"/)
 assert.doesNotMatch(app, /type="number"|測試座標|手動座標|COORDINATES/)
 assert.match(app, /@click="createParkingQuery"/)
+const resetDestinationBody = app.match(/function useDefaultDestination\(\) \{([\s\S]*?)\n\}/)?.[1]
+assert.ok(resetDestinationBody, 'default destination reset handler must exist')
+assert.ok(
+  resetDestinationBody.indexOf('destinationSelectionVersion++')
+    < resetDestinationBody.indexOf('selectedDestination.value ='),
+  'default destination reset must invalidate pending Places selections before changing the selection',
+)
 
 console.log('App Places UI contract tests passed')

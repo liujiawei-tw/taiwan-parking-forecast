@@ -4,6 +4,22 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$script:LastQueryCreateAt = $null
+
+function Wait-ParkingQueryCreateSlot {
+    # Nginx allows 5 query creates per minute with burst=2. Leave one refill
+    # interval plus a margin, including before the first call after another run.
+    $interval = [TimeSpan]::FromSeconds(13)
+    if ($null -eq $script:LastQueryCreateAt) {
+        Start-Sleep -Seconds 13
+    } else {
+        $remainingMilliseconds = $interval.TotalMilliseconds - ([DateTimeOffset]::UtcNow - $script:LastQueryCreateAt).TotalMilliseconds
+        if ($remainingMilliseconds -gt 0) {
+            Start-Sleep -Milliseconds ([int][Math]::Ceiling($remainingMilliseconds))
+        }
+    }
+    $script:LastQueryCreateAt = [DateTimeOffset]::UtcNow
+}
 
 function New-ParkingQuery([string]$Label, [double]$Latitude, [double]$Longitude) {
     $body = @{
@@ -12,6 +28,7 @@ function New-ParkingQuery([string]$Label, [double]$Latitude, [double]$Longitude)
         destination = @{ label = $Label; latitude = $Latitude; longitude = $Longitude }
         departure = @{ type = 'NOW' }
     } | ConvertTo-Json -Depth 5
+    Wait-ParkingQueryCreateSlot
     return Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v1/parking-queries" `
         -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))
 }

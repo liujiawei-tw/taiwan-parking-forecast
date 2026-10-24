@@ -1001,6 +1001,7 @@ function getDestinationLatLng() {
 }
 
 function useDefaultDestination() {
+  destinationSelectionVersion++
   selectedDestination.value = { ...defaultDestination }
   renderMap()
 }

@@ -66,6 +66,31 @@ docker compose --env-file .env config --quiet
 
 不要把 docker compose config 的完整輸出貼到 CI、Issue、PR 或聊天。
 
+## 從舊版 MySQL volume 升級
+
+舊版根目錄 Compose 曾以 `change-me-locally` 初始化 `parking_app`，並以 `change-root-locally` 初始化 root。MySQL image 只在空資料目錄套用 `MYSQL_PASSWORD` 與 `MYSQL_ROOT_PASSWORD`；若 volume 已存在，改 `.env` 不會自動輪替資料庫內的密碼。新版 Compose 沿用 `taiwan-parking-forecast_mysql-data`，因此不可直接把新的隨機密碼當成已完成遷移。
+
+既有資料升級前，先依下方備份流程備份資料，並將備份還原到隔離 project 後確認資料表及紀錄可讀。確認 Compose project、volume 名稱和掛載用途後，建立含新隨機密碼的私有 `.env`；先只啟動 MySQL，避免 API 以新密碼連線：
+
+~~~bash
+docker compose --env-file .env up -d mysql
+~~~
+
+MySQL 容器會沿用舊 volume，此時 healthcheck 可能尚未通過。使用互動式 MySQL client 輸入舊 root 密碼（未自行更改舊版預設時為 `change-root-locally`），再把以下兩個 `REPLACE_...` 位置替換成私有 `.env` 中的新值。先前舊版若曾手動改過帳密，請使用目前資料庫實際密碼。關閉 MySQL client history，避免把輪替語句寫入 client history：
+
+~~~bash
+docker compose --env-file .env exec -e MYSQL_HISTFILE=/dev/null mysql mysql -uroot -p
+~~~
+
+在 MySQL 提示符執行：
+
+~~~sql
+ALTER USER 'parking_app'@'%' IDENTIFIED BY 'REPLACE_WITH_PARKING_DB_PASSWORD';
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'REPLACE_WITH_MYSQL_ROOT_PASSWORD';
+~~~
+
+確認兩個值與私有 `.env` 完全一致後退出，再啟動其餘服務並檢查健康狀態與同源 API。若輪替中斷，不要刪除或重建原 volume；先檢查實際資料庫帳密，必要時將已驗證的備份還原到隔離 volume 後再安排資料回復。新建的空 volume 不需執行此遷移步驟。
+
 ## 狀態、記錄與停止
 
 ~~~bash
@@ -125,6 +150,8 @@ docker compose --env-file .env up -d --build
 
 回退時 checkout 上一個可用 SHA，再以相同 Compose project name、.env 與啟動命令重建。MySQL volume 會保留；若新版本包含 Flyway schema migration，舊版程式可能無法讀取新版 schema，必須先檢查 migration 相容性，必要時還原至隔離 volume 後再安排資料回復。回退不等同把舊 volume 或 restore volume 直接掛入服務。
 
+資料庫密碼輪替會保留在 MySQL volume，Git 回退不會反轉帳密。已輪替密碼後，不能直接啟動仍寫死舊帳密的舊版 Compose；回退前需先確認回退版能使用目前 `.env`，或完成有備份的資料庫帳密回復，並驗證後再啟動。
+
 ## Smoke 與目前限制
 
 本機 smoke 以唯一 Web URL 的同源 /api 執行：
@@ -135,6 +162,8 @@ docker compose --env-file .env up -d --build
 ~~~
 
 Smoke 會建立停車查詢並檢查 500 公尺、來源快照、資料不足、預測機率為 null、限流／刷新契約。Routes 停用或缺少有效 key 時 ETA 降級屬預期結果，不會單獨判定 Compose 部署失敗；有意啟用真 Routes 時才將 ETA READY 列為額外驗收。Smoke 可能觸發官方來源的受控刷新，請勿密集重複執行。
+
+Catalog smoke 會在每次建立查詢間隔至少 13 秒，以符合 Nginx 每分鐘 5 次及 burst=2 的正式限流設定；完整資料 smoke 因此需要較長時間。
 
 這兩支 smoke 需要審查後的目錄 mapping 及已發布 snapshot；全新空資料庫尚無這些前置資料時，snapshot 斷言會失敗。應將其報告為「來源資料前置條件未滿足」，不要混同 Web／API／MySQL／Redis health 或同源代理失敗。不得為了通過 smoke 而沿用未盤點的舊 Demo named volume。
 

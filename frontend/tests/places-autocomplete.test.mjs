@@ -69,6 +69,26 @@ assert.equal(await destinationHandler(newDestination), true)
 assert.equal(destination.label, '新莊體育館')
 assert.equal(origin.label, '新莊捷運站', 'destination selection must not update origin')
 
+let resetDestination = { label: '原目的地', latitude: 25.036, longitude: 121.4505 }
+let resetDestinationVersion = 0
+let resolvePendingResetPlace
+const resetDestinationHandler = createPlaceSelectionHandler({
+  onSelectionStart: () => ++resetDestinationVersion,
+  isSelectionCurrent: (version) => version === resetDestinationVersion,
+  onSelected: (place) => { resetDestination = place },
+  onError: () => {},
+})
+const pendingResetPlace = placePrediction({
+  name: '較晚回應的舊目的地',
+  fetchFields: () => new Promise((resolve) => { resolvePendingResetPlace = resolve }),
+})
+const pendingResetSelection = resetDestinationHandler(pendingResetPlace)
+resetDestinationVersion++
+resetDestination = { label: '回到新莊體育館', latitude: 25.036, longitude: 121.4505 }
+resolvePendingResetPlace()
+assert.equal(await pendingResetSelection, false)
+assert.equal(resetDestination.label, '回到新莊體育館', 'resetting the destination invalidates an in-flight Places response')
+
 const lastValidDestination = destination
 const locationlessPlace = placePrediction({ location: null })
 assert.equal(await destinationHandler(locationlessPlace), false)

@@ -10,6 +10,13 @@
 - **原因與影響**：避免起終點結果串寫、舊 ETA 冒充新行程、手動座標與 Places 形成兩套行為，並讓開發與部署使用同一網路／機密邊界。無 Places key 時已核實的預設位置仍可用於既有查詢契約，但真實候選搜尋須等受限測試 key 做瀏覽器人工驗收。資料庫 volume 不因切換 Compose 或停機清除；沒有核實舊 volume 備份／移轉前保留原資料。
 - **狀態**：依分支實際驗證結果更新。模型輸出維持 `INSUFFICIENT_DATA` 與 null probability；部署 build 或降級結果不代表 Routes 或停車預測通過。
 
+## 2026-10-24：沿用 MySQL volume 時須明確遷移既有帳密
+
+- **原因**：MySQL 官方 image 的 `MYSQL_PASSWORD` 與 `MYSQL_ROOT_PASSWORD` 只在空資料目錄初始化帳號；沿用既有 `taiwan-parking-forecast_mysql-data` 時，修改 `.env` 不會替資料庫內的帳號換密碼。
+- **決策**：部署轉換前先備份並在隔離 volume 驗證，再以目前資料庫帳密連線，將 `parking_app` 與 root 輪替至私有 `.env` 的新值；確認 healthcheck 與 API 連線後才啟動整組服務。不得以 `down -v` 或刪除 volume 解決帳密不一致。
+- **影響**：資料庫帳密輪替會持續留在 volume，Git 回退本身不會反轉帳密；仍寫死舊帳密的 Compose 不可直接回退啟動。新建空 volume 照一般部署設定即可。
+- **狀態**：升級程序記錄於 `docker-deployment.md`，並用隔離 Compose volume 模擬舊預設帳密、輪替、服務重啟與資料保留；實際既有 volume 未執行輪替。
+
 ## 2026-10-24：地圖標記使用獨立唯讀資料端點與 ParkBoss 式地圖優先控制
 
 - **原因**：既有查詢回應偏向列表需要，地圖需要每個候選位置的座標、可解釋狀態、資料時效、品質及一般汽車資格；地圖互動也需要在地圖上直接操作圖層、狀態與清單。
