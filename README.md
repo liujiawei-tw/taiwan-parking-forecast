@@ -39,20 +39,20 @@ GitHub Issues [#33](https://github.com/liujiawei-tw/taiwan-parking-forecast/issu
 
 ## Docker Compose
 
-Sprint 2 provides a local Docker Compose environment:
+本機開發沿用原本的 Compose：
 
 ```bash
 docker compose up --build
 ```
 
-Services:
+- `web`：Nginx 提供前端，網址為 `http://localhost:5173`。
+- `api`：Spring Boot API，網址為 `http://localhost:18080`。
+- `mysql`：MySQL 8.4，主機埠 `3307`，資料保存在 `mysql-data` volume。
+- `redis`：Redis，主機埠 `6379`。
 
-- `web`: Vue app served by nginx on `http://localhost:5173`
-- `api`: Spring Boot API on `http://localhost:18080`
-- `mysql`: MySQL 8.4 on host port `3307` and container port `3306`, persisted in the `mysql-data` volume
-- `redis`: Redis on port `6379`
+遠端單機 DEMO 使用隔離設定 `docker-compose.demo.yml`，只將 web 綁定主機 loopback，由主機 Caddy／既有反向代理提供 HTTPS；API、MySQL 與 Redis 不發布主機埠。該設定使用同源 `/api` 代理、MySQL 持久 volume、部署環境密碼及查詢建立 IP 限流。啟動、停止、健康狀態、logs、回退、備份／隔離還原與最小 smoke 步驟見 [`docs/docker-deployment.md`](docs/docker-deployment.md)。
 
-Current credentials are local placeholder values for development only. Replace them through deployment environment variables before any shared environment.
+遠端部署目前只完成可重現設定與文件，尚無主機、網域、憑證及正式金鑰，因此實際 HTTPS、真 ETA、備份還原與遠端瀏覽器驗收尚未完成，不可宣稱已上線。不要將 `.env.demo` 或真實機密提交至 Git。
 
 ## GitHub Actions CI
 

@@ -1,6 +1,6 @@
 # 待確認問題
 
-更新日期：2026-10-08。每題解決後，將結論移入 `decisions.md`，必要時同步更新需求。
+更新日期：2026-10-24。每題解決後，將結論移入 `decisions.md`，必要時同步更新需求。
 
 ## DEMO 收斂仍待驗證
 
@@ -8,7 +8,8 @@
 
 - S3-021 已量到 roadside 全 2,124 格／343 輪狀態不變與圈重疊；根因是官方來源、快取或 collector 重用仍未知。S3-019 續查來源更新鏈，並修正跨 split 標籤（路邊 50／100、路外 41／82 筆）、UTC 時間特徵、未來 catalog 與正式 coverage 條件。
 - S3-022 已完成子集 manifest／獨立 gate 與隔離匯入；S3-017 尚有 164 筆條件式格位需審查（新分類排除 103 筆路邊專用／非一般車格、4 筆路外零容量）。完整行政區邊界仍未驗證。S3-023 續驗跨行政區重複 ID 的去重／衝突策略、約 48 秒發布交易與 API 分頁設定；詳見 s3-022-reviewed-catalog-demo.md。
-- S3-024：DEMO 主機／網域、HTTPS、成本與配額上限、公開流量控制、備份還原與歷史保存策略仍待確定／演練。
+- S3-024：可重現的隔離 Compose、loopback Web、同源 API、POST 限流與備份／隔離還原步驟已交付；實際 DEMO 主機／網域、HTTPS 反向代理、成本與配額、browser key 限制、Routes ETA、來源連線、備份還原及版本回退仍待部署資源與演練。
+- GitHub Actions run #124（base）、#125（任務文件）與 #126（S3-024）所有工作皆在數秒內失敗，job 沒有 runner、steps 或可讀 logs；根因未能從 GitHub 回應驗證，需 repository 管理者檢查 Actions／hosted runner 設定後，再確認 Maven、前端與 Docker CI。
 - S3-025：有限覆蓋與無正式機率是否通過實際遠端人工驗收？目前只有發布規劃，尚未放行。
 - DEMO 後：資料有效變化、長 ETA、near-full 負例、新日期 holdout 與 S3-020 gate 通過才推進模型，不能以 row 數或舊 test 反覆調參代替證據。
 

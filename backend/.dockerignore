@@ -1,0 +1,4 @@
+# Local profile settings are workstation-only; Docker images use the docker profile.
+src/main/resources/application-local.yml
+src/main/resources/application-local.yaml
+src/main/resources/application-local.properties

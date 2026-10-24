@@ -299,12 +299,13 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
-      <span class="pill doing">目前：S3-023 本機驗收進行中</span>
-      <span class="pill">更新：2026-10-08</span>
-      <span class="pill pending">後續：S3-024 遠端部署</span>
+      <span class="pill doing">目前：S3-024 遠端部署設定開發中</span>
+      <span class="pill">更新：2026-10-24</span>
+      <span class="pill blocked">GitHub Actions：job 啟動失敗</span>
+      <span class="pill pending">遠端實機驗收：BLOCKED</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>S3-023 已在本機驗證 Google Places／Routes ETA、500m、兩類官方目前資料、受控刷新與桌面／手機畫面；97 個後端測試通過。受控故障測試證實來源連線失敗、品質拒絕均不覆蓋既有 PUBLISHED，短 TTL 查詢回 410。路邊 1,857、路外 96 筆經審查 mapping 可查，但來源品質為部分通過，模型機率仍為空。前端失敗恢復與真正隱藏頁的瀏覽器證據、截圖保存仍缺，S3-023 未完成；完整新莊覆蓋留 S3-017，遠端部署留 S3-024。</div>
+    <div class="notice"><strong>目前結論：</strong>S3-024 已提供獨立單機 DEMO Compose、loopback Web 入口、同源 /api 代理、查詢建立限流、MySQL 持久化及維運／smoke 文件；Compose config、前端 production build 與 mock API 的 Nginx 路徑／429 驗證通過。GitHub Actions run #126 的三個 job 均在約 2 秒內失敗且沒有 runner／steps／logs；base 與交接文件提交也有同樣結果，CI 執行環境待 repository 管理者查明。沒有遠端主機、網域、HTTPS 入口及正式金鑰，故遠端發布、Routes 真 ETA、備份還原與瀏覽器驗收皆為 BLOCKED，不能宣稱已上線。S3-023 仍有前端失敗恢復、隱藏頁及截圖證據待補；模型機率維持空值，完整新莊覆蓋仍留 S3-017。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -546,7 +547,7 @@
   <section class="layout" aria-labelledby="next-title">
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
-      <p>2026-10-08：S3-023 主流程、桌面／手機及受控失敗保護的 API／DB 驗收已有證據；模型維持空機率。前端失敗恢復、真正隱藏頁與截圖保存尚未完整驗收；S3-024 可先準備部署設定，遠端放行仍以 S3-023 收尾為前置。完整新莊覆蓋留 S3-017。</p>
+      <p>2026-10-24：可重現部署設定與本機必要驗證已完成並推送。GitHub Actions run #126 三個工作失敗，但都沒有 runner、步驟或 logs，且 base／前一提交也相同；需由 repository 管理者確認 CI 執行設定，不能當作程式驗證成功。遠端主機、網域、HTTPS 反向代理與金鑰尚未提供，S3-024 的實機 smoke、真 ETA、備份還原及回退演練仍待部署資源；在驗收前不可宣稱上線。S3-023 尚待補前端失敗恢復、真正隱藏頁與截圖證據；完整新莊覆蓋留 S3-017。</p>
       <ol>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/82">S3-021</a> 模型實驗證據與限制交接；S3-017 資格分類／審查可並行。</li>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/83">S3-022</a> 審查後目錄匯入與可展示範圍，不繞過寫入保護。</li>
