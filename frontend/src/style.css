@@ -126,21 +126,16 @@ h2 {
 }
 
 .autocomplete-host {
+  width: 100%;
+  min-width: 0;
   min-height: 46px;
 }
 
 .autocomplete-host gmp-place-autocomplete {
+  display: block;
   width: 100%;
-}
-
-.manual-grid {
-  display: grid;
-  grid-template-columns: minmax(160px, 1fr) minmax(110px, 0.45fr) minmax(110px, 0.45fr);
-  gap: 8px;
-}
-
-.manual-grid.compact {
-  grid-template-columns: minmax(140px, 1fr) minmax(96px, 0.45fr) minmax(96px, 0.45fr);
+  max-width: 100%;
+  min-width: 0;
 }
 
 input {
@@ -178,10 +173,6 @@ input {
 .action-row {
   grid-column: 1 / -1;
   justify-content: flex-end;
-}
-
-.destination-mode {
-  width: min(100%, 290px);
 }
 
 .segmented-control {
@@ -233,6 +224,23 @@ input {
   margin: 0;
   color: #b42318;
   font-weight: 800;
+}
+
+.places-help,
+.places-error {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.places-help {
+  color: #526173;
+}
+
+.places-error {
+  color: #a3302a;
+  font-weight: 750;
 }
 
 .refresh-message {
@@ -533,9 +541,7 @@ input {
     font-size: 1.45rem;
   }
 
-  .planner-panel,
-  .manual-grid,
-  .manual-grid.compact {
+  .planner-panel {
     grid-template-columns: 1fr;
   }
 

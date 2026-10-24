@@ -7,11 +7,17 @@ import {
 import {
   buildParkingQueryPayload,
   buildRequestToken,
+  DEFAULT_ORIGIN,
   hasUsableGoogleMapsKey,
   locationErrorMessage,
   roadsideCountLabel,
   shouldAutoRefresh,
 } from './planner.js'
+import {
+  createOriginUpdateCoordinator,
+  createPlaceSelectionHandler,
+  requestCurrentLocation,
+} from './placesAutocomplete.js'
 import {
   countMapMarkerCategories,
   describeMapMarker,
@@ -24,10 +30,11 @@ import {
   createMapDataRequestCache,
   createQueryRequestGuard,
   getRoadsideDisplaySummary,
-  hasDestinationChanged,
+  hasPlanningInputsChanged,
   isMapSourceDisplayStale,
   MAP_DISPLAY_FRESHNESS_MS,
   shouldApplyQueryResult,
+  snapshotPlanningInputs,
   snapshotDestination,
 } from './mapDataLifecycle.js'
 
@@ -35,7 +42,6 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 const apiBaseUrlLabel = apiBaseUrl || '同源 /api'
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY || ''
 const hasGoogleMapsKey = hasUsableGoogleMapsKey(googleMapsApiKey)
-const destinationMode = ref(hasGoogleMapsKey ? 'PLACES' : 'COORDINATES')
 
 const defaultDestination = {
   label: '新莊體育館',
@@ -44,19 +50,15 @@ const defaultDestination = {
   longitude: 121.4505,
 }
 
-const defaultOrigin = {
-  label: '目前位置（測試座標）',
-  latitude: 25.04,
-  longitude: 121.45,
-}
 const POLL_INTERVAL_MS = 5000
 const DEFAULT_RADIUS_METERS = 500
 const MAP_DATA_RETRY_DELAY_MS = 15000
 
 const mapElement = ref(null)
-const autocompleteHost = ref(null)
+const originAutocompleteHost = ref(null)
+const destinationAutocompleteHost = ref(null)
 const selectedDestination = ref({ ...defaultDestination })
-const origin = ref({ ...defaultOrigin })
+const origin = ref({ ...DEFAULT_ORIGIN })
 const departureType = ref('NOW')
 const scheduledDepartureLocal = ref('')
 const queryResult = ref(null)
@@ -64,7 +66,10 @@ const loading = ref(false)
 const locating = ref(false)
 const errorMessage = ref('')
 const refreshMessage = ref('')
-const mapStatus = ref(hasGoogleMapsKey ? '正在載入 Google 地圖' : '未設定瀏覽器 Google Maps key，使用手動座標模式')
+const googleMapsLoadError = ref('')
+const originPlaceError = ref('')
+const destinationPlaceError = ref('')
+const mapStatus = ref(hasGoogleMapsKey ? '正在載入 Google 地圖' : '未設定瀏覽器 Google Maps key')
 const mapReady = ref(false)
 const selectedItemId = ref('')
 const autoRefreshAttemptKey = ref('')
@@ -88,14 +93,53 @@ let mapFreshnessTimer
 const queryRequestGuard = createQueryRequestGuard()
 const loadingRequestOwner = createLoadingRequestOwner()
 const mapDataRequestCache = createMapDataRequestCache()
+const originUpdateCoordinator = createOriginUpdateCoordinator()
 let map
 let destinationMarker
 let radiusCircle
 let infoWindow
 let parkingMarkers = []
 let pollTimer
-let locationRequestId = 0
+let destinationSelectionVersion = 0
 const markersById = new Map()
+
+const originPlaceSelectionHandler = createPlaceSelectionHandler({
+  onSelectionStart() {
+    const updateId = originUpdateCoordinator.begin()
+    locating.value = false
+    originPlaceError.value = ''
+    errorMessage.value = ''
+    return updateId
+  },
+  isSelectionCurrent: (updateId) => originUpdateCoordinator.isCurrent(updateId),
+  onSelected(place) {
+    origin.value = place
+    logAcceptanceEvent('ORIGIN_PLACE_SELECTED', '已選取 Google Places 出發地。', {
+      label: place.label,
+      latitude: Number(place.latitude.toFixed(6)),
+      longitude: Number(place.longitude.toFixed(6)),
+    })
+  },
+  onError: (message) => { originPlaceError.value = message },
+})
+
+const destinationPlaceSelectionHandler = createPlaceSelectionHandler({
+  onSelectionStart() {
+    destinationSelectionVersion++
+    destinationPlaceError.value = ''
+    return destinationSelectionVersion
+  },
+  isSelectionCurrent: (version) => version === destinationSelectionVersion,
+  onSelected(place) {
+    selectedDestination.value = place
+    logAcceptanceEvent('PLACE_SELECTED', '已選取 Google Places 目的地。', {
+      label: place.label,
+      latitude: Number(place.latitude.toFixed(6)),
+      longitude: Number(place.longitude.toFixed(6)),
+    })
+  },
+  onError: (message) => { destinationPlaceError.value = message },
+})
 
 const roadsideSpotCount = computed(() => queryResult.value?.roadside?.availableSpots?.length ?? 0)
 const parkingLotCount = computed(() => queryResult.value?.offStreet?.parkingLots?.length ?? 0)
@@ -214,24 +258,34 @@ const resultItems = computed(() => {
 const visibleMapItems = computed(() => filterMapMarkers(resultItems.value, mapFilters.value))
 const mapMarkerCounts = computed(() => countMapMarkerCategories(resultItems.value))
 const queryId = computed(() => queryResult.value?.query?.queryId ?? '')
+const currentPlanningInputs = computed(() => snapshotPlanningInputs({
+  origin: origin.value,
+  destination: selectedDestination.value,
+  departureType: departureType.value,
+  scheduledDepartureLocal: scheduledDepartureLocal.value,
+}))
 
 onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
   if (!hasGoogleMapsKey) {
-    logAcceptanceEvent('MAPS_SKIPPED_NO_KEY', '未設定 browser key，維持手動座標模式。')
+    mapStatus.value = '未設定 Google Maps browser key，地點搜尋不可用'
+    logAcceptanceEvent('MAPS_SKIPPED_NO_KEY', '未設定 browser key，地點搜尋不可用。')
     return
   }
 
   try {
     await initializeGoogleMap()
   } catch (error) {
-    mapStatus.value = `Google 地圖載入失敗：${error.message}`
+    const message = 'Google Maps／Places 載入失敗，請確認 browser key、網域限制與 Places API 設定後重新整理。'
+    googleMapsLoadError.value = message
+    mapStatus.value = message
     logAcceptanceEvent('MAPS_LOAD_FAILED', 'Google Maps JavaScript API 載入失敗。')
   }
 })
 
 onBeforeUnmount(() => {
-  locationRequestId++
+  originUpdateCoordinator.invalidate()
+  destinationSelectionVersion++
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   clearProgressPolling()
   clearMapFreshnessTimer()
@@ -242,18 +296,20 @@ watch([resultDestination, visibleMapItems], () => {
   renderMap()
 }, { deep: true })
 
-watch(() => snapshotDestination(selectedDestination.value), (next, previous) => {
-  if (hasDestinationChanged(next, previous)) {
+watch(currentPlanningInputs, (next, previous) => {
+  if (hasPlanningInputsChanged(next, previous)) {
     queryRequestGuard.invalidate()
     cancelLoading()
-    if (queryResult.value) {
-      queryResult.value = null
-      clearMapDataState()
-      selectedItemId.value = ''
-      showResultPanel.value = false
-      clearProgressPolling()
-    }
+    queryResult.value = null
+    clearMapDataState()
+    selectedItemId.value = ''
+    showResultPanel.value = false
+    refreshMessage.value = ''
+    clearProgressPolling()
   }
+}, { flush: 'sync' })
+
+watch(() => snapshotDestination(selectedDestination.value), (next) => {
   if (map && Number.isFinite(next.latitude) && Number.isFinite(next.longitude)) {
     map.panTo({ lat: next.latitude, lng: next.longitude })
   }
@@ -269,14 +325,16 @@ watch(queryResult, () => {
 
 async function createParkingQuery() {
   const submittedDestination = { ...selectedDestination.value }
-  const requestContext = queryRequestGuard.start(submittedDestination)
+  const submittedOrigin = { ...origin.value }
+  const submittedPlanningInputs = currentPlanningInputs.value
+  const requestContext = queryRequestGuard.start(submittedPlanningInputs)
   const loadingRequestId = startLoading()
   errorMessage.value = ''
 
   try {
     const payload = buildParkingQueryPayload({
       requestToken: buildRequestToken(window.crypto),
-      origin: origin.value,
+      origin: submittedOrigin,
       destination: submittedDestination,
       departureType: departureType.value,
       scheduledDepartureLocal: scheduledDepartureLocal.value,
@@ -301,7 +359,7 @@ async function createParkingQuery() {
     }
 
     const result = await response.json()
-    if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value)) return
+    if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value)) return
 
     queryResult.value = result
     selectedItemId.value = ''
@@ -311,7 +369,7 @@ async function createParkingQuery() {
     await loadMapData()
     renderMap()
   } catch (error) {
-    if (queryRequestGuard.isCurrent(requestContext, selectedDestination.value)) {
+    if (queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value)) {
       errorMessage.value = `建立查詢失敗：${error.message}`
     }
   } finally {
@@ -324,7 +382,7 @@ async function createParkingQuery() {
 async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
   const requestQueryId = queryId.value
   if (!requestQueryId || loading.value) return
-  const requestContext = queryRequestGuard.capture(selectedDestination.value, requestQueryId)
+  const requestContext = queryRequestGuard.capture(currentPlanningInputs.value, requestQueryId)
   const loadingRequestId = startLoading()
 
   errorMessage.value = ''
@@ -348,19 +406,19 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
     }
 
     const result = await response.json()
-    if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) return
+    if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) return
     if (!shouldApplyQueryResult(queryResult.value, result)) return
 
     queryResult.value = result
     await loadMapData(true)
-    if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) return
+    if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) return
     refreshMessage.value = [
       formatSourceRefresh('路邊', queryResult.value.refresh?.roadside),
       formatSourceRefresh('路外', queryResult.value.refresh?.offStreet),
     ].join('；')
     renderMap()
   } catch (error) {
-    if (queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) {
+    if (queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) {
       errorMessage.value = `更新車位失敗：${error.message}`
       refreshMessage.value = '本次更新未完成；不會自動密集重試。'
       if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
@@ -380,7 +438,7 @@ function startLoading() {
 }
 
 function finishLoading(requestId, requestContext) {
-  if (!queryRequestGuard.isGenerationCurrent(requestContext, selectedDestination.value)) return false
+  if (!queryRequestGuard.isGenerationCurrent(requestContext, currentPlanningInputs.value)) return false
   if (!loadingRequestOwner.release(requestId)) return false
   loading.value = false
   return true
@@ -394,7 +452,7 @@ function cancelLoading() {
 async function readParkingQuery(forceMapData = false) {
   const requestQueryId = queryId.value
   if (!requestQueryId || loading.value) return
-  const requestContext = queryRequestGuard.capture(selectedDestination.value, requestQueryId)
+  const requestContext = queryRequestGuard.capture(currentPlanningInputs.value, requestQueryId)
 
   try {
     const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${requestQueryId}`)
@@ -407,18 +465,18 @@ async function readParkingQuery(forceMapData = false) {
       throw await readApiError(response)
     }
     const result = await response.json()
-    if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) return
+    if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) return
     if (!shouldApplyQueryResult(queryResult.value, result)) return
 
     queryResult.value = result
     await loadMapData(forceMapData)
-    if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) return
+    if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) return
     if (errorMessage.value.startsWith('讀取查詢狀態失敗：')) {
       errorMessage.value = ''
     }
     refreshMessage.value = '已讀取最新查詢狀態。'
   } catch (error) {
-    if (queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) {
+    if (queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) {
       errorMessage.value = `讀取查詢狀態失敗：${error.message}`
       clearProgressPolling()
       if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
@@ -650,7 +708,10 @@ async function readApiError(response) {
 async function initializeGoogleMap() {
   await loadGoogleMapsScript()
   const { Map } = await window.google.maps.importLibrary('maps')
-  await window.google.maps.importLibrary('places')
+  const { PlaceAutocompleteElement } = await window.google.maps.importLibrary('places')
+  if (typeof PlaceAutocompleteElement !== 'function') {
+    throw new Error('Google Places Autocomplete 元件不可用')
+  }
 
   map = new Map(mapElement.value, {
     center: getDestinationLatLng(),
@@ -660,11 +721,11 @@ async function initializeGoogleMap() {
     fullscreenControl: true,
   })
   infoWindow = new window.google.maps.InfoWindow()
+  setupPlaceAutocompletes(PlaceAutocompleteElement)
   mapStatus.value = 'Google 地圖已載入'
   mapReady.value = true
   logAcceptanceEvent('MAPS_LOADED', 'Google Maps JavaScript API 與 Places library 已載入。')
 
-  setupPlaceAutocomplete()
   renderMap()
 }
 
@@ -674,61 +735,77 @@ function loadGoogleMapsScript() {
 
   googleMapsPromise = new Promise((resolve, reject) => {
     const callbackName = `initParkingMap${Date.now()}`
-    window[callbackName] = () => {
+    let settled = false
+    const previousAuthFailure = window.gm_authFailure
+    const timeoutId = window.setTimeout(() => {
+      settle(new Error('Google Maps JavaScript API 載入逾時'))
+    }, 15000)
+
+    const settle = (error) => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timeoutId)
       delete window[callbackName]
-      resolve()
+      if (window.gm_authFailure === handleAuthFailure) {
+        if (previousAuthFailure) window.gm_authFailure = previousAuthFailure
+        else delete window.gm_authFailure
+      }
+      if (error) {
+        googleMapsPromise = undefined
+        reject(error)
+      } else {
+        resolve()
+      }
     }
+    const handleAuthFailure = () => settle(new Error('Google Maps API 驗證失敗'))
+    window[callbackName] = () => settle()
+    window.gm_authFailure = handleAuthFailure
 
     const script = document.createElement('script')
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsApiKey)}&v=weekly&language=zh-TW&region=TW&callback=${callbackName}`
     script.async = true
-    script.onerror = () => {
-      delete window[callbackName]
-      googleMapsPromise = undefined
-      reject(new Error('無法載入 Maps JavaScript API'))
-    }
+    script.onerror = () => settle(new Error('無法載入 Maps JavaScript API'))
     document.head.appendChild(script)
   })
 
   return googleMapsPromise
 }
 
-function setupPlaceAutocomplete() {
-  if (!autocompleteHost.value || !window.google?.maps?.places?.PlaceAutocompleteElement) return
+function setupPlaceAutocompletes(PlaceAutocompleteElement) {
+  setupOriginPlaceAutocomplete(PlaceAutocompleteElement)
+  setupDestinationPlaceAutocomplete(PlaceAutocompleteElement)
+}
 
-  autocompleteHost.value.replaceChildren()
-  const autocomplete = new window.google.maps.places.PlaceAutocompleteElement()
-  autocomplete.placeholder = '搜尋目的地、地址或地標'
-  autocomplete.addEventListener('gmp-select', async (event) => {
-    const prediction = event.placePrediction || event.detail?.placePrediction
-    if (!prediction) return
-
-    const place = prediction.toPlace()
-    await place.fetchFields({
-      fields: ['displayName', 'formattedAddress', 'location'],
-    })
-
-    if (!place.location) {
-      errorMessage.value = '此地點沒有可用座標，請改選其他候選。'
-      return
-    }
-
-    selectedDestination.value = {
-      label: place.displayName || place.formattedAddress || '已選目的地',
-      address: place.formattedAddress || '',
-      latitude: place.location.lat(),
-      longitude: place.location.lng(),
-    }
-    logAcceptanceEvent('PLACE_SELECTED', '已選取 Google Places 目的地。', {
-      label: selectedDestination.value.label,
-      latitude: Number(selectedDestination.value.latitude.toFixed(6)),
-      longitude: Number(selectedDestination.value.longitude.toFixed(6)),
-    })
-    errorMessage.value = ''
-    map?.panTo(getDestinationLatLng())
-    renderMap()
+function setupOriginPlaceAutocomplete(PlaceAutocompleteElement) {
+  setupPlaceAutocomplete({
+    host: originAutocompleteHost.value,
+    PlaceAutocompleteElement,
+    placeholder: '搜尋出發地、地址或地標',
+    selectionHandler: originPlaceSelectionHandler,
   })
-  autocompleteHost.value.appendChild(autocomplete)
+}
+
+function setupDestinationPlaceAutocomplete(PlaceAutocompleteElement) {
+  setupPlaceAutocomplete({
+    host: destinationAutocompleteHost.value,
+    PlaceAutocompleteElement,
+    placeholder: '搜尋目的地、地址或地標',
+    selectionHandler: destinationPlaceSelectionHandler,
+  })
+}
+
+function setupPlaceAutocomplete({ host, PlaceAutocompleteElement, placeholder, selectionHandler }) {
+  if (!host) throw new Error('Google Places 搜尋欄位尚未就緒')
+
+  host.replaceChildren()
+  const autocomplete = new PlaceAutocompleteElement()
+  autocomplete.placeholder = placeholder
+  autocomplete.style.width = '100%'
+  autocomplete.style.maxWidth = '100%'
+  autocomplete.style.minWidth = '0'
+  autocomplete.setAttribute('aria-label', placeholder)
+  autocomplete.addEventListener('gmp-select', selectionHandler)
+  host.appendChild(autocomplete)
 }
 
 function renderMap() {
@@ -924,56 +1001,33 @@ function getDestinationLatLng() {
 }
 
 function useDefaultDestination() {
-  queryRequestGuard.invalidate()
-  cancelLoading()
   selectedDestination.value = { ...defaultDestination }
-  queryResult.value = null
-  clearMapDataState()
-  selectedItemId.value = ''
   renderMap()
 }
 
 function useCurrentLocation() {
-  if (!navigator.geolocation) {
-    errorMessage.value = '此瀏覽器不支援定位，請保留測試座標或手動輸入起點。'
-    return
-  }
-
-  locating.value = true
+  originPlaceError.value = ''
   errorMessage.value = ''
-  const requestId = ++locationRequestId
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      if (requestId !== locationRequestId) return
+  requestCurrentLocation(navigator.geolocation, originUpdateCoordinator, {
+    onStart() {
+      locating.value = true
+    },
+    onSuccess(position) {
       origin.value = {
         label: '裝置目前位置',
+        address: '',
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       }
       locating.value = false
     },
-    (error) => {
-      if (requestId !== locationRequestId) return
-      errorMessage.value = locationErrorMessage(error)
+    onError(error) {
+      errorMessage.value = error?.unsupported
+        ? '此瀏覽器不支援定位，請改用地點搜尋選擇起點。'
+        : locationErrorMessage(error)
       locating.value = false
     },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 60000,
-    },
-  )
-}
-
-function cancelLocationRequest() {
-  locationRequestId++
-  locating.value = false
-  errorMessage.value = ''
-}
-
-function useTestOrigin() {
-  cancelLocationRequest()
-  origin.value = { ...defaultOrigin }
+  })
 }
 
 function buildExternalRouteUrl(item) {
@@ -1025,44 +1079,45 @@ function logAcceptanceEvent(type, message, details = {}) {
       </div>
       <div class="service-status">
         <span class="status-dot" :class="{ ready: mapReady }" aria-hidden="true"></span>
-        {{ mapReady ? '地圖與地點搜尋已載入' : '地圖尚未載入' }}
+        {{ mapReady ? '地圖與地點搜尋已載入' : googleMapsLoadError ? '地點搜尋載入失敗' : hasGoogleMapsKey ? '地圖尚未載入' : '地點搜尋不可用' }}
       </div>
     </section>
 
     <section class="planner-panel" aria-label="行程規劃">
       <div class="field-group destination-field">
         <label>目的地</label>
-        <div v-if="hasGoogleMapsKey" class="segmented-control destination-mode" role="group" aria-label="目的地輸入方式">
-          <button type="button" :class="{ active: destinationMode === 'PLACES' }" @click="destinationMode = 'PLACES'">搜尋地點</button>
-          <button type="button" :class="{ active: destinationMode === 'COORDINATES' }" @click="destinationMode = 'COORDINATES'">手動座標</button>
-        </div>
-        <div v-if="hasGoogleMapsKey" v-show="destinationMode === 'PLACES'" ref="autocompleteHost" class="autocomplete-host"></div>
-        <div v-if="destinationMode === 'COORDINATES'" class="manual-grid">
-          <input v-model="selectedDestination.label" type="text" aria-label="目的地名稱">
-          <input v-model.number="selectedDestination.latitude" type="number" step="0.000001" aria-label="目的地緯度">
-          <input v-model.number="selectedDestination.longitude" type="number" step="0.000001" aria-label="目的地經度">
-        </div>
+        <div v-if="hasGoogleMapsKey" ref="destinationAutocompleteHost" class="autocomplete-host"></div>
+        <p v-else class="places-help" role="status">
+          地點搜尋目前不可用，請設定 Google Maps browser key；已選取的預設目的地仍可規劃查詢。
+        </p>
+        <p v-if="googleMapsLoadError" class="places-error" role="alert">{{ googleMapsLoadError }}</p>
+        <p v-else-if="hasGoogleMapsKey && !mapReady" class="places-help" role="status">正在載入 Google 地點搜尋…</p>
+        <p v-if="destinationPlaceError" class="places-error" role="alert">{{ destinationPlaceError }}</p>
         <div class="selected-place">
           <strong>{{ selectedDestination.label }}</strong>
-          <span>{{ selectedDestination.address || '未選 Google 地點時使用目前座標' }}</span>
+          <span>{{ selectedDestination.address || '所選地點未提供地址' }}</span>
           <span>{{ Number(selectedDestination.latitude).toFixed(6) }}, {{ Number(selectedDestination.longitude).toFixed(6) }}</span>
         </div>
       </div>
 
-      <div class="field-group">
+      <div class="field-group origin-field">
         <label>起點</label>
+        <div v-if="hasGoogleMapsKey" ref="originAutocompleteHost" class="autocomplete-host"></div>
+        <p v-else class="places-help" role="status">
+          地點搜尋目前不可用，請設定 Google Maps browser key；已選取的新莊捷運站仍可規劃查詢。
+        </p>
+        <p v-if="googleMapsLoadError" class="places-error" role="alert">{{ googleMapsLoadError }}</p>
+        <p v-else-if="hasGoogleMapsKey && !mapReady" class="places-help" role="status">正在載入 Google 地點搜尋…</p>
+        <p v-if="originPlaceError" class="places-error" role="alert">{{ originPlaceError }}</p>
+        <div class="selected-place">
+          <strong>{{ origin.label }}</strong>
+          <span>{{ origin.address || '裝置未提供地址' }}</span>
+          <span>{{ Number(origin.latitude).toFixed(6) }}, {{ Number(origin.longitude).toFixed(6) }}</span>
+        </div>
         <div class="origin-row">
           <button class="utility-button" type="button" :disabled="locating" @click="useCurrentLocation">
             {{ locating ? '定位中' : '使用目前位置' }}
           </button>
-          <button class="utility-button" type="button" @click="useTestOrigin">
-            測試座標
-          </button>
-        </div>
-        <div class="manual-grid compact">
-          <input v-model="origin.label" type="text" aria-label="起點名稱" @input="cancelLocationRequest">
-          <input v-model.number="origin.latitude" type="number" step="0.000001" aria-label="起點緯度" @input="cancelLocationRequest">
-          <input v-model.number="origin.longitude" type="number" step="0.000001" aria-label="起點經度" @input="cancelLocationRequest">
         </div>
       </div>
 

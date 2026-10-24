@@ -299,20 +299,20 @@
     <h1>台灣停車預測｜專案進度儀表板</h1>
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
-      <span class="pill doing">目前：S3-024 遠端部署設定開發中</span>
+      <span class="pill doing">目前：Sprint 3 起訖 Places／唯一 Compose 整合審查</span>
       <span class="pill">更新：2026-10-24</span>
-      <span class="pill blocked">GitHub Actions：job 啟動失敗</span>
-      <span class="pill pending">遠端實機驗收：BLOCKED</span>
+      <span class="pill pending">本機驗證完成；PR CI 待執行</span>
+      <span class="pill pending">Places 真實候選人工驗收：NOT RUN</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
-    <div class="notice"><strong>目前結論：</strong>S3-024 已提供獨立單機 DEMO Compose、loopback Web 入口、同源 /api 代理、查詢建立限流、MySQL 持久化及維運／smoke 文件；Compose config、前端 production build 與 mock API 的 Nginx 路徑／429 驗證通過。GitHub Actions run #126 的三個 job 均在約 2 秒內失敗且沒有 runner／steps／logs；base 與交接文件提交也有同樣結果，CI 執行環境待 repository 管理者查明。沒有遠端主機、網域、HTTPS 入口及正式金鑰，故遠端發布、Routes 真 ETA、備份還原與瀏覽器驗收皆為 BLOCKED，不能宣稱已上線。S3-023 桌面畫面已檢查並修正查詢成功後殘留舊錯誤提示；手機 viewport、隱藏頁與可交付截圖仍待人工驗收。模型機率維持空值，完整新莊覆蓋仍留 S3-017。</div>
+    <div class="notice"><strong>目前結論：</strong>分支 <code>codex/unify-place-search-compose</code> 從最新 <code>main</code> 整合出發地／目的地 Places 隔離選取、O18 預設起點與單一安全 Compose。前端 5 組測試／production build、後端 102 個測試、Compose config／API 與 Web image build、隔離 runtime health、同源 <code>/api/health</code> 和 MySQL volume 重啟持久化均通過；Web 僅綁 <code>127.0.0.1:18088</code>，API／MySQL／Redis 無 host port。兩支 smoke 已執行，但隔離空資料庫沒有已發布 snapshot，來源快照斷言未通過；這是資料前置不足，非服務 health 失敗。以空 key 建置的 375px 手機畫面沒有水平溢出；真實 Places 候選尚未使用未核實限制範圍的既有 key，標為 NOT RUN。變更正在 GPT RELAY Code Review 流程；PR CI 尚待建立 PR 後執行。原 <code>taiwan-parking-forecast_mysql-data</code> 與未確認用途的 <code>s3022demo_mysql-data</code> 均保留；正式停車預測機率仍為 null／資料不足。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
     <article class="metric">
       <span>後端測試</span>
-      <strong>2 suites OK</strong>
-      <p>S3-017 API image 重建通過；CatalogImportServiceTest 與 NtpcCatalogDryRunServiceTest 通過。</p>
+      <strong>102 tests OK</strong>
+      <p>後端 Maven 測試於 Java 21 Maven container 執行，失敗／錯誤均 0；前端 5 組契約測試與 build 通過。</p>
     </article>
     <article class="metric">
       <span>目前 Sprint</span>
@@ -383,7 +383,7 @@
       <div class="panel">
         <h2>目前可展示</h2>
         <ul class="next-list">
-          <li>API health 與 Docker Compose 可啟動。</li>
+          <li>單一安全 Docker Compose 可啟動，隔離環境四服務均 healthy。</li>
           <li>建立查詢會取得 Google Routes ETA，或明確降級。</li>
           <li>使用者查詢只讀 PUBLISHED snapshot，不讀 CANDIDATE 或 REJECTED。</li>
           <li>刷新失敗、品質拒絕或來源不完整時保留舊的已發布快照。</li>
@@ -547,7 +547,7 @@
   <section class="layout" aria-labelledby="next-title">
     <div class="panel">
       <h2 id="next-title">下一步建議</h2>
-      <p>2026-10-24：可重現部署設定與本機必要驗證已完成並推送。GitHub Actions run #126 三個工作失敗，但都沒有 runner、步驟或 logs，且 base／前一提交也相同；需由 repository 管理者確認 CI 執行設定，不能當作程式驗證成功。遠端主機、網域、HTTPS 反向代理與金鑰尚未提供，S3-024 的實機 smoke、真 ETA、備份還原及回退演練仍待部署資源；在驗收前不可宣稱上線。S3-023 的桌面檢查與查詢錯誤恢復修正已完成；手機 viewport、真正隱藏頁與可交付截圖仍待驗收。完整新莊覆蓋留 S3-017。</p>
+      <p>2026-10-24：本機分支已完成本次 Places／Compose 變更及可重現驗證，正在依使用者指定的 GPT RELAY 流程審查；需在 GPT 回覆 PASS 後才建立唯一 PR，並在 PR Review 階段等待人工審查，不合併。兩支 smoke 在全新隔離 DB 因未有已發布 snapshot 而未通過資料斷言；如需重驗，需先準備經審查 mapping 與受控發布。以空 browser key 的無 key 手機路徑已測試，真實 Places 候選／選取仍需受限測試 key 與可用瀏覽器。遠端 DNS／HTTPS、真 Routes ETA、備份還原與實際回退仍需部署資源；預測模型與完整新莊覆蓋不在此變更內。</p>
       <ol>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/82">S3-021</a> 模型實驗證據與限制交接；S3-017 資格分類／審查可並行。</li>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/83">S3-022</a> 審查後目錄匯入與可展示範圍，不繞過寫入保護。</li>

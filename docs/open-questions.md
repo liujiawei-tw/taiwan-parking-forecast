@@ -2,16 +2,17 @@
 
 更新日期：2026-10-24。每題解決後，將結論移入 `decisions.md`，必要時同步更新需求。
 
-## DEMO 收斂仍待驗證
+## 本次整合仍待驗證
 
-- 新增的 map-data API 已用 H2 驗證；本機桌面／375×812 版面只看到無 Google key 的 fallback。待 DEMO／browser key 可用後，驗證真實底圖、marker 色標與 popup、路線入口 gate、列表／篩選同步、縮放與手動平移後更新，以及端到端 API 顯示。新北官方頁的資料集 2 分鐘 metadata 與 ParkBoss 畫面時間都不能當成該網站前端輪詢間隔或其資料來源的證據。
+- 出發地與目的地已有各自的 Places 搜尋 host／handler，以及預設 O18 與無 key 提示；本次 Docker image 以空 browser key 建置。本機既有 key 尚未確認為受限測試 key，為避免未授權 Google 計費請求，真實候選 dropdown、選取與行動裝置 Places widget 的互動 **NOT RUN**。取得受限測試 key 後，需人工驗收新莊站預設顯示、起終點不串寫、搜尋選取、API／Maps 載入失敗、`fetchFields` 錯誤、無 `location`、定位拒絕及手機／桌面寬度。
+- 地圖 marker、popup、路線入口 gate、列表／篩選同步、縮放與手動平移後更新，以及隱藏頁 refresh 的完整瀏覽器驗收仍按 `s3-023-demo-e2e-acceptance.md` 執行。新北官方頁的資料集 2 分鐘 metadata 與 ParkBoss 畫面時間都不能當成網站前端輪詢間隔或資料來源的證據。
 
 - S3-023 已處理已審查映射 ID 重複與發布延遲的當次問題；來源失敗、品質拒絕、queryId 過期已有受控 API／DB 證據。但桌面／手機截圖保存、定位拒絕、失敗／過期前端恢復操作及隱藏頁刷新仍缺完整瀏覽器驗收；見 `s3-023-demo-e2e-acceptance.md`。單次約 5 秒發布及 40,000×3 分頁只是目前量測與設定，不是服務承諾。
 
 - S3-021 已量到 roadside 全 2,124 格／343 輪狀態不變與圈重疊；根因是官方來源、快取或 collector 重用仍未知。S3-019 續查來源更新鏈，並修正跨 split 標籤（路邊 50／100、路外 41／82 筆）、UTC 時間特徵、未來 catalog 與正式 coverage 條件。
 - S3-022 已完成子集 manifest／獨立 gate 與隔離匯入；S3-017 尚有 164 筆條件式格位需審查（新分類排除 103 筆路邊專用／非一般車格、4 筆路外零容量）。完整行政區邊界仍未驗證。S3-023 續驗跨行政區重複 ID 的去重／衝突策略、約 48 秒發布交易與 API 分頁設定；詳見 s3-022-reviewed-catalog-demo.md。
-- S3-024：可重現的隔離 Compose、loopback Web、同源 API、POST 限流與備份／隔離還原步驟已交付；實際 DEMO 主機／網域、HTTPS 反向代理、成本與配額、browser key 限制、Routes ETA、來源連線、備份還原及版本回退仍待部署資源與演練。
-- GitHub Actions run #124（base）、#125（任務文件）與 #126（S3-024）所有工作皆在數秒內失敗，job 沒有 runner、steps 或可讀 logs；根因未能從 GitHub 回應驗證，需 repository 管理者檢查 Actions／hosted runner 設定後，再確認 Maven、前端與 Docker CI。
+- 唯一 Compose 已使用 `WEB_HTTP_PORT`、loopback Web 與同源 `/api`，並保留具名 MySQL volume。要上遠端主機仍需 DNS／防火牆／HTTPS proxy、正式受限 keys、來源連線、備份還原及版本回退演練；本次 build/config 不構成遠端部署驗收。
+- 本機保留 `s3022demo_mysql-data`，因本次盤點無法證實其中資料已備份、移轉或可丟棄。需由資料負責人確認用途與備份後再決定是否清理；本次不執行 volume 移除。
 - S3-025：有限覆蓋與無正式機率是否通過實際遠端人工驗收？目前只有發布規劃，尚未放行。
 - DEMO 後：資料有效變化、長 ETA、near-full 負例、新日期 holdout 與 S3-020 gate 通過才推進模型，不能以 row 數或舊 test 反覆調參代替證據。
 
@@ -23,8 +24,8 @@
 3. **擷取頻率**：在 3 點／月、5 次／分／金鑰的基礎會員限制下，哪些縣市可維持哪些頻率？是否先下載靜態資料並對熱門區域做較頻繁更新？
 4. **MVP 試點**：已決定路邊車格與路外停車場各做一個試點；桃園機場資料是路外候選，仍需指定展示的具體範圍。
 5. **預測要求**：目標時間已改由 Google Routes ETA 提供；`predictions` 區塊語意已定，路邊為 300 公尺內至少一格可停的區域機率，路外為逐場仍有汽車位機率。Sprint 3 進入條件已整理於 `sprint-3-entry-criteria.md`；S3-001 已建立標籤 dry run 初版規則，S3-002 已建立 baseline 回測 service、時間切分與指標初版，S3-003 已補線上無模型／資料不足時的降級欄位、原因碼與模型版本接點。仍需決定正式最低資料品質數值、機率呈現尺度、模型產物儲存與載入方式、基準模型／ML 模型切換方式，以及無法預測時的前端文案。
-6. **路線 ETA 設定**：已決定 Google Routes 算到搜尋目的地的 ETA，起點支援目前位置及手動輸入，出發時間預填當下且可改未來；不做逐停車選項 ETA 或內建導航。仍需決定交通感知模式、重新估算頻率及外部地圖選擇介面。
-7. **搜尋與前端範圍**：Sponsor 要求類 Google Maps 搜尋；需確認第一版是否同時採 Google Places 搜尋建議、Google 互動地圖與停車標記，以及錯誤／無結果畫面。
+6. **路線 ETA 設定**：已決定 Google Routes 算到搜尋目的地的 ETA；起點支援目前位置及 Places 搜尋，預設捷運新莊站 O18；出發時間預填當下且可改未來；不做逐停車選項 ETA 或內建導航。仍需人工驗收定位拒絕及受限 key 下的 Places 歧義。
+7. **搜尋與前端範圍**：起點與目的地共用 Places 搜尋行為、各自隔離結果及無 key／錯誤狀態已決定；真實 Places 瀏覽器互動仍待受限測試 key 人工驗收。互動地圖與停車標記另依 S3-023 驗收。
 8. **20 天範圍**：Sponsor 每天約能投入 5–10 小時，總計約 100–200 小時；需確認目標是面試展示原型還是公開可用服務，並核對是否包含週末。
 9. **GitHub 專案看板**：Repository 與遠端已建立；Sprint 2 的 S2-001 至 S2-025 已完成或進入完成收尾，S2-020 至 S2-025 已建立對應 GitHub Issue。實際看板仍未建立；目前先以 Issue 與本文件追蹤，待多人協作或工作量增加時再評估 GitHub Project。
 10. **歷史檔申請細節**：網站申請 CSV 是否有日期上限？購買頁已顯示檔案大小與預估點數；`Meta=true` 查詢是否耗點？API 如何取得超過預設 `$top=30` 的完整資料？

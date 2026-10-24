@@ -6,9 +6,11 @@ import {
   createQueryRequestGuard,
   getRoadsideDisplaySummary,
   hasDestinationChanged,
+  hasPlanningInputsChanged,
   isMapSourceDisplayStale,
   MAP_DISPLAY_FRESHNESS_MS,
   shouldApplyQueryResult,
+  snapshotPlanningInputs,
   snapshotDestination,
 } from '../src/mapDataLifecycle.js'
 
@@ -89,47 +91,68 @@ const nextDestination = snapshotDestination(destination)
 assert.equal(hasDestinationChanged(nextDestination, previousDestination), true)
 assert.equal(hasDestinationChanged(snapshotDestination(destination), nextDestination), false)
 
+const planningInputs = {
+  origin: { label: '捷運新莊站（O18）', latitude: 25.03633, longitude: 121.45336 },
+  destination,
+  departureType: 'NOW',
+  scheduledDepartureLocal: '',
+}
+const previousPlanningInputs = snapshotPlanningInputs(planningInputs)
+assert.equal(hasPlanningInputsChanged(snapshotPlanningInputs(planningInputs), previousPlanningInputs), false)
+assert.equal(hasPlanningInputsChanged({
+  ...previousPlanningInputs,
+  origin: { ...previousPlanningInputs.origin, latitude: 25.04 },
+}, previousPlanningInputs), true, 'changing origin invalidates the previous query and ETA')
+assert.equal(hasPlanningInputsChanged({
+  ...previousPlanningInputs,
+  departureType: 'SCHEDULED',
+}, previousPlanningInputs), true, 'changing departure type invalidates the previous query and ETA')
+assert.equal(hasPlanningInputsChanged({
+  ...previousPlanningInputs,
+  scheduledDepartureLocal: '2026-10-24T15:00',
+}, previousPlanningInputs), true, 'changing scheduled departure invalidates the previous query and ETA')
+
 const postGuard = createQueryRequestGuard()
-const postContext = postGuard.start(destination)
+const postContext = postGuard.start(planningInputs)
 let resolvePost
 const pendingPost = new Promise((resolve) => { resolvePost = resolve })
-const guardedPost = pendingPost.then((result) => postGuard.isCurrent(postContext, destination) ? result : 'ignored')
-destination.longitude = 121.451
-assert.equal(postGuard.isCurrent(postContext, destination), false, 'the primitive destination snapshot detects a nested coordinate edit')
+const guardedPost = pendingPost.then((result) => postGuard.isCurrent(postContext, planningInputs) ? result : 'ignored')
+planningInputs.origin.longitude = 121.454
+assert.equal(postGuard.isCurrent(postContext, planningInputs), false, 'a changed origin invalidates an in-flight query request')
 postGuard.invalidate()
 resolvePost('query-for-old-destination')
-assert.equal(await guardedPost, 'ignored', 'a POST response must be discarded after the destination changes')
+assert.equal(await guardedPost, 'ignored', 'a POST response must be discarded after any planning input changes')
 
 const responseGuard = createQueryRequestGuard()
 let visibleQuery = { query: { queryId: 'query-1', updatedAt: '2026-10-24T10:00:00.000Z' } }
-const oldGetContext = responseGuard.capture(destination, 'query-1')
+const oldGetContext = responseGuard.capture(planningInputs, 'query-1')
 let resolveOldGet
 const delayedOldGet = new Promise((resolve) => { resolveOldGet = resolve })
 const guardedOldGet = delayedOldGet.then((result) => {
-  if (!responseGuard.isCurrent(oldGetContext, destination, 'query-1')
+  if (!responseGuard.isCurrent(oldGetContext, planningInputs, 'query-1')
       || !shouldApplyQueryResult(visibleQuery, result)) return 'ignored'
   visibleQuery = result
   return 'applied'
 })
-const refreshContext = responseGuard.capture(destination, 'query-1')
+const refreshContext = responseGuard.capture(planningInputs, 'query-1')
 const refreshResult = { query: { queryId: 'query-1', updatedAt: '2026-10-24T10:01:00.000Z' } }
-assert.equal(responseGuard.isCurrent(oldGetContext, destination, 'query-1'), false, 'a refresh request supersedes an older GET for the same Query')
-assert.equal(responseGuard.isCurrent(refreshContext, destination, 'query-1'), true)
-if (responseGuard.isCurrent(refreshContext, destination, 'query-1')
+assert.equal(responseGuard.isCurrent(oldGetContext, planningInputs, 'query-1'), false, 'a refresh request supersedes an older GET for the same Query')
+assert.equal(responseGuard.isCurrent(refreshContext, planningInputs, 'query-1'), true)
+if (responseGuard.isCurrent(refreshContext, planningInputs, 'query-1')
     && shouldApplyQueryResult(visibleQuery, refreshResult)) visibleQuery = refreshResult
 resolveOldGet({ query: { queryId: 'query-1', updatedAt: '2026-10-24T10:00:30.000Z' } })
 assert.equal(await guardedOldGet, 'ignored', 'a delayed pre-refresh GET cannot overwrite the refresh response')
 assert.equal(visibleQuery.query.updatedAt, refreshResult.query.updatedAt)
 
-const currentContext = responseGuard.start(destination)
-assert.equal(responseGuard.isCurrent(currentContext, destination), true)
-const queryBoundContext = responseGuard.capture(destination, 'query-1')
-assert.equal(responseGuard.isCurrent(queryBoundContext, destination, 'query-2'), false, 'responses for an outdated query ID are discarded')
+const currentContext = responseGuard.start(planningInputs)
+assert.equal(responseGuard.isCurrent(currentContext, planningInputs), true)
+const queryBoundContext = responseGuard.capture(planningInputs, 'query-1')
+assert.equal(responseGuard.isCurrent(queryBoundContext, planningInputs, 'query-2'), false, 'responses for an outdated query ID are discarded')
 assert.equal(shouldApplyQueryResult(visibleQuery, { query: { queryId: 'query-1', updatedAt: '2026-10-24T10:00:59.000Z' } }), false, 'an older query.updatedAt cannot replace the current result')
 
 const loadingOwner = createLoadingRequestOwner()
 const expiryGuard = createQueryRequestGuard()
-const expiredRefreshContext = expiryGuard.capture(destination, 'query-1')
+const expiredRefreshContext = expiryGuard.capture(planningInputs, 'query-1')
 const expiredRefreshLoadingId = loadingOwner.acquire()
 let expiredRefreshQueryResult = { query: { queryId: 'query-1' } }
 let expiredRefreshLoading = true
@@ -137,12 +160,12 @@ try {
   const error = Object.assign(new Error('query expired'), { code: 'QUERY_EXPIRED' })
   throw error
 } catch (error) {
-  if (expiryGuard.isCurrent(expiredRefreshContext, destination, expiredRefreshQueryResult?.query?.queryId)
+  if (expiryGuard.isCurrent(expiredRefreshContext, planningInputs, expiredRefreshQueryResult?.query?.queryId)
       && ['QUERY_EXPIRED', 'QUERY_NOT_FOUND'].includes(error.code)) {
     expiredRefreshQueryResult = null
   }
 } finally {
-  if (expiryGuard.isGenerationCurrent(expiredRefreshContext, destination)
+  if (expiryGuard.isGenerationCurrent(expiredRefreshContext, planningInputs)
       && loadingOwner.release(expiredRefreshLoadingId)) {
     expiredRefreshLoading = false
   }

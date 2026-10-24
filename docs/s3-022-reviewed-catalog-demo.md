@@ -2,6 +2,8 @@
 
 更新日期：2026-10-07。範圍：本機隔離 Docker project `s3022demo`，不是遠端上線或完整新莊驗收。
 
+> 本文件記錄當時的隔離匯入與驗收結果。下方舊 `s3022demo` 啟動流程已退役，不可照舊指令重跑：該名稱的 `s3022demo_mysql-data` 持久 volume 仍保留，資料用途尚未確認。現行操作請依 [`docs/docker-deployment.md`](docker-deployment.md) 使用唯一 Compose，並先選擇及盤點未使用過的隔離 project 名稱。
+
 ## 審查決策
 
 一般汽車 DEMO 共用 catalog／即時資料的資格分類器。不以收費文字推測車種；只接受明確一般汽車類型。機車、大型車與身心障礙專用格不納入一般汽車推薦，不代表這些格位本身禁止合法使用。
@@ -24,27 +26,9 @@
 - 匯入前 verified mapping 10；首次新增 place／mapping 各 1,943，保留既有 10；匯入後路邊 1,857、路外 96。再跑新增 0、保留 1,953，DB 重複 mapping key 0。
 - 寫入前 MySQL 完整 dump 存在本機 mysql container `/tmp/s3022-before-import.sql`，未進 Git。這是本次隔離環境回復素材，不是已演練遠端備份；正式備份／還原交 S3-024。回復時先停 API、將 dump 匯入隔離資料庫並失效 Redis，先確認 project 與資料庫，勿覆蓋其他環境。
 
-重現流程（先 build，再 dry-run，審查當次 hash 後才加入寫入設定）：
+歷史重現流程（2026-10-07；下列命令已退役，保留作該次證據背景，不可直接執行）：
 
-```powershell
-docker compose -p s3022demo up -d mysql redis
-docker compose -p s3022demo build api
-docker compose -p s3022demo run --rm `
-  -e NTPC_CATALOG_IMPORT_COMMAND_ENABLED=true `
-  -e NTPC_CATALOG_IMPORT_CONFIRM_WRITE=false `
-  -e NTPC_CATALOG_DRY_RUN_PAGE_SIZE=40000 `
-  -e NTPC_CATALOG_DRY_RUN_MAX_PAGES=3 api
-# 同一命令改 confirm-write=true，另加 reviewed-subset=true 與當次 hash：
-# NTPC_CATALOG_IMPORT_REVIEWED_SUBSET=true
-# NTPC_CATALOG_IMPORT_EXPECTED_MANIFEST_SHA256=<reviewed hash>
-docker compose -p s3022demo run --rm `
-  -e PARKING_REFRESH_MEASUREMENT_COMMAND_ENABLED=true `
-  -e PARKING_REFRESH_PAGE_SIZE=40000 `
-  -e PARKING_REFRESH_MAX_PAGES=3 api
-$env:GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED='false'
-docker compose -p s3022demo up -d api
-./tools/demo_catalog_smoke.ps1 -RequireFresh
-```
+當前可重現步驟見 [`docs/docker-deployment.md`](docker-deployment.md) 與 [`tools/parking_catalog_smoke.ps1`](../tools/parking_catalog_smoke.ps1)。如需重跑匯入，須先按該文件建立全新且已盤點的 project／volume，再重新執行 dry-run、審查最新 manifest 並明確授權 confirm-write；不得把已保留的 `s3022demo_mysql-data` 當新測試資料庫。
 
 此 measurement runner 是人工受控量測，不是正式自動排程／預算證據。API 預設刷新分頁設定仍須在 S3-023 驗證；不能把一次性 runner 成功當作前端刷新完成。
 
@@ -65,7 +49,7 @@ docker compose -p s3022demo up -d api
 
 ## 展示範圍與限制
 
-`tools/demo_catalog_smoke.ps1` 驗證 500m、兩來源 snapshot、未知位數、空目錄、過期資料與不支援區域；`-RequireFresh` 會拒絕過期快照，需受控刷新後重跑。實測過期模式及拒絕均符合契約；第二次低頻刷新後 fresh smoke 通過：路邊展示點 READY／18 個目前有位觀測，其他展示點路邊 UNKNOWN／null，路外 READY，邊界空目錄仍不補零。這是當輪觀測，不保證使用者抵達時仍有位。
+當時使用的 `tools/demo_catalog_smoke.ps1`（現名 `tools/parking_catalog_smoke.ps1`）驗證 500m、兩來源 snapshot、未知位數、空目錄、過期資料與不支援區域；`-RequireFresh` 會拒絕過期快照，需受控刷新後重跑。實測過期模式及拒絕均符合契約；第二次低頻刷新後 fresh smoke 通過：路邊展示點 READY／18 個目前有位觀測，其他展示點路邊 UNKNOWN／null，路外 READY，邊界空目錄仍不補零。這是當輪觀測，不保證使用者抵達時仍有位。
 
 第二輪 run／snapshot 為路邊 3、路外 4，均成功發布。路邊 HTTP 1／一頁／11,270,904 bytes，HTTP 5,291ms、發布交易 43,089ms、總 49,095ms；路外 HTTP 1／一頁／36,023 bytes，HTTP 216ms、發布交易 655ms、總 878ms。mapping／唯一位置數同首輪。
 
