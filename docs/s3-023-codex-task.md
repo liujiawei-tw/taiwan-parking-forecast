@@ -42,3 +42,20 @@
 - bug、修正及相關測試結果；若沒有 bug，明確說明無需新 PR；
 - CI runner 狀態與尚需管理者／真實憑證處理的限制；
 - 若有 commit，提供分支最新完整 SHA、變更檔案與 CI URL；不要 Merge。
+
+## 2026-10-24 續作指令（前一輪 API 已部分驗證）
+
+本輪原有 API 500m、`READY`、`REFRESHED/COOLDOWN`、`INSUFFICIENT_DATA` 與非計費 ETA 降級證據已交接給 GPT，**不要重新跑一整輪官方刷新或新增額外功能**。
+
+### 優先工作 A：整理本機 Git（不需要切回 feature 來驗收）
+1. 在**原本 Repository 根目錄**先用 `git status --porcelain=v1 -uall`、`git branch -vv`、`git worktree list`、`git remote -v` 核對所有改動及分支，`git fetch origin --prune`。特別檢查臨時 worktree `C:\Users\z0976\AppData\Local\Temp\taiwan-parking-s3-023-acceptance` 是否尚有未保存檔案，以及各分支是否有 origin 尚未包含的獨有 commit。
+2. 若乾淨且沒有獨有 commit，先以 `git worktree remove <實際檢查後確認的臨時目錄>` 移除臨時 worktree（**不得加 --force**）；保留 Docker volume、金鑰與任何忽略檔。
+3. 在原 Repository 切回 `main`；如 `main` 是 `origin/main` 祖先且無阻擋性本機變更，使用 `git merge --ff-only origin/main`。**不得硬 reset 或丟棄本機工作**。
+4. 以無損方式刪除已整併、遠端有備份且非任何 worktree 在用的**本地** feature 分支；用 `git branch -d`。若 `-d` 因尚未合併而拒絕，先檢查 commit 是否完整存在 GitHub 遠端、可否安全保留，不能改用盲目 `-D`，需回報不能刪除的原因。
+5. 最終回報 `git status --short --branch`、`git branch --list`、`git worktree list`、`git rev-parse main`、`git rev-parse origin/main`。目標：工作樹乾淨、只有本機 main、一致的完整 SHA。即便安全檢查導致部分暫不移除，也應誠實回報。
+
+### 優先工作 B：UI 最小驗收
+- 若可用可信任 Chrome／Edge 真實操作，核對已知本機網址（不得繞過瀏覽器 URL 不明的安全停止）與桌面、手機 viewport 主流程，另看一個降級情境。
+- 若工具仍無法安全辨識網址，**停止自動瀏覽器控制**，改提供使用者 2～3 個明確的人工操作步驟與預期畫面；未實際確認就保持「UI 未驗收」。不要求真實定位資料或額外 API 費用。
+- 無新 Bug 不修改程式／不開 PR；CI runner 問題獨立註記，不因它而重做整個 DEMO。
+
