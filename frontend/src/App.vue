@@ -273,6 +273,9 @@ async function readParkingQuery() {
       throw await readApiError(response)
     }
     queryResult.value = await response.json()
+    if (errorMessage.value.startsWith('讀取查詢狀態失敗：')) {
+      errorMessage.value = ''
+    }
     refreshMessage.value = '已讀取最新查詢狀態。'
   } catch (error) {
     errorMessage.value = `讀取查詢狀態失敗：${error.message}`
