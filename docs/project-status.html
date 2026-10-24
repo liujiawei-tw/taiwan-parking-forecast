@@ -300,12 +300,13 @@
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
       <span class="pill doing">目前：Sprint 3 起訖 Places／唯一 Compose 整合審查</span>
-      <span class="pill">更新：2026-10-24</span>
+      <span class="pill">更新：2026-10-25</span>
       <span class="pill pending">本機驗證完成；PR CI 待執行</span>
       <span class="pill pending">Places 真實候選人工驗收：NOT RUN</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
     <div class="notice"><strong>目前結論：</strong>分支 <code>codex/unify-place-search-compose</code> 從最新 <code>main</code> 整合出發地／目的地 Places 隔離選取、O18 預設起點與單一安全 Compose。前端 5 組測試／production build、後端 102 個測試、Compose config／API 與 Web image build、隔離 runtime health、同源 <code>/api/health</code> 和 MySQL volume 重啟持久化均通過；Web 僅綁 <code>127.0.0.1:18088</code>，API／MySQL／Redis 無 host port。GPT RELAY 第三輪已對完整 <code>main...HEAD</code> 與精確 SHA <code>1901deb1f030b2ef56c65eb23b6f027e181a1d57</code> 回覆 PASS（0 項阻擋 Finding，可建立以 <code>main</code> 為 base 的待審 PR，不代表可 merge）；第一、二輪共 5 項 Finding 已修正。隔離驗證確認新 volume 僅有 localhost root、遠端舊 root TCP 認證失敗、舊認證停止備份順序可用，四服務 health、同源 API 與 MySQL 重啟持久化均通過；測試資源已按 project label 清除，實際 volume 保留。兩支 smoke 在隔離空資料庫因沒有已發布 snapshot 而未通過資料斷言；具完整 snapshot／審核 mapping 的 smoke 尚未驗收。以空 key 建置的 375px 手機畫面沒有水平溢出；真實 Places 與 Routes ETA 標為 NOT RUN。原 <code>taiwan-parking-forecast_mysql-data</code> 與未確認用途的 <code>s3022demo_mysql-data</code> 均保留；正式停車預測機率仍為 null／資料不足。</div>
+    <div class="notice"><strong>2026-10-25 本機啟動修復：</strong>既有 MySQL volume 保留舊版 root／應用帳密，修改 `.env` 後健康檢查拒絕登入，導致 API／Web 未啟動。已先備份並以獨立 volume 還原核對 7 張資料表、58 筆資料，再同步帳密並移除遠端 root。MySQL、Redis、API、Web 均 healthy，同源 `/api/health` 回 `UP`；原資料 volume、隔離還原 volume 與 repo 外本機備份均保留。此驗證不代表正式備份保存／災難復原、Places、Routes ETA 或停車機率已驗收。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">

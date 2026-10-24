@@ -1,6 +1,13 @@
 # 目前狀態
 
-更新日期：2026-10-24。
+更新日期：2026-10-25。
+
+## 2026-10-25 本機 Compose 啟動與舊 MySQL volume 帳密復原
+
+- **已確認原因**：初始 `docker compose ps` 沒有執行中的容器。使用目前 `.env` 啟動後，MySQL 本身已 ready，但健康檢查以目前 root 密碼登入既有 `taiwan-parking-forecast_mysql-data` 時收到 `Access denied`，因此 API／Web 被 `service_healthy` 依賴條件擋住。應用帳號目前密碼也與 volume 內帳密不符；依部署文件所載舊版本機初始化帳密可唯讀登入，確認是既有 volume 保留舊帳密，修改 `.env` 不會自動輪替 MySQL 內帳號。
+- **資料保護與驗證**：輪替前將資料庫 dump 存於 repo 外且 ACL 限制的本機 Temp 資料夾；以新 Compose project／獨立 volume 還原後，7 張資料表名稱及逐表筆數相符，共 58 筆。原 volume 未刪除。之後將 `parking_app@'%'` 與 `root@'localhost'` 密碼同步至目前 `.env`，並移除舊 `root@'%'`。
+- **目前結果**：`mysql`、`redis`、`api`、`web` 四個服務皆為 `healthy`；API 驗證 3 個 Flyway migration 並確認 schema 已是最新；`http://127.0.0.1:18088/api/health` 回 `UP`。隔離還原 volume 與 repo 外備份均保留；隔離 MySQL 容器停止後保留其 volume。
+- **限制**：這是本機 Compose 啟動與備份可讀性驗證，不等同正式備份保存／災難復原演練；Google Places、Routes ETA 與停車預測狀態未因此驗收。Redis 未認證警告仍存在，Redis 沒有發布主機埠，且與本次 MySQL 啟動阻塞無關。
 
 ## 2026-10-24 進行中：起訖點 Places 與單一 Docker Compose 整合
 
