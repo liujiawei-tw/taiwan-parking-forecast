@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,14 +27,96 @@ import parking.forecast.config.ParkingQueryStateProperties;
 import parking.forecast.controller.dto.CreateParkingQueryRequest;
 import parking.forecast.controller.dto.CreateParkingQueryRequest.DepartureInput;
 import parking.forecast.controller.dto.CreateParkingQueryRequest.LocationInput;
+import parking.forecast.domain.AvailabilityStatus;
 import parking.forecast.domain.DatasetCode;
+import parking.forecast.domain.EligibilityStatus;
+import parking.forecast.domain.MappingStatus;
+import parking.forecast.domain.ParkingPlaceEntity;
+import parking.forecast.domain.ParkingPlaceType;
+import parking.forecast.domain.QualityStatus;
+import parking.forecast.domain.SourceMappingEntity;
+import parking.forecast.domain.SourceSystem;
 import parking.forecast.domain.TriggerType;
+import parking.forecast.repository.SourceMappingRepository;
 import parking.forecast.service.GoogleEtaService.EtaResult;
+import parking.forecast.service.NearbyParkingSearchService.NearbyParkingPlace;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchResult;
+import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedObservation;
 import parking.forecast.service.ParkingQueryService.ParkingQueryExpiredException;
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedAvailabilityView;
 
 class ParkingQueryServiceTest {
+
+    @Test
+    void mapDataKeepsUnconfirmedCarEligibilityNeutralAndDoesNotRefreshSourcesOrRoutes() {
+        TestFixture fixture = new TestFixture();
+        var created = fixture.service.create(mockRequestNearSeedCatalog());
+        OffsetDateTime observedAt = OffsetDateTime.ofInstant(fixture.clock.instant(), ZoneOffset.UTC);
+        NearbyParkingPlace place = new NearbyParkingPlace(
+                910106L,
+                ParkingPlaceType.ON_STREET_SPOT,
+                "測試路邊格位",
+                25.043188,
+                121.464997,
+                null,
+                null,
+                EligibilityStatus.UNKNOWN,
+                198
+        );
+        when(fixture.nearbyParkingSearchService.findNearby(any()))
+                .thenReturn(new NearbyParkingSearchResult(
+                        "NEW_TAIPEI_XINZHUANG",
+                        25.0414214,
+                        121.4647633,
+                        500,
+                        "STRAIGHT_LINE",
+                        List.of(place),
+                        1,
+                        0
+                ));
+        when(fixture.publishedAvailabilitySnapshotService.findLatest(eq(DatasetCode.NTPC_ROADSIDE_SPOT), any()))
+                .thenReturn(new PublishedAvailabilityView(
+                        DatasetCode.NTPC_ROADSIDE_SPOT,
+                        "READY",
+                        99L,
+                        observedAt,
+                        observedAt,
+                        Map.of(910106L, new PublishedObservation(
+                                910106L,
+                                "96316",
+                                AvailabilityStatus.AVAILABLE,
+                                null,
+                                true,
+                                observedAt,
+                                observedAt,
+                                QualityStatus.PASS,
+                                null
+                        )),
+                        "ready"
+                ));
+        SourceMappingEntity mapping = mock(SourceMappingEntity.class);
+        ParkingPlaceEntity mappedPlace = mock(ParkingPlaceEntity.class);
+        when(mapping.getParkingPlace()).thenReturn(mappedPlace);
+        when(mappedPlace.getId()).thenReturn(910106L);
+        when(mapping.getSourcePlaceId()).thenReturn("96316");
+        when(fixture.sourceMappingRepository.findBySourceSystemAndDatasetCodeAndMappingStatusAndParkingPlace_IdIn(
+                eq(SourceSystem.NTPC_OPEN_DATA),
+                eq(DatasetCode.NTPC_ROADSIDE_SPOT),
+                eq(MappingStatus.VERIFIED),
+                any()
+        )).thenReturn(List.of(mapping));
+
+        var data = fixture.service.findMapData(created.query().queryId());
+
+        assertThat(data.items()).singleElement().satisfies(item -> {
+            assertThat(item.availabilityStatus()).isEqualTo("AVAILABLE");
+            assertThat(item.carEligibleStatus()).isEqualTo("UNKNOWN");
+            assertThat(item.availableSpot()).isNull();
+            assertThat(item.navigationAvailable()).isFalse();
+        });
+        verify(fixture.sourceRefreshCoordinationService, never()).refresh(any(), any());
+        verify(fixture.googleEtaService, times(1)).estimate(any(), any(), any(), anyBoolean());
+    }
 
     @Test
     void findByIdRejectsExpiredQuery() {
@@ -95,6 +179,7 @@ class ParkingQueryServiceTest {
         private final PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService = mock(PublishedAvailabilitySnapshotService.class);
         private final SourceRefreshCoordinationService sourceRefreshCoordinationService = mock(SourceRefreshCoordinationService.class);
         private final GoogleEtaService googleEtaService = mock(GoogleEtaService.class);
+        private final SourceMappingRepository sourceMappingRepository = mock(SourceMappingRepository.class);
         private final ParkingQueryService service;
 
         private TestFixture() {
@@ -138,7 +223,8 @@ class ParkingQueryServiceTest {
                     sourceRefreshCoordinationService,
                     googleEtaService,
                     new InMemoryParkingQueryStateStore(queryStateProperties),
-                    queryStateProperties
+                    queryStateProperties,
+                    sourceMappingRepository
             );
         }
     }

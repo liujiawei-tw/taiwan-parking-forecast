@@ -23,6 +23,48 @@ public record ParkingQueryResponse(
             String message) {
     }
 
+    public record MapDataResponse(
+            String queryId,
+            int radiusMeters,
+            String coverageStatus,
+            OffsetDateTime generatedAt,
+            int candidateCount,
+            int excludedUnverifiedCount,
+            int omittedItemCount,
+            String message,
+            MapSource roadside,
+            MapSource offStreet,
+            List<MapMarker> items) {
+    }
+
+    public record MapSource(
+            String status,
+            String source,
+            Long snapshotId,
+            OffsetDateTime snapshotSourceObservedAt,
+            OffsetDateTime systemCollectedAt,
+            String message) {
+    }
+
+    public record MapMarker(
+            String id,
+            String type,
+            String label,
+            double latitude,
+            double longitude,
+            int distanceMeters,
+            String availabilityStatus,
+            Integer availableCarSpaces,
+            Boolean availableSpot,
+            String carEligibleStatus,
+            String qualityStatus,
+            boolean navigationAvailable,
+            String source,
+            OffsetDateTime sourceObservedAt,
+            OffsetDateTime systemCollectedAt,
+            String message) {
+    }
+
     public record DestinationSection(
             String label,
             double latitude,

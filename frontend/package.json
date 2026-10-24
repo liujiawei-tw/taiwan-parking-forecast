@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node tests/planner.test.mjs",
+    "test": "node tests/planner.test.mjs && node tests/map-markers.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
