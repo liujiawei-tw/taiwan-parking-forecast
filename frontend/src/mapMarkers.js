@@ -78,3 +78,15 @@ export function countMapMarkerCategories(items) {
     return counts
   }, { AVAILABLE: 0, OCCUPIED: 0, FULL: 0, UNKNOWN: 0, STALE: 0 })
 }
+
+export function refreshSelectedMapPopup(selectedId, visibleIds, itemsById, infoWindow, createContent) {
+  if (!selectedId) return false
+  if (!visibleIds.has(selectedId)) {
+    infoWindow?.close()
+    return true
+  }
+
+  const item = itemsById.get(selectedId)
+  if (item) infoWindow?.setContent(createContent(item))
+  return false
+}

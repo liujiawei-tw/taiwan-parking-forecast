@@ -12,10 +12,17 @@ import {
   roadsideCountLabel,
   shouldAutoRefresh,
 } from './planner.js'
-import { countMapMarkerCategories, describeMapMarker, filterMapMarkers } from './mapMarkers.js'
+import {
+  countMapMarkerCategories,
+  describeMapMarker,
+  filterMapMarkers,
+  refreshSelectedMapPopup,
+} from './mapMarkers.js'
 import {
   applyMapDisplayFreshness,
   createMapDataRequestCache,
+  createQueryRequestGuard,
+  getRoadsideDisplaySummary,
   hasDestinationChanged,
   isMapSourceDisplayStale,
   MAP_DISPLAY_FRESHNESS_MS,
@@ -76,6 +83,7 @@ let mapDataRequestId = 0
 let mapDataRetryTimer
 let mapDataRetryAttemptKey = ''
 let mapFreshnessTimer
+const queryRequestGuard = createQueryRequestGuard()
 const mapDataRequestCache = createMapDataRequestCache()
 let map
 let destinationMarker
@@ -109,6 +117,15 @@ const roadsideMessage = computed(() => {
   if (status === 'STALE') return '路邊資料已過期，請更新後再參考。'
   if (status === 'NO_CATALOG_RESULTS') return '此範圍尚無已審查的路邊格位資料。'
   return '附近路邊格位目前無法確認是否有位。'
+})
+const roadsideDisplaySummary = computed(() => {
+  const roadside = queryResult.value?.roadside
+  const mapSource = mapData.value?.queryId === queryId.value ? mapData.value.roadside : null
+  const summary = getRoadsideDisplaySummary(roadside, mapSource, mapFreshnessNow.value)
+  return {
+    ...summary,
+    message: summary.freshnessMessage || roadsideMessage.value,
+  }
 })
 const offStreetMessage = computed(() => {
   const status = queryResult.value?.offStreet?.status
@@ -223,25 +240,33 @@ watch([resultDestination, visibleMapItems], () => {
 }, { deep: true })
 
 watch(() => snapshotDestination(selectedDestination.value), (next, previous) => {
-  if (hasDestinationChanged(next, previous) && queryResult.value) {
-    queryResult.value = null
-    clearMapDataState()
-    selectedItemId.value = ''
-    showResultPanel.value = false
-    clearProgressPolling()
+  if (hasDestinationChanged(next, previous)) {
+    queryRequestGuard.invalidate()
+    loading.value = false
+    if (queryResult.value) {
+      queryResult.value = null
+      clearMapDataState()
+      selectedItemId.value = ''
+      showResultPanel.value = false
+      clearProgressPolling()
+    }
   }
   if (map && Number.isFinite(next.latitude) && Number.isFinite(next.longitude)) {
     map.panTo({ lat: next.latitude, lng: next.longitude })
   }
   renderMap()
-})
+}, { flush: 'sync' })
 
 watch(queryResult, () => {
+  mapFreshnessNow.value = Date.now()
+  scheduleMapFreshnessTimer()
   scheduleProgressPolling()
   maybeAutoRefresh('state-change')
 }, { deep: true })
 
 async function createParkingQuery() {
+  const submittedDestination = { ...selectedDestination.value }
+  const requestContext = queryRequestGuard.start(submittedDestination)
   loading.value = true
   errorMessage.value = ''
 
@@ -249,7 +274,7 @@ async function createParkingQuery() {
     const payload = buildParkingQueryPayload({
       requestToken: buildRequestToken(window.crypto),
       origin: origin.value,
-      destination: selectedDestination.value,
+      destination: submittedDestination,
       departureType: departureType.value,
       scheduledDepartureLocal: scheduledDepartureLocal.value,
     })
@@ -272,7 +297,10 @@ async function createParkingQuery() {
       throw await readApiError(response)
     }
 
-    queryResult.value = await response.json()
+    const result = await response.json()
+    if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value)) return
+
+    queryResult.value = result
     selectedItemId.value = ''
     clearMapDataState()
     refreshMessage.value = ''
@@ -280,15 +308,21 @@ async function createParkingQuery() {
     await loadMapData()
     renderMap()
   } catch (error) {
-    errorMessage.value = `建立查詢失敗：${error.message}`
+    if (queryRequestGuard.isCurrent(requestContext, selectedDestination.value)) {
+      errorMessage.value = `建立查詢失敗：${error.message}`
+    }
   } finally {
-    loading.value = false
-    await maybeAutoRefresh('created-query')
+    if (queryRequestGuard.isCurrent(requestContext, selectedDestination.value)) {
+      loading.value = false
+      await maybeAutoRefresh('created-query')
+    }
   }
 }
 
 async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
-  if (!queryResult.value?.query?.queryId) return
+  const requestQueryId = queryId.value
+  if (!requestQueryId) return
+  const requestContext = queryRequestGuard.capture(selectedDestination.value, requestQueryId)
 
   loading.value = true
   errorMessage.value = ''
@@ -297,7 +331,7 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
     : '正在檢查路邊與路外官方來源刷新狀態。'
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${queryResult.value.query.queryId}/refresh?trigger=${encodeURIComponent(trigger)}`, {
+    const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${requestQueryId}/refresh?trigger=${encodeURIComponent(trigger)}`, {
       method: 'POST',
     })
     logAcceptanceEvent('REFRESH_POST', '刷新 API 已回應。', {
@@ -311,31 +345,41 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
       throw await readApiError(response)
     }
 
-    queryResult.value = await response.json()
+    const result = await response.json()
+    if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) return
+
+    queryResult.value = result
     await loadMapData(true)
+    if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) return
     refreshMessage.value = [
       formatSourceRefresh('路邊', queryResult.value.refresh?.roadside),
       formatSourceRefresh('路外', queryResult.value.refresh?.offStreet),
     ].join('；')
     renderMap()
   } catch (error) {
-    errorMessage.value = `更新車位失敗：${error.message}`
-    refreshMessage.value = '本次更新未完成；不會自動密集重試。'
-    if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
-      queryResult.value = null
-      clearMapDataState()
-      clearProgressPolling()
+    if (queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) {
+      errorMessage.value = `更新車位失敗：${error.message}`
+      refreshMessage.value = '本次更新未完成；不會自動密集重試。'
+      if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
+        queryResult.value = null
+        clearMapDataState()
+        clearProgressPolling()
+      }
     }
   } finally {
-    loading.value = false
+    if (queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) {
+      loading.value = false
+    }
   }
 }
 
 async function readParkingQuery(forceMapData = false) {
-  if (!queryResult.value?.query?.queryId) return
+  const requestQueryId = queryId.value
+  if (!requestQueryId) return
+  const requestContext = queryRequestGuard.capture(selectedDestination.value, requestQueryId)
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${queryResult.value.query.queryId}`)
+    const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${requestQueryId}`)
     logAcceptanceEvent('QUERY_GET', '已讀取查詢狀態。', {
       method: 'GET',
       status: response.status,
@@ -344,18 +388,24 @@ async function readParkingQuery(forceMapData = false) {
     if (!response.ok) {
       throw await readApiError(response)
     }
-    queryResult.value = await response.json()
+    const result = await response.json()
+    if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) return
+
+    queryResult.value = result
     await loadMapData(forceMapData)
+    if (!queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) return
     if (errorMessage.value.startsWith('讀取查詢狀態失敗：')) {
       errorMessage.value = ''
     }
     refreshMessage.value = '已讀取最新查詢狀態。'
   } catch (error) {
-    errorMessage.value = `讀取查詢狀態失敗：${error.message}`
-    clearProgressPolling()
-    if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
-      queryResult.value = null
-      clearMapDataState()
+    if (queryRequestGuard.isCurrent(requestContext, selectedDestination.value, queryId.value)) {
+      errorMessage.value = `讀取查詢狀態失敗：${error.message}`
+      clearProgressPolling()
+      if (error.code === 'QUERY_EXPIRED' || error.code === 'QUERY_NOT_FOUND') {
+        queryResult.value = null
+        clearMapDataState()
+      }
     }
   }
 }
@@ -448,16 +498,23 @@ function clearMapFreshnessTimer() {
 
 function scheduleMapFreshnessTimer() {
   clearMapFreshnessTimer()
-  if (!mapData.value || !isPageVisible()) return
+  if (!mapData.value && !queryResult.value) return
+  if (!isPageVisible()) return
 
-  const timestamps = mapData.value.items
+  const timestamps = (mapData.value?.items ?? [])
     .filter((item) => ['AVAILABLE', 'OCCUPIED', 'FULL'].includes(item.availabilityStatus))
     .map((item) => item.systemCollectedAt
-      ?? mapData.value[item.type === 'ROADSIDE' ? 'roadside' : 'offStreet']?.systemCollectedAt)
+      ?? mapData.value?.[item.type === 'ROADSIDE' ? 'roadside' : 'offStreet']?.systemCollectedAt)
   for (const sourceName of ['roadside', 'offStreet']) {
-    const source = mapData.value[sourceName]
+    const source = mapData.value?.queryId === queryId.value
+      ? mapData.value[sourceName]
+      : null
     if (['READY', 'PARTIAL'].includes(source?.status) && source.systemCollectedAt) {
       timestamps.push(source.systemCollectedAt)
+    }
+    const querySource = queryResult.value?.[sourceName]
+    if (['READY', 'PARTIAL'].includes(querySource?.status) && querySource.systemCollectedAt) {
+      timestamps.push(querySource.systemCollectedAt)
     }
   }
 
@@ -721,10 +778,13 @@ function renderMap() {
     marker.setMap(visibleIds.has(id) ? map : null)
   })
 
-  if (selectedItemId.value && !visibleIds.has(selectedItemId.value)) {
-    selectedItemId.value = ''
-    infoWindow?.close()
-  }
+  if (refreshSelectedMapPopup(
+    selectedItemId.value,
+    visibleIds,
+    itemsById,
+    infoWindow,
+    createInfoWindowContent,
+  )) selectedItemId.value = ''
 }
 
 function createMarkerIcon(item, color) {
@@ -845,6 +905,8 @@ function getDestinationLatLng() {
 }
 
 function useDefaultDestination() {
+  queryRequestGuard.invalidate()
+  loading.value = false
   selectedDestination.value = { ...defaultDestination }
   queryResult.value = null
   clearMapDataState()
@@ -1150,8 +1212,8 @@ function logAcceptanceEvent(type, message, details = {}) {
 
           <article class="result-card">
             <strong>路邊區域</strong>
-            <span>{{ roadsideMessage }}</span>
-            <span>目前可用：{{ queryResult.roadside.currentlyAvailableSpaces ?? '未知' }}</span>
+            <span>{{ roadsideDisplaySummary.message }}</span>
+            <span>目前可用：{{ roadsideDisplaySummary.availableSpaces ?? '未知' }}</span>
             <span>資料時間：{{ formatDateTime(queryResult.roadside.systemCollectedAt) }}</span>
           </article>
 

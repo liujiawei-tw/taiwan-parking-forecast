@@ -65,6 +65,66 @@ export function hasDestinationChanged(next, previous) {
   )
 }
 
+export function createQueryRequestGuard() {
+  let generation = 0
+
+  return {
+    start(destination) {
+      generation += 1
+      return {
+        generation,
+        destination: snapshotDestination(destination),
+        queryId: null,
+      }
+    },
+    capture(destination, queryId = null) {
+      return {
+        generation,
+        destination: snapshotDestination(destination),
+        queryId,
+      }
+    },
+    invalidate() {
+      generation += 1
+    },
+    isCurrent(context, destination, queryId = null) {
+      return Boolean(context)
+        && context.generation === generation
+        && !hasDestinationChanged(snapshotDestination(destination), context.destination)
+        && (context.queryId === null || context.queryId === queryId)
+    },
+  }
+}
+
+export function getRoadsideDisplaySummary(
+  roadside,
+  mapSource,
+  nowMs,
+  maxAgeMs = MAP_DISPLAY_FRESHNESS_MS,
+) {
+  const sourceTimes = [roadside?.systemCollectedAt, mapSource?.systemCollectedAt]
+    .map((timestamp) => Date.parse(timestamp ?? ''))
+    .filter(Number.isFinite)
+  const expiredByAge = sourceTimes.some((sourceTimeMs) => nowMs - sourceTimeMs > maxAgeMs)
+  const sourceExpired = isMapSourceDisplayStale(roadside, nowMs, maxAgeMs)
+    || (mapSource && isMapSourceDisplayStale({
+      status: mapSource.status,
+      systemCollectedAt: mapSource.systemCollectedAt,
+    }, nowMs, maxAgeMs))
+  const isStale = Boolean(sourceExpired)
+  const canShowCount = !isStale && ['READY', 'PARTIAL'].includes(roadside?.status)
+
+  return {
+    isStale,
+    availableSpaces: canShowCount ? roadside?.currentlyAvailableSpaces ?? null : null,
+    freshnessMessage: isStale
+      ? expiredByAge || roadside?.status === 'STALE' || mapSource?.status === 'STALE'
+        ? '路邊資料已過期，目前可用數未知。'
+        : '路邊資料時效無法確認，目前可用數未知。'
+      : '',
+  }
+}
+
 export function createMapDataRequestCache() {
   let loadedKey = ''
   let inFlightKey = ''
