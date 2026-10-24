@@ -5,7 +5,12 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +24,9 @@ import parking.forecast.controller.dto.ParkingQueryResponse.DestinationSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.EtaSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.OffStreetPrediction;
 import parking.forecast.controller.dto.ParkingQueryResponse.OffStreetSection;
+import parking.forecast.controller.dto.ParkingQueryResponse.MapDataResponse;
+import parking.forecast.controller.dto.ParkingQueryResponse.MapMarker;
+import parking.forecast.controller.dto.ParkingQueryResponse.MapSource;
 import parking.forecast.controller.dto.ParkingQueryResponse.ParkingLot;
 import parking.forecast.controller.dto.ParkingQueryResponse.PredictionsSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.QuerySection;
@@ -29,7 +37,12 @@ import parking.forecast.controller.dto.ParkingQueryResponse.RoadsideSpot;
 import parking.forecast.controller.dto.ParkingQueryResponse.SourceRefresh;
 import parking.forecast.domain.AvailabilityStatus;
 import parking.forecast.domain.DatasetCode;
+import parking.forecast.domain.EligibilityStatus;
+import parking.forecast.domain.MappingStatus;
 import parking.forecast.domain.ParkingPlaceType;
+import parking.forecast.domain.QualityStatus;
+import parking.forecast.domain.SourceMappingEntity;
+import parking.forecast.domain.SourceSystem;
 import parking.forecast.domain.TriggerType;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingPlace;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchRequest;
@@ -38,6 +51,7 @@ import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedAv
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedObservation;
 import parking.forecast.service.GoogleEtaService.EtaResult;
 import parking.forecast.service.ParkingQueryStateStore.StoredParkingQuery;
+import parking.forecast.repository.SourceMappingRepository;
 import parking.forecast.service.SourceRefreshCoordinationService.SourceRefreshResult;
 
 @Service
@@ -47,6 +61,9 @@ public class ParkingQueryService {
     private static final String MVP_AREA_CODE = "NEW_TAIPEI_XINZHUANG_MVP";
     private static final String LOCAL_CATALOG_SOURCE = "LOCAL_NTPC_CATALOG";
     private static final int SEARCH_RADIUS_METERS = 500;
+    private static final int MAX_ROADSIDE_MAP_MARKERS = 400;
+    private static final int MAX_OFF_STREET_MAP_MARKERS = 100;
+    private static final int SOURCE_MAPPING_QUERY_BATCH_SIZE = 500;
     private static final int MAX_REQUEST_TOKEN_LENGTH = 120;
     private static final double MVP_MIN_LATITUDE = 25.015;
     private static final double MVP_MAX_LATITUDE = 25.075;
@@ -60,6 +77,7 @@ public class ParkingQueryService {
     private final GoogleEtaService googleEtaService;
     private final ParkingQueryStateStore parkingQueryStateStore;
     private final ParkingQueryStateProperties queryStateProperties;
+    private final SourceMappingRepository sourceMappingRepository;
 
     @Autowired
     public ParkingQueryService(
@@ -68,9 +86,10 @@ public class ParkingQueryService {
             SourceRefreshCoordinationService sourceRefreshCoordinationService,
             GoogleEtaService googleEtaService,
             ParkingQueryStateStore parkingQueryStateStore,
-            ParkingQueryStateProperties queryStateProperties
+            ParkingQueryStateProperties queryStateProperties,
+            SourceMappingRepository sourceMappingRepository
     ) {
-        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService, parkingQueryStateStore, queryStateProperties);
+        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService, parkingQueryStateStore, queryStateProperties, sourceMappingRepository);
     }
 
     ParkingQueryService(
@@ -82,6 +101,19 @@ public class ParkingQueryService {
             ParkingQueryStateStore parkingQueryStateStore,
             ParkingQueryStateProperties queryStateProperties
     ) {
+        this(clock, nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService, parkingQueryStateStore, queryStateProperties, null);
+    }
+
+    ParkingQueryService(
+            Clock clock,
+            NearbyParkingSearchService nearbyParkingSearchService,
+            PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
+            SourceRefreshCoordinationService sourceRefreshCoordinationService,
+            GoogleEtaService googleEtaService,
+            ParkingQueryStateStore parkingQueryStateStore,
+            ParkingQueryStateProperties queryStateProperties,
+            SourceMappingRepository sourceMappingRepository
+    ) {
         this.clock = clock;
         this.nearbyParkingSearchService = nearbyParkingSearchService;
         this.publishedAvailabilitySnapshotService = publishedAvailabilitySnapshotService;
@@ -89,6 +121,7 @@ public class ParkingQueryService {
         this.googleEtaService = googleEtaService;
         this.parkingQueryStateStore = parkingQueryStateStore;
         this.queryStateProperties = queryStateProperties;
+        this.sourceMappingRepository = sourceMappingRepository;
     }
 
     public ParkingQueryResponse create(CreateParkingQueryRequest request) {
@@ -156,6 +189,253 @@ public class ParkingQueryService {
         ParkingQueryResponse response = loadStoredQuery(queryId).response();
         requireNotExpired(response);
         return response;
+    }
+
+    public MapDataResponse findMapData(String queryId) {
+        StoredParkingQuery storedQuery = loadStoredQuery(queryId);
+        requireNotExpired(storedQuery.response());
+        var destination = storedQuery.request().destination();
+        NearbyParkingSearchResult nearby = nearbyParkingSearchService.findNearby(new NearbyParkingSearchRequest(
+                MVP_SERVICE_AREA,
+                destination.latitude(),
+                destination.longitude(),
+                SEARCH_RADIUS_METERS
+        ));
+
+        List<NearbyParkingPlace> roadsidePlaces = nearby.places().stream()
+                .filter(place -> place.placeType() == ParkingPlaceType.ON_STREET_SPOT)
+                .toList();
+        List<NearbyParkingPlace> offStreetPlaces = nearby.places().stream()
+                .filter(place -> place.placeType() == ParkingPlaceType.OFF_STREET_LOT)
+                .toList();
+        Map<Long, SourceMappingEntity> roadsideMappings = findUniqueVerifiedMappings(
+                DatasetCode.NTPC_ROADSIDE_SPOT,
+                roadsidePlaces
+        );
+        Map<Long, SourceMappingEntity> offStreetMappings = findUniqueVerifiedMappings(
+                DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
+                offStreetPlaces
+        );
+        List<NearbyParkingPlace> selectedRoadside = selectVerifiedMapPlaces(
+                roadsidePlaces,
+                roadsideMappings,
+                MAX_ROADSIDE_MAP_MARKERS
+        );
+        List<NearbyParkingPlace> selectedOffStreet = selectVerifiedMapPlaces(
+                offStreetPlaces,
+                offStreetMappings,
+                MAX_OFF_STREET_MAP_MARKERS
+        );
+        PublishedAvailabilityView roadsideAvailability = publishedAvailabilitySnapshotService.findLatest(
+                DatasetCode.NTPC_ROADSIDE_SPOT,
+                selectedRoadside.stream().map(NearbyParkingPlace::parkingPlaceId).toList()
+        );
+        PublishedAvailabilityView offStreetAvailability = publishedAvailabilitySnapshotService.findLatest(
+                DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
+                selectedOffStreet.stream().map(NearbyParkingPlace::parkingPlaceId).toList()
+        );
+
+        List<MapMarker> items = new ArrayList<>();
+        selectedRoadside.stream()
+                .filter(place -> roadsideMappings.containsKey(place.parkingPlaceId()))
+                .map(place -> toMapMarker(place, roadsideMappings.get(place.parkingPlaceId()), roadsideAvailability, true))
+                .forEach(items::add);
+        selectedOffStreet.stream()
+                .filter(place -> offStreetMappings.containsKey(place.parkingPlaceId()))
+                .map(place -> toMapMarker(place, offStreetMappings.get(place.parkingPlaceId()), offStreetAvailability, false))
+                .forEach(items::add);
+        items.sort(java.util.Comparator.comparingInt(MapMarker::distanceMeters)
+                .thenComparing(MapMarker::label)
+                .thenComparing(MapMarker::id));
+
+        int candidateCount = roadsidePlaces.size() + offStreetPlaces.size();
+        int verifiedCandidateCount = roadsideMappings.size() + offStreetMappings.size();
+        int returnedItemCount = items.size();
+        int omittedItemCount = verifiedCandidateCount - returnedItemCount;
+        int excludedUnverifiedCount = candidateCount - verifiedCandidateCount;
+        return new MapDataResponse(
+                queryId,
+                SEARCH_RADIUS_METERS,
+                storedQuery.response().area().coverageStatus(),
+                OffsetDateTime.now(clock),
+                candidateCount,
+                verifiedCandidateCount,
+                excludedUnverifiedCount,
+                omittedItemCount,
+                returnedItemCount,
+                "標記只讀取新莊審查目錄與 500 公尺內最新已發布快照；此端點不會觸發官方來源刷新。",
+                toMapSource(roadsideAvailability),
+                toMapSource(offStreetAvailability),
+                List.copyOf(items)
+        );
+    }
+
+    private Map<Long, SourceMappingEntity> findUniqueVerifiedMappings(
+            DatasetCode datasetCode,
+            List<NearbyParkingPlace> places
+    ) {
+        if (sourceMappingRepository == null || places.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, SourceMappingEntity> uniqueMappings = new HashMap<>();
+        Set<Long> duplicatePlaceIds = new HashSet<>();
+        List<Long> parkingPlaceIds = places.stream().map(NearbyParkingPlace::parkingPlaceId).toList();
+        for (int start = 0; start < parkingPlaceIds.size(); start += SOURCE_MAPPING_QUERY_BATCH_SIZE) {
+            List<Long> batchIds = parkingPlaceIds.subList(
+                    start,
+                    Math.min(start + SOURCE_MAPPING_QUERY_BATCH_SIZE, parkingPlaceIds.size())
+            );
+            List<SourceMappingEntity> mappings = sourceMappingRepository
+                    .findBySourceSystemAndDatasetCodeAndMappingStatusAndParkingPlace_IdIn(
+                            SourceSystem.NTPC_OPEN_DATA,
+                            datasetCode,
+                            MappingStatus.VERIFIED,
+                            batchIds
+                    );
+            mappings.forEach(mapping -> {
+                Long parkingPlaceId = mapping.getParkingPlace().getId();
+                if (uniqueMappings.putIfAbsent(parkingPlaceId, mapping) != null) {
+                    duplicatePlaceIds.add(parkingPlaceId);
+                }
+            });
+        }
+        duplicatePlaceIds.forEach(uniqueMappings::remove);
+        return Map.copyOf(uniqueMappings);
+    }
+
+    private List<NearbyParkingPlace> selectVerifiedMapPlaces(
+            List<NearbyParkingPlace> places,
+            Map<Long, SourceMappingEntity> verifiedMappings,
+            int maxMarkers
+    ) {
+        return places.stream()
+                .filter(place -> verifiedMappings.containsKey(place.parkingPlaceId()))
+                .sorted(Comparator.comparingInt(NearbyParkingPlace::distanceMeters)
+                        .thenComparing(NearbyParkingPlace::parkingPlaceId))
+                .limit(maxMarkers)
+                .toList();
+    }
+
+    private MapMarker toMapMarker(
+            NearbyParkingPlace place,
+            SourceMappingEntity mapping,
+            PublishedAvailabilityView availability,
+            boolean roadside
+    ) {
+        PublishedObservation observation = availability.observations().get(place.parkingPlaceId());
+        boolean observationMatchesMapping = observation != null
+                && mapping.getSourcePlaceId().equals(observation.sourcePlaceId());
+        String status = resolveMapAvailabilityStatus(availability, observation, observationMatchesMapping, roadside);
+        Integer availableCarSpaces = null;
+        Boolean availableSpot = null;
+        String qualityStatus = null;
+        OffsetDateTime sourceObservedAt = null;
+        OffsetDateTime systemCollectedAt = availability.systemCollectedAt();
+        boolean usableQuality = observationMatchesMapping && isUsableMapQuality(observation.qualityStatus());
+        if (observationMatchesMapping) {
+            qualityStatus = observation.qualityStatus().name();
+            sourceObservedAt = observation.sourceObservedAt();
+            systemCollectedAt = observation.systemFetchedAt() == null
+                    ? availability.systemCollectedAt()
+                    : observation.systemFetchedAt();
+            if (usableQuality && availability.isFreshReady() && place.carEligibleStatus() == EligibilityStatus.CONFIRMED) {
+                if (roadside) {
+                    availableSpot = observation.availableSpot();
+                } else if ((AvailabilityStatus.AVAILABLE == observation.availabilityStatus()
+                        || AvailabilityStatus.FULL == observation.availabilityStatus())
+                        && observation.availableCarSpaces() != null
+                        && observation.availableCarSpaces() >= 0) {
+                    availableCarSpaces = observation.availableCarSpaces();
+                }
+            }
+        }
+        boolean navigationAvailable = availability.isFreshReady()
+                && usableQuality
+                && place.carEligibleStatus() == EligibilityStatus.CONFIRMED
+                && AvailabilityStatus.AVAILABLE.name().equals(status);
+        Double navigationLatitude = null;
+        Double navigationLongitude = null;
+        if (navigationAvailable) {
+            navigationLatitude = roadside || place.entranceLatitude() == null
+                    ? place.latitude()
+                    : place.entranceLatitude();
+            navigationLongitude = roadside || place.entranceLongitude() == null
+                    ? place.longitude()
+                    : place.entranceLongitude();
+        }
+        String dataSource = availability.snapshotId() == null ? LOCAL_CATALOG_SOURCE : "NTPC_OPEN_DATA";
+        String itemId = (roadside ? "spot-" : "lot-") + place.parkingPlaceId();
+        return new MapMarker(
+                itemId,
+                roadside ? "ROADSIDE" : "OFF_STREET",
+                place.displayName(),
+                place.latitude(),
+                place.longitude(),
+                navigationLatitude,
+                navigationLongitude,
+                place.distanceMeters(),
+                status,
+                availableCarSpaces,
+                availableSpot,
+                place.carEligibleStatus().name(),
+                qualityStatus,
+                navigationAvailable,
+                dataSource + "/" + availability.datasetCode().name(),
+                sourceObservedAt,
+                systemCollectedAt,
+                mapMarkerMessage(status, place.carEligibleStatus())
+        );
+    }
+
+    private String resolveMapAvailabilityStatus(
+            PublishedAvailabilityView availability,
+            PublishedObservation observation,
+            boolean observationMatchesMapping,
+            boolean roadside
+    ) {
+        if ("STALE".equals(availability.status())) {
+            return AvailabilityStatus.STALE.name();
+        }
+        if ("NO_REALTIME_SNAPSHOT".equals(availability.status())) {
+            return AvailabilityStatus.NO_REALTIME_AVAILABILITY.name();
+        }
+        if (!availability.isFreshReady() || !observationMatchesMapping || !isUsableMapQuality(observation.qualityStatus())) {
+            return AvailabilityStatus.UNKNOWN.name();
+        }
+        if (roadside && AvailabilityStatus.AVAILABLE == observation.availabilityStatus()
+                && !Boolean.TRUE.equals(observation.availableSpot())) {
+            return AvailabilityStatus.UNKNOWN.name();
+        }
+        return observation.availabilityStatus().name();
+    }
+
+    private boolean isUsableMapQuality(QualityStatus qualityStatus) {
+        return qualityStatus == QualityStatus.PASS || qualityStatus == QualityStatus.PARTIAL_PASS;
+    }
+
+    private MapSource toMapSource(PublishedAvailabilityView availability) {
+        String source = availability.snapshotId() == null ? LOCAL_CATALOG_SOURCE : "NTPC_OPEN_DATA";
+        return new MapSource(
+                availability.status(),
+                source,
+                availability.snapshotId(),
+                availability.sourceObservedAt(),
+                availability.systemCollectedAt(),
+                availability.message()
+        );
+    }
+
+    private String mapMarkerMessage(String status, EligibilityStatus eligibilityStatus) {
+        if (eligibilityStatus != EligibilityStatus.CONFIRMED) {
+            return "一般汽車適用性未確認；不提供一般汽車停車推薦。";
+        }
+        return switch (status) {
+            case "AVAILABLE" -> "目前觀測有位，不代表抵達時仍有位。";
+            case "OCCUPIED", "FULL" -> "目前觀測已占用或已滿。";
+            case "STALE" -> "觀測資料已過期；不呈現為目前有位。";
+            case "NO_REALTIME_AVAILABILITY" -> "尚無已發布的即時觀測。";
+            default -> "目前無法確認即時狀態。";
+        };
     }
 
     public ParkingQueryResponse refresh(String queryId) {
@@ -318,9 +598,10 @@ public class ParkingQueryService {
         }
 
         String status = resolveRoadsideStatus(availability);
-        Integer currentlyAvailableSpaces = resolveRoadsideAvailableCount(availability);
+        Integer currentlyAvailableSpaces = resolveRoadsideAvailableCount(availability, roadsidePlaces);
         List<RoadsideSpot> availableSpots = availability.isFreshReady()
                 ? roadsidePlaces.stream()
+                        .filter(place -> place.carEligibleStatus() == EligibilityStatus.CONFIRMED)
                         .filter(place -> isFreshAvailableRoadsideSpot(availability, place.parkingPlaceId()))
                         .map(place -> toRoadsideSpot(place, availability))
                         .toList()
@@ -438,7 +719,10 @@ public class ParkingQueryService {
         return hasOnlyUnknown ? "UNKNOWN" : "READY";
     }
 
-    private Integer resolveRoadsideAvailableCount(PublishedAvailabilityView availability) {
+    private Integer resolveRoadsideAvailableCount(
+            PublishedAvailabilityView availability,
+            List<NearbyParkingPlace> roadsidePlaces
+    ) {
         if (!availability.isFreshReady()) {
             return null;
         }
@@ -447,7 +731,12 @@ public class ParkingQueryService {
         if (!hasKnownObservation) {
             return null;
         }
+        Set<Long> confirmedCarPlaces = roadsidePlaces.stream()
+                .filter(place -> place.carEligibleStatus() == EligibilityStatus.CONFIRMED)
+                .map(NearbyParkingPlace::parkingPlaceId)
+                .collect(java.util.stream.Collectors.toSet());
         return (int) availability.observations().values().stream()
+                .filter(observation -> confirmedCarPlaces.contains(observation.parkingPlaceId()))
                 .filter(this::isAvailableRoadsideObservation)
                 .count();
     }
@@ -458,7 +747,9 @@ public class ParkingQueryService {
     }
 
     private boolean isAvailableRoadsideObservation(PublishedObservation observation) {
-        return observation.availabilityStatus() == AvailabilityStatus.AVAILABLE && Boolean.TRUE.equals(observation.availableSpot());
+        return observation.availabilityStatus() == AvailabilityStatus.AVAILABLE
+                && Boolean.TRUE.equals(observation.availableSpot())
+                && isUsableMapQuality(observation.qualityStatus());
     }
 
     private RoadsideSpot toRoadsideSpot(NearbyParkingPlace place, PublishedAvailabilityView availability) {
@@ -485,7 +776,8 @@ public class ParkingQueryService {
                 place.entranceLongitude() == null ? place.longitude() : place.entranceLongitude(),
                 place.distanceMeters(),
                 availableCarSpaces,
-                true,
+                place.carEligibleStatus() == EligibilityStatus.CONFIRMED
+                        && AvailabilityStatus.AVAILABLE.name().equals(availabilityStatus),
                 availabilityStatus,
                 availability.systemCollectedAt(),
                 parkingLotMessage(availabilityStatus)
@@ -509,8 +801,10 @@ public class ParkingQueryService {
         if (!availability.isFreshReady() || observation == null) {
             return null;
         }
-        if (observation.availabilityStatus() == AvailabilityStatus.AVAILABLE
-                || observation.availabilityStatus() == AvailabilityStatus.FULL) {
+        if ((observation.availabilityStatus() == AvailabilityStatus.AVAILABLE
+                || observation.availabilityStatus() == AvailabilityStatus.FULL)
+                && observation.availableCarSpaces() != null
+                && observation.availableCarSpaces() >= 0) {
             return observation.availableCarSpaces();
         }
         return null;

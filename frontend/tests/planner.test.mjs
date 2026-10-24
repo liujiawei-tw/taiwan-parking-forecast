@@ -5,6 +5,7 @@ import {
 } from '../src/acceptanceLog.js'
 import {
   buildParkingQueryPayload,
+  buildAutoRefreshAttemptKey,
   buildRequestToken,
   hasUsableGoogleMapsKey,
   locationErrorMessage,
@@ -148,6 +149,25 @@ const visibleStale = shouldAutoRefresh({
 assert.equal(visibleStale.shouldRefresh, true)
 assert.deepEqual(visibleStale.sources, ['roadside', 'offStreet'])
 assert.equal(visibleStale.attemptKey, 'query-1:STALE:NO_REALTIME_SNAPSHOT')
+
+const expiredSnapshotQuery = {
+  ...queryResult({ roadsideStatus: 'STALE', offStreetStatus: 'NO_REALTIME_SNAPSHOT' }),
+  roadside: { status: 'STALE', snapshotId: 101, systemCollectedAt: '2026-10-24T10:00:00Z' },
+  offStreet: { status: 'NO_REALTIME_SNAPSHOT' },
+}
+const refreshedSnapshotQuery = {
+  ...expiredSnapshotQuery,
+  roadside: { ...expiredSnapshotQuery.roadside, snapshotId: 102, systemCollectedAt: '2026-10-24T10:06:00Z' },
+}
+const previousSnapshotAttempt = buildAutoRefreshAttemptKey(expiredSnapshotQuery)
+assert.notEqual(buildAutoRefreshAttemptKey(refreshedSnapshotQuery), previousSnapshotAttempt)
+assert.equal(shouldAutoRefresh({
+  queryResult: refreshedSnapshotQuery,
+  visible: true,
+  loading: false,
+  refreshInProgress: false,
+  lastAttemptKey: previousSnapshotAttempt,
+}).shouldRefresh, true, 'a newer source snapshot can be refreshed after the previous attempt')
 
 assert.equal(shouldAutoRefresh({
   queryResult: queryResult({ roadsideStatus: 'STALE' }),

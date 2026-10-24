@@ -68,11 +68,19 @@ export function getAutoRefreshEligibleSources(queryResult, refreshInProgress) {
 
 export function buildAutoRefreshAttemptKey(queryResult) {
   if (!queryResult?.query?.queryId) return ''
-  return [
+  const key = [
     queryResult.query.queryId,
     queryResult.roadside?.status,
     queryResult.offStreet?.status,
-  ].join(':')
+  ]
+  const sourceVersions = [
+    queryResult.roadside?.snapshotId,
+    queryResult.roadside?.systemCollectedAt,
+    queryResult.offStreet?.snapshotId,
+    queryResult.offStreet?.systemCollectedAt,
+  ]
+  if (sourceVersions.some(Boolean)) key.push(...sourceVersions)
+  return key.join(':')
 }
 
 export function shouldAutoRefresh({

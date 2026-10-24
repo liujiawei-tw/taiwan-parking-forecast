@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -40,6 +41,8 @@ import parking.forecast.repository.AvailabilitySnapshotRepository;
 import parking.forecast.repository.IngestionRunRepository;
 import parking.forecast.repository.ParkingPlaceRepository;
 import parking.forecast.repository.SourceStateRepository;
+import parking.forecast.repository.SourceMappingRepository;
+import parking.forecast.domain.MappingStatus;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -70,6 +73,102 @@ class ParkingQueryControllerTest {
 
     @Autowired
     private SourceStateRepository sourceStateRepository;
+
+    @Autowired
+    private SourceMappingRepository sourceMappingRepository;
+
+    @Test
+    void mapDataGetUsesPublishedSnapshotsAndReturnsAllReviewedStatusesWithinFixedRadius() throws Exception {
+        publishRoadsideSnapshot(FRESH_FETCHED_AT, List.of(
+                roadsideObservation(910106L, AvailabilityStatus.AVAILABLE, true),
+                roadsideObservation(910107L, AvailabilityStatus.OCCUPIED, false)
+        ));
+        publishOffStreetSnapshot(FRESH_FETCHED_AT, List.of(
+                offStreetObservation(920101L, AvailabilityStatus.FULL, 0)
+        ));
+        var query = controller.create(mockRequestNearSeedCatalog()).getBody();
+
+        var data = controller.getMapData(query.query().queryId());
+        assertThat(data.radiusMeters()).isEqualTo(500);
+        assertThat(data.roadside().snapshotId()).isNotNull();
+        assertThat(data.offStreet().snapshotId()).isNotNull();
+        assertThat(data.items()).filteredOn(item -> item.id().equals("spot-910106"))
+                .singleElement()
+                .satisfies(item -> {
+                    assertThat(item.availabilityStatus()).isEqualTo("AVAILABLE");
+                    assertThat(item.navigationAvailable()).isTrue();
+                    assertThat(item.sourceObservedAt()).isNotNull();
+                    assertThat(item.systemCollectedAt()).isNotNull();
+                });
+        assertThat(data.items()).filteredOn(item -> item.id().equals("spot-910107"))
+                .singleElement()
+                .satisfies(item -> {
+                    assertThat(item.availabilityStatus()).isEqualTo("OCCUPIED");
+                    assertThat(item.navigationAvailable()).isFalse();
+                });
+        assertThat(data.items()).filteredOn(item -> item.id().equals("lot-920101"))
+                .singleElement()
+                .satisfies(item -> {
+                    assertThat(item.availabilityStatus()).isEqualTo("FULL");
+                    assertThat(item.availableCarSpaces()).isZero();
+                    assertThat(item.navigationAvailable()).isFalse();
+                });
+
+        mockMvc.perform(get("/api/v1/parking-queries/{queryId}/map-data", query.query().queryId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.radiusMeters").value(500))
+                .andExpect(jsonPath("$.items").isArray());
+    }
+
+    @Test
+    void mapDataGetShowsStaleAvailabilityAsStaleWithoutOldCounts() {
+        publishOffStreetSnapshot(STALE_FETCHED_AT, List.of(
+                offStreetObservation(920101L, AvailabilityStatus.AVAILABLE, 12)
+        ));
+        var query = controller.create(mockRequestNearSeedCatalog()).getBody();
+
+        var data = controller.getMapData(query.query().queryId());
+
+        assertThat(data.radiusMeters()).isEqualTo(500);
+        assertThat(data.items()).filteredOn(item -> item.id().equals("lot-920101"))
+                .singleElement()
+                .satisfies(item -> {
+                    assertThat(item.availabilityStatus()).isEqualTo("STALE");
+                    assertThat(item.availableCarSpaces()).isNull();
+                    assertThat(item.navigationAvailable()).isFalse();
+                    assertThat(item.navigationLatitude()).isNull();
+                    assertThat(item.navigationLongitude()).isNull();
+                });
+    }
+
+    @Test
+    void offStreetMapNavigationUsesTheSameEntranceCoordinatesAsTheExistingQueryResponse() {
+        ParkingPlaceEntity parkingLot = parkingPlaceRepository.findById(920101L).orElseThrow();
+        parkingLot.setEntranceLatitude(new BigDecimal("25.0425000"));
+        parkingLot.setEntranceLongitude(new BigDecimal("121.4598000"));
+        publishOffStreetSnapshot(FRESH_FETCHED_AT, List.of(
+                offStreetObservation(920101L, AvailabilityStatus.AVAILABLE, 12)
+        ));
+        var query = controller.create(mockRequestNearSeedCatalog()).getBody();
+
+        var legacyParkingLot = query.offStreet().parkingLots().stream()
+                .filter(lot -> lot.id().equals("920101"))
+                .findFirst()
+                .orElseThrow();
+        var mapMarker = controller.getMapData(query.query().queryId()).items().stream()
+                .filter(item -> item.id().equals("lot-920101"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(legacyParkingLot.navigationAvailable()).isTrue();
+        assertThat(mapMarker.navigationAvailable()).isTrue();
+        assertThat(mapMarker.latitude()).isEqualTo(parkingLot.getLatitude().doubleValue());
+        assertThat(mapMarker.longitude()).isEqualTo(parkingLot.getLongitude().doubleValue());
+        assertThat(mapMarker.navigationLatitude()).isEqualTo(legacyParkingLot.latitude());
+        assertThat(mapMarker.navigationLongitude()).isEqualTo(legacyParkingLot.longitude());
+        assertThat(mapMarker.navigationLatitude()).isNotEqualTo(mapMarker.latitude());
+        assertThat(mapMarker.navigationLongitude()).isNotEqualTo(mapMarker.longitude());
+    }
 
     @Test
     void createQueryReturnsCatalogResultsAndNoRealtimeSnapshotWhenNoPublishedSnapshotExists() {
@@ -381,7 +480,7 @@ class ParkingQueryControllerTest {
                     observation.getParkingPlace(),
                     SourceSystem.NTPC_OPEN_DATA,
                     datasetCode,
-                    observation.getSourcePlaceId(),
+                    verifiedSourcePlaceId(datasetCode, observation.getParkingPlace().getId()),
                     observation.getAvailabilityStatus(),
                     fetchedAt,
                     observation.getQualityStatus(),
@@ -403,6 +502,19 @@ class ParkingQueryControllerTest {
         sourceState.setLastSuccessfulFetchedAt(fetchedAt);
         sourceState.setLastSourceObservedAt(fetchedAt.minusSeconds(20));
         sourceStateRepository.save(sourceState);
+    }
+
+    private String verifiedSourcePlaceId(DatasetCode datasetCode, Long parkingPlaceId) {
+        return sourceMappingRepository.findBySourceSystemAndDatasetCodeAndMappingStatusAndParkingPlace_IdIn(
+                        SourceSystem.NTPC_OPEN_DATA,
+                        datasetCode,
+                        MappingStatus.VERIFIED,
+                        List.of(parkingPlaceId))
+                .stream()
+                .filter(mapping -> mapping.getParkingPlace().getId().equals(parkingPlaceId))
+                .map(mapping -> mapping.getSourcePlaceId())
+                .findFirst()
+                .orElseThrow();
     }
 
     private AvailabilityObservationEntity roadsideObservation(

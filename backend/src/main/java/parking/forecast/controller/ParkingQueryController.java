@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import parking.forecast.controller.dto.CreateParkingQueryRequest;
 import parking.forecast.controller.dto.ParkingQueryResponse;
+import parking.forecast.controller.dto.ParkingQueryResponse.MapDataResponse;
 import parking.forecast.domain.TriggerType;
 import parking.forecast.service.ParkingQueryService;
 import parking.forecast.service.ParkingQueryService.ParkingQueryContractException;
@@ -37,6 +38,11 @@ public class ParkingQueryController {
     @GetMapping("/{queryId}")
     public ParkingQueryResponse get(@PathVariable String queryId) {
         return parkingQueryService.findById(queryId);
+    }
+
+    @GetMapping("/{queryId}/map-data")
+    public MapDataResponse getMapData(@PathVariable String queryId) {
+        return parkingQueryService.findMapData(queryId);
     }
 
     @PostMapping("/{queryId}/refresh")

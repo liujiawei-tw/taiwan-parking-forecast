@@ -1,5 +1,6 @@
 package parking.forecast.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,6 +21,13 @@ public interface SourceMappingRepository extends JpaRepository<SourceMappingEnti
             SourceSystem sourceSystem,
             DatasetCode datasetCode,
             MappingStatus mappingStatus
+    );
+
+    List<SourceMappingEntity> findBySourceSystemAndDatasetCodeAndMappingStatusAndParkingPlace_IdIn(
+            SourceSystem sourceSystem,
+            DatasetCode datasetCode,
+            MappingStatus mappingStatus,
+            Collection<Long> parkingPlaceIds
     );
 
     long countBySourceSystemAndDatasetCodeAndMappingStatus(

@@ -102,6 +102,7 @@ public class PublishedAvailabilitySnapshotService {
     private PublishedObservation toObservation(AvailabilityObservationEntity entity) {
         return new PublishedObservation(
                 entity.getParkingPlace().getId(),
+                entity.getSourcePlaceId(),
                 entity.getAvailabilityStatus(),
                 entity.getAvailableCarSpaces(),
                 entity.getAvailableSpot(),
@@ -182,6 +183,7 @@ public class PublishedAvailabilitySnapshotService {
 
     public record PublishedObservation(
             Long parkingPlaceId,
+            String sourcePlaceId,
             AvailabilityStatus availabilityStatus,
             Integer availableCarSpaces,
             Boolean availableSpot,
