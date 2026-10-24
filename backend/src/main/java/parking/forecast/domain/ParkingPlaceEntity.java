@@ -33,6 +33,30 @@ public class ParkingPlaceEntity {
     @Column(name = "display_name", nullable = false, length = 200)
     private String displayName;
 
+    @Column(name = "address", length = 500)
+    private String address;
+
+    @Column(name = "parking_space_type", length = 120)
+    private String parkingSpaceType;
+
+    @Column(name = "fee_status", length = 120)
+    private String feeStatus;
+
+    @Column(name = "fee_description", length = 1000)
+    private String feeDescription;
+
+    @Column(name = "charging_days", length = 250)
+    private String chargingDays;
+
+    @Column(name = "charging_hours", length = 250)
+    private String chargingHours;
+
+    @Column(name = "total_car_spaces")
+    private Integer totalCarSpaces;
+
+    @Column(name = "catalog_notes", length = 2000)
+    private String catalogNotes;
+
     @Column(name = "latitude", nullable = false, precision = 10, scale = 7)
     private BigDecimal latitude;
 
@@ -97,6 +121,70 @@ public class ParkingPlaceEntity {
 
     public String getDisplayName() {
         return displayName;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getParkingSpaceType() {
+        return parkingSpaceType;
+    }
+
+    public void setParkingSpaceType(String parkingSpaceType) {
+        this.parkingSpaceType = parkingSpaceType;
+    }
+
+    public String getFeeStatus() {
+        return feeStatus;
+    }
+
+    public void setFeeStatus(String feeStatus) {
+        this.feeStatus = feeStatus;
+    }
+
+    public String getFeeDescription() {
+        return feeDescription;
+    }
+
+    public void setFeeDescription(String feeDescription) {
+        this.feeDescription = feeDescription;
+    }
+
+    public String getChargingDays() {
+        return chargingDays;
+    }
+
+    public void setChargingDays(String chargingDays) {
+        this.chargingDays = chargingDays;
+    }
+
+    public String getChargingHours() {
+        return chargingHours;
+    }
+
+    public void setChargingHours(String chargingHours) {
+        this.chargingHours = chargingHours;
+    }
+
+    public Integer getTotalCarSpaces() {
+        return totalCarSpaces;
+    }
+
+    public void setTotalCarSpaces(Integer totalCarSpaces) {
+        this.totalCarSpaces = totalCarSpaces;
+    }
+
+    public String getCatalogNotes() {
+        return catalogNotes;
+    }
+
+    public void setCatalogNotes(String catalogNotes) {
+        this.catalogNotes = catalogNotes;
     }
 
     public BigDecimal getLatitude() {

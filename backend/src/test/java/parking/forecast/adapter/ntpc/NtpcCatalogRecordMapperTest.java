@@ -46,6 +46,40 @@ class NtpcCatalogRecordMapperTest {
     }
 
     @Test
+    void mapsOfficialRoadsideAndOffStreetDetailsIntoStructuredCatalogFields() {
+        var roadside = mapper.toRoadsideCatalogRecords(XINZHUANG_SCOPE, "65000050", List.of(
+                new NtpcRoadsideParkingAvailabilityDto(
+                        "R-DETAIL", "CELL-DETAIL", "一般汽車格", "週一至週五", "08:00-20:00",
+                        "計時收費", "每小時 20 元", "夜間暫停收費", "ROAD-1", "中正路",
+                        "Y", "N", "2", "25.0372", "121.4525", "65000", "65000050"
+                )
+        )).get(0);
+
+        assertThat(roadside.parkingSpaceType()).isEqualTo("一般汽車格");
+        assertThat(roadside.feeStatus()).isEqualTo("計時收費");
+        assertThat(roadside.feeDescription()).isEqualTo("每小時 20 元");
+        assertThat(roadside.chargingDays()).isEqualTo("週一至週五");
+        assertThat(roadside.chargingHours()).isEqualTo("08:00-20:00");
+        assertThat(roadside.totalCarSpaces()).isEqualTo(1);
+        assertThat(roadside.notes()).isEqualTo("夜間暫停收費");
+
+        var offStreet = mapper.toOffStreetCatalogRecords(XINZHUANG_SCOPE, "新莊區", List.of(
+                new NtpcOffStreetParkingLotDto(
+                        "P-DETAIL", "新莊區", "新莊測試停車場", "地下停車場", "鄰近捷運站",
+                        "新北市新莊區中正路 1 號", "小型車平日每小時 30 元", "每日 00:00-24:00",
+                        "296239.5", "2770049", "120"
+                )
+        )).get(0);
+
+        assertThat(offStreet.address()).isEqualTo("新北市新莊區中正路 1 號");
+        assertThat(offStreet.parkingSpaceType()).isEqualTo("地下停車場");
+        assertThat(offStreet.feeDescription()).isEqualTo("小型車平日每小時 30 元");
+        assertThat(offStreet.chargingHours()).isEqualTo("每日 00:00-24:00");
+        assertThat(offStreet.totalCarSpaces()).isEqualTo(120);
+        assertThat(offStreet.notes()).isEqualTo("鄰近捷運站");
+    }
+
+    @Test
     void mapsRoadsideRowsInsideConfiguredAreaToCatalogSourceRecords() {
         var records = mapper.toRoadsideCatalogRecords(
                 XINZHUANG_SCOPE,

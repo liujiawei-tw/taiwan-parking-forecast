@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import parking.forecast.controller.dto.CreateParkingQueryRequest;
 import parking.forecast.controller.dto.ParkingQueryResponse;
 import parking.forecast.controller.dto.ParkingQueryResponse.MapDataResponse;
+import parking.forecast.controller.dto.ParkingQueryResponse.MapViewportResponse;
 import parking.forecast.domain.TriggerType;
 import parking.forecast.service.ParkingQueryService;
 import parking.forecast.service.ParkingQueryService.ParkingQueryContractException;
@@ -43,6 +44,19 @@ public class ParkingQueryController {
     @GetMapping("/{queryId}/map-data")
     public MapDataResponse getMapData(@PathVariable String queryId) {
         return parkingQueryService.findMapData(queryId);
+    }
+
+    @GetMapping("/{queryId}/map-data/viewport")
+    public MapViewportResponse getMapViewportData(
+            @PathVariable String queryId,
+            @RequestParam double south,
+            @RequestParam double west,
+            @RequestParam double north,
+            @RequestParam double east,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "300") int limit
+    ) {
+        return parkingQueryService.findMapViewport(queryId, south, west, north, east, offset, limit);
     }
 
     @PostMapping("/{queryId}/refresh")

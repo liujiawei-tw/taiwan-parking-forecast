@@ -48,7 +48,7 @@ public class NtpcCatalogRecordMapper {
                 DatasetCode.NTPC_ROADSIDE_SPOT,
                 firstNonBlank(row.id(), row.cellId()),
                 ParkingPlaceType.ON_STREET_SPOT,
-                firstNonBlank(row.roadName(), row.name(), fallback("路邊格位", row.cellId())),
+                normalizeAndLimitText(firstNonBlank(row.roadName(), row.name(), fallback("路邊格位", row.cellId())), 200),
                 parseCoordinate(row.latitude()),
                 parseCoordinate(row.longitude()),
                 NtpcRoadsideCarEligibility.classify(row),
@@ -63,7 +63,15 @@ public class NtpcCatalogRecordMapper {
                         nullToEmpty(row.longitude()),
                         nullToEmpty(row.memo()),
                         nullToEmpty(row.day()),
-                        nullToEmpty(row.hour()))
+                        nullToEmpty(row.hour())),
+                null,
+                normalizeAndLimitText(row.name(), 120),
+                normalizeAndLimitText(row.pay(), 120),
+                normalizeAndLimitText(row.payCash(), 1000),
+                normalizeAndLimitText(row.day(), 250),
+                normalizeAndLimitText(row.hour(), 250),
+                trimToNull(row.cellId()) == null ? null : 1,
+                normalizeAndLimitText(row.memo(), 2000)
         );
     }
 
@@ -75,7 +83,7 @@ public class NtpcCatalogRecordMapper {
                 DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
                 trimToNull(row.id()),
                 ParkingPlaceType.OFF_STREET_LOT,
-                firstNonBlank(row.name(), fallback("路外停車場", row.id())),
+                normalizeAndLimitText(firstNonBlank(row.name(), fallback("路外停車場", row.id())), 200),
                 coordinate == null ? null : coordinate.latitude(),
                 coordinate == null ? null : coordinate.longitude(),
                 inferOffStreetCarEligibility(row.totalCar()),
@@ -84,8 +92,29 @@ public class NtpcCatalogRecordMapper {
                         nullToEmpty(row.address()),
                         nullToEmpty(row.tw97x()),
                         nullToEmpty(row.tw97y()),
-                        nullToEmpty(row.totalCar()))
+                        nullToEmpty(row.totalCar())),
+                normalizeAndLimitText(row.address(), 500),
+                normalizeAndLimitText(row.type(), 120),
+                null,
+                normalizeAndLimitText(row.payEx(), 1000),
+                null,
+                normalizeAndLimitText(row.serviceTime(), 250),
+                parseNonNegativeInteger(row.totalCar()),
+                normalizeAndLimitText(row.summary(), 2000)
         );
+    }
+
+    private Integer parseNonNegativeInteger(String value) {
+        var trimmed = trimToNull(value);
+        if (trimmed == null) {
+            return null;
+        }
+        try {
+            int parsed = Integer.parseInt(trimmed);
+            return parsed < 0 ? null : parsed;
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private EligibilityStatus inferOffStreetCarEligibility(String totalCarValue) {
@@ -210,6 +239,15 @@ public class NtpcCatalogRecordMapper {
         }
         var trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String normalizeAndLimitText(String value, int maximumLength) {
+        var trimmed = trimToNull(value);
+        if (trimmed == null) {
+            return null;
+        }
+        String normalized = trimmed.replaceAll("[\\p{Cntrl}]", " ").replaceAll("\\s+", " ").trim();
+        return normalized.length() <= maximumLength ? normalized : normalized.substring(0, maximumLength);
     }
 
     private String nullToEmpty(String value) {

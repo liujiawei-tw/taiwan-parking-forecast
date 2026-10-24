@@ -119,6 +119,14 @@ public class CatalogImportService {
                 importedAt,
                 importedAt
         );
+        parkingPlace.setAddress(record.address());
+        parkingPlace.setParkingSpaceType(record.parkingSpaceType());
+        parkingPlace.setFeeStatus(record.feeStatus());
+        parkingPlace.setFeeDescription(record.feeDescription());
+        parkingPlace.setChargingDays(record.chargingDays());
+        parkingPlace.setChargingHours(record.chargingHours());
+        parkingPlace.setTotalCarSpaces(record.totalCarSpaces());
+        parkingPlace.setCatalogNotes(record.notes());
         if (record.placeType() == ParkingPlaceType.OFF_STREET_LOT) {
             parkingPlace.setEntranceLatitude(record.latitude());
             parkingPlace.setEntranceLongitude(record.longitude());

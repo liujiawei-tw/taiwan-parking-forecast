@@ -99,6 +99,14 @@ class CatalogImportServiceTest {
                 .containsOnly(ActiveStatus.ACTIVE);
         assertThat(parkingPlaceCaptor.getAllValues().get(1).getEntranceLatitude())
                 .isEqualByComparingTo(new BigDecimal("25.0372000"));
+        ParkingPlaceEntity importedOffStreet = parkingPlaceCaptor.getAllValues().get(1);
+        assertThat(importedOffStreet.getAddress()).isEqualTo("新北市新莊區中正路 1 號");
+        assertThat(importedOffStreet.getParkingSpaceType()).isEqualTo("地下停車場");
+        assertThat(importedOffStreet.getFeeDescription()).isEqualTo("小型車平日每小時 30 元");
+        assertThat(importedOffStreet.getChargingDays()).isEqualTo("每日");
+        assertThat(importedOffStreet.getChargingHours()).isEqualTo("00:00-24:00");
+        assertThat(importedOffStreet.getTotalCarSpaces()).isEqualTo(120);
+        assertThat(importedOffStreet.getCatalogNotes()).isEqualTo("鄰近捷運站");
 
         ArgumentCaptor<SourceMappingEntity> mappingCaptor = ArgumentCaptor.forClass(SourceMappingEntity.class);
         verify(sourceMappingRepository, times(2)).save(mappingCaptor.capture());
@@ -174,7 +182,15 @@ class CatalogImportServiceTest {
                 new BigDecimal("121.4525000"),
                 EligibilityStatus.CONFIRMED,
                 "raw-name",
-                "raw-location"
+                "raw-location",
+                "新北市新莊區中正路 1 號",
+                "地下停車場",
+                "收費",
+                "小型車平日每小時 30 元",
+                "每日",
+                "00:00-24:00",
+                120,
+                "鄰近捷運站"
         );
     }
 

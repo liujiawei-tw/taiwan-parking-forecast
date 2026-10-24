@@ -909,3 +909,17 @@ HTTP 錯誤回應新增固定 `error` 物件，包含 `code`、`message`、`deta
 Chrome 本機 DEMO 桌面畫面確認 Places 目的地「雙鳳路」、測試起點、500 公尺查詢、`Query READY`、來源資料時間及附近路外結果皆可見。Google Routes 外部呼叫維持關閉，因此 ETA 顯示無法估算；停車資料仍可查看，預測保持 `INSUFFICIENT_DATA`，沒有機率或模型版本。此為預期降級，不重新執行官方刷新或 API 驗收。
 
 畫面同時殘留舊的 `讀取查詢狀態失敗：Failed to fetch`，但人工驗收事件後續已有 `QUERY_GET` HTTP 200。確認成功讀取分支未清除先前的讀取錯誤，造成成功資料與紅色錯誤提示矛盾；已在 `readParkingQuery()` 最小修正，只在成功讀取後清除同類舊錯誤。前端 `npm test` 與 `npm run build` 通過。尚未能以目前瀏覽器工具設定手機 viewport，因此手機版仍待人工檢查；未保存截圖檔。
+
+## 2026-10-25 車位資訊稽核與地圖改版
+
+本次工作分支為 `codex/parking-map-ui-redesign`，起始工作樹乾淨。已完成後端資料流擴充：`parking_place` 以向後相容的 nullable 欄位保存地址、車格類型、收費方式／說明、收費日／時段、官方汽車總位數與 catalog 備註；NTPC 路邊 `pay`、`paycash`、`day`、`hour`、`memo`、`roadName` 及具 `cellid` 的單格資訊，以及路外 `TYPE`、`SUMMARY`、`PAYEX`、`SERVICETIME`、`TOTALCAR` 均映射至受控欄位。原始 hint 留在內部 mapping，不作前端契約。
+
+新增唯讀 `GET /api/v1/parking-queries/{queryId}/map-data/viewport`，採新莊 MVP 支援邊界裁切、bounds 查詢、offset／limit 分頁及最多 500 筆上限；它只讀本地已驗證目錄與已發布快照，不觸發 Google Routes 或官方來源刷新。既有 500 公尺行程規劃查詢仍保留。來源未提供官方逐筆觀測時間時仍回空值，不以系統取得時間代替官方時間；未知、過期、資格未確認仍隱藏可用數與導航資格。
+
+完整後端 Maven 測試 `backend/.\mvnw.cmd test` 通過 112 tests／0 failures／0 errors／0 skipped。首輪曾因 H2 不支援單一 ALTER TABLE 連續 ADD COLUMN 語法失敗，已改為逐欄 migration 並重新跑完整套件通過。使用者由附件明確選擇 Impeccable「臺灣街道圖集」手機稿，產品脈絡與視覺規範分別記於 `docs/PRODUCT.md`、`docs/DESIGN.md`。
+
+前端已接上 viewport bounds 分頁與 request guard；新範圍載入時保留既有標記到新回應抵達，路邊格位以 56 CSS 像素鄰近距離群聚、zoom 21 起逐格顯示，路外場站保持獨立標記。選取詳情可呈現可用／總格數、官方狀態、品質、汽車資格、來源時間、系統取得時間、地址／座標、收費／時段及抵達預測資料不足；地圖摘要提示新莊支援範圍外或部分超界狀態。fallback 查詢契約保留 API 已提供的車位狀態與欄位。新增 `docs/parking-map-ui-audit.md` 記錄欄位矩陣、可信度與限制，`docs/DESIGN.md` 記錄 RWD 與資料表述方向。
+
+兩軸獨立 code review 的規格缺口已修正：viewport 載入期間標記閃爍、網格邊界附近的群聚、詳情容量與支援範圍提示。標準審查指出的重複 CSS 主題覆寫已合併；來源文字清理方法改名為 `normalizeAndLimitText`。回應 record 欄位相似屬低風險維護建議，保留各 API 契約欄位以維持明確性。
+
+本機驗證：前端 `npm test` 通過 7 組測試，`npm run build` 成功；後端完整 Maven 套件 112/112 通過；`impeccable detect --json frontend/src/App.vue` 回傳空清單。真實瀏覽器操作與五種 viewport 截圖尚未完成：自動化瀏覽器安全政策拒絕讀取本機 Vite 頁，且明確禁止改用其他瀏覽器路徑重試。Docker CLI pipe 亦回拒絕存取；既有 Docker 網頁先前作為基線開啟，但此輪沒有重建或修改容器／volume，也沒有送出查詢。Docker MySQL 尚未驗收 V2 migration。座標未經實地精度校驗仍是產品資料限制。

@@ -132,8 +132,33 @@ public class CatalogImportDryRunService {
             BigDecimal longitude,
             EligibilityStatus carEligibleStatus,
             String rawNameHint,
-            String rawLocationHint
+            String rawLocationHint,
+            String address,
+            String parkingSpaceType,
+            String feeStatus,
+            String feeDescription,
+            String chargingDays,
+            String chargingHours,
+            Integer totalCarSpaces,
+            String notes
     ) {
+        public CatalogSourceRecord(
+                String serviceArea,
+                SourceSystem sourceSystem,
+                DatasetCode datasetCode,
+                String sourcePlaceId,
+                ParkingPlaceType placeType,
+                String displayName,
+                BigDecimal latitude,
+                BigDecimal longitude,
+                EligibilityStatus carEligibleStatus,
+                String rawNameHint,
+                String rawLocationHint
+        ) {
+            this(serviceArea, sourceSystem, datasetCode, sourcePlaceId, placeType, displayName, latitude, longitude,
+                    carEligibleStatus, rawNameHint, rawLocationHint, null, null, null, null, null, null, null, null);
+        }
+
         private SourceKey sourceKey() {
             return new SourceKey(sourceSystem, datasetCode, sourcePlaceId == null ? "" : sourcePlaceId.trim());
         }

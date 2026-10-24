@@ -39,6 +39,30 @@ public record ParkingQueryResponse(
             List<MapMarker> items) {
     }
 
+    public record MapViewportResponse(
+            String queryId,
+            String serviceArea,
+            MapBounds viewport,
+            MapBounds supportedArea,
+            String coverageStatus,
+            OffsetDateTime generatedAt,
+            int candidateCount,
+            int verifiedCandidateCount,
+            int excludedUnverifiedCount,
+            int offset,
+            int pageSize,
+            int returnedItemCount,
+            Integer nextOffset,
+            boolean hasMore,
+            String message,
+            MapSource roadside,
+            MapSource offStreet,
+            List<MapMarker> items) {
+    }
+
+    public record MapBounds(double south, double west, double north, double east) {
+    }
+
     public record MapSource(
             String status,
             String source,
@@ -59,13 +83,22 @@ public record ParkingQueryResponse(
             int distanceMeters,
             String availabilityStatus,
             Integer availableCarSpaces,
+            Integer totalCarSpaces,
             Boolean availableSpot,
             String carEligibleStatus,
             String qualityStatus,
+            String qualityReason,
             boolean navigationAvailable,
             String source,
             OffsetDateTime sourceObservedAt,
             OffsetDateTime systemCollectedAt,
+            String address,
+            String parkingSpaceType,
+            String feeStatus,
+            String feeDescription,
+            String chargingDays,
+            String chargingHours,
+            String notes,
             String message) {
     }
 
@@ -112,7 +145,15 @@ public record ParkingQueryResponse(
             int distanceMeters,
             boolean navigationAvailable,
             String availabilityStatus,
-            OffsetDateTime systemCollectedAt) {
+            OffsetDateTime systemCollectedAt,
+            Integer availableCarSpaces,
+            Integer totalCarSpaces,
+            String parkingSpaceType,
+            String feeStatus,
+            String feeDescription,
+            String chargingDays,
+            String chargingHours,
+            String notes) {
     }
 
     public record OffStreetSection(
@@ -131,9 +172,15 @@ public record ParkingQueryResponse(
             double longitude,
             int distanceMeters,
             Integer availableCarSpaces,
+            Integer totalCarSpaces,
             boolean navigationAvailable,
             String availabilityStatus,
             OffsetDateTime systemCollectedAt,
+            String address,
+            String parkingSpaceType,
+            String feeDescription,
+            String chargingHours,
+            String notes,
             String message) {
     }
 

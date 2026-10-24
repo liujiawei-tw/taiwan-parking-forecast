@@ -25,8 +25,10 @@ import parking.forecast.controller.dto.ParkingQueryResponse.EtaSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.OffStreetPrediction;
 import parking.forecast.controller.dto.ParkingQueryResponse.OffStreetSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.MapDataResponse;
+import parking.forecast.controller.dto.ParkingQueryResponse.MapBounds;
 import parking.forecast.controller.dto.ParkingQueryResponse.MapMarker;
 import parking.forecast.controller.dto.ParkingQueryResponse.MapSource;
+import parking.forecast.controller.dto.ParkingQueryResponse.MapViewportResponse;
 import parking.forecast.controller.dto.ParkingQueryResponse.ParkingLot;
 import parking.forecast.controller.dto.ParkingQueryResponse.PredictionsSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.QuerySection;
@@ -47,6 +49,8 @@ import parking.forecast.domain.TriggerType;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingPlace;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchRequest;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchResult;
+import parking.forecast.service.NearbyParkingSearchService.NearbyParkingViewportRequest;
+import parking.forecast.service.NearbyParkingSearchService.NearbyParkingViewportResult;
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedAvailabilityView;
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedObservation;
 import parking.forecast.service.GoogleEtaService.EtaResult;
@@ -63,6 +67,8 @@ public class ParkingQueryService {
     private static final int SEARCH_RADIUS_METERS = 500;
     private static final int MAX_ROADSIDE_MAP_MARKERS = 400;
     private static final int MAX_OFF_STREET_MAP_MARKERS = 100;
+    private static final int MAX_MAP_VIEWPORT_PAGE_SIZE = 500;
+    private static final int MAX_MAP_VIEWPORT_OFFSET = 20_000;
     private static final int SOURCE_MAPPING_QUERY_BATCH_SIZE = 500;
     private static final int MAX_REQUEST_TOKEN_LENGTH = 120;
     private static final double MVP_MIN_LATITUDE = 25.015;
@@ -270,6 +276,191 @@ public class ParkingQueryService {
         );
     }
 
+    public MapViewportResponse findMapViewport(
+            String queryId,
+            double south,
+            double west,
+            double north,
+            double east,
+            int offset,
+            int pageSize
+    ) {
+        StoredParkingQuery storedQuery = loadStoredQuery(queryId);
+        requireNotExpired(storedQuery.response());
+        validateMapViewport(south, west, north, east, offset, pageSize);
+
+        MapBounds requestedBounds = new MapBounds(south, west, north, east);
+        MapBounds supportedArea = supportedAreaBounds();
+        MapBounds clippedBounds = intersect(requestedBounds, supportedArea);
+        if (clippedBounds == null) {
+            return emptyMapViewport(storedQuery, requestedBounds, supportedArea, offset, pageSize);
+        }
+
+        var destination = storedQuery.request().destination();
+        NearbyParkingViewportResult viewport = nearbyParkingSearchService.findInViewport(
+                new NearbyParkingViewportRequest(
+                        MVP_SERVICE_AREA,
+                        destination.latitude(),
+                        destination.longitude(),
+                        clippedBounds.south(),
+                        clippedBounds.west(),
+                        clippedBounds.north(),
+                        clippedBounds.east()
+                )
+        );
+        List<NearbyParkingPlace> roadsidePlaces = viewport.places().stream()
+                .filter(place -> place.placeType() == ParkingPlaceType.ON_STREET_SPOT)
+                .toList();
+        List<NearbyParkingPlace> offStreetPlaces = viewport.places().stream()
+                .filter(place -> place.placeType() == ParkingPlaceType.OFF_STREET_LOT)
+                .toList();
+        Map<Long, SourceMappingEntity> roadsideMappings = findUniqueVerifiedMappings(
+                DatasetCode.NTPC_ROADSIDE_SPOT,
+                roadsidePlaces
+        );
+        Map<Long, SourceMappingEntity> offStreetMappings = findUniqueVerifiedMappings(
+                DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
+                offStreetPlaces
+        );
+
+        List<NearbyParkingPlace> verifiedPlaces = new ArrayList<>();
+        roadsidePlaces.stream().filter(place -> roadsideMappings.containsKey(place.parkingPlaceId())).forEach(verifiedPlaces::add);
+        offStreetPlaces.stream().filter(place -> offStreetMappings.containsKey(place.parkingPlaceId())).forEach(verifiedPlaces::add);
+        verifiedPlaces.sort(Comparator.comparing(NearbyParkingPlace::placeType)
+                .thenComparing(NearbyParkingPlace::parkingPlaceId));
+
+        int verifiedCount = verifiedPlaces.size();
+        int pageStart = Math.min(offset, verifiedCount);
+        int pageEnd = Math.min(pageStart + pageSize, verifiedCount);
+        List<NearbyParkingPlace> selectedPlaces = verifiedPlaces.subList(pageStart, pageEnd);
+        List<NearbyParkingPlace> selectedRoadside = selectedPlaces.stream()
+                .filter(place -> place.placeType() == ParkingPlaceType.ON_STREET_SPOT)
+                .toList();
+        List<NearbyParkingPlace> selectedOffStreet = selectedPlaces.stream()
+                .filter(place -> place.placeType() == ParkingPlaceType.OFF_STREET_LOT)
+                .toList();
+        PublishedAvailabilityView roadsideAvailability = publishedAvailabilitySnapshotService.findLatest(
+                DatasetCode.NTPC_ROADSIDE_SPOT,
+                selectedRoadside.stream().map(NearbyParkingPlace::parkingPlaceId).toList()
+        );
+        PublishedAvailabilityView offStreetAvailability = publishedAvailabilitySnapshotService.findLatest(
+                DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
+                selectedOffStreet.stream().map(NearbyParkingPlace::parkingPlaceId).toList()
+        );
+
+        List<MapMarker> items = new ArrayList<>();
+        selectedRoadside.stream()
+                .map(place -> toMapMarker(place, roadsideMappings.get(place.parkingPlaceId()), roadsideAvailability, true))
+                .forEach(items::add);
+        selectedOffStreet.stream()
+                .map(place -> toMapMarker(place, offStreetMappings.get(place.parkingPlaceId()), offStreetAvailability, false))
+                .forEach(items::add);
+        int nextOffset = pageEnd < verifiedCount ? pageEnd : -1;
+        boolean clipped = !clippedBounds.equals(requestedBounds);
+        String message = clipped
+                ? "地圖標記只讀取支援範圍內的審查目錄與已發布快照；視窗超出支援範圍的部分已排除，不會觸發官方來源刷新。"
+                : "地圖標記只讀取可視範圍內的審查目錄與已發布快照；此唯讀端點不會觸發官方來源刷新。";
+        return new MapViewportResponse(
+                queryId,
+                MVP_SERVICE_AREA,
+                clippedBounds,
+                supportedArea,
+                storedQuery.response().area().coverageStatus(),
+                OffsetDateTime.now(clock),
+                viewport.places().size(),
+                verifiedCount,
+                Math.max(0, viewport.places().size() - verifiedCount),
+                offset,
+                pageSize,
+                items.size(),
+                nextOffset < 0 ? null : nextOffset,
+                nextOffset >= 0,
+                message,
+                toMapSource(roadsideAvailability),
+                toMapSource(offStreetAvailability),
+                List.copyOf(items)
+        );
+    }
+
+    private MapViewportResponse emptyMapViewport(
+            StoredParkingQuery storedQuery,
+            MapBounds requestedBounds,
+            MapBounds supportedArea,
+            int offset,
+            int pageSize
+    ) {
+        String queryId = storedQuery.response().query().queryId();
+        PublishedAvailabilityView roadsideAvailability = publishedAvailabilitySnapshotService.findLatest(
+                DatasetCode.NTPC_ROADSIDE_SPOT,
+                List.of()
+        );
+        PublishedAvailabilityView offStreetAvailability = publishedAvailabilitySnapshotService.findLatest(
+                DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
+                List.of()
+        );
+        return new MapViewportResponse(
+                queryId,
+                MVP_SERVICE_AREA,
+                requestedBounds,
+                supportedArea,
+                storedQuery.response().area().coverageStatus(),
+                OffsetDateTime.now(clock),
+                0,
+                0,
+                0,
+                offset,
+                pageSize,
+                0,
+                null,
+                false,
+                "目前地圖範圍不與新莊試點支援範圍相交；可移回支援範圍查看，且不會觸發官方來源刷新。",
+                toMapSource(roadsideAvailability),
+                toMapSource(offStreetAvailability),
+                List.of()
+        );
+    }
+
+    private void validateMapViewport(
+            double south,
+            double west,
+            double north,
+            double east,
+            int offset,
+            int pageSize
+    ) {
+        boolean validBounds = Double.isFinite(south) && Double.isFinite(west)
+                && Double.isFinite(north) && Double.isFinite(east)
+                && south >= -90 && north <= 90 && west >= -180 && east <= 180
+                && south < north && west < east;
+        if (!validBounds) {
+            throw new ParkingQueryContractException(
+                    "INVALID_MAP_VIEWPORT",
+                    "Map viewport bounds must be valid, ordered latitude and longitude coordinates.",
+                    false
+            );
+        }
+        if (offset < 0 || offset > MAX_MAP_VIEWPORT_OFFSET
+                || pageSize <= 0 || pageSize > MAX_MAP_VIEWPORT_PAGE_SIZE) {
+            throw new ParkingQueryContractException(
+                    "INVALID_MAP_VIEWPORT_PAGE",
+                    "Map viewport page size must be between 1 and 500 and offset must not exceed 20000.",
+                    false
+            );
+        }
+    }
+
+    private MapBounds supportedAreaBounds() {
+        return new MapBounds(MVP_MIN_LATITUDE, MVP_MIN_LONGITUDE, MVP_MAX_LATITUDE, MVP_MAX_LONGITUDE);
+    }
+
+    private MapBounds intersect(MapBounds first, MapBounds second) {
+        double south = Math.max(first.south(), second.south());
+        double west = Math.max(first.west(), second.west());
+        double north = Math.min(first.north(), second.north());
+        double east = Math.min(first.east(), second.east());
+        return south < north && west < east ? new MapBounds(south, west, north, east) : null;
+    }
+
     private Map<Long, SourceMappingEntity> findUniqueVerifiedMappings(
             DatasetCode datasetCode,
             List<NearbyParkingPlace> places
@@ -327,13 +518,16 @@ public class ParkingQueryService {
                 && mapping.getSourcePlaceId().equals(observation.sourcePlaceId());
         String status = resolveMapAvailabilityStatus(availability, observation, observationMatchesMapping, roadside);
         Integer availableCarSpaces = null;
+        Integer totalCarSpaces = place.totalCarSpaces();
         Boolean availableSpot = null;
         String qualityStatus = null;
+        String qualityReason = null;
         OffsetDateTime sourceObservedAt = null;
         OffsetDateTime systemCollectedAt = availability.systemCollectedAt();
         boolean usableQuality = observationMatchesMapping && isUsableMapQuality(observation.qualityStatus());
         if (observationMatchesMapping) {
             qualityStatus = observation.qualityStatus().name();
+            qualityReason = observation.qualityReason();
             sourceObservedAt = observation.sourceObservedAt();
             systemCollectedAt = observation.systemFetchedAt() == null
                     ? availability.systemCollectedAt()
@@ -341,6 +535,11 @@ public class ParkingQueryService {
             if (usableQuality && availability.isFreshReady() && place.carEligibleStatus() == EligibilityStatus.CONFIRMED) {
                 if (roadside) {
                     availableSpot = observation.availableSpot();
+                    if (Boolean.TRUE.equals(availableSpot) && totalCarSpaces != null) {
+                        availableCarSpaces = totalCarSpaces;
+                    } else if (Boolean.FALSE.equals(availableSpot)) {
+                        availableCarSpaces = 0;
+                    }
                 } else if ((AvailabilityStatus.AVAILABLE == observation.availabilityStatus()
                         || AvailabilityStatus.FULL == observation.availabilityStatus())
                         && observation.availableCarSpaces() != null
@@ -376,13 +575,22 @@ public class ParkingQueryService {
                 place.distanceMeters(),
                 status,
                 availableCarSpaces,
+                totalCarSpaces,
                 availableSpot,
                 place.carEligibleStatus().name(),
                 qualityStatus,
+                qualityReason,
                 navigationAvailable,
                 dataSource + "/" + availability.datasetCode().name(),
                 sourceObservedAt,
                 systemCollectedAt,
+                place.address(),
+                place.parkingSpaceType(),
+                place.feeStatus(),
+                place.feeDescription(),
+                place.chargingDays(),
+                place.chargingHours(),
+                place.notes(),
                 mapMarkerMessage(status, place.carEligibleStatus())
         );
     }
@@ -761,7 +969,15 @@ public class ParkingQueryService {
                 place.distanceMeters(),
                 true,
                 AvailabilityStatus.AVAILABLE.name(),
-                availability.systemCollectedAt()
+                availability.systemCollectedAt(),
+                place.totalCarSpaces(),
+                place.totalCarSpaces(),
+                place.parkingSpaceType(),
+                place.feeStatus(),
+                place.feeDescription(),
+                place.chargingDays(),
+                place.chargingHours(),
+                place.notes()
         );
     }
 
@@ -776,10 +992,16 @@ public class ParkingQueryService {
                 place.entranceLongitude() == null ? place.longitude() : place.entranceLongitude(),
                 place.distanceMeters(),
                 availableCarSpaces,
+                place.totalCarSpaces(),
                 place.carEligibleStatus() == EligibilityStatus.CONFIRMED
                         && AvailabilityStatus.AVAILABLE.name().equals(availabilityStatus),
                 availabilityStatus,
                 availability.systemCollectedAt(),
+                place.address(),
+                place.parkingSpaceType(),
+                place.feeDescription(),
+                place.chargingHours(),
+                place.notes(),
                 parkingLotMessage(availabilityStatus)
         );
     }

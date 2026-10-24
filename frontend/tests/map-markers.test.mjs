@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import {
   countMapMarkerCategories,
+  clusterRoadsideMarkers,
   describeMapMarker,
+  formatMapCapacity,
   filterMapMarkers,
   refreshSelectedMapPopup,
 } from '../src/mapMarkers.js'
@@ -18,6 +20,12 @@ const marker = (overrides = {}) => ({
 
 assert.equal(describeMapMarker(marker()).category, 'AVAILABLE')
 assert.equal(describeMapMarker(marker()).color, '#247a54')
+assert.equal(formatMapCapacity(marker({ availableCarSpaces: 1, totalCarSpaces: 1 })), '1 / 1 格')
+assert.equal(formatMapCapacity(marker()), '未知 / 1 格')
+assert.equal(formatMapCapacity(marker({
+  type: 'OFF_STREET', availableCarSpaces: 8, totalCarSpaces: 120,
+})), '8 / 120 位')
+assert.equal(formatMapCapacity(marker({ type: 'OFF_STREET' })), '未提供')
 assert.equal(describeMapMarker(marker({ availabilityStatus: 'OCCUPIED' })).category, 'OCCUPIED')
 assert.equal(describeMapMarker(marker({ availabilityStatus: 'FULL' })).markerText, '滿')
 assert.equal(describeMapMarker(marker({ availabilityStatus: 'STALE' })).category, 'STALE')
@@ -96,5 +104,31 @@ assert.deepEqual(countMapMarkerCategories(items), {
   UNKNOWN: 0,
   STALE: 1,
 })
+
+const closeSpots = [
+  marker({ id: 'spot-a', latitude: 25.036, longitude: 121.45 }),
+  marker({ id: 'spot-b', latitude: 25.036001, longitude: 121.450001, availabilityStatus: 'OCCUPIED' }),
+  marker({ id: 'lot-nearby', type: 'OFF_STREET', latitude: 25.036, longitude: 121.45 }),
+]
+const lowZoomGroups = clusterRoadsideMarkers(closeSpots, 15)
+assert.equal(lowZoomGroups.length, 1, 'nearby roadside cells group at neighborhood zoom')
+assert.deepEqual(lowZoomGroups[0].items.map((item) => item.id), ['spot-a', 'spot-b'])
+assert.equal(lowZoomGroups[0].counts.AVAILABLE, 1)
+assert.equal(lowZoomGroups[0].counts.OCCUPIED, 1)
+assert.equal(clusterRoadsideMarkers(closeSpots, 21).length, 0, 'individual roadside cells show at close zoom')
+assert.equal(clusterRoadsideMarkers(closeSpots, 15, 0).length, 0, 'invalid cluster cell size is ignored')
+
+const zoom = 15
+const worldSize = 256 * (2 ** zoom)
+const bucketSize = 56 / 2
+const worldX = ((121.45 + 180) / 360) * worldSize
+const boundaryX = Math.ceil(worldX / bucketSize) * bucketSize
+const longitudeAtX = (x) => (x / worldSize) * 360 - 180
+const acrossBoundary = clusterRoadsideMarkers([
+  marker({ id: 'boundary-a', latitude: 25.036, longitude: longitudeAtX(boundaryX - 2) }),
+  marker({ id: 'boundary-b', latitude: 25.036, longitude: longitudeAtX(boundaryX + 2) }),
+], zoom)
+assert.equal(acrossBoundary.length, 1, 'nearby roadside cells group across a spatial bucket boundary')
+assert.equal(acrossBoundary[0].items.length, 2)
 
 console.log('map marker tests passed')

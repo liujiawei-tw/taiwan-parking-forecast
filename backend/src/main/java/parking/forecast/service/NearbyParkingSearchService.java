@@ -64,6 +64,42 @@ public class NearbyParkingSearchService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public NearbyParkingViewportResult findInViewport(NearbyParkingViewportRequest request) {
+        validateViewportRequest(request);
+        List<ParkingPlaceEntity> candidates = parkingPlaceRepository
+                .findByServiceAreaAndActiveStatusAndLatitudeBetweenAndLongitudeBetween(
+                        request.serviceArea(),
+                        ActiveStatus.ACTIVE,
+                        BigDecimal.valueOf(request.south()),
+                        BigDecimal.valueOf(request.north()),
+                        BigDecimal.valueOf(request.west()),
+                        BigDecimal.valueOf(request.east())
+                );
+
+        List<NearbyParkingPlace> places = candidates.stream()
+                .map(place -> toNearbyPlace(place, request.originLatitude(), request.originLongitude()))
+                .sorted(Comparator.comparing(NearbyParkingPlace::placeType)
+                        .thenComparing(NearbyParkingPlace::parkingPlaceId))
+                .toList();
+        long roadsideCount = places.stream()
+                .filter(place -> place.placeType() == ParkingPlaceType.ON_STREET_SPOT)
+                .count();
+        long offStreetCount = places.stream()
+                .filter(place -> place.placeType() == ParkingPlaceType.OFF_STREET_LOT)
+                .count();
+        return new NearbyParkingViewportResult(
+                request.serviceArea(),
+                request.south(),
+                request.west(),
+                request.north(),
+                request.east(),
+                places,
+                roadsideCount,
+                offStreetCount
+        );
+    }
+
     private void validateRequest(NearbyParkingSearchRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Nearby parking search request is required.");
@@ -82,6 +118,28 @@ public class NearbyParkingSearchService {
         }
     }
 
+    private void validateViewportRequest(NearbyParkingViewportRequest request) {
+        if (request == null || request.serviceArea() == null || request.serviceArea().isBlank()) {
+            throw new IllegalArgumentException("Viewport search request and service area are required.");
+        }
+        if (!validCoordinate(request.originLatitude(), -90, 90)
+                || !validCoordinate(request.originLongitude(), -180, 180)) {
+            throw new IllegalArgumentException("Viewport distance origin must be a valid coordinate.");
+        }
+        if (!validCoordinate(request.south(), -90, 90)
+                || !validCoordinate(request.north(), -90, 90)
+                || !validCoordinate(request.west(), -180, 180)
+                || !validCoordinate(request.east(), -180, 180)
+                || request.south() >= request.north()
+                || request.west() >= request.east()) {
+            throw new IllegalArgumentException("Viewport bounds must be finite, ordered geographic coordinates.");
+        }
+    }
+
+    private boolean validCoordinate(double value, double minimum, double maximum) {
+        return Double.isFinite(value) && value >= minimum && value <= maximum;
+    }
+
     private NearbyParkingPlace toNearbyPlace(ParkingPlaceEntity place, double originLatitude, double originLongitude) {
         double latitude = place.getLatitude().doubleValue();
         double longitude = place.getLongitude().doubleValue();
@@ -96,7 +154,15 @@ public class NearbyParkingSearchService {
                 place.getEntranceLatitude() == null ? null : place.getEntranceLatitude().doubleValue(),
                 place.getEntranceLongitude() == null ? null : place.getEntranceLongitude().doubleValue(),
                 place.getCarEligibleStatus(),
-                distanceMeters
+                distanceMeters,
+                place.getAddress(),
+                place.getParkingSpaceType(),
+                place.getFeeStatus(),
+                place.getFeeDescription(),
+                place.getChargingDays(),
+                place.getChargingHours(),
+                place.getTotalCarSpaces(),
+                place.getCatalogNotes()
         );
     }
 
@@ -117,6 +183,29 @@ public class NearbyParkingSearchService {
             double latitude,
             double longitude,
             int radiusMeters
+    ) {
+    }
+
+    public record NearbyParkingViewportRequest(
+            String serviceArea,
+            double originLatitude,
+            double originLongitude,
+            double south,
+            double west,
+            double north,
+            double east
+    ) {
+    }
+
+    public record NearbyParkingViewportResult(
+            String serviceArea,
+            double south,
+            double west,
+            double north,
+            double east,
+            List<NearbyParkingPlace> places,
+            long roadsideCount,
+            long offStreetCount
     ) {
     }
 
@@ -141,8 +230,30 @@ public class NearbyParkingSearchService {
             Double entranceLatitude,
             Double entranceLongitude,
             EligibilityStatus carEligibleStatus,
-            int distanceMeters
+            int distanceMeters,
+            String address,
+            String parkingSpaceType,
+            String feeStatus,
+            String feeDescription,
+            String chargingDays,
+            String chargingHours,
+            Integer totalCarSpaces,
+            String notes
     ) {
+        public NearbyParkingPlace(
+                Long parkingPlaceId,
+                ParkingPlaceType placeType,
+                String displayName,
+                double latitude,
+                double longitude,
+                Double entranceLatitude,
+                Double entranceLongitude,
+                EligibilityStatus carEligibleStatus,
+                int distanceMeters
+        ) {
+            this(parkingPlaceId, placeType, displayName, latitude, longitude, entranceLatitude, entranceLongitude,
+                    carEligibleStatus, distanceMeters, null, null, null, null, null, null, null, null);
+        }
     }
 
     private record BoundingBox(

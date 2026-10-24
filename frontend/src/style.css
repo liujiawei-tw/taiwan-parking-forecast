@@ -349,6 +349,11 @@ input {
   font-size: 0.9rem;
 }
 
+.map-support-message {
+  color: #735b1f;
+  font-weight: 700;
+}
+
 .result-panel {
   max-height: calc(100vh - 212px);
   overflow: auto;
@@ -374,9 +379,9 @@ input {
   display: grid;
   gap: 4px;
   padding: 10px;
-  border: 1px solid #d7dde5;
-  border-radius: 6px;
-  background: #f8fafc;
+  border: 1px solid #e3dfd5;
+  border-radius: 10px;
+  background: #f9f7f0;
 }
 
 .status-grid span {
@@ -403,9 +408,9 @@ input {
 .result-card.warning {
   margin: 10px 0;
   padding: 12px;
-  border: 1px solid #edd38a;
-  border-radius: 6px;
-  background: #fff8e6;
+  border: 1px solid #e9dba9;
+  border-radius: 12px;
+  background: #fff9e8;
 }
 
 .result-card.muted {
@@ -445,11 +450,11 @@ input {
   display: grid;
   gap: 5px;
   width: 100%;
-  margin: 8px 0;
-  padding: 12px;
-  border: 1px solid #d7dde5;
-  border-radius: 8px;
-  background: #ffffff;
+  margin: 7px 0;
+  padding: 11px;
+  border: 1px solid #e3dfd5;
+  border-radius: 12px;
+  background: #fffefa;
 }
 
 .parking-select {
@@ -465,16 +470,16 @@ input {
 }
 
 .parking-item.selected {
-  border-color: #1f6b57;
-  box-shadow: 0 0 0 3px rgba(31, 107, 87, 0.14);
+  border-color: #16824b;
+  box-shadow: 0 0 0 3px rgba(22, 130, 75, 0.13);
 }
 
 .item-type {
   width: fit-content;
   padding: 2px 8px;
-  border-radius: 999px;
-  background: #e9f4ef;
-  color: #1f6b57 !important;
+  border-radius: 5px;
+  background: #e8f2e9;
+  color: #0e7148 !important;
   font-size: 0.78rem;
   font-weight: 800;
 }
@@ -1074,5 +1079,641 @@ input {
 
   .status-grid div {
     padding: 8px 6px;
+  }
+}
+
+/* 臺灣街道圖集：暖紙色底、深綠導覽與可掃讀的格位詳情。 */
+:root {
+  color: #183b35;
+  background: #f5f1e7;
+  font-family: Inter, "Noto Sans TC", system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --ink: #173b35;
+  --muted: #526579;
+  --paper: #f5f1e7;
+  --surface: #fffefa;
+  --line: #ded9cc;
+  --green: #16824b;
+  --red: #c8463d;
+  --gold: #c59b20;
+  --navy: #344a63;
+}
+
+body {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.app-shell {
+  width: min(1600px, calc(100% - 36px));
+  padding: 12px 0 20px;
+}
+
+.top-bar,
+.planner-panel,
+.map-stage,
+.result-panel {
+  border-color: var(--line);
+  border-radius: 18px;
+}
+
+.top-bar {
+  min-height: 58px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.brand-lockup {
+  display: grid;
+  gap: 2px;
+}
+
+.top-bar h1 {
+  color: #0c503b;
+  font-size: 1.65rem;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+}
+
+.top-tagline {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.service-status {
+  border-color: #e3dfd5;
+  background: rgba(255, 254, 250, 0.82);
+  color: var(--navy);
+}
+
+.planner-panel {
+  display: grid;
+  grid-template-columns: minmax(300px, 1.2fr) minmax(250px, 0.9fr) minmax(300px, 0.9fr);
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 254, 250, 0.95);
+  box-shadow: 0 5px 18px rgba(36, 48, 38, 0.06);
+}
+
+.destination-field > label,
+.origin-field > label,
+.planning-details-grid > .field-group > label {
+  color: #496050;
+  font-size: 0.76rem;
+}
+
+.selected-place {
+  min-height: 0;
+  font-size: 0.78rem;
+}
+
+.selected-place strong {
+  color: var(--ink);
+}
+
+.planning-details {
+  min-width: 0;
+  border: 1px solid #e3dfd5;
+  border-radius: 12px;
+  background: #fffefa;
+}
+
+.planning-details summary {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 13px;
+  color: #304d42;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 750;
+  list-style-position: inside;
+}
+
+.planning-details[open] {
+  align-self: stretch;
+}
+
+.planning-details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(150px, 0.75fr);
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: auto;
+  justify-content: stretch;
+}
+
+.primary-button,
+.utility-button,
+.route-link {
+  border-radius: 12px;
+}
+
+.primary-button {
+  min-height: 46px;
+  background: #0e7148;
+}
+
+.utility-button {
+  min-height: 42px;
+  border-color: #d8d8ca;
+  background: #fffefa;
+  color: var(--ink);
+}
+
+.workspace {
+  margin-top: 0;
+}
+
+.map-stage {
+  height: max(480px, calc(100svh - 176px));
+  min-height: 480px;
+  border-radius: 20px;
+  background: #e8ebdf;
+  box-shadow: 0 8px 24px rgba(36, 48, 38, 0.08);
+}
+
+.google-map,
+.map-fallback {
+  min-height: 100%;
+}
+
+.map-fallback {
+  color: #355b48;
+  background:
+    linear-gradient(34deg, transparent 47%, rgba(255, 255, 255, 0.75) 48%, rgba(255, 255, 255, 0.75) 50%, transparent 51%),
+    linear-gradient(146deg, transparent 46%, rgba(255, 255, 255, 0.68) 47%, rgba(255, 255, 255, 0.68) 49%, transparent 50%),
+    #e4eadc;
+  background-size: 220px 180px, 280px 220px, auto;
+}
+
+.map-toolbar,
+.map-control-panel,
+.map-summary,
+.result-panel {
+  border-color: #e1ddd1;
+  background: rgba(255, 254, 250, 0.97);
+  color: var(--ink);
+  box-shadow: 0 8px 26px rgba(34, 43, 37, 0.14);
+}
+
+.map-toolbar strong,
+.map-summary strong,
+.result-panel h2 {
+  color: var(--ink);
+}
+
+.map-tools {
+  gap: 8px;
+}
+
+.map-tool-button {
+  border-color: #e1ddd1;
+  border-radius: 13px;
+  color: #304d42;
+  box-shadow: 0 4px 12px rgba(34, 43, 37, 0.1);
+}
+
+.map-tool-button:hover,
+.map-tool-button[aria-expanded="true"] {
+  border-color: #16824b;
+  color: #0e7148;
+}
+
+.map-filter-option input[type="checkbox"] {
+  accent-color: #16824b;
+}
+
+.selected-spot-card {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 14px;
+  border: 1px solid #e3dfd5;
+  border-radius: 16px;
+  background: #fffefa;
+}
+
+.selected-spot-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.selected-spot-mark {
+  display: grid;
+  flex: 0 0 48px;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #16824b;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.selected-spot-mark.off-street {
+  border-radius: 12px;
+  background: #3e6c9a;
+}
+
+.selected-spot-title {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.selected-spot-title strong {
+  overflow-wrap: anywhere;
+  color: #20394e;
+  font-size: 1.05rem;
+}
+
+.selected-spot-title span,
+.selected-spot-facts span,
+.selected-spot-note {
+  color: #526579;
+  font-size: 0.82rem;
+}
+
+.selected-spot-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid #ebe7dc;
+  border-radius: 12px;
+}
+
+.selected-spot-facts > div {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border-bottom: 1px solid #ebe7dc;
+}
+
+.selected-spot-facts > div:nth-child(odd) {
+  border-right: 1px solid #ebe7dc;
+}
+
+.selected-spot-facts strong {
+  overflow-wrap: anywhere;
+  color: #20394e;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.selected-spot-note {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.selected-route-link {
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
+  border: 1px solid #16824b;
+  background: #f2f8f3;
+  color: #0e7148;
+}
+
+.marker-info {
+  color: #183b35;
+}
+
+.marker-info-title {
+  color: #183b35;
+}
+
+.marker-route-link {
+  color: #0e7148;
+}
+
+@media (max-width: 1100px) {
+  .app-shell {
+    width: min(100% - 24px, 1000px);
+  }
+
+  .planner-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.9fr);
+  }
+
+  .action-row {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .map-stage {
+    height: max(480px, calc(100svh - 214px));
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    width: 100%;
+    padding: 6px 0 0;
+  }
+
+  .top-bar {
+    min-height: 50px;
+    margin: 0 10px 6px;
+    padding: 4px 2px;
+  }
+
+  .top-bar h1 {
+    font-size: 1.25rem;
+  }
+
+  .top-tagline {
+    display: none;
+  }
+
+  .service-status {
+    max-width: 148px;
+    min-height: 30px;
+    font-size: 0.68rem;
+  }
+
+  .planner-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+    margin: 0 8px 8px;
+    padding: 9px;
+    border-radius: 15px;
+  }
+
+  .destination-field > label,
+  .destination-field .selected-place {
+    display: none;
+  }
+
+  .destination-field {
+    gap: 0;
+  }
+
+  .autocomplete-host {
+    min-height: 44px;
+  }
+
+  .planning-details {
+    border-radius: 11px;
+  }
+
+  .planning-details summary {
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 0.78rem;
+  }
+
+  .planning-details-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .action-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    grid-column: auto;
+  }
+
+  .action-row .primary-button,
+  .action-row .utility-button {
+    min-width: 0;
+    min-height: 42px;
+    padding: 0 8px;
+    font-size: 0.82rem;
+  }
+
+  .error-message,
+  .refresh-message {
+    grid-column: auto;
+    font-size: 0.82rem;
+  }
+
+  .workspace {
+    margin-top: 0;
+  }
+
+  .map-stage {
+    height: max(500px, calc(100svh - 170px));
+    min-height: 500px;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .google-map,
+  .map-fallback {
+    height: 100%;
+  }
+
+  .map-toolbar {
+    top: 9px;
+    left: 9px;
+    width: calc(100% - 18px);
+    min-height: 46px;
+    flex-direction: row;
+    align-items: center;
+    padding: 7px 9px;
+    border-radius: 13px;
+  }
+
+  .map-toolbar strong {
+    font-size: 0.86rem;
+  }
+
+  .map-toolbar span {
+    font-size: 0.69rem;
+  }
+
+  .map-return-button {
+    min-height: 34px;
+    font-size: 0.73rem;
+  }
+
+  .map-tools {
+    top: 65px;
+    left: 9px;
+    right: 9px;
+    display: flex;
+    gap: 6px;
+  }
+
+  .map-tool-button {
+    display: flex;
+    flex: 1 1 0;
+    justify-content: center;
+    gap: 5px;
+    width: auto;
+    min-width: 0;
+    min-height: 40px;
+    padding: 4px 6px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+  }
+
+  .map-tool-button svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .map-tool-button small {
+    font-size: 0.68rem;
+  }
+
+  .map-control-panel {
+    top: 112px;
+    left: 9px;
+    width: min(350px, calc(100% - 18px));
+    max-height: 40%;
+    border-radius: 15px;
+  }
+
+  .map-summary {
+    right: 9px;
+    bottom: min(calc(48svh + 10px), 430px);
+    left: 9px;
+    width: auto;
+    max-height: 100px;
+    overflow: hidden;
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 0.69rem;
+  }
+
+  .map-summary strong {
+    font-size: 0.78rem;
+  }
+
+  .map-summary span:nth-of-type(n + 3) {
+    display: none;
+  }
+
+  .map-summary .map-support-message {
+    display: block;
+  }
+
+  .result-panel {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: min(48svh, 430px);
+    max-height: min(48svh, 430px);
+    padding: 14px 13px calc(12px + env(safe-area-inset-bottom));
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -8px 28px rgba(34, 43, 37, 0.18);
+  }
+
+  .result-panel::before {
+    display: block;
+    width: 42px;
+    height: 5px;
+    margin: 0 auto 10px;
+    border-radius: 999px;
+    background: #d1d0c8;
+    content: "";
+  }
+
+  .panel-header {
+    position: sticky;
+    top: -14px;
+    z-index: 2;
+    align-items: center;
+    margin: 0 -1px 8px;
+    padding: 4px 1px 8px;
+    background: #fffefa;
+  }
+
+  .panel-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .panel-subtitle {
+    font-size: 0.72rem;
+  }
+
+  .panel-actions .utility-button,
+  .panel-close {
+    min-height: 36px;
+    padding: 0 8px;
+    font-size: 0.74rem;
+  }
+
+  .selected-spot-card {
+    gap: 9px;
+    margin-bottom: 8px;
+    padding: 10px;
+    border-radius: 13px;
+  }
+
+  .selected-spot-mark {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .selected-spot-title strong {
+    font-size: 0.92rem;
+  }
+
+  .selected-spot-title span,
+  .selected-spot-facts span,
+  .selected-spot-note {
+    font-size: 0.72rem;
+  }
+
+  .selected-spot-facts > div {
+    gap: 3px;
+    padding: 7px;
+  }
+
+  .selected-spot-facts strong {
+    font-size: 0.76rem;
+  }
+
+  .status-grid {
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+
+  .status-grid div {
+    gap: 2px;
+    padding: 6px 5px;
+  }
+
+  .status-grid span,
+  .status-grid strong {
+    font-size: 0.68rem;
+  }
+
+  .parking-item {
+    margin: 5px 0;
+    padding: 9px;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1100px) {
+  .top-bar h1 {
+    font-size: 1.45rem;
+  }
+
+  .top-tagline {
+    max-width: 250px;
   }
 }

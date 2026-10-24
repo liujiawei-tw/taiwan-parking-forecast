@@ -11,6 +11,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import parking.forecast.domain.ParkingPlaceType;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingPlace;
+import parking.forecast.service.NearbyParkingSearchService.NearbyParkingViewportRequest;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchRequest;
 import parking.forecast.service.NearbyParkingSearchService.NearbyParkingSearchResult;
 
@@ -84,6 +85,29 @@ class NearbyParkingSearchServiceTest {
         assertThat(result.places()).isEmpty();
         assertThat(result.roadsideCount()).isZero();
         assertThat(result.offStreetCount()).isZero();
+    }
+
+    @Test
+    void viewportSearchIncludesPlacesBeyondDestinationRadiusAndKeepsStableOrder() {
+        var result = nearbyParkingSearchService.findInViewport(new NearbyParkingViewportRequest(
+                "NEW_TAIPEI_XINZHUANG",
+                25.0414214,
+                121.4647633,
+                25.015,
+                121.415,
+                25.075,
+                121.490
+        ));
+
+        assertThat(result.places())
+                .extracting(NearbyParkingPlace::displayName)
+                .contains("新莊區農會停車場");
+        assertThat(result.places()).extracting(NearbyParkingPlace::placeType).isSorted();
+        assertThat(result.roadsideCount() + result.offStreetCount()).isEqualTo(result.places().size());
+        assertThat(result.places()).allSatisfy(place -> {
+            assertThat(place.latitude()).isBetween(25.015, 25.075);
+            assertThat(place.longitude()).isBetween(121.415, 121.490);
+        });
     }
 
     @Test

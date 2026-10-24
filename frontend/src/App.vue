@@ -20,8 +20,10 @@ import {
   requestCurrentLocation,
 } from './placesAutocomplete.js'
 import {
+  clusterRoadsideMarkers,
   countMapMarkerCategories,
   describeMapMarker,
+  formatMapCapacity,
   filterMapMarkers,
   refreshSelectedMapPopup,
 } from './mapMarkers.js'
@@ -38,6 +40,11 @@ import {
   snapshotPlanningInputs,
   snapshotDestination,
 } from './mapDataLifecycle.js'
+import {
+  loadMapViewportPages,
+  mapViewportRequestKey,
+  normalizeMapViewportBounds,
+} from './mapViewport.js'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 const apiBaseUrlLabel = apiBaseUrl || '同源 /api'
@@ -54,6 +61,7 @@ const defaultDestination = {
 const POLL_INTERVAL_MS = 5000
 const DEFAULT_RADIUS_METERS = 500
 const MAP_DATA_RETRY_DELAY_MS = 15000
+const MAP_VIEWPORT_IDLE_DELAY_MS = 250
 
 const mapElement = ref(null)
 const originAutocompleteHost = ref(null)
@@ -78,6 +86,7 @@ const acceptanceEvents = ref([])
 const mapData = ref(null)
 const mapDataLoading = ref(false)
 const mapDataError = ref('')
+const mapViewportRevision = ref(0)
 const mapFreshnessNow = ref(Date.now())
 const activeMapPanel = ref('')
 const showResultPanel = ref(false)
@@ -91,6 +100,8 @@ let mapDataRequestId = 0
 let mapDataRetryTimer
 let mapDataRetryAttemptKey = ''
 let mapFreshnessTimer
+let mapViewportLoadTimer
+let mapIdleListener
 const queryRequestGuard = createQueryRequestGuard()
 const loadingRequestOwner = createLoadingRequestOwner()
 const mapDataRequestCache = createMapDataRequestCache()
@@ -100,6 +111,7 @@ let destinationMarker
 let radiusCircle
 let infoWindow
 let parkingMarkers = []
+let clusterMarkers = []
 let pollTimer
 let destinationSelectionVersion = 0
 const markersById = new Map()
@@ -205,7 +217,7 @@ const resultItems = computed(() => {
 
   const lots = queryResult.value?.offStreet?.parkingLots ?? []
   const spots = queryResult.value?.roadside?.availableSpots ?? []
-  return [
+  const fallbackItems = [
     ...lots.map((lot) => ({
       id: `lot-${lot.id}`,
       rawId: lot.id,
@@ -214,14 +226,19 @@ const resultItems = computed(() => {
       latitude: lot.latitude,
       longitude: lot.longitude,
       distanceMeters: lot.distanceMeters,
-      availabilityStatus: 'UNKNOWN',
-      availableCarSpaces: null,
-      carEligibleStatus: 'UNKNOWN',
+      availabilityStatus: lot.availabilityStatus ?? 'UNKNOWN',
+      availableCarSpaces: lot.availableCarSpaces ?? null,
+      totalCarSpaces: lot.totalCarSpaces ?? null,
+      carEligibleStatus: lot.navigationAvailable ? 'CONFIRMED' : 'UNKNOWN',
       source: queryResult.value?.offStreet?.source,
       sourceObservedAt: null,
-      currentValue: '一般汽車適用性未確認',
+      address: lot.address,
+      parkingSpaceType: lot.parkingSpaceType,
+      feeDescription: lot.feeDescription,
+      chargingHours: lot.chargingHours,
+      notes: lot.notes,
       systemCollectedAt: lot.systemCollectedAt,
-      navigationAvailable: false,
+      navigationAvailable: lot.navigationAvailable,
       message: queryResult.value?.offStreet?.status === 'STALE'
         ? '資料已過期，請更新後再參考。'
         : lot.availableCarSpaces === null || lot.availableCarSpaces === undefined
@@ -236,20 +253,63 @@ const resultItems = computed(() => {
       latitude: spot.latitude,
       longitude: spot.longitude,
       distanceMeters: spot.distanceMeters,
-      availabilityStatus: 'UNKNOWN',
-      availableSpot: null,
-      carEligibleStatus: 'UNKNOWN',
+      availabilityStatus: spot.availabilityStatus ?? 'UNKNOWN',
+      availableSpot: spot.availabilityStatus === 'AVAILABLE' ? true : spot.availabilityStatus === 'OCCUPIED' ? false : null,
+      availableCarSpaces: spot.availableCarSpaces ?? null,
+      totalCarSpaces: spot.totalCarSpaces ?? null,
+      carEligibleStatus: spot.navigationAvailable ? 'CONFIRMED' : 'UNKNOWN',
       source: queryResult.value?.roadside?.source,
       sourceObservedAt: null,
-      currentValue: '一般汽車適用性未確認',
+      parkingSpaceType: spot.parkingSpaceType,
+      feeStatus: spot.feeStatus,
+      feeDescription: spot.feeDescription,
+      chargingDays: spot.chargingDays,
+      chargingHours: spot.chargingHours,
+      notes: spot.notes,
       systemCollectedAt: spot.systemCollectedAt,
-      navigationAvailable: false,
+      navigationAvailable: spot.navigationAvailable,
       message: '路邊格位只代表目前觀測，不代表抵達時仍有位。',
     })),
   ]
+  return fallbackItems.map((item) => ({ ...item, currentValue: describeMapMarker(item).value }))
 })
 const visibleMapItems = computed(() => filterMapMarkers(resultItems.value, mapFilters.value))
 const mapMarkerCounts = computed(() => countMapMarkerCategories(resultItems.value))
+const selectedMapItem = computed(() => resultItems.value.find((item) => item.id === selectedItemId.value) ?? null)
+const mapViewportSupportMessage = computed(() => {
+  void mapViewportRevision.value
+  const supportedArea = mapData.value?.supportedArea
+  const bounds = map?.getBounds?.()
+  const southWest = bounds?.getSouthWest?.()
+  const northEast = bounds?.getNorthEast?.()
+  if (!supportedArea || !southWest || !northEast) return ''
+
+  const current = normalizeMapViewportBounds({
+    south: southWest.lat(),
+    west: southWest.lng(),
+    north: northEast.lat(),
+    east: northEast.lng(),
+  })
+  if (!current) return ''
+
+  const areaName = mapData.value?.serviceArea || '目前試點'
+  const intersects = current.south < supportedArea.north
+    && current.north > supportedArea.south
+    && current.west < supportedArea.east
+    && current.east > supportedArea.west
+  if (!intersects) {
+    return `目前地圖位於${areaName}支援範圍外，尚未提供此區域資料；請移回試點範圍查看。`
+  }
+
+  const fullySupported = current.south >= supportedArea.south
+    && current.west >= supportedArea.west
+    && current.north <= supportedArea.north
+    && current.east <= supportedArea.east
+  if (!fullySupported) {
+    return `目前地圖部分超出${areaName}支援範圍；只顯示範圍內資料，範圍外不代表沒有車位。`
+  }
+  return `目前只顯示${areaName}支援範圍內的已審查資料；未收錄處不代表沒有車位。`
+})
 const queryId = computed(() => queryResult.value?.query?.queryId ?? '')
 const currentPlanningInputs = computed(() => snapshotPlanningInputs({
   origin: origin.value,
@@ -283,6 +343,8 @@ onBeforeUnmount(() => {
   clearProgressPolling()
   clearMapFreshnessTimer()
   clearMapDataRetryTimer(true)
+  if (mapViewportLoadTimer) window.clearTimeout(mapViewportLoadTimer)
+  mapIdleListener?.remove?.()
 })
 
 watch([resultDestination, visibleMapItems], () => {
@@ -359,6 +421,7 @@ async function createParkingQuery() {
     selectedItemId.value = ''
     clearMapDataState()
     refreshMessage.value = ''
+    showResultPanel.value = true
     await nextTick()
     await loadMapData()
     renderMap()
@@ -489,34 +552,64 @@ async function readParkingQuery(forceMapData = false) {
   }
 }
 
-async function loadMapData(force = false, retryAfterFailure = true) {
-  const id = queryId.value
-  if (!id) return
-
-  const responseKey = [
+function getMapDataRequest(id) {
+  const sourceVersion = [
     id,
-    queryResult.value?.query?.updatedAt ?? '',
     queryResult.value?.roadside?.snapshotId ?? '',
     queryResult.value?.roadside?.systemCollectedAt ?? '',
     queryResult.value?.offStreet?.snapshotId ?? '',
     queryResult.value?.offStreet?.systemCollectedAt ?? '',
   ].join(':')
+  const currentBounds = map?.getBounds?.()
+  const southWest = currentBounds?.getSouthWest?.()
+  const northEast = currentBounds?.getNorthEast?.()
+  const viewport = normalizeMapViewportBounds(southWest && northEast ? {
+    south: southWest.lat(),
+    west: southWest.lng(),
+    north: northEast.lat(),
+    east: northEast.lng(),
+  } : null)
+
+  if (viewport) {
+    return {
+      key: mapViewportRequestKey(id, viewport, sourceVersion),
+      viewport,
+      useViewport: true,
+    }
+  }
+  return {
+    key: `radius:${sourceVersion}:${queryResult.value?.query?.updatedAt ?? ''}`,
+    viewport: null,
+    useViewport: false,
+  }
+}
+
+async function loadMapData(force = false, retryAfterFailure = true, allowAutoRefresh = true) {
+  const id = queryId.value
+  if (!id) return
+  const request = getMapDataRequest(id)
+  const responseKey = request.key
   if (!mapDataRequestCache.shouldLoad(responseKey, force)) return
 
   if (force && retryAfterFailure) clearMapDataRetryTimer(true)
-  if (responseKey !== mapDataRequestCache.loadedKey && mapData.value?.queryId === id) {
-    mapData.value = null
-    clearMapFreshnessTimer()
-  }
   const requestId = ++mapDataRequestId
   mapDataRequestCache.begin(responseKey)
   mapDataLoading.value = true
   mapDataError.value = ''
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${id}/map-data`)
-    if (!response.ok) throw await readApiError(response)
-    const payload = await response.json()
+    let payload
+    if (request.useViewport) {
+      payload = await loadMapViewportPages(fetch, {
+        apiBaseUrl,
+        queryId: id,
+        bounds: request.viewport,
+      })
+    } else {
+      const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${id}/map-data`)
+      if (!response.ok) throw await readApiError(response)
+      payload = await response.json()
+    }
     if (requestId !== mapDataRequestId || queryId.value !== id) return
     mapDataRequestCache.complete(responseKey)
     clearMapDataRetryTimer(true)
@@ -524,7 +617,7 @@ async function loadMapData(force = false, retryAfterFailure = true) {
     mapData.value = payload
     scheduleMapFreshnessTimer()
     renderMap()
-    await maybeAutoRefresh('map-data-loaded')
+    if (allowAutoRefresh) await maybeAutoRefresh('map-data-loaded')
   } catch (error) {
     if (requestId !== mapDataRequestId || queryId.value !== id) return
     mapDataRequestCache.fail(responseKey, Date.now() + MAP_DATA_RETRY_DELAY_MS)
@@ -626,13 +719,18 @@ function scheduleMapDataRetry(responseKey, id) {
   mapDataRetryTimer = window.setTimeout(() => {
     mapDataRetryTimer = undefined
     if (!isPageVisible() || queryId.value !== id) return
-    void loadMapData(true, false)
+    if (getMapDataRequest(id).key !== responseKey) return
+    void loadMapData(true, false, false)
   }, MAP_DATA_RETRY_DELAY_MS)
 }
 
 function clearMapDataState() {
   mapDataRequestId++
   mapDataRequestCache.invalidate()
+  if (mapViewportLoadTimer) {
+    window.clearTimeout(mapViewportLoadTimer)
+    mapViewportLoadTimer = undefined
+  }
   mapData.value = null
   mapDataLoading.value = false
   mapDataError.value = ''
@@ -702,6 +800,11 @@ async function initializeGoogleMap() {
     streetViewControl: false,
     fullscreenControl: true,
   })
+  mapIdleListener = map.addListener('idle', () => {
+    mapViewportRevision.value++
+    renderMap()
+    scheduleMapViewportLoad()
+  })
   infoWindow = new window.google.maps.InfoWindow()
   setupPlaceAutocompletes(PlaceAutocompleteElement)
   mapStatus.value = 'Google 地圖已載入'
@@ -709,6 +812,16 @@ async function initializeGoogleMap() {
   logAcceptanceEvent('MAPS_LOADED', 'Google Maps JavaScript API 與 Places library 已載入。')
 
   renderMap()
+}
+
+function scheduleMapViewportLoad() {
+  if (!map || !queryId.value) return
+  if (mapViewportLoadTimer) window.clearTimeout(mapViewportLoadTimer)
+  mapViewportLoadTimer = window.setTimeout(() => {
+    mapViewportLoadTimer = undefined
+    if (!isPageVisible() || !queryId.value) return
+    void loadMapData(false, true, false)
+  }, MAP_VIEWPORT_IDLE_DELAY_MS)
 }
 
 function loadGoogleMapsScript() {
@@ -824,6 +937,15 @@ function renderMap() {
 
   const itemsById = new Map(resultItems.value.map((item) => [item.id, item]))
   const visibleIds = new Set(visibleMapItems.value.map((item) => item.id))
+  const clusterGroups = clusterRoadsideMarkers(
+    visibleMapItems.value.filter((item) => item.id !== selectedItemId.value),
+    map.getZoom() ?? 15,
+  )
+  const clusteredIds = new Set(clusterGroups.flatMap((group) => group.items.map((item) => item.id)))
+
+  clusterMarkers.forEach((marker) => marker.setMap(null))
+  clusterMarkers = []
+
   for (const [id, marker] of markersById.entries()) {
     if (itemsById.has(id)) continue
     marker.setMap(null)
@@ -853,7 +975,27 @@ function renderMap() {
       marker.setLabel({ text: markerText, color: '#ffffff', fontSize: '10px', fontWeight: '800' })
       marker.setIcon(createMarkerIcon(item, style.color))
     }
-    marker.setMap(visibleIds.has(id) ? map : null)
+    marker.setMap(visibleIds.has(id) && !clusteredIds.has(id) ? map : null)
+  })
+
+  clusterGroups.forEach((group) => {
+    const marker = new window.google.maps.Marker({
+      map,
+      position: { lat: group.center.latitude, lng: group.center.longitude },
+      title: describeRoadsideCluster(group),
+      label: { text: String(group.items.length), color: '#ffffff', fontSize: '11px', fontWeight: '800' },
+      icon: {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        scale: 17,
+        fillColor: '#173d35',
+        fillOpacity: 0.96,
+        strokeColor: '#fffaf1',
+        strokeWeight: 3,
+      },
+      zIndex: 30,
+    })
+    marker.addListener('click', () => zoomToRoadsideCluster(group))
+    clusterMarkers.push(marker)
   })
 
   if (refreshSelectedMapPopup(
@@ -863,6 +1005,25 @@ function renderMap() {
     infoWindow,
     createInfoWindowContent,
   )) selectedItemId.value = ''
+}
+
+function describeRoadsideCluster(group) {
+  const counts = group.counts
+  const statuses = [
+    ['有位', counts.AVAILABLE],
+    ['占用', counts.OCCUPIED],
+    ['已滿', counts.FULL],
+    ['未知', counts.UNKNOWN],
+    ['過期', counts.STALE],
+  ].filter(([, count]) => count > 0).map(([label, count]) => `${label} ${count}`).join('、')
+  return `${group.items.length} 個路邊格位群聚；${statuses}。點選放大查看個別格位。`
+}
+
+function zoomToRoadsideCluster(group) {
+  if (!map || !group.items.length) return
+  const bounds = new window.google.maps.LatLngBounds()
+  group.items.forEach((item) => bounds.extend({ lat: item.latitude, lng: item.longitude }))
+  map.fitBounds(bounds, { top: 92, right: 92, bottom: 92, left: 92 })
 }
 
 function createMarkerIcon(item, color) {
@@ -882,7 +1043,9 @@ function clearMarkers() {
   destinationMarker?.setMap(null)
   radiusCircle?.setMap(null)
   parkingMarkers.forEach((marker) => marker.setMap(null))
+  clusterMarkers.forEach((marker) => marker.setMap(null))
   parkingMarkers = []
+  clusterMarkers = []
   markersById.clear()
 }
 
@@ -898,13 +1061,14 @@ function focusDestination() {
 
 function selectResultItem(itemId, fromMarker = false) {
   selectedItemId.value = itemId
+  showResultPanel.value = true
   const item = resultItems.value.find((candidate) => candidate.id === itemId)
   const marker = markersById.get(itemId)
   if (!item || !marker || !map) return
 
   marker.setMap(map)
   map.panTo(marker.getPosition())
-  if (!fromMarker) map.setZoom(Math.max(map.getZoom() ?? 15, 16))
+  if (!fromMarker) map.setZoom(Math.max(map.getZoom() ?? 15, 21))
   infoWindow?.setContent(createInfoWindowContent(item))
   infoWindow?.open({ map, anchor: marker })
 }
@@ -972,6 +1136,14 @@ function formatEligibility(status) {
   if (status === 'CONFIRMED') return '已確認適用'
   if (status === 'NOT_ELIGIBLE') return '不適用'
   return '未確認'
+}
+
+function formatQuality(status) {
+  if (status === 'PASS') return '通過'
+  if (status === 'PARTIAL_PASS') return '部分通過'
+  if (status === 'FAIL') return '未通過'
+  if (status === 'UNKNOWN') return '未知'
+  return '尚無逐筆品質紀錄'
 }
 
 function getDestinationLatLng() {
@@ -1057,8 +1229,9 @@ function logAcceptanceEvent(type, message, details = {}) {
 <template>
   <main class="app-shell">
     <section class="top-bar" aria-labelledby="app-title">
-      <div>
-        <h1 id="app-title">新莊即時車位地圖</h1>
+      <div class="brand-lockup">
+        <h1 id="app-title">台灣停車預測</h1>
+        <p class="top-tagline">官方觀測、資料品質與抵達時間預測分開呈現</p>
       </div>
       <div class="service-status">
         <span class="status-dot" :class="{ ready: mapReady }" aria-hidden="true"></span>
@@ -1083,44 +1256,49 @@ function logAcceptanceEvent(type, message, details = {}) {
         </div>
       </div>
 
-      <div class="field-group origin-field">
-        <label>起點</label>
-        <div v-if="hasGoogleMapsKey" ref="originAutocompleteHost" class="autocomplete-host"></div>
-        <p v-else class="places-help" role="status">
-          地點搜尋目前不可用，請設定 Google Maps browser key；已選取的新莊捷運站仍可規劃查詢。
-        </p>
-        <p v-if="googleMapsLoadError" class="places-error" role="alert">{{ googleMapsLoadError }}</p>
-        <p v-else-if="hasGoogleMapsKey && !mapReady" class="places-help" role="status">正在載入 Google 地點搜尋…</p>
-        <p v-if="originPlaceError" class="places-error" role="alert">{{ originPlaceError }}</p>
-        <div class="selected-place">
-          <strong>{{ origin.label }}</strong>
-          <span>{{ origin.address || '裝置未提供地址' }}</span>
-          <span>{{ Number(origin.latitude).toFixed(6) }}, {{ Number(origin.longitude).toFixed(6) }}</span>
-        </div>
-        <div class="origin-row">
-          <button class="utility-button" type="button" :disabled="locating" @click="useCurrentLocation">
-            {{ locating ? '定位中' : '使用目前位置' }}
-          </button>
-        </div>
-      </div>
+      <details class="planning-details">
+        <summary>起點與出發時間 · {{ origin.label }} · {{ departureType === 'NOW' ? '立即出發' : '指定時間' }}</summary>
+        <div class="planning-details-grid">
+          <div class="field-group origin-field">
+            <label>起點</label>
+            <div v-if="hasGoogleMapsKey" ref="originAutocompleteHost" class="autocomplete-host"></div>
+            <p v-else class="places-help" role="status">
+              地點搜尋目前不可用，請設定 Google Maps browser key；已選取的新莊捷運站仍可規劃查詢。
+            </p>
+            <p v-if="googleMapsLoadError" class="places-error" role="alert">{{ googleMapsLoadError }}</p>
+            <p v-else-if="hasGoogleMapsKey && !mapReady" class="places-help" role="status">正在載入 Google 地點搜尋…</p>
+            <p v-if="originPlaceError" class="places-error" role="alert">{{ originPlaceError }}</p>
+            <div class="selected-place">
+              <strong>{{ origin.label }}</strong>
+              <span>{{ origin.address || '裝置未提供地址' }}</span>
+              <span>{{ Number(origin.latitude).toFixed(6) }}, {{ Number(origin.longitude).toFixed(6) }}</span>
+            </div>
+            <div class="origin-row">
+              <button class="utility-button" type="button" :disabled="locating" @click="useCurrentLocation">
+                {{ locating ? '定位中' : '使用目前位置' }}
+              </button>
+            </div>
+          </div>
 
-      <div class="field-group">
-        <label>出發時間</label>
-        <div class="segmented-control" role="group" aria-label="出發時間類型">
-          <button type="button" :class="{ active: departureType === 'NOW' }" @click="departureType = 'NOW'">
-            立即
-          </button>
-          <button type="button" :class="{ active: departureType === 'SCHEDULED' }" @click="departureType = 'SCHEDULED'">
-            指定
-          </button>
+          <div class="field-group">
+            <label>出發時間</label>
+            <div class="segmented-control" role="group" aria-label="出發時間類型">
+              <button type="button" :class="{ active: departureType === 'NOW' }" @click="departureType = 'NOW'">
+                立即
+              </button>
+              <button type="button" :class="{ active: departureType === 'SCHEDULED' }" @click="departureType = 'SCHEDULED'">
+                指定
+              </button>
+            </div>
+            <input
+              v-if="departureType === 'SCHEDULED'"
+              v-model="scheduledDepartureLocal"
+              type="datetime-local"
+              aria-label="指定出發時間"
+            >
+          </div>
         </div>
-        <input
-          v-if="departureType === 'SCHEDULED'"
-          v-model="scheduledDepartureLocal"
-          type="datetime-local"
-          aria-label="指定出發時間"
-        >
-      </div>
+      </details>
 
       <div class="action-row">
         <button class="primary-button" type="button" :disabled="loading" @click="createParkingQuery">
@@ -1209,7 +1387,8 @@ function logAcceptanceEvent(type, message, details = {}) {
           <div class="legend-row"><i class="status-swatch occupied" aria-hidden="true"></i><span>「占」或「滿」：已占用／已滿</span></div>
           <div class="legend-row"><i class="status-swatch unknown" aria-hidden="true"></i><span>「?」：未知、未確認資格或無資料</span></div>
           <div class="legend-row"><i class="status-swatch stale" aria-hidden="true"></i><span>「舊」：快照已過期</span></div>
-          <p>圓形為路邊格位，標籤形狀為路外停車場。群聚未啟用；標記數是資料筆數，不代表空位數。</p>
+          <p>路邊格位會依縮放合併群聚，拉近後逐格顯示；路外停車場維持獨立標記。群聚數是格位筆數，不代表空位數。</p>
+          <p>位置依官方目錄座標顯示，本專案尚未完成實地位置精度校驗。</p>
         </section>
 
         <div v-if="hasGoogleMapsKey" ref="mapElement" class="google-map" aria-label="Google 地圖"></div>
@@ -1221,7 +1400,8 @@ function logAcceptanceEvent(type, message, details = {}) {
 
         <div class="map-summary" aria-live="polite">
           <strong>即時資料狀態</strong>
-          <span>{{ mapDataLoading ? '地圖標記更新中' : `${visibleMapItems.length} / ${resultItems.length} 個標記顯示中` }}</span>
+          <span>{{ mapDataLoading ? '地圖標記更新中' : `${visibleMapItems.length} / ${resultItems.length} 筆資料符合篩選；近距離格位依縮放合併顯示` }}</span>
+          <span v-if="mapViewportSupportMessage" class="map-support-message">{{ mapViewportSupportMessage }}</span>
           <span v-if="mapData?.generatedAt">畫面讀取：{{ formatDateTime(mapData.generatedAt) }}</span>
           <span v-if="mapData?.roadside?.systemCollectedAt || mapData?.offStreet?.systemCollectedAt">
             系統取得：路邊 {{ formatDateTime(mapData?.roadside?.systemCollectedAt) }} · 路外 {{ formatDateTime(mapData?.offStreet?.systemCollectedAt) }}
@@ -1241,7 +1421,7 @@ function logAcceptanceEvent(type, message, details = {}) {
         <div class="panel-header">
           <div>
             <h2>停車結果</h2>
-            <span class="panel-subtitle">目的地周邊 500 公尺 · {{ visibleMapItems.length }} 筆符合目前篩選</span>
+            <span class="panel-subtitle">{{ mapData?.viewport ? '目前地圖範圍' : `目的地周邊 ${queryResult?.area?.radiusMeters ?? DEFAULT_RADIUS_METERS} 公尺` }} · {{ visibleMapItems.length }} 筆符合篩選</span>
           </div>
           <div class="panel-actions">
             <button class="utility-button" type="button" :disabled="loading || !queryResult" @click="refreshParkingAvailability()">
@@ -1251,18 +1431,51 @@ function logAcceptanceEvent(type, message, details = {}) {
           </div>
         </div>
 
+        <article v-if="selectedMapItem" class="selected-spot-card">
+          <header class="selected-spot-heading">
+            <div class="selected-spot-mark" :class="selectedMapItem.type === 'OFF_STREET' ? 'off-street' : 'roadside'">
+              {{ selectedMapItem.type === 'OFF_STREET' ? 'P' : '格' }}
+            </div>
+            <div class="selected-spot-title">
+              <strong>{{ selectedMapItem.label }}</strong>
+              <span>{{ selectedMapItem.type === 'OFF_STREET' ? '路外停車場' : '路邊格位' }} · 距離約 {{ selectedMapItem.distanceMeters }} 公尺</span>
+            </div>
+          </header>
+          <div class="selected-spot-facts">
+            <div><span>目前官方觀測</span><strong>{{ selectedMapItem.currentValue }}</strong></div>
+            <div><span>目前可用／總車位</span><strong>{{ formatMapCapacity(selectedMapItem) }}</strong></div>
+            <div><span>資料品質</span><strong>{{ formatQuality(selectedMapItem.qualityStatus) }}</strong></div>
+            <div><span>一般汽車適用性</span><strong>{{ formatEligibility(selectedMapItem.carEligibleStatus) }}</strong></div>
+            <div><span>官方逐筆時間</span><strong>{{ selectedMapItem.sourceObservedAt ? formatDateTime(selectedMapItem.sourceObservedAt) : '來源未提供可信時間' }}</strong></div>
+            <div><span>系統取得時間</span><strong>{{ formatDateTime(selectedMapItem.systemCollectedAt) }}</strong></div>
+            <div><span>位置</span><strong>{{ selectedMapItem.address || '依官方目錄座標顯示' }}</strong></div>
+            <div><span>收費</span><strong>{{ selectedMapItem.feeDescription || selectedMapItem.feeStatus || '來源未提供' }}</strong></div>
+            <div><span>收費時段</span><strong>{{ [selectedMapItem.chargingDays, selectedMapItem.chargingHours].filter(Boolean).join(' · ') || '來源未提供' }}</strong></div>
+            <div><span>抵達時預測</span><strong>{{ queryResult?.predictions?.status === 'READY' ? '已完成驗證' : '資料不足' }}</strong></div>
+          </div>
+          <p v-if="selectedMapItem.qualityReason || selectedMapItem.notes || selectedMapItem.message" class="selected-spot-note">
+            {{ selectedMapItem.qualityReason || selectedMapItem.notes || selectedMapItem.message }}
+          </p>
+          <button
+            v-if="describeMapMarker(selectedMapItem).navigationAvailable"
+            class="route-link selected-route-link"
+            type="button"
+            @click="openExternalRoute(selectedMapItem)"
+          >在地圖中規劃路線</button>
+        </article>
+
         <template v-if="queryResult">
           <div class="status-grid">
             <div>
-              <span>Query</span>
-              <strong>{{ queryResult.query.status }}</strong>
+              <span>資料查詢</span>
+              <strong>{{ queryResult.query.status === 'READY' ? '已完成' : queryResult.query.status }}</strong>
             </div>
             <div>
-              <span>ETA</span>
-              <strong>{{ queryResult.eta.status === 'READY' ? '已估算' : '無法估算' }}</strong>
+              <span>Google 預估抵達</span>
+              <strong>{{ queryResult.eta.status === 'READY' ? '已估算' : '尚無 ETA' }}</strong>
             </div>
             <div>
-              <span>預測</span>
+              <span>抵達時預測</span>
               <strong>{{ queryResult.predictions.status === 'INSUFFICIENT_DATA' ? '資料不足' : queryResult.predictions.status }}</strong>
             </div>
           </div>
@@ -1300,7 +1513,7 @@ function logAcceptanceEvent(type, message, details = {}) {
             <button class="parking-select" type="button" @click="selectResultItem(item.id)">
               <span class="item-type">{{ item.type === 'OFF_STREET' ? '路外' : '路邊' }}</span>
               <strong>{{ item.label }}</strong>
-              <span>{{ item.distanceMeters }} m · {{ item.currentValue }}</span>
+              <span>{{ item.distanceMeters }} 公尺 · {{ item.currentValue }}</span>
               <span>官方逐筆觀測：{{ item.sourceObservedAt ? formatDateTime(item.sourceObservedAt) : '未提供可信時間' }}</span>
               <span>系統取得：{{ formatDateTime(item.systemCollectedAt) }}</span>
               <span>{{ item.message }}</span>

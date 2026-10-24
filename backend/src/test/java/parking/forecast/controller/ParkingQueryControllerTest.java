@@ -147,6 +147,12 @@ class ParkingQueryControllerTest {
         ParkingPlaceEntity parkingLot = parkingPlaceRepository.findById(920101L).orElseThrow();
         parkingLot.setEntranceLatitude(new BigDecimal("25.0425000"));
         parkingLot.setEntranceLongitude(new BigDecimal("121.4598000"));
+        parkingLot.setAddress("新北市新莊區測試路 1 號");
+        parkingLot.setParkingSpaceType("地下停車場");
+        parkingLot.setFeeDescription("每小時 30 元");
+        parkingLot.setChargingHours("每日 00:00-24:00");
+        parkingLot.setTotalCarSpaces(345);
+        parkingLot.setCatalogNotes("入口位於巷內");
         publishOffStreetSnapshot(FRESH_FETCHED_AT, List.of(
                 offStreetObservation(920101L, AvailabilityStatus.AVAILABLE, 12)
         ));
@@ -162,13 +168,58 @@ class ParkingQueryControllerTest {
                 .orElseThrow();
 
         assertThat(legacyParkingLot.navigationAvailable()).isTrue();
+        assertThat(legacyParkingLot.totalCarSpaces()).isEqualTo(345);
+        assertThat(legacyParkingLot.address()).isEqualTo("新北市新莊區測試路 1 號");
+        assertThat(legacyParkingLot.feeDescription()).isEqualTo("每小時 30 元");
         assertThat(mapMarker.navigationAvailable()).isTrue();
+        assertThat(mapMarker.availableCarSpaces()).isEqualTo(12);
+        assertThat(mapMarker.totalCarSpaces()).isEqualTo(345);
+        assertThat(mapMarker.address()).isEqualTo("新北市新莊區測試路 1 號");
+        assertThat(mapMarker.parkingSpaceType()).isEqualTo("地下停車場");
+        assertThat(mapMarker.feeDescription()).isEqualTo("每小時 30 元");
+        assertThat(mapMarker.chargingHours()).isEqualTo("每日 00:00-24:00");
+        assertThat(mapMarker.notes()).isEqualTo("入口位於巷內");
         assertThat(mapMarker.latitude()).isEqualTo(parkingLot.getLatitude().doubleValue());
         assertThat(mapMarker.longitude()).isEqualTo(parkingLot.getLongitude().doubleValue());
         assertThat(mapMarker.navigationLatitude()).isEqualTo(legacyParkingLot.latitude());
         assertThat(mapMarker.navigationLongitude()).isEqualTo(legacyParkingLot.longitude());
         assertThat(mapMarker.navigationLatitude()).isNotEqualTo(mapMarker.latitude());
         assertThat(mapMarker.navigationLongitude()).isNotEqualTo(mapMarker.longitude());
+    }
+
+    @Test
+    void viewportEndpointPagesVerifiedCatalogRowsAndDoesNotCreateRefreshState() throws Exception {
+        var query = controller.create(mockRequestNearSeedCatalog()).getBody();
+        long sourceStatesBefore = sourceStateRepository.count();
+
+        mockMvc.perform(get("/api/v1/parking-queries/{queryId}/map-data/viewport", query.query().queryId())
+                        .queryParam("south", "25.015")
+                        .queryParam("west", "121.415")
+                        .queryParam("north", "25.075")
+                        .queryParam("east", "121.490")
+                        .queryParam("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pageSize").value(1))
+                .andExpect(jsonPath("$.returnedItemCount").value(1))
+                .andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.hasMore").value(true))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("不會觸發官方來源刷新")));
+
+        assertThat(sourceStateRepository.count()).isEqualTo(sourceStatesBefore);
+    }
+
+    @Test
+    void viewportOutsideSupportedAreaReturnsEmptyWithoutRadiusRestriction() {
+        var query = controller.create(mockRequestNearSeedCatalog()).getBody();
+
+        var response = controller.getMapViewportData(
+                query.query().queryId(), 25.080, 121.500, 25.090, 121.510, 0, 300);
+
+        assertThat(response.items()).isEmpty();
+        assertThat(response.candidateCount()).isZero();
+        assertThat(response.hasMore()).isFalse();
+        assertThat(response.supportedArea().south()).isEqualTo(25.015);
+        assertThat(response.message()).contains("不與新莊試點支援範圍相交");
     }
 
     @Test
