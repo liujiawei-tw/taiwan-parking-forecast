@@ -13,7 +13,8 @@ import {
   shouldAutoRefresh,
 } from './planner.js'
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
+const apiBaseUrlLabel = apiBaseUrl || '同源 /api'
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY || ''
 const hasGoogleMapsKey = hasUsableGoogleMapsKey(googleMapsApiKey)
 const destinationMode = ref(hasGoogleMapsKey ? 'PLACES' : 'COORDINATES')
@@ -342,6 +343,7 @@ async function readApiError(response) {
     const messages = {
       QUERY_EXPIRED: '查詢已過期，請重新規劃行程。',
       QUERY_NOT_FOUND: '查詢已失效，請重新規劃行程。',
+      RATE_LIMITED: '建立查詢次數已達限制，請稍後再試。',
       UNSUPPORTED_AREA: '目的地超出目前支援範圍，請選擇其他目的地。',
       INVALID_DEPARTURE_TIME: '出發時間無效，請重新選擇。',
       SERVICE_TEMPORARILY_UNAVAILABLE: '查詢暫時無法使用，請稍後重試。',
@@ -817,7 +819,7 @@ function logAcceptanceEvent(type, message, details = {}) {
 
         <article class="result-card muted">
           <strong>設定</strong>
-          <span>API：{{ apiBaseUrl }}</span>
+          <span>API：{{ apiBaseUrlLabel }}</span>
           <span>Google Key：{{ hasGoogleMapsKey ? '已設定' : '未設定' }}</span>
           <span>自動刷新：頁面可見且來源狀態需更新時，每個查詢狀態組合只嘗試一次。</span>
         </article>

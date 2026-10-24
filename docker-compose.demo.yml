@@ -1,0 +1,72 @@
+services:
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/taiwan_parking_forecast?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Taipei
+      SPRING_DATASOURCE_USERNAME: parking_app
+      SPRING_DATASOURCE_PASSWORD: ${PARKING_DB_PASSWORD:?請在部署環境設定 PARKING_DB_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      GOOGLE_ROUTES_SERVER_API_KEY: ${GOOGLE_ROUTES_SERVER_API_KEY:-}
+      GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED: ${GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED:-false}
+      GOOGLE_ROUTES_TIMEOUT: ${GOOGLE_ROUTES_TIMEOUT:-10s}
+      GOOGLE_ROUTES_ROUTING_PREFERENCE: ${GOOGLE_ROUTES_ROUTING_PREFERENCE:-TRAFFIC_AWARE_OPTIMAL}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        # 空 base 讓 build 後的瀏覽器呼叫同源 /api/v1/...。
+        VITE_API_BASE_URL: ""
+        VITE_GOOGLE_MAPS_BROWSER_API_KEY: ${VITE_GOOGLE_MAPS_BROWSER_API_KEY:-}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DEMO_HTTP_PORT:-18088}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: taiwan_parking_forecast
+      MYSQL_USER: parking_app
+      MYSQL_PASSWORD: ${PARKING_DB_PASSWORD:?請在部署環境設定 PARKING_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?請在部署環境設定 MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" | grep alive"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  mysql-data:
