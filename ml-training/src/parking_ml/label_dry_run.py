@@ -15,6 +15,11 @@ from parking_ml.dataset_split import ChronologicalSplit
 from parking_ml.training_config import TrainingConfig
 
 ROADSIDE_CONFIRMED_AVAILABLE_RULE = "ntpc_roadside_confirmed_available_status_2_else_false_v1"
+_STRICT_TIME_REJECTION_PRIORITY = {
+    "collected_at_timezone_missing": 0,
+    "collected_date_taipei_missing": 1,
+    "collected_date_taipei_mismatch": 2,
+}
 
 
 @dataclass(frozen=True)
@@ -424,12 +429,24 @@ def roadside_timestamp_index(
     for spot_id, rows in roadside_by_spot.items():
         for row in rows:
             existing = index[row.collected_at].get(spot_id)
-            if existing is None or (
-                timestamp_authoritative
-                and strict_time_rejection_reason(row) is not None
-                and strict_time_rejection_reason(existing) is None
-            ):
+            if not timestamp_authoritative:
+                # Preserve 0993b17 compatibility: each duplicate replaces the prior row.
                 index[row.collected_at][spot_id] = row
+            elif existing is None:
+                index[row.collected_at][spot_id] = row
+            else:
+                # In strict mode, any untrusted duplicate taints this spot/timestamp.
+                # Keep invalid rows over valid ones. For multiple invalid metadata types, use
+                # the strict policy check order so input order cannot change the reason;
+                # when both rows are valid, retain the first.
+                row_reason = strict_time_rejection_reason(row)
+                existing_reason = strict_time_rejection_reason(existing)
+                if row_reason is not None and (
+                    existing_reason is None
+                    or _STRICT_TIME_REJECTION_PRIORITY[row_reason]
+                    < _STRICT_TIME_REJECTION_PRIORITY[existing_reason]
+                ):
+                    index[row.collected_at][spot_id] = row
             timestamp_dates[row.collected_at] = (
                 taipei_date(row.collected_at) if timestamp_authoritative else row.file_date
             )

@@ -963,3 +963,9 @@ Roadside complete 30m test 只有 41 筆，低於設定的 100 筆最低門檻�
 - **測試集摘要**（2026-10-22 至 10-24 曾在前次分析使用，不是新 holdout）：offstreet 30m／60m calibrated persistence Brier 為 0.0115／0.0163，固定 persistence 為 0.0130／0.0178；roadside legacy 的 calibrated persistence Brier 為 0.1046／0.1271，Logistic 為 0.0922／0.1094。roadside complete-circle 30m 僅接受 41 筆，未達 100 筆門檻而不評估；60m 接受 145 筆，仍只有三個已分析日期，僅作探索性結果。完整指標與拒絕原因見私有報告。
 - 新政策完整報告：`data/private/collector-samples/timestamp-policy-third-review-2026-10-25.md`；artifact：`data/private/collector-samples/timestamp-policy-third-review-artifacts/`。0993b17 相容報告：`data/private/collector-samples/compatibility-third-review-2026-10-25.md`。上述路徑均屬 ignored 私有資料，未加入 Git；沒有呼叫官方 API 或 Google Routes。輸出均維持 `EXPERIMENT_ONLY`，不接入線上 predictions。
 - PR 驗證：`python -m unittest discover -s ml-training/tests` 24 tests 通過；`python -m compileall -q ml-training` 成功；`git diff --check` 通過。
+
+### PR #96 Finding #4：Roadside 重複 timestamp 相容性（2026-10-25）
+
+- `roadside_timestamp_index(timestamp_authoritative=False)` 恢復 0993b17 last-write-wins，重複 spot／timestamp 由最後列覆寫。嚴格模式保留不可信時間 metadata 以觸發拒收；同時出現多種無效原因時，依 timezone missing、日期欄位 missing、台北日期 mismatch 的固定政策順序選拒收原因，結果不依列順序改變。全部有效的 strict 重複列仍採 first-write。
+- 新增 legacy 雙順序、strict 有效／無效混合排列與實際拒收碼、無重複政策日期及 label pairing 測試；calibrated 小型 ZIP runner 整合測試通過。完整 ML unittest 27 tests 通過，compileall 與 diff check 通過。
+- 31 個 private ZIP 重跑：0993b17 相容報告與三份既有基準皆 24／24 指標逐欄一致；calibrated 報告與前兩份校準基準皆 48／48 指標逐欄一致。新輸出為 ignored 私有路徑 `data/private/collector-samples/compatibility-finding4-2026-10-25.md` 與 `data/private/collector-samples/calibrated-finding4-2026-10-25.md`；未加入 Git。
