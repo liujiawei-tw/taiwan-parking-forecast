@@ -2,6 +2,15 @@
 
 更新日期：2026-10-25。
 
+## 2026-10-25 新莊路外停車場目錄差集與場址可見範圍修正
+
+- **完整度查核**：重新分頁取得新北市官方路外目錄 1,381 筆；新莊區 145 筆，其中 138 筆 `TOTALCAR>0`。本機 `VERIFIED` mapping 138 筆與官方汽車停車場 source IDs 完全相符，沒有缺 mapping；另外 7 筆 `TOTALCAR=0` 為機車專用場，符合目前汽車停車產品範圍而排除。
+- **實際漏顯根因**：舊新莊矩形支援範圍沒有涵蓋官方資料中的西南側場站，15 筆有效座標的已審查場站在舊 bounds 外。另 `050064 新莊體育園區停車場` 官方座標為 `TW97X/TW97Y=0/0`，mapper 曾將無效值換算成緯度 `0`、經度 `118.7545661`，造成地圖完全找不到。
+- **修正**：MVP 支援矩形南界調為 `24.995`、西界 `121.405`，北界 `25.075`、東界 `121.490` 不變，涵蓋 138 個已審查汽車場站及其周邊查詢緩衝。唯讀 DB 核對為新 bounds 138/138、舊 bounds 123/138。mapper 增加 TWD97 合理範圍檢查；來源零座標不再被視為有效位置。V3 以來源 ID 鎖定既有錯誤 mapping，使用官方門牌位置服務的地址點 `(25.0405039, 121.4519880)` 修正位置並補上 catalog notes；V4 更新已存在的場站標籤，未來匯入也套用相同名稱。Docker API 以 `-DskipTests package` 重建，Flyway V3/V4 驗證成功；API health 為 `UP`，API／MySQL／Redis／Web 均 healthy。
+- **場站名稱與即時車位**：官方目錄只提供 `050064 新莊體育園區停車場` 整場 706 汽車位，營運者是正好停；體育局文件列園區五區容量：網球場地下 189、體育館地下 399、臨復興路 37、臨公園路 32、臨中華路 49。V4 後地圖名稱明示「園區合計」，並包含使用者熟悉的正好停體育館地下／公園路平面區名稱，但仍只有一筆官方即時 706 格觀測。「公園路 D 區」與臨公園路 32 格區的名稱對應尚未由官方確認，因此沒有新增第二筆虛構即時場站。
+- **工程審查／限制**：地址位置是可核實的場址點，不是各子停車區入口的現地測量；體育局 FAQ 指明體育館地下入口在中華路側，但尚無各入口座標。矩形範圍涵蓋官方場站及查詢緩衝，並非新莊行政區精確 polygon，邊界附近可能包含鄰區空白地帶。已調整既有 controller test 的支援範圍斷言，未新增或執行測試。
+- **官方來源**：[新北市路外公共停車場資訊](https://data.ntpc.gov.tw/datasets/B1464EF0-9C7C-4A6F-ABF7-6BDF32847E68)、[體育局委外文件](https://www.t-sports.ntpc.gov.tw/uploaddowndoc?file=anounce%2F202309271206440.pdf&filedisplay=4.%E9%82%80%E6%A8%99%E6%9B%B8.pdf&flag=doc)、[體育局交通 FAQ](https://www.t-sports.ntpc.gov.tw/home.jsp?act=be4f48068b2b0031&dataserno=c895a7bcc0e8e89ab4c9275d18c50812&id=24f533af7e16d877)、[新北市門牌位置數值資料](https://data.ntpc.gov.tw/datasets/d7b568ab-3819-40c8-a6e7-a6b199443101)、[市府低碳場站資料](https://lowcarbon.epd.ntpc.gov.tw/dispPageBox/getFile/Get.aspx?FileLocation=PJ-TPCLC%5CFiles%5C&FileName=1616.pdf)。
+
 ## 2026-10-25 新莊棒球場周邊路邊格位未顯示診斷與資料修復
 
 - **修復前根因**：Compose 主系統 MySQL 的 `NEW_TAIPEI_XINZHUANG` ACTIVE 目錄只有路邊 7 筆、路外 3 筆；S3-022 已審查子集先前只匯入隔離 demo DB。`ParkingQueryService.findMapData()`／`findMapViewport()` 以本機目錄為候選，且只回傳唯一 `VERIFIED` mapping；官方資料刷新不會自動建立缺少的目錄／mapping，因此附近有官方路邊格也不會出現在地圖。

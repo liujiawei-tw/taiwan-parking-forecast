@@ -3,6 +3,7 @@ package parking.forecast.adapter.ntpc;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,19 @@ import parking.forecast.service.CatalogImportDryRunService.CatalogSourceRecord;
 public class NtpcCatalogRecordMapper {
 
     private static final int COORDINATE_SCALE = 7;
+    private static final String XINZHUANG_SPORTS_PARK_SOURCE_ID = "050064";
+    private static final String XINZHUANG_SPORTS_PARK_DISPLAY_NAME =
+            "新莊體育園區停車場（園區合計；含正好停-新莊體育館地下停車場、公園路平面區）";
+    private static final String XINZHUANG_SPORTS_PARK_CATALOG_NOTE =
+            "官方來源 050064 回報園區合計 706 個汽車位；體育局委外資料分列網球場地下 189、體育館地下 399、臨復興路 37、臨公園路 32、臨中華路 49 格。官方來源沒有各區獨立 ID 或分區即時剩餘位，故維持單一場站，避免重複計算。使用者提及的「公園路 D 區」是否即為臨公園路區，官方資料尚未確認。";
+    private static final Map<String, ReviewedOffStreetOverride> REVIEWED_OFF_STREET_OVERRIDES = Map.of(
+            XINZHUANG_SPORTS_PARK_SOURCE_ID,
+            new ReviewedOffStreetOverride(
+                    XINZHUANG_SPORTS_PARK_DISPLAY_NAME,
+                    new Wgs84Coordinate(new BigDecimal("25.0405039"), new BigDecimal("121.4519880")),
+                    XINZHUANG_SPORTS_PARK_CATALOG_NOTE
+            )
+    );
 
     public List<CatalogSourceRecord> toRoadsideCatalogRecords(
             String serviceArea,
@@ -76,14 +90,23 @@ public class NtpcCatalogRecordMapper {
     }
 
     private CatalogSourceRecord toOffStreetCatalogRecord(String serviceArea, NtpcOffStreetParkingLotDto row) {
+        String sourcePlaceId = trimToNull(row.id());
         var coordinate = twd97ToWgs84(row.tw97x(), row.tw97y());
+        var override = sourcePlaceId == null ? null : REVIEWED_OFF_STREET_OVERRIDES.get(sourcePlaceId);
+        boolean coordinateWasOverridden = coordinate == null && override != null;
+        if (coordinateWasOverridden) {
+            coordinate = override.coordinate();
+        }
+        String displayName = override == null
+                ? normalizeAndLimitText(firstNonBlank(row.name(), fallback("路外停車場", row.id())), 200)
+                : normalizeAndLimitText(override.displayName(), 200);
         return new CatalogSourceRecord(
                 serviceArea,
                 SourceSystem.NTPC_OPEN_DATA,
                 DatasetCode.NTPC_OFF_STREET_AVAILABILITY,
-                trimToNull(row.id()),
+                sourcePlaceId,
                 ParkingPlaceType.OFF_STREET_LOT,
-                normalizeAndLimitText(firstNonBlank(row.name(), fallback("路外停車場", row.id())), 200),
+                displayName,
                 coordinate == null ? null : coordinate.latitude(),
                 coordinate == null ? null : coordinate.longitude(),
                 inferOffStreetCarEligibility(row.totalCar()),
@@ -100,7 +123,25 @@ public class NtpcCatalogRecordMapper {
                 null,
                 normalizeAndLimitText(row.serviceTime(), 250),
                 parseNonNegativeInteger(row.totalCar()),
-                normalizeAndLimitText(row.summary(), 2000)
+                offStreetCatalogNotes(row.summary(), override, coordinateWasOverridden)
+        );
+    }
+
+    private String offStreetCatalogNotes(
+            String sourceSummary,
+            ReviewedOffStreetOverride override,
+            boolean coordinateWasOverridden
+    ) {
+        if (override == null) {
+            return normalizeAndLimitText(sourceSummary, 2000);
+        }
+        String correctionNote = coordinateWasOverridden
+                ? " 官方 TW97X/TW97Y 為 0/0，座標改採新北市門牌位置服務對中華路一段75號的地址點；此為場址地址點，非分區入口的現地測量。"
+                : "";
+        String sourceNote = trimToNull(sourceSummary);
+        return normalizeAndLimitText(
+                override.catalogNote() + correctionNote + (sourceNote == null ? "" : " 官方摘要：" + sourceNote),
+                2000
         );
     }
 
@@ -153,10 +194,24 @@ public class NtpcCatalogRecordMapper {
         try {
             double x = Double.parseDouble(xValue);
             double y = Double.parseDouble(yValue);
-            return inverseTaiwanTm2(x, y);
+            if (!Double.isFinite(x) || !Double.isFinite(y)
+                    || x < 100_000 || x > 400_000
+                    || y < 2_300_000 || y > 2_900_000) {
+                return null;
+            }
+            Wgs84Coordinate coordinate = inverseTaiwanTm2(x, y);
+            return isTaiwanCoordinate(coordinate) ? coordinate : null;
         } catch (NumberFormatException exception) {
             return null;
         }
+    }
+
+    private boolean isTaiwanCoordinate(Wgs84Coordinate coordinate) {
+        return coordinate != null
+                && coordinate.latitude().compareTo(BigDecimal.valueOf(20)) > 0
+                && coordinate.latitude().compareTo(BigDecimal.valueOf(27)) < 0
+                && coordinate.longitude().compareTo(BigDecimal.valueOf(118)) > 0
+                && coordinate.longitude().compareTo(BigDecimal.valueOf(123)) < 0;
     }
 
     private Wgs84Coordinate inverseTaiwanTm2(double rawX, double rawY) {
@@ -255,5 +310,12 @@ public class NtpcCatalogRecordMapper {
     }
 
     private record Wgs84Coordinate(BigDecimal latitude, BigDecimal longitude) {
+    }
+
+    private record ReviewedOffStreetOverride(
+            String displayName,
+            Wgs84Coordinate coordinate,
+            String catalogNote
+    ) {
     }
 }

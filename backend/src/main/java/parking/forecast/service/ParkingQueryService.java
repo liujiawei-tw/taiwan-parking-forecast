@@ -73,9 +73,9 @@ public class ParkingQueryService {
     private static final int MAX_MAP_VIEWPORT_OFFSET = 20_000;
     private static final int SOURCE_MAPPING_QUERY_BATCH_SIZE = 500;
     private static final int MAX_REQUEST_TOKEN_LENGTH = 120;
-    private static final double MVP_MIN_LATITUDE = 25.015;
+    private static final double MVP_MIN_LATITUDE = 24.995;
     private static final double MVP_MAX_LATITUDE = 25.075;
-    private static final double MVP_MIN_LONGITUDE = 121.415;
+    private static final double MVP_MIN_LONGITUDE = 121.405;
     private static final double MVP_MAX_LONGITUDE = 121.490;
 
     private final Clock clock;

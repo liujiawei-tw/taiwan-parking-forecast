@@ -1,6 +1,6 @@
 # 車位資訊完整性與地圖改版稽核
 
-更新日期：2026-10-25。狀態：後端 API／欄位擴充、前端地圖改版與 RWD 已實作；本機前後端測試、HTTP 契約 smoke 與 production builds 通過。Docker API／Web 已同步重建，MySQL V2 migration 已套用。五種真實瀏覽器尺寸與互動驗收尚未完成。此文件將來源觀測、資料品質與抵達時間預測分開記錄。
+更新日期：2026-10-25。狀態：後端 API／欄位擴充、前端地圖改版與 RWD 已實作；先前本機前後端測試、HTTP 契約 smoke 與 production builds 通過。Docker API／Web 已同步重建，MySQL V4 migrations 已套用。五種真實瀏覽器尺寸與互動驗收尚未完成。此文件將來源觀測、資料品質與抵達時間預測分開記錄。
 
 ## 產品定位與驗收基準
 
@@ -24,11 +24,17 @@
 
 | 層級 | 已完成 | 尚待驗收 |
 | --- | --- | --- |
-| Catalog import | `parking_place` nullable 欄位及 V2 migration 已建立；NTPC 路邊／路外 DTO 欄位映射及長度清理已補；舊建構子相容性保留。 | 從完整官方 catalog 執行 dry-run、檢查缺 ID／座標／重複／資格比例，核對實際 mapping coverage；尚未匯入全量資料。 |
+| Catalog import | `parking_place` nullable 欄位及 V2 migration 已建立；NTPC 路邊／路外 DTO 欄位映射及長度清理已補。新莊路外官方目錄 145 列與本機 138 個 confirmed-car `VERIFIED` mapping 完整相符，7 個汽車位數為 0 的機車場排除；V3 修正體育園區無效座標，V4 更新可辨識場站名稱。 | 新莊路邊仍是 reviewed subset，未代表行政區完整格位覆蓋；官方座標異常若沒有已審查 override 會被拒收。 |
 | 規劃查詢 API | `POST /api/v1/parking-queries` 建立查詢；`GET /{queryId}` 讀取；舊 `GET /{queryId}/map-data` 保留 500 公尺目的地查詢契約。 | Docker 同源 POST smoke 回 `READY`；完整互動仍待桌面／手機瀏覽器驗收。 |
 | 地圖範圍 API | 新增唯讀 `GET /{queryId}/map-data/viewport?south&west&north&east&offset&limit`；裁切新莊支援範圍，單頁最多 500 筆；依 verified mapping 與已發布 snapshot 回傳逐格資料。 | 前端以 map idle debounce、分頁、重複範圍快取及 request guards 接線；已量測的全量 catalog DB 延遲仍待 Docker MySQL 驗收。 |
 | 官方刷新隔離 | viewport 是 GET 讀取流程，不呼叫 Routes、不啟動官方 refresh；既有官方刷新仍由受控 POST 流程管理。 | 需以瀏覽器網路事件及後端測試驗證拖曳／縮放不額外觸發 refresh。 |
 | DB migration | H2 整合測試與 Docker MySQL 均已套用 V2 nullable 欄位 migration；既有 named volume 保留。 | 已完成 smoke，仍需高密度 viewport DB 延遲量測；本次沒有觸發 catalog seed 或來源刷新。 |
+
+## 2026-10-25 官方新莊路外目錄與地圖 bounds 追加稽核
+
+重新讀取新北市路外資料集三頁，官方目錄共 1,381 筆，新莊區 145 筆、汽車位數大於零 138 筆；本機 verified source IDs 全數命中，沒有缺 mapping。舊目的地／viewport 矩形之外另有 15 筆有效新莊場站，加上體育園區 `050064` 零座標錯誤，合計 16 筆不會出現在預期範圍。已將 bounds 南界調至 24.995、西界調至 121.405，並新增座標異常拒收、V3 座標修正與 V4 場站顯示名稱 migration。
+
+體育局委外資料列園區 706 格分布於五個子區；新北市即時目錄只提供父場站一筆，因此 map label/detail 會補「正好停、體育館地下、公園路平面區」名稱提示，而空位仍只顯示整場 706 格觀測。`D 區` 是否等同臨公園路區尚無官方證明，維持待核實。場址座標來自官方門牌定位並與市府低碳充電資料的該場站位置交叉相符，尚未實測各子區出入口。矩形 bounds 不是行政區 polygon，行政區精確邊界留待後續。
 
 ## 2026-10-25 本機 Compose 端到端稽核
 

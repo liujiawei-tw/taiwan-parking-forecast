@@ -218,7 +218,7 @@ class ParkingQueryControllerTest {
         assertThat(response.items()).isEmpty();
         assertThat(response.candidateCount()).isZero();
         assertThat(response.hasMore()).isFalse();
-        assertThat(response.supportedArea().south()).isEqualTo(25.015);
+        assertThat(response.supportedArea().south()).isEqualTo(24.995);
         assertThat(response.message()).contains("不與新莊試點支援範圍相交");
     }
 
