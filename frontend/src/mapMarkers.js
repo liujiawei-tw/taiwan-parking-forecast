@@ -25,9 +25,7 @@ export function describeMapMarker(item) {
   const eligibilityConfirmed = item.carEligibleStatus === 'CONFIRMED'
   const category = eligibilityConfirmed ? status.category : 'UNKNOWN'
   const color = eligibilityConfirmed ? status.color : STATUS_STYLE.UNKNOWN.color
-  const navigationAvailable = item.navigationAvailable === true
-    && eligibilityConfirmed
-    && item.availabilityStatus === 'AVAILABLE'
+  const navigationAvailable = item.navigationAvailable === true && eligibilityConfirmed
 
   let value = status.label
   if (!eligibilityConfirmed) {

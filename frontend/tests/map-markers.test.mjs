@@ -46,7 +46,7 @@ const popupWasClosed = refreshSelectedMapPopup(
 )
 assert.equal(popupWasClosed, false)
 assert.equal(popupContent.navigationAvailable, true, 'a fresh popup includes its qualified route action')
-popupItems.set('spot-1', marker({ availabilityStatus: 'STALE', navigationAvailable: false }))
+popupItems.set('spot-1', marker({ availabilityStatus: 'STALE' }))
 refreshSelectedMapPopup(
   'spot-1',
   new Set(['spot-1']),
@@ -55,7 +55,7 @@ refreshSelectedMapPopup(
   (item) => ({ ...describeMapMarker(item), item }),
 )
 assert.equal(popupContent.item.availabilityStatus, 'STALE', 'an open popup is rebuilt from the latest stale marker')
-assert.equal(popupContent.navigationAvailable, false, 'a stale popup cannot retain a route action')
+assert.equal(popupContent.navigationAvailable, true, 'a stale popup retains navigation to its verified location')
 assert.equal(popupClosed, false)
 assert.equal(refreshSelectedMapPopup('spot-1', new Set(), new Map(), {
   close() { popupClosed = true },

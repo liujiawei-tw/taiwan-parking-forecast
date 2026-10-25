@@ -489,10 +489,6 @@ input[type=datetime-local] {
 .primary-button:hover:not(:disabled) {
   background: #066543;
 }
-.plan-query-button {
-  width: 100%;
-  margin-top: 14px;
-}
 .secondary-button,.refresh-button {
   border: 1px solid var(--line);
   background: #fffefa;
@@ -553,6 +549,7 @@ input[type=datetime-local] {
   font-size: .88rem;
 }
 .map-toolbar {
+  box-sizing: border-box;
   position: absolute;
   top: 15px;
   left: 15px;
@@ -561,7 +558,8 @@ input[type=datetime-local] {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  width: min(390px,calc(100% - 30px));
+  width: fit-content;
+  max-width: calc(100% - 30px);
   min-height: 58px;
   padding: 9px 12px;
   border: 1px solid #ded9cef0;
@@ -597,7 +595,7 @@ input[type=datetime-local] {
   color: var(--muted);
   font-size: .72rem;
 }
-.map-return-button,.map-locate-button {
+.map-return-button {
   display: grid;
   flex: 0 0 44px;
   place-items: center;
@@ -610,7 +608,7 @@ input[type=datetime-local] {
   color: #344a63;
   box-shadow: 0 4px 14px #25332a21;
 }
-.map-return-button svg,.map-locate-button svg {
+.map-return-button svg {
   width: 23px;
   height: 23px;
   fill: none;
@@ -638,14 +636,6 @@ input[type=datetime-local] {
   font-size: .78rem;
   font-weight: 650;
   white-space: nowrap;
-}
-.map-locate-button {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  z-index: 3;
-  width: 54px;
-  height: 54px;
 }
 .status-swatch {
   display: inline-block;
@@ -1413,7 +1403,8 @@ input[type=datetime-local] {
   .map-toolbar {
     top: 9px;
     left: 10px;
-    width: min(330px,calc(100% - 20px));
+    width: fit-content;
+    max-width: calc(100% - 20px);
     min-height: 48px;
     padding: 6px 8px 6px 10px;
     border-radius: 13px;
@@ -1435,12 +1426,6 @@ input[type=datetime-local] {
   .map-legend span {
     gap: 5px;
     font-size: .69rem;
-  }
-  .map-locate-button {
-    right: 11px;
-    bottom: 11px;
-    width: 48px;
-    height: 48px;
   }
   .map-summary {
     right: 66px;
@@ -1563,7 +1548,7 @@ input[type=datetime-local] {
   .selected-spot-note {
     font-size: .7rem;
   }
-  .route-link,.plan-query-button,.refresh-button {
+  .route-link,.refresh-button {
     min-height: 42px;
     font-size: .85rem;
   }
@@ -1951,10 +1936,6 @@ input[type=datetime-local] {
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
   }
-  .plan-query-button {
-    flex: 0 0 auto;
-    margin-top: 12px;
-  }
 }
 
 /* Draw the filter affordance in the map's own restrained line language. */
@@ -2001,10 +1982,6 @@ input[type=datetime-local] {
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
-  }
-  .plan-query-button {
-    flex: 0 0 auto;
-    margin-top: 10px;
   }
   .chip-chevron {
     flex-basis: 10px;

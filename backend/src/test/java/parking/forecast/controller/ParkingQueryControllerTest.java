@@ -105,14 +105,14 @@ class ParkingQueryControllerTest {
                 .singleElement()
                 .satisfies(item -> {
                     assertThat(item.availabilityStatus()).isEqualTo("OCCUPIED");
-                    assertThat(item.navigationAvailable()).isFalse();
+                    assertThat(item.navigationAvailable()).isTrue();
                 });
         assertThat(data.items()).filteredOn(item -> item.id().equals("lot-920101"))
                 .singleElement()
                 .satisfies(item -> {
                     assertThat(item.availabilityStatus()).isEqualTo("FULL");
                     assertThat(item.availableCarSpaces()).isZero();
-                    assertThat(item.navigationAvailable()).isFalse();
+                    assertThat(item.navigationAvailable()).isTrue();
                 });
 
         mockMvc.perform(get("/api/v1/parking-queries/{queryId}/map-data", query.query().queryId()))
@@ -122,7 +122,7 @@ class ParkingQueryControllerTest {
     }
 
     @Test
-    void mapDataGetShowsStaleAvailabilityAsStaleWithoutOldCounts() {
+    void mapDataGetKeepsLocationNavigationWhenAvailabilityIsStale() {
         publishOffStreetSnapshot(STALE_FETCHED_AT, List.of(
                 offStreetObservation(920101L, AvailabilityStatus.AVAILABLE, 12)
         ));
@@ -136,9 +136,9 @@ class ParkingQueryControllerTest {
                 .satisfies(item -> {
                     assertThat(item.availabilityStatus()).isEqualTo("STALE");
                     assertThat(item.availableCarSpaces()).isNull();
-                    assertThat(item.navigationAvailable()).isFalse();
-                    assertThat(item.navigationLatitude()).isNull();
-                    assertThat(item.navigationLongitude()).isNull();
+                    assertThat(item.navigationAvailable()).isTrue();
+                    assertThat(item.navigationLatitude()).isNotNull();
+                    assertThat(item.navigationLongitude()).isNotNull();
                 });
     }
 

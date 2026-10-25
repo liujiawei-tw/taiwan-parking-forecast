@@ -22,7 +22,6 @@ export function applyMapDisplayFreshness(
         availabilityStatus: 'UNKNOWN',
         availableCarSpaces: null,
         availableSpot: null,
-        navigationAvailable: false,
         message: '缺少可確認的系統取得時間，不顯示目前車位狀態。',
       }
     }
@@ -34,7 +33,6 @@ export function applyMapDisplayFreshness(
       availabilityStatus: 'STALE',
       availableCarSpaces: null,
       availableSpot: null,
-      navigationAvailable: false,
       message: '系統快照已超過 5 分鐘展示時效，不再顯示為目前有位。',
     }
   })

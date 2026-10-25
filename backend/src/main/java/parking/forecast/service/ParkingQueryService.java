@@ -606,19 +606,18 @@ public class ParkingQueryService {
                 }
             }
         }
-        boolean navigationAvailable = availability.isFreshReady()
-                && usableQuality
-                && place.carEligibleStatus() == EligibilityStatus.CONFIRMED
-                && AvailabilityStatus.AVAILABLE.name().equals(status);
-        Double navigationLatitude = null;
-        Double navigationLongitude = null;
-        if (navigationAvailable) {
-            navigationLatitude = roadside || place.entranceLatitude() == null
-                    ? place.latitude()
-                    : place.entranceLatitude();
-            navigationLongitude = roadside || place.entranceLongitude() == null
-                    ? place.longitude()
-                    : place.entranceLongitude();
+        boolean hasEntranceCoordinates = hasValidCoordinates(place.entranceLatitude(), place.entranceLongitude());
+        Double navigationLatitude = roadside || !hasEntranceCoordinates
+                ? place.latitude()
+                : place.entranceLatitude();
+        Double navigationLongitude = roadside || !hasEntranceCoordinates
+                ? place.longitude()
+                : place.entranceLongitude();
+        boolean navigationAvailable = place.carEligibleStatus() == EligibilityStatus.CONFIRMED
+                && hasValidCoordinates(navigationLatitude, navigationLongitude);
+        if (!navigationAvailable) {
+            navigationLatitude = null;
+            navigationLongitude = null;
         }
         String dataSource = availability.snapshotId() == null ? LOCAL_CATALOG_SOURCE : "NTPC_OPEN_DATA";
         String itemId = (roadside ? "spot-" : "lot-") + place.parkingPlaceId();
@@ -705,6 +704,12 @@ public class ParkingQueryService {
             case "NO_REALTIME_AVAILABILITY" -> "尚無已發布的即時觀測。";
             default -> "目前無法確認即時狀態。";
         };
+    }
+
+    private boolean hasValidCoordinates(Double latitude, Double longitude) {
+        return latitude != null && longitude != null
+                && Double.isFinite(latitude) && Double.isFinite(longitude)
+                && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
     }
 
     public ParkingQueryResponse refresh(String queryId) {
@@ -1142,13 +1147,19 @@ public class ParkingQueryService {
         return new ParkingLot(
                 place.parkingPlaceId().toString(),
                 place.displayName(),
-                place.entranceLatitude() == null ? place.latitude() : place.entranceLatitude(),
-                place.entranceLongitude() == null ? place.longitude() : place.entranceLongitude(),
+                hasValidCoordinates(place.entranceLatitude(), place.entranceLongitude())
+                        ? place.entranceLatitude() : place.latitude(),
+                hasValidCoordinates(place.entranceLatitude(), place.entranceLongitude())
+                        ? place.entranceLongitude() : place.longitude(),
                 place.distanceMeters(),
                 availableCarSpaces,
                 place.totalCarSpaces(),
                 place.carEligibleStatus() == EligibilityStatus.CONFIRMED
-                        && AvailabilityStatus.AVAILABLE.name().equals(availabilityStatus),
+                        && hasValidCoordinates(
+                                hasValidCoordinates(place.entranceLatitude(), place.entranceLongitude())
+                                        ? place.entranceLatitude() : place.latitude(),
+                                hasValidCoordinates(place.entranceLatitude(), place.entranceLongitude())
+                                        ? place.entranceLongitude() : place.longitude()),
                 availabilityStatus,
                 availability.systemCollectedAt(),
                 place.address(),
@@ -1209,7 +1220,7 @@ public class ParkingQueryService {
     private String roadsideMessage(String status, PublishedAvailabilityView availability) {
         return switch (status) {
             case "READY" -> "Fresh published roadside snapshot is used. Currently available spots can be shown and navigated.";
-            case "STALE" -> "Roadside snapshot is older than 5 minutes. Current available count and spot navigation are hidden.";
+            case "STALE" -> "Roadside snapshot is older than 5 minutes. Current availability is hidden; navigation may remain available for a verified location.";
             case "UNKNOWN" -> "Nearby roadside observations are unknown; current availability cannot be confirmed.";
             case "NO_OBSERVATION" -> availability.message();
             case "NO_REALTIME_SNAPSHOT" -> "Roadside catalog records exist, but no published real-time snapshot is available yet.";

@@ -33,7 +33,7 @@ assert.equal(fresh[0].navigationAvailable, true)
 const expired = applyMapDisplayFreshness([available], collectedAtMs + MAP_DISPLAY_FRESHNESS_MS + 1)[0]
 assert.equal(expired.availabilityStatus, 'STALE')
 assert.equal(expired.availableSpot, null)
-assert.equal(expired.navigationAvailable, false)
+assert.equal(expired.navigationAvailable, true, 'stale availability does not hide a verified location route')
 assert.match(expired.message, /不再顯示為目前有位/)
 
 const missingTime = applyMapDisplayFreshness([{
@@ -41,7 +41,7 @@ const missingTime = applyMapDisplayFreshness([{
   systemCollectedAt: null,
 }], collectedAtMs, { roadside: null })[0]
 assert.equal(missingTime.availabilityStatus, 'UNKNOWN')
-assert.equal(missingTime.navigationAvailable, false)
+assert.equal(missingTime.navigationAvailable, true, 'missing availability time does not hide a verified location route')
 
 const source = { status: 'READY', systemCollectedAt: collectedAt, snapshotId: 42 }
 assert.equal(isMapSourceDisplayStale(source, collectedAtMs + MAP_DISPLAY_FRESHNESS_MS), false)
