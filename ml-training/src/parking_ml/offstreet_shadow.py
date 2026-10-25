@@ -296,10 +296,6 @@ def verify_predictions(
         lot_id: [group[0].observation.collected_at for group in lot_groups]
         for lot_id, lot_groups in groups.items()
     }
-    by_identity = {
-        (item.observation.lot_id, item.observation.collected_at, item.fingerprint): item
-        for lot_groups in groups.values() for group in lot_groups for item in group
-    }
     results = []
     for prediction in stored[1:]:
         if prediction.get("recordType") != "prediction":
@@ -307,6 +303,10 @@ def verify_predictions(
         target = parse_aware_datetime(prediction["targetArrivalAtUtc"])
         result = dict(prediction)
         prediction_at = parse_aware_datetime(prediction.get("predictionAtUtc", prediction["asOfAtUtc"]))
+        arrival_tolerance = int(metadata["arrivalToleranceMinutes"])
+        source_tolerance = int(metadata["sourceTimestampDeltaToleranceMinutes"])
+        finalization_at = target + timedelta(minutes=arrival_tolerance + source_tolerance)
+        result["verificationFinalizationAtUtc"] = iso_utc(finalization_at)
         if target <= prediction_at:
             result.update({
                 "verificationStatus": "UNVERIFIABLE",
@@ -318,13 +318,24 @@ def verify_predictions(
             result.update({"verificationStatus": "PENDING", "verificationReason": "target_arrival_not_elapsed"})
             results.append(result)
             continue
+        lot_id = prediction["parkingLotId"]
         as_of_at = parse_aware_datetime(prediction["asOfAtUtc"])
-        as_of = by_identity.get((prediction["parkingLotId"], as_of_at, prediction["asOfObservationFingerprint"]))
-        if as_of is None:
+        lot_groups = groups.get(lot_id, [])
+        as_of_group = next(
+            (group for group in lot_groups if group[0].observation.collected_at == as_of_at),
+            None,
+        )
+        as_of = None if as_of_group is None else next(
+            (item for item in as_of_group if item.fingerprint == prediction["asOfObservationFingerprint"]),
+            None,
+        )
+        if as_of is None or as_of_group is None:
             result.update({"verificationStatus": "UNVERIFIABLE", "verificationReason": "as_of_observation_missing_or_changed"})
             results.append(result)
             continue
-        reason = group_reason([as_of], int(metadata["sourceTimestampDeltaToleranceMinutes"]), "as_of")
+        # Recheck the whole strict timestamp group: a later conflicting row
+        # invalidates the as-of evidence even when its original fingerprint remains.
+        reason = group_reason(as_of_group, source_tolerance, "as_of")
         if reason is None:
             reason = as_of_time_reason(
                 as_of, prediction_at,
@@ -336,17 +347,35 @@ def verify_predictions(
             result.update({"verificationStatus": "UNVERIFIABLE", "verificationReason": reason})
             results.append(result)
             continue
+        # Do not finalize against a partial arrival window. The latest permitted
+        # arrival timestamp plus the source response tolerance defines the cutoff.
+        if verified_at < finalization_at:
+            _, arrival_reason, _ = find_arrival(
+                lot_groups, prediction_at, target,
+                timedelta(minutes=arrival_tolerance),
+                source_tolerance, verified_at,
+                timestamp_indexes.get(lot_id, []),
+            )
+            pending_reason = (
+                "arrival_source_response_not_yet_available"
+                if arrival_reason == "arrival_source_response_not_yet_available"
+                else "arrival_verification_window_open"
+            )
+            result.update({
+                "verificationStatus": "PENDING",
+                "verificationReason": pending_reason,
+            })
+            results.append(result)
+            continue
         arrival, reason, delta = find_arrival(
-            groups.get(prediction["parkingLotId"], []), prediction_at, target,
-            timedelta(minutes=int(metadata["arrivalToleranceMinutes"])),
-            int(metadata["sourceTimestampDeltaToleranceMinutes"]), verified_at,
-            timestamp_indexes.get(prediction["parkingLotId"], []),
+            lot_groups, prediction_at, target,
+            timedelta(minutes=arrival_tolerance),
+            source_tolerance, finalization_at,
+            timestamp_indexes.get(lot_id, []),
         )
         if arrival is None:
             if reason == "arrival_source_response_not_yet_available":
-                result.update({"verificationStatus": "PENDING", "verificationReason": reason})
-                results.append(result)
-                continue
+                reason = "arrival_source_response_missed_finalization"
             result.update({"verificationStatus": "UNVERIFIABLE", "verificationReason": reason or "arrival_observation_missing"})
             results.append(result)
             continue
@@ -717,6 +746,9 @@ def aggregate_report(metadata: dict[str, Any], rows: list[dict[str, Any]], datas
             "leadMinutes": list(LEADS),
             "arrivalObservationToleranceMinutes": metadata["arrivalToleranceMinutes"],
             "sourceTimestampDeltaToleranceMinutes": metadata["sourceTimestampDeltaToleranceMinutes"],
+            "verificationFinalizationDelayMinutes": (
+                metadata["arrivalToleranceMinutes"] + metadata["sourceTimestampDeltaToleranceMinutes"]
+            ),
             "maxPredictionsPerLead": metadata["maxPredictionsPerLead"],
             "sampling": "deterministic hash rank by private lot ID, as-of timestamp, and lead; no labels used",
             "outcomeRule": "available_car > 0 is positive; == 0 is negative; unknown/negative/stale/mismatched/missing is unverifiable",
@@ -777,7 +809,7 @@ def render_markdown_report(report: dict[str, Any]) -> str:
         f"- as-of 新鮮度門檻：{report['policy'].get('asOfFreshnessMinutes', DEFAULT_MAX_AS_OF_AGE_MINUTES)} 分鐘。",
         f"- 前瞻資料狀態：{report.get('prospectiveDataStatus', 'NOT_APPLICABLE')}。",
         f"- 資料來源：{report['source']['type']}；ZIP {report['source']['sourceZipCountAtPrediction']} 個、路外原始列 {report['source']['sourceRowsAtPrediction']} 列。",
-        f"- 抵達觀測容忍：±{report['policy']['arrivalObservationToleranceMinutes']} 分鐘；來源時間與收集時間容忍：±{report['policy']['sourceTimestampDeltaToleranceMinutes']} 分鐘。",
+        f"- 抵達觀測容忍：±{report['policy']['arrivalObservationToleranceMinutes']} 分鐘；來源時間與收集時間容忍：±{report['policy']['sourceTimestampDeltaToleranceMinutes']} 分鐘；最晚定案時間為目標後 {report['policy']['verificationFinalizationDelayMinutes']} 分鐘。",
         f"- 候選 {report['candidateCount']}；抽樣預測 {report['sampledPredictionCount']}；可驗證 {report['verifiedCount']}；不可驗證 {report['unverifiableCount']}；as-of 拒收 {report['rejectedAsOfCount']}；尚未到期 {report['pendingCount']}。",
         f"- 覆蓋日期 {report['differentDates']} 天、不同停車場 {report['differentParkingLots']} 座。",
         "- Shadow 狀態為 EXPERIMENT_ONLY；未寫入正式 predictions。", "",

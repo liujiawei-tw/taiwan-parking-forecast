@@ -143,13 +143,21 @@ included only when a v2 experiment artifact matches the input ZIP hash, exact
 training-config hash, split dates, feature schema, and train sample count;
 otherwise its probability is null and the report records why.
 
-Phase two runs after the target arrival time. It requires a qualified
-observation within plus or minus 15 minutes by default and a source response
-timestamp within plus or minus 10 minutes of the collector timestamp. Both
-tolerances are printed in the aggregate report. Unknown, negative, stale,
-timezone-invalid, Taipei-date-mismatched, and missing arrival observations
-remain unverifiable. The private result JSONL keeps per-row matches and
-reasons; Markdown and JSON reports contain aggregate counts and metrics only.
+Phase two does not finalize as soon as the target time passes. The report
+records verificationFinalizationAtUtc, computed as the target time plus
+arrivalToleranceMinutes and sourceTimestampDeltaToleranceMinutes (25 minutes
+after target with the defaults). Until then, a candidate stays PENDING, even if
+an observation is already available; the final result chooses from the complete
+window once. Verification uses only observations whose source
+response was available by both verifiedAtUtc and the finalization cutoff.
+After finalization, a qualified observation within plus or minus 15 minutes is
+VERIFIED; missing or unqualified evidence remains UNVERIFIABLE, never a
+negative label. The as-of fingerprint and its complete timestamp group are
+rechecked with the same strict duplicate policy used to generate predictions:
+an exact duplicate is accepted, while conflicting, missing, or changed evidence
+is rejected. Both tolerances and the finalization delay are printed in the
+aggregate report. The private result JSONL keeps per-row matches and reasons;
+Markdown and JSON reports contain aggregate counts and metrics only.
 Outputs are EXPERIMENT_ONLY and never update production predictions.
 
 ### 時間語意（PR #97 review 修正）
@@ -164,9 +172,10 @@ Outputs are EXPERIMENT_ONLY and never update production predictions.
   lead 從該時間起算。報告標示 `RETROSPECTIVE_REPLAY`、區分實際執行時間，並明確說明
   這不是前瞻測試或新 holdout。
 - `--mode PROSPECTIVE` 以 runner 執行時間預測，只採既有 test 日期範圍之後、當下已收到且
-  新鮮的每場最新觀測；目標時間到達前保持 `PENDING`。若抵達列已收集但來源回應晚於核對
-  時間，也保持 `PENDING`；缺失或不合格觀測為 `UNVERIFIABLE`。只有舊 ZIP 時會報告
-  `NO_QUALIFYING_PROSPECTIVE_DATA`，不會將回放結果冒充前瞻結果。
+  新鮮的每場最新觀測；抵達觀測窗口與來源回應等待期都結束前保持 `PENDING`。即使已有較遠
+  的合格觀測，也要等完整窗口結束後才選擇最接近目標時刻的合格觀測並定案。缺失或不合格
+  觀測為 `UNVERIFIABLE`。只有舊 ZIP 時會報告 `NO_QUALIFYING_PROSPECTIVE_DATA`，不會將
+  回放結果冒充前瞻結果。
 
 本機沒有已確認的產品 freshness 契約，所以執行時明確指定 15 分鐘：
 

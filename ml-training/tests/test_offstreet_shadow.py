@@ -192,12 +192,268 @@ class OffstreetShadowTest(unittest.TestCase):
             later_results = root / "later-results.jsonl"
             verify_predictions(
                 source, predictions, results_path=later_results,
-                verified_at=datetime.fromisoformat("2026-10-25T10:36:00+08:00"),
+                verified_at=datetime.fromisoformat("2026-10-25T10:55:00+08:00"),
             )
             later = [row for row in read_jsonl(later_results) if row.get("recordType") == "prediction"]
             lead30 = next(row for row in later if row["leadMinutes"] == 30)
             self.assertEqual(lead30["verificationStatus"], "VERIFIED")
             self.assertTrue(lead30["label"])
+
+    def test_prospective_verification_waits_for_full_arrival_window_and_source_delay(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            lot_id = "lot-private-finalization"
+            as_of = offstreet_row(lot_id, "2026-10-25", "10:00", 4)
+            prediction_source = root / "prediction-source"
+            write_rows_by_day(prediction_source, [as_of])
+            predictions = root / "private-predictions.jsonl"
+            generate_predictions(
+                prediction_source, config_path, predictions, mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T10:00:00+08:00"),
+            )
+
+            no_arrival_source = root / "no-arrival-source"
+            write_rows_by_day(no_arrival_source, [as_of])
+            early_results = root / "early-results.jsonl"
+            verify_predictions(
+                no_arrival_source, predictions, results_path=early_results,
+                verified_at=datetime.fromisoformat("2026-10-25T10:31:00+08:00"),
+            )
+            early = next(
+                row for row in read_jsonl(early_results)
+                if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+            )
+            self.assertEqual(early["verificationStatus"], "PENDING")
+            self.assertEqual(early["verificationReason"], "arrival_verification_window_open")
+            self.assertEqual(early["verificationFinalizationAtUtc"], "2026-10-25T02:55:00Z")
+            self.assertNotIn("label", early)
+
+            arrival = offstreet_row(lot_id, "2026-10-25", "10:40", 3, source_offset_minutes=2)
+            arrival_source = root / "arrival-source"
+            write_rows_by_day(arrival_source, [as_of, arrival])
+            before_source_response = root / "before-source-response.jsonl"
+            verify_predictions(
+                arrival_source, predictions, results_path=before_source_response,
+                verified_at=datetime.fromisoformat("2026-10-25T10:41:00+08:00"),
+            )
+            waiting = next(
+                row for row in read_jsonl(before_source_response)
+                if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+            )
+            self.assertEqual(waiting["verificationStatus"], "PENDING")
+            self.assertEqual(waiting["verificationReason"], "arrival_source_response_not_yet_available")
+            self.assertNotIn("label", waiting)
+
+            final_results = root / "final-results.jsonl"
+            verify_predictions(
+                arrival_source, predictions, results_path=final_results,
+                verified_at=datetime.fromisoformat("2026-10-25T10:55:00+08:00"),
+            )
+            final = next(
+                row for row in read_jsonl(final_results)
+                if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+            )
+            self.assertEqual(final["verificationStatus"], "VERIFIED")
+            self.assertTrue(final["label"])
+            self.assertEqual(final["arrivalObservedAtUtc"], "2026-10-25T02:40:00Z")
+
+    def test_missing_arrival_stays_pending_until_finalization_then_is_unverifiable(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            lot_id = "lot-private-no-arrival"
+            as_of = offstreet_row(lot_id, "2026-10-25", "10:00", 4)
+            source = root / "source"
+            write_rows_by_day(source, [as_of])
+            predictions = root / "private-predictions.jsonl"
+            generate_predictions(
+                source, config_path, predictions, mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T10:00:00+08:00"),
+            )
+
+            pending_results = root / "pending-results.jsonl"
+            verify_predictions(
+                source, predictions, results_path=pending_results,
+                verified_at=datetime.fromisoformat("2026-10-25T10:54:00+08:00"),
+            )
+            pending = next(
+                row for row in read_jsonl(pending_results)
+                if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+            )
+            self.assertEqual(pending["verificationStatus"], "PENDING")
+            self.assertNotIn("label", pending)
+
+            final_results = root / "final-results.jsonl"
+            verify_predictions(
+                source, predictions, results_path=final_results,
+                verified_at=datetime.fromisoformat("2026-10-25T10:55:00+08:00"),
+            )
+            final = next(
+                row for row in read_jsonl(final_results)
+                if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+            )
+            self.assertEqual(final["verificationStatus"], "UNVERIFIABLE")
+            self.assertEqual(final["verificationReason"], "arrival_observation_missing")
+            self.assertNotIn("label", final)
+
+    def test_nearer_arrival_observation_cannot_change_a_finalized_label(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            lot_id = "lot-private-nearest-arrival"
+            as_of = offstreet_row(lot_id, "2026-10-25", "10:00", 4)
+            prediction_source = root / "prediction-source"
+            write_rows_by_day(prediction_source, [as_of])
+            predictions = root / "private-predictions.jsonl"
+            generate_predictions(
+                prediction_source, config_path, predictions, mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T10:00:00+08:00"),
+            )
+
+            farther = offstreet_row(lot_id, "2026-10-25", "10:15", 0)
+            early_source = root / "early-source"
+            write_rows_by_day(early_source, [as_of, farther])
+            early_results = root / "early-results.jsonl"
+            verify_predictions(
+                early_source, predictions, results_path=early_results,
+                verified_at=datetime.fromisoformat("2026-10-25T10:54:00+08:00"),
+            )
+            early = next(
+                row for row in read_jsonl(early_results)
+                if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+            )
+            self.assertEqual(early["verificationStatus"], "PENDING")
+            self.assertNotIn("label", early)
+
+            nearer = offstreet_row(lot_id, "2026-10-25", "10:28", 3)
+            complete_source = root / "complete-source"
+            write_rows_by_day(complete_source, [as_of, farther, nearer])
+            final_results = root / "final-results.jsonl"
+            verify_predictions(
+                complete_source, predictions, results_path=final_results,
+                verified_at=datetime.fromisoformat("2026-10-25T10:55:00+08:00"),
+            )
+            final = next(
+                row for row in read_jsonl(final_results)
+                if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+            )
+            self.assertEqual(final["verificationStatus"], "VERIFIED")
+            self.assertEqual(final["arrivalObservedAtUtc"], "2026-10-25T02:28:00Z")
+            self.assertTrue(final["label"])
+
+            repeated_results = root / "repeated-results.jsonl"
+            verify_predictions(
+                complete_source, predictions, results_path=repeated_results,
+                verified_at=datetime.fromisoformat("2026-10-25T11:00:00+08:00"),
+            )
+            repeated = next(
+                row for row in read_jsonl(repeated_results)
+                if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+            )
+            self.assertEqual(
+                (repeated["verificationStatus"], repeated.get("label"), repeated.get("arrivalObservedAtUtc")),
+                (final["verificationStatus"], final.get("label"), final.get("arrivalObservedAtUtc")),
+            )
+
+    def test_verification_rejects_as_of_duplicate_conflict_independent_of_row_order(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            lot_id = "lot-private-asof-conflict"
+            as_of = offstreet_row(lot_id, "2026-10-25", "10:00", 5)
+            prediction_source = root / "prediction-source"
+            write_rows_by_day(prediction_source, [as_of])
+            predictions = root / "private-predictions.jsonl"
+            generate_predictions(
+                prediction_source, config_path, predictions, mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T10:00:00+08:00"),
+            )
+            conflicting = offstreet_row(lot_id, "2026-10-25", "10:00", 2)
+            arrival = offstreet_row(lot_id, "2026-10-25", "10:30", 3)
+            outcomes = []
+            for index, rows in enumerate((
+                [as_of, conflicting, arrival],
+                [conflicting, as_of, arrival],
+            )):
+                source = root / f"verification-source-{index}"
+                write_rows_by_day(source, rows)
+                result_path = root / f"results-{index}.jsonl"
+                verify_predictions(
+                    source, predictions, results_path=result_path,
+                    verified_at=datetime.fromisoformat("2026-10-25T12:00:00+08:00"),
+                )
+                result = next(
+                    row for row in read_jsonl(result_path)
+                    if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+                )
+                outcomes.append((
+                    result["verificationStatus"], result["verificationReason"], "label" in result,
+                ))
+            self.assertEqual(outcomes, [
+                ("UNVERIFIABLE", "as_of_duplicate_conflict", False),
+                ("UNVERIFIABLE", "as_of_duplicate_conflict", False),
+            ])
+
+    def test_verification_accepts_an_exact_as_of_duplicate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            lot_id = "lot-private-asof-identical"
+            as_of = offstreet_row(lot_id, "2026-10-25", "10:00", 5)
+            prediction_source = root / "prediction-source"
+            write_rows_by_day(prediction_source, [as_of])
+            predictions = root / "private-predictions.jsonl"
+            generate_predictions(
+                prediction_source, config_path, predictions, mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T10:00:00+08:00"),
+            )
+
+            arrival = offstreet_row(lot_id, "2026-10-25", "10:30", 3)
+            verification_source = root / "verification-source"
+            write_rows_by_day(verification_source, [as_of, dict(as_of), arrival])
+            results_path = root / "private-results.jsonl"
+            verify_predictions(
+                verification_source, predictions, results_path=results_path,
+                verified_at=datetime.fromisoformat("2026-10-25T12:00:00+08:00"),
+            )
+            result = next(
+                row for row in read_jsonl(results_path)
+                if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+            )
+            self.assertEqual(result["verificationStatus"], "VERIFIED")
+            self.assertTrue(result["label"])
+
+    def test_verification_rejects_a_missing_or_changed_as_of_fingerprint(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            lot_id = "lot-private-asof-changed"
+            as_of = offstreet_row(lot_id, "2026-10-25", "10:00", 5)
+            prediction_source = root / "prediction-source"
+            write_rows_by_day(prediction_source, [as_of])
+            predictions = root / "private-predictions.jsonl"
+            generate_predictions(
+                prediction_source, config_path, predictions, mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T10:00:00+08:00"),
+            )
+
+            changed = offstreet_row(lot_id, "2026-10-25", "10:00", 2)
+            arrival = offstreet_row(lot_id, "2026-10-25", "10:30", 3)
+            verification_source = root / "verification-source"
+            write_rows_by_day(verification_source, [changed, arrival])
+            results_path = root / "private-results.jsonl"
+            verify_predictions(
+                verification_source, predictions, results_path=results_path,
+                verified_at=datetime.fromisoformat("2026-10-25T12:00:00+08:00"),
+            )
+            result = next(
+                row for row in read_jsonl(results_path)
+                if row.get("recordType") == "prediction" and row["leadMinutes"] == 30
+            )
+            self.assertEqual(result["verificationStatus"], "UNVERIFIABLE")
+            self.assertEqual(result["verificationReason"], "as_of_observation_missing_or_changed")
+            self.assertNotIn("label", result)
 
     def test_prediction_phase_does_not_read_or_emit_future_labels(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -260,7 +516,8 @@ class OffstreetShadowTest(unittest.TestCase):
             early = verify_predictions(
                 source, predictions, verified_at=datetime.fromisoformat("2026-10-24T23:50:00+08:00")
             )
-            self.assertEqual(early["pendingCount"], 3)
+            # The negative lot's 30m window is also still open at 23:50.
+            self.assertEqual(early["pendingCount"], 4)
             self.assertEqual(early["predictionState"]["status"], "EXPERIMENT_ONLY")
 
             results_path = root / "private-results.jsonl"
@@ -272,7 +529,7 @@ class OffstreetShadowTest(unittest.TestCase):
                 results_path=results_path,
                 report_json_path=report_json_path,
                 report_markdown_path=report_md_path,
-                verified_at=datetime.fromisoformat("2026-10-25T00:20:00+08:00"),
+                verified_at=datetime.fromisoformat("2026-10-25T01:00:00+08:00"),
             )
             results = [row for row in read_jsonl(results_path) if row.get("recordType") == "prediction"]
             self.assertEqual(report["byLead"]["30"]["positiveCount"], 1)
@@ -287,7 +544,7 @@ class OffstreetShadowTest(unittest.TestCase):
                 self.assertEqual(metrics["current_state_persistence"]["samples"], metrics["calibrated_state_persistence_v1"]["samples"])
                 self.assertEqual(metrics["logistic_regression_v1"]["status"], "UNAVAILABLE")
             self.assertIsNone(report["byLead"]["30"]["modelMetrics"]["current_state_persistence"]["falsePositiveRate"])
-            self.assertTrue(any(row.get("verificationStatus") == "PENDING" for row in results))
+            self.assertFalse(any(row.get("verificationStatus") == "PENDING" for row in results))
             self.assertTrue(any(row.get("verificationStatus") == "UNVERIFIABLE" and row.get("verificationReason") == "arrival_observation_missing" for row in results))
             self.assertFalse(report["predictionState"]["onlinePredictionsWritten"])
             self.assertNotIn("lot-private", report_json_path.read_text(encoding="utf-8"))

@@ -1110,3 +1110,12 @@ Roadside complete 30m test 只有 41 筆，低於設定的 100 筆最低門檻�
 - **前瞻資料**：目前 ZIP 的資料日期只到 2026-10-24，且屬既有 test 範圍；PROSPECTIVE 報告狀態為 `NO_QUALIFYING_PROSPECTIVE_DATA`，候選與預測均為 0。需要有既有 test 日期之後的新鮮 collector 觀測，才可進行前瞻等待與核對。
 - **驗證**：`python -m unittest discover -s ml-training/tests` 36 tests 通過；`python -m compileall -q ml-training` 通過；`git diff --check` 通過。涵蓋來源回應早晚於預測時刻、新鮮度拒收、歷史時間回放、過去目標拒收、抵達回應尚未收到時保持 pending、既有資料不得冒充新 holdout、原有標籤拒收／同 cohort 指標／aggregate 隱私回歸。
 - **CI 診斷**：前輪 run `40196934879` 及本次 head `88d2509` 的 run `40199613603` 均回報 Docker、Frontend、Backend 三個 job failure。latest attempt 2 重跑後仍相同；GitHub REST 顯示三個 job 約 1–3 秒內結束，`runner_id=0`、`runner_name` 空、`steps=[]`，所有 job log 下載均回 `BlobNotFound`。證據顯示 job 未進入 workflow steps，因此不能歸因為程式測試失敗；但前置派送失敗的具體帳號／runner／GitHub 原因仍無法確認。workflow 未修改，也未降低檢查標準。
+
+### PR #97 第二輪 Findings #5–#6：抵達定案窗口與 as-of duplicate 重驗（2026-10-25）
+
+- **Finding #5（P1）**：`verify_predictions()` 為每筆結果輸出 `verificationFinalizationAtUtc`，依 `targetArrivalAtUtc + arrivalToleranceMinutes + sourceTimestampDeltaToleranceMinutes` 計算。預設為目標後 25 分鐘；在抵達容忍窗口及來源回應等待窗口全部結束前維持 `PENDING`，即使較早已有可配對觀測，也不先產生 label。來源回應尚未到達時保留 `arrival_source_response_not_yet_available`；窗口關閉後才以定案時間為來源可用 cutoff，從全窗口選最近的合格觀測。無觀測或不合格觀測為 `UNVERIFIABLE`，不當作負例。aggregate policy 與 Markdown 同步輸出定案等待分鐘數。
+- **Finding #6（P2）**：驗證時依 lot 與 as-of timestamp 取得完整 timestamp group；先確認原始 fingerprint 仍存在，再用預測階段相同的 `group_reason()` strict duplicate policy 重驗整組。完全相同的重複列仍可接受；內容衝突、原 fingerprint 消失或資料改變均拒收，不輸出 label。分組與拒收結果不受輸入列順序影響。
+- **合成 ZIP 回歸測試**：新增完整窗口未結束時保持 pending、延遲來源回應不可早用、窗口結束後缺觀測轉為 unverifiable、窗口內較近觀測決定最終配對且重驗穩定，以及 as-of 衝突順序、精確重複與 fingerprint 變更案例；同步調整既有 ZIP 整合測試的核對時刻，確保只在 finalization window 關閉後評估。
+- **驗證**：`python -m unittest discover -s ml-training/tests` 42 tests 通過；`python -m compileall -q ml-training` 通過；`git diff --check` 通過。Focused offstreet shadow suite 15 tests 通過。
+- **31 個私有 ZIP 回放**：讀取 192,850 列，100 筆預測中 98 筆可驗證（30m 50、60m 48），2 筆 60m 因抵達觀測缺失不可驗證；3 個日期、38 個場站。30m：Persistence Brier 0.002500、Calibrated Persistence 0.0008710952，正／負例 46／4；60m：0.021250、0.0186322579，正／負例 40／8。兩方法各 lead FPR 均為 0、Precision 均為 1.00。與既有 98／100 aggregate 報告的樣本數、類別數與四組指標逐值一致；結果仍為三日 `EXPLORATORY_ONLY` 歷史回放。新輸出僅在 ignored 私有目錄 `data/private/collector-samples/pr97-findings56-2026-10-25/`，未提交。
+- 不修改模型演算法、預測特徵、正式資料庫或線上 predictions；未部署模型。前瞻測試仍需要既有 test 日期之後的新鮮 collector 觀測。
