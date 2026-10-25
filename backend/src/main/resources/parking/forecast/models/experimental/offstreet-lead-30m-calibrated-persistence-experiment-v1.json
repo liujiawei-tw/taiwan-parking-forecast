@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "parking-calibrated-persistence-experiment-v1",
+  "featureVersion": "offstreet_current_state_v1",
+  "modelId": "offstreet-lead-30m-calibrated-persistence-experiment-v1",
+  "status": "EXPERIMENT_ONLY",
+  "publishToOnlineSystem": false,
+  "dataset": "offstreet",
+  "coveragePolicyVersion": "OFFSTREET",
+  "target": "arrival_has_confirmed_availability",
+  "leadMinutes": 30,
+  "calibrationParameters": {
+    "alpha": 1.0,
+    "minimumStateSamples": 20,
+    "fallbackProbability": 0.9170229612034838,
+    "stateProbabilities": {
+      "available": 0.9907897766520838,
+      "unavailable": 0.09977685686962065
+    },
+    "stateCounts": {
+      "available": 34742,
+      "unavailable": 3135,
+      "unknown": 11
+    }
+  },
+  "trainingSamples": 37888,
+  "trainingPositiveRate": 0.9170449746621622,
+  "trainingDateRange": {
+    "start": "2026-09-24",
+    "end": "2026-10-18"
+  },
+  "sourceZipSha256": "b3059a84437b0f34928de854f82cac2806eeba0b334bc621a25f2fb107efe3b9",
+  "trainingConfigSha256": "a0f3b86e58f8ac8a10f117a1650a1a6db293bdc69b562ffc52f2426fdc3d8468"
+}

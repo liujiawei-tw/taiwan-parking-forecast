@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Iterator, Set
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,12 +18,12 @@ class CollectorRow:
     values: dict[str, str]
 
 
-def iter_collector_rows(input_path: Path) -> Iterator[CollectorRow]:
+def iter_collector_rows(input_path: Path, datasets: Set[str] | None = None) -> Iterator[CollectorRow]:
     for zip_path in iter_zip_paths(input_path):
         with zipfile.ZipFile(zip_path) as archive:
             for name in sorted(archive.namelist()):
                 dataset = dataset_from_name(name)
-                if dataset is None:
+                if dataset is None or (datasets is not None and dataset not in datasets):
                     continue
                 file_date = name.rsplit("_", 1)[-1].removesuffix(".csv")
                 with archive.open(name) as raw:

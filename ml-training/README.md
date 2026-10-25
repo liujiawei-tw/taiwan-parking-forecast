@@ -127,6 +127,27 @@ old report hash beside the new experiment, pass `--historical-report`:
 python ml-training/scripts/run_801010_experiment.py --config ml-training/config/training-config-80-10-10.example.json --input data/private/collector-samples --output data/private/collector-samples/calibrated-persistence-2026-10-25.md --artifact-dir ml-training/models/calibrated-persistence-2026-10-25 --historical-report data/private/collector-samples/replication-0993b17-2026-10-25.md
 ```
 
+### Export the explicitly experimental off-street preview artifact
+
+`export_experimental_offstreet_model.py` reads only off-street rows, applies the
+same timestamp-aware sample builder and chronological split, and fits calibrated
+state probabilities from train labels only. It writes two small JSON artifacts
+for 30- and 60-minute horizons. Both remain `EXPERIMENT_ONLY` with
+`publishToOnlineSystem=false`; the backend accepts them only through the
+separately configured experimental preview, never as a production-approved
+model. Do not copy collector rows or ZIP files into backend resources.
+
+```powershell
+python ml-training/scripts/export_experimental_offstreet_model.py --config ml-training/config/training-config-80-10-10.example.json --input data/private/collector-samples --output-dir ml-training/models/online-experimental-calibrated-2026-10-26
+```
+
+The current backend preview uses versioned parameter-only artifacts under
+`backend/src/main/resources/parking/forecast/models/experimental/`. It outputs a
+probability only for a confirmed off-street car park with a usable published
+observation no older than 15 minutes and a target about 30 or 60 minutes after
+that snapshot. These are exploratory limits, not an API freshness SLA or a
+formal S3-020 admission result. The preview never trains during a user query.
+
 ## Off-street Shadow Test MVP
 
 run_offstreet_shadow_test.py provides two local-only phases for one off-street

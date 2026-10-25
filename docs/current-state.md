@@ -1,6 +1,16 @@
 # 目前狀態
 
-更新日期：2026-10-25。
+更新日期：2026-10-26。
+
+## 2026-10-26 路外實驗性預測接入查詢流程
+
+- **角色與範圍**：依使用者要求，把路外 calibrated persistence 候選接入主系統 `predictions` 區塊，以 `EXPERIMENTAL` 狀態呈現；不標成已驗證模型。路邊因完整圈測試樣本與目錄覆蓋不足，仍回 `INSUFFICIENT_DATA`／null probability。
+- **模型產物**：新增可重現的離線匯出器，只讀 31 個私有 ZIP 中 192,850 筆路外列，parser skip 為 0；30／60 分鐘分別用 37,888／37,886 筆 train labels 計算 train-only state probabilities。產物保留 `EXPERIMENT_ONLY` 與 `publishToOnlineSystem=false`，版本化小型 JSON 放在 API classpath，不包含逐筆資料。validation/test 仍是原先已分析的日期；30／60m calibrated persistence test Brier 0.0115／0.0163，固定 persistence 為 0.0130／0.0178，test 只有 3 日，不能視為正式准入或新 holdout。
+- **線上護欄**：只有 ETA 可用、場站汽車資格已確認、來源為 `READY`／`PARTIAL`、狀態／剩餘位數一致且快照不超過 15 分鐘時，才會對快照後約 30 或 60 分鐘（各 ±15 分鐘）抵達輸出單場實驗機率；其他情況仍為 null 並回拒絕原因。未查詢時不訓練、不呼叫 collector，也不改寫 PUBLISHED snapshot。路外之外的項目不套用此產物。
+- **設定與呈現**：一般 Spring 設定預設關閉；本機 Compose 透過 `PARKING_EXPERIMENTAL_PREDICTIONS_ENABLED` 預設開啟，可設 `false` 停用。API 顯示 `EXPERIMENTAL` 與模型版本，前端明示實驗性、固定時距及「不是官方即時空位」。此模式不代表 S3-020 通過，不代表正式發布。
+- **驗證／限制**：本次將線上實驗推論時距容差改為 ±15 分鐘，後端 Docker build 的 `mvnw -q -DskipTests package` 與前端 `npm run build` 均成功（未執行測試套件）；完整 Docker Compose 重啟後 API、Web、MySQL、Redis health check 全部 healthy，從 Web 容器經同源 `/api/health` 回 HTTP 200。MySQL／Redis volume 未重建或移除。部署後已收到兩座場站的前端實驗性機率輸出，證明符合時距及其他護欄的輸入可走通線上推論和呈現；這不是模型統計效能或正式准入驗證。正式 ETA-aware、新日期前瞻測試、near-full／假陽性門檻及 S3-020 仍待完成。
+- **單場人工測試**：`050012 中港平面停車場`（新北市新莊區中港路與中華路二段交叉口空地）在 2026-10-22 至 10-24 timestamp-aware holdout 中有 30m 135 筆、60m 134 筆可用標籤，兩時距均包含正負結果；本機目錄為 `VERIFIED`／`ACTIVE`、汽車資格 `CONFIRMED`、總汽車位 13。這是 pooled model test 中的既有場站時間外推樣本，不是單場模型分數或新場站泛化驗證。使用者前兩次查詢均顯示 10/26 00:38 系統取得、目前 2 位：ETA 00:40（約 2 分鐘 lead）及更改出發地後 ETA 01:05（約 27 分鐘 lead）；兩筆是在舊 ±1 分鐘容差下查詢，當時均回資料不足。放寬容差並重啟後，第三次查詢顯示 00:50 系統取得、目前已滿 0 位、ETA 01:14（約 24 分鐘 lead），前端收到 `EXPERIMENTAL`、30 分鐘模型、10% 機率，符合 ±15 分鐘窗口。另一場 `050002 中誠立體停車場` 的後續查詢顯示 01:00 系統取得、目前剩餘 41 位、ETA 01:25（約 25 分鐘 lead），前端收到 `EXPERIMENTAL`、30 分鐘模型、99% 機率，同樣落在窗口內。兩筆場站結果確認第二次正向端到端推論與呈現；10%／99% 仍只是離線 collector 歷史資料產生的實驗估計，不代表正式模型驗證或場站個別準確率。`OFF_STREET_FULL` 與 `OFF_STREET_AVAILABLE` 分別描述目前官方觀測已滿／有空位，不是預測拒絕原因。拒絕情況下前端仍未顯示 API 具體拒絕碼。
+
 
 ## 2026-10-25 新莊路外停車場目錄差集與場址可見範圍修正
 

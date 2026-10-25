@@ -1,6 +1,6 @@
 # 模型訓練架構
 
-更新日期：2026-10-25。狀態：已有 baseline、calibrated persistence 對照與三段時間切分的 Logistic Regression 離線候選；正式模型尚未發布。
+更新日期：2026-10-26。狀態：已有 baseline、calibrated persistence 對照與 Logistic Regression 離線候選；依使用者指示，路外 calibrated persistence 已有明確標示的 `EXPERIMENTAL` 線上預覽，正式模型仍未通過發布 gate。
 
 ## DEMO 優先停點
 
@@ -17,6 +17,7 @@ S3-021 已完成舊實驗重現與限制交接，見 s3-021-model-experiment-han
 - `ml-training/` 不呼叫新北市、TDX、Google Routes 或主系統刷新 API。
 - `ml-training/` 不服務使用者查詢，不寫入 `PUBLISHED` snapshot。
 - 線上查詢只可讀取已版本化、已通過回測門檻且可回滾的模型產物；現在仍沒有可用模型。
+- 額外的受限實驗模式只讀 `backend/src/main/resources/parking/forecast/models/experimental/` 中標為 `EXPERIMENT_ONLY` 的路外 artifact；輸出需使用 `EXPERIMENTAL` 並明示非正式驗證，不能取代正式模型載入路徑。
 
 ## 目錄
 

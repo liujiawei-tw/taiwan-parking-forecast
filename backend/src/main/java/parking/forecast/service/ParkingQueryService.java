@@ -56,6 +56,8 @@ import parking.forecast.service.NearbyParkingSearchService.NearbyParkingViewport
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedAvailabilityView;
 import parking.forecast.service.PublishedAvailabilitySnapshotService.PublishedObservation;
 import parking.forecast.service.GoogleEtaService.EtaResult;
+import parking.forecast.service.ExperimentalOffStreetPredictionService.PredictionInput;
+import parking.forecast.service.ExperimentalOffStreetPredictionService.PredictionResult;
 import parking.forecast.service.ParkingQueryStateStore.StoredParkingQuery;
 import parking.forecast.repository.SourceMappingRepository;
 import parking.forecast.service.SourceRefreshCoordinationService.SourceRefreshResult;
@@ -88,6 +90,7 @@ public class ParkingQueryService {
     private final ParkingQueryStateProperties queryStateProperties;
     private final SourceMappingRepository sourceMappingRepository;
     private final NtpcRoadsideFeeRateLookupService ntpcRoadsideFeeRateLookupService;
+    private final ExperimentalOffStreetPredictionService experimentalOffStreetPredictionService;
 
     @Autowired
     public ParkingQueryService(
@@ -99,11 +102,13 @@ public class ParkingQueryService {
             ParkingQueryStateStore parkingQueryStateStore,
             ParkingQueryStateProperties queryStateProperties,
             SourceMappingRepository sourceMappingRepository,
-            NtpcRoadsideFeeRateLookupService ntpcRoadsideFeeRateLookupService
+            NtpcRoadsideFeeRateLookupService ntpcRoadsideFeeRateLookupService,
+            ExperimentalOffStreetPredictionService experimentalOffStreetPredictionService
     ) {
         this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService,
                 sourceRefreshCoordinationService, googleEtaService, googleParkingPlaceSearchService,
-                parkingQueryStateStore, queryStateProperties, sourceMappingRepository, ntpcRoadsideFeeRateLookupService);
+                parkingQueryStateStore, queryStateProperties, sourceMappingRepository, ntpcRoadsideFeeRateLookupService,
+                experimentalOffStreetPredictionService);
     }
 
     ParkingQueryService(
@@ -163,6 +168,24 @@ public class ParkingQueryService {
             SourceMappingRepository sourceMappingRepository,
             NtpcRoadsideFeeRateLookupService ntpcRoadsideFeeRateLookupService
     ) {
+        this(clock, nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService,
+                googleEtaService, googleParkingPlaceSearchService, parkingQueryStateStore, queryStateProperties,
+                sourceMappingRepository, ntpcRoadsideFeeRateLookupService, ExperimentalOffStreetPredictionService.disabled());
+    }
+
+    ParkingQueryService(
+            Clock clock,
+            NearbyParkingSearchService nearbyParkingSearchService,
+            PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
+            SourceRefreshCoordinationService sourceRefreshCoordinationService,
+            GoogleEtaService googleEtaService,
+            GoogleParkingPlaceSearchService googleParkingPlaceSearchService,
+            ParkingQueryStateStore parkingQueryStateStore,
+            ParkingQueryStateProperties queryStateProperties,
+            SourceMappingRepository sourceMappingRepository,
+            NtpcRoadsideFeeRateLookupService ntpcRoadsideFeeRateLookupService,
+            ExperimentalOffStreetPredictionService experimentalOffStreetPredictionService
+    ) {
         this.clock = clock;
         this.nearbyParkingSearchService = nearbyParkingSearchService;
         this.publishedAvailabilitySnapshotService = publishedAvailabilitySnapshotService;
@@ -173,6 +196,7 @@ public class ParkingQueryService {
         this.queryStateProperties = queryStateProperties;
         this.sourceMappingRepository = sourceMappingRepository;
         this.ntpcRoadsideFeeRateLookupService = ntpcRoadsideFeeRateLookupService;
+        this.experimentalOffStreetPredictionService = experimentalOffStreetPredictionService;
     }
 
     public ParkingQueryResponse create(CreateParkingQueryRequest request) {
@@ -1269,28 +1293,58 @@ public class ParkingQueryService {
 
         List<OffStreetPrediction> offStreetPredictions = nearby.places().stream()
                 .filter(place -> place.placeType() == ParkingPlaceType.OFF_STREET_LOT)
-                .map(place -> new OffStreetPrediction(
-                        place.parkingPlaceId().toString(),
-                        "INSUFFICIENT_DATA",
-                        null,
-                        null,
-                        inputSnapshotVersion(offStreetSection),
-                        dataAgeSeconds(offStreetSection.systemCollectedAt(), generatedAt),
-                        offStreetPredictionReasons(commonReasons, offStreetSection.status(), place.parkingPlaceId(), offStreetSection),
-                        "No validated model or baseline is connected yet."
-                ))
+                .map(place -> {
+                    ParkingLot lot = offStreetSection.parkingLots().stream()
+                            .filter(candidate -> candidate.id().equals(place.parkingPlaceId().toString()))
+                            .findFirst()
+                            .orElse(null);
+                    PredictionResult result = lot == null
+                            ? new PredictionResult(
+                                    "INSUFFICIENT_DATA", null, null, inputSnapshotVersion(offStreetSection),
+                                    dataAgeSeconds(offStreetSection.systemCollectedAt(), generatedAt),
+                                    List.of("OFFSTREET_INPUT_MISSING", "BACKTEST_NOT_VERIFIED", "EXPERIMENTAL_MODEL_NOT_PRODUCTION_VALIDATED"),
+                                    "A current mapped off-street observation is not available.")
+                            : experimentalOffStreetPredictionService.predict(new PredictionInput(
+                                    place.carEligibleStatus(),
+                                    lot.availabilityStatus(),
+                                    lot.availableCarSpaces(),
+                                    lot.totalCarSpaces(),
+                                    offStreetSection.status(),
+                                    eta.status(),
+                                    offStreetSection.systemCollectedAt(),
+                                    generatedAt,
+                                    eta.estimatedArrivalAt(),
+                                    inputSnapshotVersion(offStreetSection)));
+                    return new OffStreetPrediction(
+                            place.parkingPlaceId().toString(),
+                            result.status(),
+                            result.probability(),
+                            result.modelVersion(),
+                            result.inputSnapshotVersion(),
+                            result.dataAgeSeconds(),
+                            result.reasons(),
+                            result.message());
+                })
                 .toList();
 
-        List<String> sectionReasons = new ArrayList<>(roadsideReasons);
+        boolean hasExperimentalOffStreetPrediction = offStreetPredictions.stream()
+                .anyMatch(prediction -> "EXPERIMENTAL".equals(prediction.status()));
+        List<String> sectionReasons = new ArrayList<>();
+        if (hasRoadsideCatalog) {
+            sectionReasons.addAll(roadsideReasons);
+        }
         offStreetPredictions.stream()
                 .flatMap(prediction -> prediction.reasons().stream())
                 .filter(reason -> !sectionReasons.contains(reason))
                 .forEach(sectionReasons::add);
+        if (hasExperimentalOffStreetPrediction) {
+            sectionReasons.add("EXPERIMENTAL_OFFSTREET_ONLY");
+        }
 
         return new PredictionsSection(
-                "INSUFFICIENT_DATA",
+                hasExperimentalOffStreetPrediction ? "EXPERIMENTAL" : "INSUFFICIENT_DATA",
                 eta.estimatedArrivalAt(),
-                null,
+                hasExperimentalOffStreetPrediction ? "offstreet-calibrated-persistence-experiment-v1" : null,
                 generatedAt,
                 List.copyOf(sectionReasons),
                 new RoadsidePrediction(
@@ -1300,10 +1354,12 @@ public class ParkingQueryService {
                         inputSnapshotVersion(roadsideSection),
                         dataAgeSeconds(roadsideSection.systemCollectedAt(), generatedAt),
                         List.copyOf(roadsideReasons),
-                        "No validated model or baseline is connected yet."
+                        "No roadside model is connected; this area estimate remains unavailable."
                 ),
                 offStreetPredictions,
-                "Prediction contract is present, but no validated model is loaded. Current availability and ETA remain independent."
+                hasExperimentalOffStreetPrediction
+                        ? "Experimental off-street estimates are available only for supported cases. They are not production-validated; roadside predictions remain unavailable."
+                        : "No supported experimental prediction is available. Current availability and ETA remain independent."
         );
     }
 
@@ -1329,31 +1385,6 @@ public class ParkingQueryService {
             case "NO_OBSERVATION" -> List.of("NO_OBSERVATION");
             default -> List.of("MODEL_INPUT_NOT_READY");
         };
-    }
-
-    private List<String> offStreetPredictionReasons(
-            List<String> commonReasons,
-            String sourceStatus,
-            Long parkingPlaceId,
-            OffStreetSection offStreetSection
-    ) {
-        List<String> reasons = new ArrayList<>(commonReasons);
-        reasons.addAll(sourcePredictionReasons(sourceStatus, true));
-        offStreetSection.parkingLots().stream()
-                .filter(lot -> lot.id().equals(parkingPlaceId.toString()))
-                .findFirst()
-                .map(ParkingLot::availabilityStatus)
-                .ifPresent(status -> {
-                    switch (status) {
-                        case "STALE" -> reasons.add("REALTIME_SNAPSHOT_EXPIRED");
-                        case "UNKNOWN" -> reasons.add("UNKNOWN_AVAILABILITY");
-                        case "NO_OBSERVATION" -> reasons.add("NO_OBSERVATION");
-                        case "NO_REALTIME_SNAPSHOT" -> reasons.add("NO_REALTIME_SNAPSHOT");
-                        default -> {
-                        }
-                    }
-                });
-        return reasons.stream().distinct().toList();
     }
 
     private String inputSnapshotVersion(RoadsideSection section) {

@@ -88,3 +88,6 @@ parking:
     store: ${PARKING_QUERY_STATE_STORE:redis}
     ttl: ${PARKING_QUERY_STATE_TTL:30m}
     expired-state-retention: ${PARKING_QUERY_STATE_EXPIRED_RETENTION:30m}
+  predictions:
+    experimental:
+      enabled: ${PARKING_EXPERIMENTAL_PREDICTIONS_ENABLED:false}

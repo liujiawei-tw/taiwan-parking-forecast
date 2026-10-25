@@ -1,6 +1,12 @@
 # 待確認問題
 
-更新日期：2026-10-25。每題解決後，將結論移入 `decisions.md`，必要時同步更新需求。
+更新日期：2026-10-26。每題解決後，將結論移入 `decisions.md`，必要時同步更新需求。
+
+## 2026-10-26 實驗性路外預測的正式准入
+
+- Compose 現在可顯示路外 calibrated persistence 的 `EXPERIMENTAL` 估計，但候選仍使用 2026-10-22 至 10-24 的既有三日 test，且該期間已被分析；不得當成新 holdout或正式驗證。
+- 正式 `READY` 還需完成 S3-018／S3-019／S3-020／S3-026／S3-009／S3-027 順序，取得主系統 PUBLISHED 歷史與 ETA-aware 新日期樣本，預先固定 near-full、false positive、校準、coverage／abstention 門檻，再用未分析日期測試。
+- Roadside 的完整 500 公尺區域機率仍缺足夠完整圈樣本、時序變化證據與 coverage；不可把路外單場結果延伸到路邊區域。
 
 ## 2026-10-25 歷史 catalog 匯入設定紀錄
 

@@ -245,6 +245,33 @@ def logistic_artifact(*, cohort: str, policy: str, lead: int, weights: list[floa
     }
 
 
+def calibrated_persistence_artifact(*, lead: int, model: CalibratedPersistenceModel, train: list[LabelSample],
+                                    config: TrainingConfig, source_hash: str, config_hash: str) -> dict:
+    return {
+        "schemaVersion": "parking-calibrated-persistence-experiment-v1",
+        "featureVersion": "offstreet_current_state_v1",
+        "modelId": f"offstreet-lead-{lead}m-calibrated-persistence-experiment-v1",
+        "status": "EXPERIMENT_ONLY",
+        "publishToOnlineSystem": False,
+        "dataset": "offstreet",
+        "coveragePolicyVersion": "OFFSTREET",
+        "target": "arrival_has_confirmed_availability",
+        "leadMinutes": lead,
+        "calibrationParameters": {
+            "alpha": model.alpha,
+            "minimumStateSamples": model.minimum_state_samples,
+            "fallbackProbability": model.fallback_probability,
+            "stateProbabilities": {state_name(key): value for key, value in model.state_probabilities.items()},
+            "stateCounts": model.state_counts,
+        },
+        "trainingSamples": len(train),
+        "trainingPositiveRate": positive_rate(train),
+        "trainingDateRange": {"start": config.split.train.start.isoformat(), "end": config.split.train.end.isoformat()},
+        "sourceZipSha256": source_hash,
+        "trainingConfigSha256": config_hash,
+    }
+
+
 def evaluate_validation_then_test(train: list[LabelSample], validation: list[LabelSample], test: list[LabelSample],
                                   config: TrainingConfig, calibrated: CalibratedPersistenceModel) -> dict:
     gate = selection_gate(train, validation, config)
@@ -333,6 +360,16 @@ def run_calibrated_experiment(
                                              config=config, source_hash=source_hash, config_hash=config_hash)
                 artifact_path.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                 artifact_paths.append(artifact_path.as_posix())
+                if cohort == "offstreet":
+                    persistence_path = artifact_directory / f"offstreet-lead-{lead}m-calibrated-persistence-experiment-v1.json"
+                    persistence_artifact = calibrated_persistence_artifact(
+                        lead=lead, model=calibrated, train=train, config=config,
+                        source_hash=source_hash, config_hash=config_hash,
+                    )
+                    persistence_path.write_text(
+                        json.dumps(persistence_artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+                    )
+                    artifact_paths.append(persistence_path.as_posix())
             rows.append({
                 "cohort": cohort, "policy": policy, "lead": lead,
                 "train": train, "validation": validation, "test": test,

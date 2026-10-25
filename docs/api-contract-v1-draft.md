@@ -270,7 +270,7 @@ Google ETA 的時間狀態與停車資料 5 分鐘新鮮度門檻分開。停車
 
 | 欄位語意 | 建議欄位 | 說明 |
 | --- | --- | --- |
-| 預測狀態 | `status` | 候選值：`PENDING`、`READY`、`INSUFFICIENT_DATA`、`BLOCKED`、`FAILED`、`EXPIRED` |
+| 預測狀態 | `status` | 候選值：`PENDING`、`READY`、`EXPERIMENTAL`、`INSUFFICIENT_DATA`、`BLOCKED`、`FAILED`、`EXPIRED` |
 | 目標抵達時間 | `targetArrivalAt` | 必須等於 `eta.estimatedArrivalAt`；不得用固定 10／30／60 分鐘替代 |
 | ETA 參照 | `etaRef` | 指向 `eta` 區塊的本次 Google Routes 計算結果與計算時間 |
 | 模型版本 | `modelVersion` | 可空；尚未有模型或只用基準規則時要明確標示 |
@@ -281,13 +281,13 @@ Google ETA 的時間狀態與停車資料 5 分鐘新鮮度門檻分開。停車
 | 阻擋或不足原因 | `reasons` | 例如缺 ETA、覆蓋不完整、資料過期、訓練資料不足、模型不可用、來源失敗 |
 | 使用者訊息 | `message` | 給前端顯示的簡短說明，例如「目前資料不足，先顯示即時車位」 |
 
-S3-003 先把「無模型或資料不足」也定為合法、可解釋的查詢結果。`predictions.status=INSUFFICIENT_DATA` 時，`probability` 一律為 `null`，`modelVersion` 可為 `null`，但 `generatedAt`、`targetArrivalAt`（若 ETA 可用）、`reasons`、各來源的 `inputSnapshotVersion` 與 `dataAgeSeconds` 仍應盡量提供，讓前端與工程排查能知道缺的是模型、ETA、快照、覆蓋或資料新鮮度。
+S3-003 先把「無模型或資料不足」也定為合法、可解釋的查詢結果。`predictions.status=INSUFFICIENT_DATA` 時，`probability` 一律為 `null`，`modelVersion` 可為 `null`，但 `generatedAt`、`targetArrivalAt`（若 ETA 可用）、`reasons`、各來源的 `inputSnapshotVersion` 與 `dataAgeSeconds` 仍應盡量提供，讓前端與工程排查能知道缺的是模型、ETA、快照、覆蓋或資料新鮮度。`EXPERIMENTAL` 僅表示目前有明確標示的探索性估計，不表示模型通過正式准入；若輸出機率，前端必須同步標示實驗性與驗證限制。
 
 | 子項欄位 | 適用對象 | 說明 |
 | --- | --- | --- |
-| `status` | `predictions.roadside`、`predictions.offStreet[]` | 候選值同上；目前無模型時固定 `INSUFFICIENT_DATA` |
-| `probability` | `predictions.roadside`、`predictions.offStreet[]` | 只有 `status=READY` 且模型已驗證時才可為 0 到 1 的數字；目前無模型時為 `null` |
-| `modelVersion` | `predictions` 與各子項 | 已載入並通過回測門檻的模型版本；無模型、回測未通過或回滾到無模型狀態時為 `null` |
+| `status` | `predictions.roadside`、`predictions.offStreet[]` | 子項可獨立降級；探索性輸出使用 `EXPERIMENTAL`，正式通過准入後才使用 `READY` |
+| `probability` | `predictions.roadside`、`predictions.offStreet[]` | `READY` 為通過門檻的 0 到 1 機率；`EXPERIMENTAL` 可帶探索性分數且必須明確標示；資料不足／失敗狀態一律為 `null` |
+| `modelVersion` | `predictions` 與各子項 | 可追溯的模型產物版本；`EXPERIMENTAL` 版本不得解讀為正式核准；無可用產物時為 `null` |
 | `inputSnapshotVersion` | 各子項 | 推論輸入所依據的已發布快照版本，例如 `NTPC_ROADSIDE_SPOT:123`；沒有可用快照時為 `null` |
 | `dataAgeSeconds` | 各子項 | `generatedAt` 與來源 `systemCollectedAt` 的差距秒數；沒有可用快照或時間異常時為 `null` |
 | `reasons` | `predictions` 與各子項 | 機率不可輸出的原因碼；頂層為各子項原因彙整 |
@@ -296,6 +296,14 @@ S3-003 先把「無模型或資料不足」也定為合法、可解釋的查詢�
 
 | 原因碼 | 語意 |
 | --- | --- |
+| `EXPERIMENTAL_MODEL` | 此機率來自尚未通過正式准入的探索性模型 |
+| `OFFLINE_COLLECTOR_TRAINING` | 模型以離線 collector 樣本訓練，並非主系統的歷史快照訓練資料 |
+| `NOT_PRODUCTION_VALIDATED` | holdout／前瞻證據不足，結果不得視為正式產品預測 |
+| `EXPERIMENTAL_MODEL_DISABLED` | 實驗模式設定已停用 |
+| `EXPERIMENTAL_INPUT_TOO_OLD` | 探索性推論所用快照超過 15 分鐘限制 |
+| `MODEL_HORIZON_UNSUPPORTED` | 目前探索性產物只支援快照後約 30／60 分鐘抵達，各自容許 ±15 分鐘 |
+| `CAR_ELIGIBILITY_NOT_CONFIRMED` | 場站一般汽車適用性尚未確認 |
+| `CURRENT_AVAILABILITY_NOT_CONFIRMED` | 目前可用位狀態與數量無法作為已知模型輸入 |
 | `MODEL_NOT_LOADED` | 線上沒有載入可用模型產物 |
 | `BACKTEST_NOT_VERIFIED` | 候選模型或 baseline 尚未通過時間切分回測門檻 |
 | `ETA_NOT_READY` | Google ETA 失敗、被阻擋或沒有 `targetArrivalAt` |
@@ -313,7 +321,7 @@ S3-003 先把「無模型或資料不足」也定為合法、可解釋的查詢�
 
 `predictions` 必須保留「不能預測」的合法結果。若 `eta.status` 不是 `READY`，`targetArrivalAt` 不存在或已過期，整個 `predictions.status` 不得為 `READY`。若車位來源過期，仍可保留已知目前觀測作參考，但模型是否能推論要看資料品質規則；不能因為目前有位就直接產生高機率。
 
-第一版面試展示可以先採簡單基準模型或可解釋規則作為模型候選，但 API 仍要用同一個 `predictions` 契約表示。若尚未通過時間切分回測，前端應顯示「預測資料不足」或「實驗中」，不得把未驗證分數包裝成正式準確預測。之後改成 ML 模型時，只更新模型版本、資料摘要與推論服務，不改前端主要契約。
+第一版面試展示可以先採簡單基準模型或可解釋規則作為模型候選，但 API 仍要用同一個 `predictions` 契約表示。若尚未通過時間切分回測，前端應顯示「預測資料不足」或「實驗中」，不得把未驗證分數包裝成正式準確預測。2026-10-26 起，Compose 可選擇啟用路外 calibrated persistence 的 `EXPERIMENTAL` 預覽；它只支援一般汽車資格已確認、來源快照不超過 15 分鐘，且抵達時間距快照約 30 或 60 分鐘、各自容許 ±15 分鐘的單場預測。它使用離線 collector 訓練資料，不代表通過 S3-020，也不改變正式 `READY` 的准入條件。路邊仍不輸出機率。之後轉正式模型時，只更新模型版本、資料摘要與推論服務，不改前端主要契約。
 
 模型產物載入與回滾策略：線上查詢只能讀取已離線產生、已版本化並通過回測門檻的模型產物；不得在使用者查詢時即時訓練。每次部署或切換模型時，應先保留上一個可用版本與「無模型」降級路徑。若模型檔缺失、版本驗證失敗、輸入 schema 不相容、回測門檻撤銷或推論程序失敗，系統回滾到 `modelVersion=null`、`status=INSUFFICIENT_DATA`，但 `eta`、`roadside`、`offStreet` 的目前觀測照常依各自狀態顯示，不覆蓋已發布快照。
 ### 已決定：`refresh` 區塊欄位語意
@@ -433,7 +441,7 @@ Sponsor 已決定：目的地位於新莊 MVP 支援範圍外時，先回明確�
 
 時間欄位需要保留語意差異：`serverTime` 是主系統回應時間；`createdAt` 是查詢建立時間；`expiresAt` 是 `queryId` 到期時間；`calculatedAt` 是 Google ETA 完成時間；`systemFetchedAt` 是主系統成功取得並發布車位快照時間；`sourceObservedAt` 只有官方來源提供真正觀測時間時才填。不得用系統取得時間偽裝成來源觀測時間。
 
-機率欄位只在 `predictions` 對應項目 `status=READY` 時出現有效數字。若 `status=INSUFFICIENT_DATA`、`BLOCKED`、`FAILED` 或 `EXPIRED`，`probability` 應為 `null` 或省略，並提供 `reasons` 或 `message`。前端顯示「預測資料不足」時，不應把目前車位數轉成機率。
+正式機率欄位只在 `predictions` 對應項目 `status=READY` 時出現；`status=EXPERIMENTAL` 可附探索性機率，但 UI 必須顯示「實驗性估計」、模型版本與限制，且不得改成「通過驗證」。若 `status=INSUFFICIENT_DATA`、`BLOCKED`、`FAILED` 或 `EXPIRED`，`probability` 應為 `null` 或省略，並提供 `reasons` 或 `message`。前端不得把目前車位數直接轉成機率。
 ## 查詢 API 範例回應（欄位形狀草案）
 
 以下 JSON 是前後端對齊用的草案範例，不代表正式欄位已鎖死。範例中的座標、名稱、ID、時間、數量與機率都是假資料；正式實作前仍需整理欄位命名、大小寫、可空規則、分頁與錯誤碼。

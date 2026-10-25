@@ -132,9 +132,9 @@ def settings_from_config(config: TrainingConfig) -> LabelDryRunSettings:
     )
 
 
-def read_observations(input_path: Path) -> Observations:
+def read_observations(input_path: Path, datasets: set[str] | None = None) -> Observations:
     observations = Observations()
-    for row in iter_collector_rows(input_path):
+    for row in iter_collector_rows(input_path, datasets=datasets):
         observations.source_rows[row.dataset] += 1
         if row.dataset == "offstreet":
             observation = parse_offstreet(row)

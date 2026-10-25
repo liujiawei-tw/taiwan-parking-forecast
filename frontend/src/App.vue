@@ -218,6 +218,9 @@ const predictionMessage = computed(() => {
   if (arrivalAt && new Date(arrivalAt).getTime() < Date.now()) {
     return '原預計抵達時間已過，請更新出發時間或重新選取目的地。'
   }
+  if (queryResult.value?.predictions?.status === 'EXPERIMENTAL') {
+    return '部分路外場站有實驗性估計；支援快照後約 30／60 分鐘抵達（前後 15 分鐘），尚未通過正式模型驗證。'
+  }
   return '尚無合格的抵達時車位機率；以下僅顯示目前資料。'
 })
 const googlePlacesMessage = computed(() => {
@@ -437,6 +440,15 @@ const displayedMapItems = computed(() => {
 })
 const mapMarkerCounts = computed(() => countMapMarkerCategories(resultItems.value))
 const selectedMapItem = computed(() => resultItems.value.find((item) => item.id === selectedItemId.value) ?? null)
+const selectedOffStreetPrediction = computed(() => {
+  if (selectedMapItem.value?.type !== 'OFF_STREET') return null
+  const parkingLotId = String(selectedMapItem.value.rawId ?? selectedMapItem.value.id?.replace(/^lot-/, ''))
+  return queryResult.value?.predictions?.offStreet?.find((prediction) => prediction.parkingLotId === parkingLotId) ?? null
+})
+const selectedOffStreetPredictionLead = computed(() => {
+  const match = selectedOffStreetPrediction.value?.modelVersion?.match(/lead-(\d+)m/)
+  return match ? Number(match[1]) : null
+})
 const mapViewportSupportMessage = computed(() => {
   void mapViewportRevision.value
   const supportedArea = mapData.value?.supportedArea
@@ -1847,8 +1859,9 @@ function logAcceptanceEvent(type, message, details = {}) {
               <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 14 1.4-4.2A2 2 0 0 1 8.3 8h7.4a2 2 0 0 1 1.9 1.8L19 14"/><path d="M4 14h16v5h-2v-2H6v2H4z"/><circle cx="7.5" cy="19" r="1"/><circle cx="16.5" cy="19" r="1"/></svg>一般汽車適用性</span><strong>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? 'Google Places 未提供' : selectedMapItem ? formatEligibility(selectedMapItem.carEligibleStatus) : '尚未確認' }}</strong></div>
               <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17a4 4 0 0 1 .4-8 5.4 5.4 0 0 1 10.3 1.2A3.5 3.5 0 1 1 18 17H7Z"/><path d="M12 12v6m0 0-2-2m2 2 2-2"/></svg>系統取得</span><strong>{{ selectedMapItem ? formatDateTime(selectedMapItem.systemCollectedAt) : mapData?.generatedAt ? formatDateTime(mapData.generatedAt) : '尚未取得' }}</strong></div>
               <div class="fee-fact"><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5c-.8-.7-1.7-1-3-1-1.4 0-2.5.8-2.5 2s1.1 1.8 2.5 2.2 2.5.9 2.5 2.3-1.1 2.3-2.7 2.3c-1.2 0-2.4-.4-3.2-1.2M12 6v12"/></svg>收費</span><strong>{{ selectedMapItem?.feeDescription || selectedMapItem?.feeStatus || '來源未提供' }}</strong><a v-if="selectedMapItem && selectedMapItem.type !== 'OFF_STREET' && selectedMapItem.dataOrigin !== 'GOOGLE_PLACES'" class="fee-source-link" href="https://parkweb.traffic.ntpc.gov.tw/route.aspx" target="_blank" rel="noopener noreferrer">查看新北市官方路段費率</a></div>
-              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/><path d="M16.5 4.5 19 5v2.5"/></svg>抵達預測</span><strong>{{ queryResult?.predictions?.status === 'READY' ? '通過驗證' : '資料不足' }}</strong></div>
+              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/><path d="M16.5 4.5 19 5v2.5"/></svg>抵達預測</span><strong>{{ selectedOffStreetPrediction?.status === 'EXPERIMENTAL' ? '實驗性估計' : queryResult?.predictions?.status === 'READY' ? '通過驗證' : '資料不足' }}</strong></div>
             </div>
+            <p v-if="selectedOffStreetPrediction?.status === 'EXPERIMENTAL' && Number.isFinite(selectedOffStreetPrediction.probability)" class="selected-spot-note"><strong>實驗性抵達估計：{{ Math.round(selectedOffStreetPrediction.probability * 100) }}%</strong><span v-if="selectedOffStreetPredictionLead"> · 使用 {{ selectedOffStreetPredictionLead }} 分鐘模型</span>。這是離線 collector 歷史資料的估計，不是官方即時空位；模型尚未通過正式上線驗證。</p>
             <p v-if="selectedMapItem?.qualityReason || selectedMapItem?.notes || selectedMapItem?.message" class="selected-spot-note">{{ selectedMapItem.qualityReason || selectedMapItem.notes || selectedMapItem.message }}</p>
             <p v-else-if="!queryResult" class="selected-spot-note">選取目的地後會自動查詢附近停車資訊；官方觀測、資料品質與抵達時間預測會分開顯示。</p>
             <p v-if="queryResult" class="selected-spot-note">{{ predictionMessage }} · {{ etaMessage }}</p>

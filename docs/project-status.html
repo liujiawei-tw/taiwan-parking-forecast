@@ -300,11 +300,13 @@
     <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
     <div class="meta">
       <span class="pill doing">目前：Sprint 3 車位資料完整性／地圖 UI 改版</span>
-      <span class="pill">更新：2026-10-25</span>
+      <span class="pill">更新：2026-10-26</span>
       <span class="pill done">Docker API health／Web build 與 RWD smoke 通過</span>
       <span class="pill pending">Places 真實候選人工驗收：NOT RUN</span>
+      <span class="pill risk">路外預測：實驗性 30／60 分鐘 ±15 分鐘</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
+    <div class="notice"><strong>2026-10-26 路外實驗性預測時距已放寬並完成兩場站前端正向實測：</strong>支援快照後 30／60 分鐘，各自 ±15 分鐘；其他資格與新鮮度護欄不變。API／Web 映像已重建，完整 Compose 重啟後四服務 health check 均 healthy，Web 容器內同源 `/api/health` 回 HTTP 200。使用者在「中港平面停車場」前兩次舊容差查詢均回資料不足；第三次顯示 00:50 快照、目前已滿 0 位、Google ETA 01:14（約 24 分鐘 lead），前端收到 30 分鐘模型的 `EXPERIMENTAL` 10% 機率。後續在「中誠立體停車場」顯示 01:00 快照、目前 41 位、Google ETA 01:25（約 25 分鐘 lead），收到 30 分鐘模型的 `EXPERIMENTAL` 99% 機率。兩筆確認不同場站都能走通端到端推論與呈現；`OFF_STREET_FULL`／`OFF_STREET_AVAILABLE` 描述各自目前觀測狀態，不是拒絕碼。機率仍是離線 collector 歷史資料的實驗估計，不代表正式準確率或場站個別準確率，也不是官方即時空位。產物仍標記 `EXPERIMENT_ONLY`／`publishToOnlineSystem=false`，holdout 只有三日且已分析，S3-020 尚未通過。</div>
     <div class="notice"><strong>2026-10-25 桌面／手機 UI 驗收：</strong>本輪 Docker API、Web image 已重建；Spring Places service 的多建構子注入問題已修正，API health 通過。1440×900 桌面確認頂欄 60px、底導覽 48px，「更多」面板查詢按鈕可見；390×844 手機確認 CTA 位於底導覽上方，並修正搜尋框盒模型造成的水平溢位。目的地搜尋覆蓋標籤不存在。Google Places server key 未設定，未呼叫 Google／Routes／NTPC，也未建立停車查詢；地圖標記點擊與導航連結仍待有資料的端到端人工驗收。</div>
     <div class="notice"><strong>2026-10-25 首輪離線 ML 測試完成：</strong>使用 2026-09-24 至 10-24 共 31 個 collector daily ZIP，按日期切成 train 25 日、validation 3 日、test 3 日（80.6／9.7／9.7）；有效標籤樣本實際約 78／11／11，跨 split 的抵達標籤已排除。四組 Logistic Regression 候選已訓練，僅 roadside 60 分鐘在 validation 選出並於 test 比 persistence 取得較低 Brier（0.1094 vs 0.1169）；offstreet Logistic Regression 未勝過 persistence。test 僅 3 日，所有產物仍為離線實驗、未接線上 predictions；結果與限制見 current-state.md。</div>
     <div class="notice"><strong>2026-10-25 附近停車資料根因已定位並部署：</strong>新北市官方 connector 與後端 catalog／snapshot 查詢已存在；原 Docker API image 缺少前端使用的 viewport endpoint，導致地圖請求 404、附近清單顯示空白。現在 API／Web 已在同一 Compose 重建，viewport 回 10 筆 verified 標記（7 路邊、3 路外），全部仍是過期官方快照，需保留過期狀態。原 MySQL volume 保留，API 只套用 V2 nullable 欄位 migration，未重跑 seed。Google Routes ETA 因計費外呼旗標關閉而標示未估算；本輪未送出 Routes 或 NTPC 刷新呼叫。完整原因與功能/API 矩陣見 <a href="parking-map-ui-audit.md">parking-map-ui-audit.md</a>。</div>
@@ -383,7 +385,7 @@
         <div class="progress-row">
           <div class="progress-label">預測基準與模型</div>
           <div class="track"></div>
-          <div class="progress-value">評估可信度補強完成；S3-020 准入未通過</div>
+          <div class="progress-value">路外實驗預覽已接入；S3-020 正式准入未通過</div>
         </div>
       </div>
       <p class="note">百分比是視覺化狀態，不是精準工時估算。正式進度以 GitHub PR、Issue 與 <a href="current-state.md">current-state.md</a> 為準。</p>
@@ -397,6 +399,7 @@
           <li>建立查詢會取得 Google Routes ETA，或明確降級。</li>
           <li>使用者查詢只讀 PUBLISHED snapshot，不讀 CANDIDATE 或 REJECTED。</li>
           <li>刷新失敗、品質拒絕或來源不完整時保留舊的已發布快照。</li>
+          <li>條件符合時，路外單場可見實驗性 30／60 分鐘估計，並與官方目前觀測分開標示。</li>
         </ul>
       </div>
       <div class="panel">
@@ -404,7 +407,7 @@
         <ul class="risk-list">
           <li>完整新莊 catalog 尚未正式寫入 DB；S3-017 dry-run 已完成，但 recommendation 仍為 <code>REVIEW_ELIGIBILITY_RULES</code>。</li>
           <li>端到端刷新寫入與發布已有單輪候選量測，但尚未形成正式 SLA。</li>
-          <li>路外與 roadside 都已有離線 baseline 回測；線上抵達時預測尚未有版本化可信模型。</li>
+          <li>路外線上輸出目前只有實驗性預覽，尚非通過 S3-020 的可信模型；roadside 維持資料不足。</li>
           <li>訓練 collector 不參與使用者查詢。</li>
         </ul>
       </div>
@@ -473,7 +476,7 @@
         <li>正式模型方向改為 ETA-aware：依出發地到目的地車程決定 label 時間。</li>
         <li>新莊 MVP 即時資料路線已確認可用新北市官方全量資料本地篩選；S3-017 已量到 catalog 候選 2,037 筆，但 eligibility unknown 仍需審查。</li>
         <li>TDX 2026-09-17 至 2026-09-23 新北市路邊歷史 raw data 未下載：metadata 顯示全市 35,480,193 筆、5,403.07 MB；需另行確認是否願意消耗大量點數。</li>
-        <li>線上仍維持資料不足或無模型降級。</li>
+        <li>正式預測仍未通過 gate；路外限定條件可以回傳 `EXPERIMENTAL`，不代表正式驗證。</li>
         <li>不可用隨機或假機率作展示。</li>
       </ul>
     </article>
