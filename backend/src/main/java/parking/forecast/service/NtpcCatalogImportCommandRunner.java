@@ -41,10 +41,11 @@ public class NtpcCatalogImportCommandRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         try {
-            var dryRun = ntpcCatalogDryRunService.dryRun(properties.getServiceArea());
+            var dryRun = ntpcCatalogDryRunService.dryRun(properties.getServiceArea(), properties.getDatasets());
             LOGGER.info(
-                    "NTPC catalog dry-run completed: serviceArea={}, scopedRows={}, acceptedCandidates={}, missingSourceIds={}, duplicateSourceIds={}, invalidCoordinates={}, unknownEligibility={}, existingVerifiedMappings={}, acceptedCandidatePercent={}, verifiedMappingCoveragePercent={}, recommendation={}, roadsidePages={}, roadsideHttpRequests={}, roadsideBytes={}, roadsideLatencyMs={}, offStreetPages={}, offStreetHttpRequests={}, offStreetBytes={}, offStreetLatencyMs={}, traversalComplete={}",
+                    "NTPC catalog dry-run completed: serviceArea={}, datasets={}, scopedRows={}, acceptedCandidates={}, missingSourceIds={}, duplicateSourceIds={}, invalidCoordinates={}, unknownEligibility={}, existingVerifiedMappings={}, acceptedCandidatePercent={}, verifiedMappingCoveragePercent={}, recommendation={}, roadsidePages={}, roadsideHttpRequests={}, roadsideBytes={}, roadsideLatencyMs={}, offStreetPages={}, offStreetHttpRequests={}, offStreetBytes={}, offStreetLatencyMs={}, traversalComplete={}",
                     dryRun.serviceArea(),
+                    dryRun.report().datasets(),
                     dryRun.report().scopedRows(),
                     dryRun.report().acceptedCandidates(),
                     dryRun.report().missingSourceIds(),

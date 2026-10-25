@@ -86,7 +86,9 @@ public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshSe
                     .map(row -> normalizer.normalizeRoadside(row, fetchedAt))
                     .forEach(observations::add);
             normalizeNanos += elapsedSince(normalizeStartedNanos);
-            if (rows.size() < properties.getPageSize()) {
+            // NTPC may cap effective page size below the requested size; only an empty
+            // page confirms that the full source traversal has reached its end.
+            if (rows.isEmpty()) {
                 measurement.markCompleted();
                 break;
             }
@@ -129,7 +131,9 @@ public class NtpcRealtimeSourceRefreshService implements RealtimeSourceRefreshSe
                     .map(row -> normalizer.normalizeOffStreet(row, fetchedAt))
                     .forEach(observations::add);
             normalizeNanos += elapsedSince(normalizeStartedNanos);
-            if (rows.size() < properties.getPageSize()) {
+            // NTPC may cap effective page size below the requested size; only an empty
+            // page confirms that the full source traversal has reached its end.
+            if (rows.isEmpty()) {
                 measurement.markCompleted();
                 break;
             }

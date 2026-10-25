@@ -400,10 +400,29 @@ const visibleMapItems = computed(() => filterMapMarkers(resultItems.value, mapFi
     || (activeParkingTypeFilter.value === 'ROADSIDE' && item.type === 'ROADSIDE')
     || (activeParkingTypeFilter.value === 'OFF_STREET' && item.type === 'OFF_STREET')))
 const favoriteMapItems = computed(() => visibleMapItems.value.filter((item) => favoriteItemIds.value.includes(item.id)))
+const nearbyListItems = computed(() => visibleMapItems.value
+  .slice()
+  .sort((left, right) => {
+    const leftAvailable = describeMapMarker(left).category === 'AVAILABLE'
+      && !(left.type === 'OFF_STREET' && Number.isFinite(left.availableCarSpaces) && left.availableCarSpaces <= 0)
+    const rightAvailable = describeMapMarker(right).category === 'AVAILABLE'
+      && !(right.type === 'OFF_STREET' && Number.isFinite(right.availableCarSpaces) && right.availableCarSpaces <= 0)
+    if (leftAvailable !== rightAvailable) return leftAvailable ? -1 : 1
+
+    const leftDistance = left.distanceMeters !== null && left.distanceMeters !== undefined
+      && Number.isFinite(Number(left.distanceMeters)) ? Number(left.distanceMeters) : Number.POSITIVE_INFINITY
+    const rightDistance = right.distanceMeters !== null && right.distanceMeters !== undefined
+      && Number.isFinite(Number(right.distanceMeters)) ? Number(right.distanceMeters) : Number.POSITIVE_INFINITY
+    if (leftDistance !== rightDistance) return leftDistance - rightDistance
+    return String(left.label ?? '').localeCompare(String(right.label ?? ''), 'zh-TW')
+  }))
+const nearbyListSummary = computed(() => {
+  if (!queryResult.value) return '官方資料 · 查詢後載入'
+  return `${nearbyListItems.value.length} 個符合篩選 · 有位優先，距離近者在前`
+})
 const displayedMapItems = computed(() => {
   if (activeNavigation.value === 'favorites') return favoriteMapItems.value
-  if (activeNavigation.value === 'map') return visibleMapItems.value.slice(0, 5)
-  return visibleMapItems.value
+  return nearbyListItems.value
 })
 const mapMarkerCounts = computed(() => countMapMarkerCategories(resultItems.value))
 const selectedMapItem = computed(() => resultItems.value.find((item) => item.id === selectedItemId.value) ?? null)
@@ -1562,13 +1581,10 @@ function logAcceptanceEvent(type, message, details = {}) {
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 32 40"><path d="M16 1.5C7.9 1.5 1.5 7.8 1.5 15.7c0 10.6 14.5 22.8 14.5 22.8s14.5-12.2 14.5-22.8C30.5 7.8 24.1 1.5 16 1.5Z"/><circle cx="16" cy="15.5" r="5.1"/></svg>
         </span>
-        <h1 id="app-title">台灣停車預測</h1>
+        <h1 id="app-title">找車位</h1>
       </div>
       <div class="header-tools">
         <span class="header-caption">官方觀測 · 預測尚未驗證</span>
-        <button class="icon-button settings-shortcut" type="button" aria-label="開啟設定" @click="activeNavigation = 'settings'">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z"/><path d="m19.4 13.5 1.1.9-1.7 3-1.4-.5a7.8 7.8 0 0 1-1.3.8l-.3 1.5h-3.5l-.3-1.5a7.8 7.8 0 0 1-1.4-.8l-1.3.5-1.8-3 1.2-.9a7 7 0 0 1 0-1.6l-1.2-.9 1.8-3 1.3.5c.4-.3.9-.6 1.4-.8l.3-1.5h3.5l.3 1.5c.5.2 1 .5 1.3.8l1.4-.5 1.7 3-1.1.9a7 7 0 0 1 0 1.6Z"/></svg>
-        </button>
       </div>
     </header>
 
@@ -1748,7 +1764,7 @@ function logAcceptanceEvent(type, message, details = {}) {
           </article>
 
           <section class="nearby-section" aria-labelledby="nearby-title">
-            <header class="nearby-heading"><div><h2 id="nearby-title">{{ activeNavigation === 'list' ? '附近停車結果' : '附近停車位與停車場' }}</h2><span>{{ queryResult ? `${visibleMapItems.length} 個符合篩選` : '官方資料 · 查詢後載入' }}</span></div><span class="nearby-note">{{ queryResult ? '目前觀測' : '' }}</span><button v-if="queryResult" class="refresh-button refresh-compact" type="button" :disabled="loading" @click="refreshParkingAvailability()">{{ loading ? '更新中' : '更新車位' }}</button></header>
+            <header class="nearby-heading"><div><h2 id="nearby-title">{{ activeNavigation === 'list' ? '附近停車結果' : '附近停車位與停車場' }}</h2><span>{{ nearbyListSummary }}</span></div><span class="nearby-note">{{ queryResult ? '目前觀測' : '' }}</span><button v-if="queryResult" class="refresh-button refresh-compact" type="button" :disabled="loading" @click="refreshParkingAvailability()">{{ loading ? '更新中' : '更新車位' }}</button></header>
             <template v-if="queryResult && displayedMapItems.length">
               <article v-for="item in displayedMapItems" :key="item.id" class="parking-item" :class="{ selected: selectedItemId === item.id }">
                 <button class="parking-select" type="button" @click="selectResultItem(item.id)">

@@ -5,9 +5,17 @@
 ## 2026-10-25 新莊棒球場周邊路邊格位未顯示診斷與資料修復
 
 - **修復前根因**：Compose 主系統 MySQL 的 `NEW_TAIPEI_XINZHUANG` ACTIVE 目錄只有路邊 7 筆、路外 3 筆；S3-022 已審查子集先前只匯入隔離 demo DB。`ParkingQueryService.findMapData()`／`findMapViewport()` 以本機目錄為候選，且只回傳唯一 `VERIFIED` mapping；官方資料刷新不會自動建立缺少的目錄／mapping，因此附近有官方路邊格也不會出現在地圖。
-- **受控匯入**：重新對官方新北市目錄做完整唯讀 dry-run（2,250 筆範圍列），依目前來源資料產生 manifest SHA-256 `0d21b380c68e4c9cd67a4c64556b68c293cd8111c1cfea6ec80c5498325aade7`，再以該 hash 鎖定既有 reviewed-subset 寫入命令匯入主系統。匯入前先在 repo 外建立 MySQL 備份。現行 ACTIVE verified 目錄為路邊 1,880 筆、路外 95 筆（修復前分別 7、3）。
+- **受控匯入**：重新對官方新北市目錄做完整唯讀 dry-run（2,250 筆範圍列），依當時來源資料產生 manifest SHA-256 `0d21b380c68e4c9cd67a4c64556b68c293cd8111c1cfea6ec80c5498325aade7`，再以該 hash 鎖定既有 reviewed-subset 寫入命令匯入主系統。匯入前先在 repo 外建立 MySQL 備份。該次匯入後 ACTIVE verified 目錄為路邊 1,880 筆、路外 95 筆（修復前分別 7、3）；路外後續於本文件「登龍路外停車場分頁缺陷修復」增至 138 筆。
 - **官方觀測刷新**：使用既有 NTPC 單次量測 runner 發布新快照，沒有呼叫 TDX 或 Google。路邊 run/snapshot 36 使用 1 個 HTTP request，發布 1,880 筆觀測；路外 run/snapshot 37 使用 2 個 HTTP requests，發布 95 筆觀測。兩次皆 `published=true`、`failedObservations=0`，來源狀態為 `IDLE`。Compose 的 API、MySQL、Redis、Web 均 healthy。
-- **球場周邊唯讀驗證與範圍限制**：依新北市政府公告的新莊棒球場 WGS-84 中心座標換算為 25.0411833, 121.4490583，對主 DB 做直線距離 500 公尺 spatial query，找到 105 筆 verified 路邊格與 4 個 verified 路外場站；[新北市政府公告附件](https://doc2-exthird.ntpc.gov.tw/NTPC_SODPUBLISH/FILE/0000000/PUBLISH/114/2/11427.pdf)。dry-run 另有 164 筆資格未知、111 筆不符合資格而排除；匯入僅限已確認 eligible 的 reviewed subset，不代表新莊完整道路覆蓋。尚未在瀏覽器重播該目的地的 API／viewport 流程，因此不宣稱 UI 端到端已驗收。使用者重新整理或重新規劃查詢即可載入更新後的主系統目錄／快照；本輪未建立查詢，避免觸發可能計費的 Google Routes。沒有修改程式碼或執行測試。
+- **球場周邊唯讀驗證與範圍限制**：該次修復時依新北市政府公告的新莊棒球場 WGS-84 中心座標換算為 25.0411833, 121.4490583，對主 DB 做直線距離 500 公尺 spatial query，找到 105 筆 verified 路邊格與 4 個 verified 路外場站；[新北市政府公告附件](https://doc2-exthird.ntpc.gov.tw/NTPC_SODPUBLISH/FILE/0000000/PUBLISH/114/2/11427.pdf)。dry-run 另有 164 筆資格未知、111 筆不符合資格而排除；匯入僅限已確認 eligible 的 reviewed subset，不代表新莊完整道路覆蓋。該次沒有在瀏覽器重播目的地 API／viewport 流程；後續修復與 map-data 契約驗證見本文件「登龍路外停車場分頁缺陷修復」。
+
+## 2026-10-25 新莊登龍路外停車場分頁缺陷修復
+
+- **修復**：catalog dry-run 與即時來源刷新都改為收到空頁才標記 traversal complete；NTPC 可能把 `size=40000` 的請求限制成每頁 1,000 筆，回傳少於請求值不代表已到末頁。若到 `max-pages` 仍未收到空頁，仍標示 incomplete，catalog 不匯入、即時 snapshot 不發布。catalog import command 新增 dataset 選擇，預設仍同時擷取路邊與路外，可在審查單一穩定來源時隔離其他來源的變動。
+- **來源與審查**：路外靜態目錄 dry-run 選擇 `NTPC_OFF_STREET_AVAILABILITY`，完整讀 3 頁（含結尾空頁）、145 筆新莊列、138 筆確認一般汽車適用、7 筆排除，缺 ID／重複／座標異常皆為 0，`READY_FOR_IMPORT_REVIEW=true`。來源 manifest SHA-256 為 `dcddadb32546a4bbfd88c9a1c8a4bddb18946c8c4a641e8feddd7ccf625923b7`。先前全 dataset 重跑時路邊列數有變，manifest gate 拒絕寫入且 DB 未變；改成路外單一 dataset 後，以穩定目錄產生 manifest 並完成 reviewed-subset。
+- **目錄匯入**：匯入前在 repo 外限權暫存路徑建立 MySQL 備份。受 manifest 鎖定的匯入新增 43 個場站與 mapping，略過既有 95 個 mapping，沒有拒絕候選；新莊 ACTIVE 路外 verified 目錄從 95 增至 138。登龍官方 ID `050255` 現為 ACTIVE、VERIFIED，來源目錄總汽車格位 64，座標為 25.0367139, 121.4569854。
+- **即時觀測與 API 核對**：修正後以 `page-size=40000,max-pages=3` 刷新路外官方來源，3 個 HTTP page（最後一頁為空）共正規化 1,381 筆，發布 138 筆已 mapping 觀測，1,243 筆 unmapped、0 筆 failed，snapshot 66 為 `PUBLISHED`。以登龍座標建立短效本機查詢後唯讀呼叫 `/map-data`，38 個 verified 項目中包含登龍，距離 0 公尺，回報 `AVAILABLE`、18／64 格。此為當次官方來源觀測，不表示抵達時仍有位或模型預測。Google Routes／Places key 未設定，因此本次查詢未呼叫 Google。
+- **驗證與限制**：後端 `mvn -DskipTests compile` 成功；API image 已重建並替換 Compose API，API、MySQL、Redis、Web 均 healthy。未執行測試套件。2026-10-25 過去那次匯入使用的 page size 沒有記錄，因此確認這是實際重現且已修正的缺陷，但不能宣稱它是那次歷史匯入的唯一原因；路外目錄仍只是新莊官方可審查子集，不代表行政區完整覆蓋。
 
 ## 2026-10-25 Sprint 3 離線 ML 80/10/10 首輪訓練與測試
 
@@ -21,6 +29,7 @@
 - **根因**：正在執行的舊 Docker API 沒有目前前端呼叫的 `GET /api/v1/parking-queries/{queryId}/map-data/viewport`，因此回 404；前端原本把整個地圖資料載入判定為失敗，附近清單也就沒有資料。新北市官方路邊／路外 connector、catalog、verified mapping 與已發布快照流程均已存在，並非缺少 API 串接。此小樣本最後成功快照在 2026-10-25 13:06 左右，觀測已過期，必須標示 `STALE`。
 - **修正與部署**：前端 viewport 失敗時改讀既有目的地半徑唯讀 `/map-data`，避免新舊 API 短暫不合時清單整片空白。Docker API、Web 均以目前分支原始碼重建，Web 仍由 `127.0.0.1:18088` 提供；四個 Compose 服務 healthy。API 啟動時只套用 V2 nullable 停車場詳情欄位 migration；Flyway repeatable seed checksum 未變，未重跑 seed。既有 MySQL volume 未移除或重建。
 - **本機契約 smoke**：經 Web 同源代理建立一筆短期查詢（`READY`，Redis 查詢狀態），新 API viewport 回 10 筆 verified 標記：7 路邊、3 路外；當前都標為過期。原目的地 500 公尺內的基礎 `/map-data` 對應 5 筆路邊、無已審查路外場站。這反映小樣本 catalog 覆蓋，不代表完整新莊目錄；沒有資料也不代表沒有停車位。
+
 - **ETA 與外部呼叫**：Docker `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=false`；煙霧查詢回 `ETA=FAILED`，訊息是外部 Routes 呼叫由設定關閉。前端已將此狀態翻為明確繁體中文。未送 Google Routes 請求、未觸發新北市來源刷新；沒有虛構 ETA 或現況空位。若要驗證真實 ETA，需先明確核准開啟可能計費的 Google Routes 呼叫。
 - **驗證**：前端 `npm test`（7 組）、`npm run build` 通過；`impeccable detect --json frontend/src/App.vue` 回傳 `[]`。後端完整 Maven suite 為 113 tests、0 failures、0 errors、0 skipped。新增精確目的地測試先抓到狀態斷言應為 `NO_REALTIME_AVAILABILITY`，更正後通過。實際 HTTP smoke 確認 viewport 不再 404、10 筆 verified 標記、HTML／最新 JS 資產為 200，四個 Docker 服務 healthy。
 - **未完成驗收**：真實瀏覽器不同視窗尺寸及 Google Places 下拉仍待人工視覺／互動驗收；Routes ETA 真實上游驗證未執行；官方來源刷新仍待使用者於前端觸發，或另行授權後由操作執行。
@@ -1005,3 +1014,10 @@ Docker API 曾因 Google Places service 有兩個建構子且未標記注入建�
 官方費率表僅在新查詢或使用者明確更新時載入／刷新；地圖 GET 與 viewport 查詢只讀記憶體快取，避免拖曳地圖觸發上游流量。後端 `mvnw -DskipTests compile` 成功；Docker API 重建後健康，Web、MySQL、Redis 也健康。未建立新查詢，因此沒有驗證實際官方資料命中，也未觸發 Places／Routes 外部查詢。
 
 Impeccable detector 已針對 `frontend/src/App.vue` 與 `frontend/src/style.css` 執行一次，只回報 Inter 字型通用性警示，沒有費率溢位警示；已安裝的 CLI 僅提供 `detect`，不支援文件所列 `audit` 子命令。桌面 1536px 與手機 390×844 空白查詢狀態的頁面 `scrollWidth` 均等於 viewport，沒有水平溢位；但當下沒有實際費率結果列，因此長費率的資料態仍未做瀏覽器驗收。Chrome 桌面分頁保留 API 更新前的 HTTP 502 錯誤狀態，重啟後尚無新查詢日誌可判定其原因。本次未新增或執行測試套件。
+
+## 2026-10-25 附近清單排序與不設呈現筆數上限
+
+- **需求決定**：先套用目前類型與狀態篩選；一般汽車適用性已確認且目前觀測為 `AVAILABLE` 的項目優先，其餘依距離近到遠排列。清單不設呈現筆數上限；使用者接受目前地圖視窗內超過目的地 500 公尺的資料可列入清單。
+- **實作**：移除地圖檢視原有 5 筆及兩種檢視共用的 20 筆截斷。地圖與清單檢視共用同一組完整排序結果：適用性已確認且目前有位優先，再按目的地直線距離、名稱排序。副標顯示目前載入視窗中符合篩選的筆數及排序方式。此處「不設上限」指前端不再截斷，不代表全市資料無上限；仍受目前 viewport 分頁載入護欄限制。
+- **介面調整**：桌面頂欄品牌更名為「找車位」，移除「官方觀測 · 預測尚未驗證」旁的設定圖示；設定仍可由底部導覽進入。網頁標題同步為「找車位」。
+- **驗證**：前端 `npm run build` 成功，Impeccable detector 對 `frontend/src/App.vue` 回傳空結果，`git diff --check` 通過。Docker `web` 映像已重建並強制替換；瀏覽器確認頁面標題與頂欄為「找車位」、狀態旁的設定圖示已移除。重載後頁面為未查詢狀態，因此沒有實際資料列可人工驗證超過 20 筆的呈現或排序；程式已移除截斷，未建立新停車查詢以避免觸發外部 ETA／Places 或官方資料請求。

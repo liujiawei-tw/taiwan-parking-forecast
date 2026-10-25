@@ -40,37 +40,59 @@ public class NtpcCatalogDryRunService {
 
     public List<NtpcCatalogDryRunResult> dryRunConfiguredScopes() {
         return properties.getScopes().stream()
-                .map(this::dryRun)
+                .map(scope -> dryRun(scope, List.of(DatasetCode.NTPC_ROADSIDE_SPOT, DatasetCode.NTPC_OFF_STREET_AVAILABILITY)))
                 .toList();
     }
 
     public NtpcCatalogDryRunResult dryRun(String serviceArea) {
+        return dryRun(serviceArea, List.of(DatasetCode.NTPC_ROADSIDE_SPOT, DatasetCode.NTPC_OFF_STREET_AVAILABILITY));
+    }
+
+    public NtpcCatalogDryRunResult dryRun(String serviceArea, List<DatasetCode> datasets) {
         Scope scope = properties.getScopes().stream()
                 .filter(candidate -> candidate.getServiceArea().equals(serviceArea))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unknown NTPC catalog import serviceArea: %s".formatted(serviceArea)));
-        return dryRun(scope);
+        return dryRun(scope, datasets);
     }
 
-    private NtpcCatalogDryRunResult dryRun(Scope scope) {
-        var roadsideRows = fetchRoadsideRows();
-        var offStreetRows = fetchOffStreetCatalogRows();
+    private NtpcCatalogDryRunResult dryRun(Scope scope, List<DatasetCode> datasets) {
+        List<DatasetCode> selectedDatasets = datasets == null ? List.of() : datasets.stream().distinct().toList();
+        if (selectedDatasets.isEmpty()) {
+            throw new IllegalArgumentException("At least one NTPC catalog dataset must be selected");
+        }
+        if (!List.of(DatasetCode.NTPC_ROADSIDE_SPOT, DatasetCode.NTPC_OFF_STREET_AVAILABILITY).containsAll(selectedDatasets)) {
+            throw new IllegalArgumentException("Unsupported NTPC catalog dataset selection: %s".formatted(selectedDatasets));
+        }
+
+        boolean includeRoadside = selectedDatasets.contains(DatasetCode.NTPC_ROADSIDE_SPOT);
+        boolean includeOffStreet = selectedDatasets.contains(DatasetCode.NTPC_OFF_STREET_AVAILABILITY);
+        var roadsideRows = includeRoadside
+                ? fetchRoadsideRows()
+                : this.<NtpcRoadsideParkingAvailabilityDto>notFetchedRows("NTPC_ROADSIDE_SPOT");
+        var offStreetRows = includeOffStreet
+                ? fetchOffStreetCatalogRows()
+                : this.<NtpcOffStreetParkingLotDto>notFetchedRows("NTPC_OFF_STREET_CATALOG");
         List<CatalogSourceRecord> sourceRecords = new ArrayList<>();
-        sourceRecords.addAll(ntpcCatalogRecordMapper.toRoadsideCatalogRecords(
-                scope.getServiceArea(),
-                scope.getRoadsideAreaCode(),
-                roadsideRows.rows()
-        ));
-        sourceRecords.addAll(ntpcCatalogRecordMapper.toOffStreetCatalogRecords(
-                scope.getServiceArea(),
-                scope.getOffStreetAreaName(),
-                offStreetRows.rows()
-        ));
+        if (includeRoadside) {
+            sourceRecords.addAll(ntpcCatalogRecordMapper.toRoadsideCatalogRecords(
+                    scope.getServiceArea(),
+                    scope.getRoadsideAreaCode(),
+                    roadsideRows.rows()
+            ));
+        }
+        if (includeOffStreet) {
+            sourceRecords.addAll(ntpcCatalogRecordMapper.toOffStreetCatalogRecords(
+                    scope.getServiceArea(),
+                    scope.getOffStreetAreaName(),
+                    offStreetRows.rows()
+            ));
+        }
 
         var importScope = new CatalogImportScope(
                 scope.getServiceArea(),
                 SourceSystem.NTPC_OPEN_DATA,
-                List.of(DatasetCode.NTPC_ROADSIDE_SPOT, DatasetCode.NTPC_OFF_STREET_AVAILABILITY)
+                selectedDatasets
         );
         return new NtpcCatalogDryRunResult(
                 scope.getServiceArea(),
@@ -78,6 +100,13 @@ public class NtpcCatalogDryRunService {
                 roadsideRows.summary(),
                 offStreetRows.summary(),
                 sourceRecords
+        );
+    }
+
+    private <T> FetchedRows<T> notFetchedRows(String sourceName) {
+        return new FetchedRows<>(
+                List.of(),
+                new FetchSummary(sourceName, 0, 0, 0, 0, true)
         );
     }
 
@@ -111,7 +140,9 @@ public class NtpcCatalogDryRunService {
             elapsedMillis += sourcePage.elapsedMillis();
             rows.addAll(sourcePage.rows());
 
-            if (sourcePage.rows().size() < properties.getPageSize()) {
+            // NTPC may cap the effective page size below the requested size (for example,
+            // size=40000 can still return 1000 rows). Only an empty page proves traversal ended.
+            if (sourcePage.rows().isEmpty()) {
                 return new FetchedRows<>(
                         List.copyOf(rows),
                         new FetchSummary(sourceName, pages, httpRequests, responseBytes, elapsedMillis, true)

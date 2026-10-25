@@ -150,10 +150,6 @@ button:focus-visible,input:focus-visible,gmp-place-autocomplete:focus-visible {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.settings-shortcut svg {
-  fill: #344a63;
-  stroke: #344a63;
-}
 .planner-panel {
   position: relative;
   z-index: 5;
@@ -1311,9 +1307,6 @@ input[type=datetime-local] {
     width: 7px;
     height: 7px;
   }
-  .settings-shortcut {
-    display: none;
-  }
   .planner-panel {
     gap: 8px;
     padding: 8px 12px 9px;
@@ -1809,13 +1802,6 @@ input[type=datetime-local] {
   .header-caption {
     font-size: .62rem;
     letter-spacing: -.025em;
-  }
-  .settings-shortcut {
-    display: grid;
-    flex-basis: 34px;
-    width: 34px;
-    height: 34px;
-    padding: 6px;
   }
   .planner-panel {
     box-sizing: border-box;
