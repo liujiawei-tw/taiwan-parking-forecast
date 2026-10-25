@@ -127,6 +127,43 @@ old report hash beside the new experiment, pass `--historical-report`:
 python ml-training/scripts/run_801010_experiment.py --config ml-training/config/training-config-80-10-10.example.json --input data/private/collector-samples --output data/private/collector-samples/calibrated-persistence-2026-10-25.md --artifact-dir ml-training/models/calibrated-persistence-2026-10-25 --historical-report data/private/collector-samples/replication-0993b17-2026-10-25.md
 ```
 
+## Off-street Shadow Test MVP
+
+run_offstreet_shadow_test.py provides two local-only phases for one off-street
+car park. It reads ignored collector ZIP files as an offline proxy; the main
+system currently has no public read-only historical-observation export for this
+runner. It does not call an official API, Google Routes, or the online
+predictions path.
+
+Phase one writes private JSONL prediction rows using only each as-of row and
+train-period labels. It supports the already evaluated 30- and 60-minute leads,
+caps the first pass at 50 predictions per lead, and records the current-state
+and train-only calibrated persistence probabilities. Logistic regression is
+included only when a v2 experiment artifact matches the input ZIP hash, exact
+training-config hash, split dates, feature schema, and train sample count;
+otherwise its probability is null and the report records why.
+
+Phase two runs after the target arrival time. It requires a qualified
+observation within plus or minus 15 minutes by default and a source response
+timestamp within plus or minus 10 minutes of the collector timestamp. Both
+tolerances are printed in the aggregate report. Unknown, negative, stale,
+timezone-invalid, Taipei-date-mismatched, and missing arrival observations
+remain unverifiable. The private result JSONL keeps per-row matches and
+reasons; Markdown and JSON reports contain aggregate counts and metrics only.
+Outputs are EXPERIMENT_ONLY and never update production predictions.
+
+Use a new ignored output directory for each run. Keep the prediction and result
+JSONL files under data/private/, ml-training/data/, or
+ml-training/reports/private/:
+
+    python ml-training/scripts/run_offstreet_shadow_test.py predict --input data/private/collector-samples --training-config ml-training/config/training-config-80-10-10.example.json --output data/private/collector-samples/shadow-mvp-run-2026-10-25/predictions.jsonl --logistic-artifact-dir ml-training/models/calibrated-persistence-2026-10-25
+    python ml-training/scripts/run_offstreet_shadow_test.py verify --input data/private/collector-samples --predictions data/private/collector-samples/shadow-mvp-run-2026-10-25/predictions.jsonl --results data/private/collector-samples/shadow-mvp-run-2026-10-25/results.jsonl --report-json data/private/collector-samples/shadow-mvp-run-2026-10-25/report.json --report-markdown data/private/collector-samples/shadow-mvp-run-2026-10-25/report.md
+
+This first sample target is 50–100 verifiable cases, not a statistical
+admission gate. The report remains EXPLORATORY_ONLY when samples are below 50,
+both labels are not present, or fewer than five distinct arrival dates are
+covered. The fixed leads do not represent arbitrary Google ETA predictions.
+
 ## Commands
 
 Preview the current training plan:

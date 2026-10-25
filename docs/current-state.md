@@ -1092,3 +1092,12 @@ Roadside complete 30m test 只有 41 筆，低於設定的 100 筆最低門檻�
 - `roadside_timestamp_index(timestamp_authoritative=False)` 恢復 0993b17 last-write-wins，重複 spot／timestamp 由最後列覆寫。嚴格模式保留不可信時間 metadata 以觸發拒收；同時出現多種無效原因時，依 timezone missing、日期欄位 missing、台北日期 mismatch 的固定政策順序選拒收原因，結果不依列順序改變。全部有效的 strict 重複列仍採 first-write。
 - 新增 legacy 雙順序、strict 有效／無效混合排列與實際拒收碼、無重複政策日期及 label pairing 測試；calibrated 小型 ZIP runner 整合測試通過。完整 ML unittest 27 tests 通過，compileall 與 diff check 通過。
 - 31 個 private ZIP 重跑：0993b17 相容報告與三份既有基準皆 24／24 指標逐欄一致；calibrated 報告與前兩份校準基準皆 48／48 指標逐欄一致。新輸出為 ignored 私有路徑 `data/private/collector-samples/compatibility-finding4-2026-10-25.md` 與 `data/private/collector-samples/calibrated-finding4-2026-10-25.md`；未加入 Git。
+
+### 2026-10-25 Sprint 3 路外 Shadow Test MVP
+
+- 新工作分支 `codex/s3-offstreet-shadow-test-main-sync` 以 `origin/main` `4bc1836b62d44132d79710ceefa73ab2e0f88d99` 為起點，整合已審查 ML 分支 head `9231bb0b31a9318d4edc62428100bb89b76f0de7`；PR #96 仍為 Draft、尚未合併。這個 Shadow Test PR 因使用該 ML 基準，需明確標示對 PR #96 的依賴。
+- 新增 `parking_ml.offstreet_shadow` 與 `run_offstreet_shadow_test.py`，分成只用 as-of 已知資料產生預測、目標抵達時間過後才核對標籤兩階段。只涵蓋 30／60 分鐘 lead，抵達觀測容忍值 15 分鐘、來源時間差容忍值 10 分鐘；近似配對會記錄偏差，不能視為精確抵達瞬間。未來標籤不進入預測特徵；Unknown、負值、過期、時間 metadata 不符及缺少抵達觀測均不當成負例。
+- 目前沒有可供 Python runner 安全唯讀取得主系統 `PUBLISHED` 歷史觀測的介面，因此本次使用本機 31 個 collector ZIP 作離線代理資料，未呼叫官方 API／Google Routes，也未寫正式資料庫或 predictions。逐筆預測及核對資料寫入 ignored private 路徑，對外報告只含 aggregate。
+- 本機資料實跑共讀取 192,850 列，兩個 lead 合計 40,600 候選；as-of 有效後依不使用 label 的固定 hash 抽樣各 50 筆。抵達核對 98／100 可驗證（30m 50、60m 48），另 2 筆因抵達觀測缺失而不可驗證；覆蓋 3 個日期、38 個停車場。30m 正／負例為 46／4，60m 為 40／8。Persistence 的 Brier 為 0.00250／0.02125，Calibrated Persistence 為 0.00087／0.01863；兩者各 lead 的 FPR 為 0、Precision 為 1.00。只涵蓋 3 日，結果一律 `EXPLORATORY_ONLY`，不作上線或門檻依據。
+- 本機 Logistic v2 artifact 的訓練 metadata 未通過 runner 資格檢查，故不輸出其預測機率，也不納入比較。報告中的正式預測狀態為 `EXPERIMENT_ONLY`、`publishToOnlineSystem=false`、`onlinePredictionsWritten=false`、`onlineModelVersion=null`、`onlineProbability=null`。
+- 驗證：`python -m unittest discover -s ml-training/tests` 31 tests 通過；`python -m compileall -q ml-training` 通過。Windows 預設暫存目錄及 worktree 編譯快取受 sandbox 權限限制，執行時將測試暫存與 bytecode cache 指向 ignored private 目錄。`git diff --check` 通過。
