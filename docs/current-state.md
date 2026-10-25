@@ -1053,3 +1053,42 @@ Impeccable detector 已針對 `frontend/src/App.vue` 與 `frontend/src/style.css
 後續微調：路外停車場標記比照視覺回饋放大，藍色 P 圖釘 SVG 基準顯示尺寸調為 56×64（圖形本體以 1.25 倍縮放），選取態調為 64×72，底圖座標錨點同步調整。針對高縮放時圖釘相對街區過小的回饋，zoom 15 起隨地圖逐步放大、最高增加約 27%；選取外圈同步縮放。
 
 驗證：`frontend npm run build` 與 `git diff --check` 通過。Docker Web/API/MySQL/Redis 均 healthy，Chrome 已開啟新版預覽；新分頁沒有停車清單資料，因此實際縮放下的標記尺寸仍需有地圖結果時目視確認。本輪未建立查詢或執行測試套件。
+
+## 2026-10-25 Sprint 3 ML 評估可信度與 Calibrated Persistence
+
+在獨立分支 `codex/ml-801010-calibrated-persistence`（基準 `0993b1786c5861835786062bdca935cfbd91f09e`）完成離線實驗改造，未改動原工作樹中既有 UI／Places／Docker 修改。讀取原本 31 個 ignored collector ZIP：roadside 2,522,054 列、offstreet 192,850 列；無官方 API 或 Google Routes 呼叫。原 0993b17 compatibility runner 以新輸出路徑重跑，validation／test 四種 dataset-lead 共 24 筆既有方法指標與先前報告逐列一致。
+
+新增 `calibrated_state_persistence_v1`：每 dataset／lead 僅用 train 的 True／False／Unknown 狀態正例率，Laplace alpha=1，每狀態至少 20 筆，否則回退平滑後 train 全域正例率。新 Logistic artifact 使用 schema v2、feature version `parking_features_as_of_v2`，時間特徵命名為 `as_of_hour_*`。報告及權重只在 ignored 私有路徑；狀態保持 `EXPERIMENT_ONLY`，`publishToOnlineSystem=false`。
+
+測試集（2026-10-22 至 10-24；此前已分析，不是新 holdout）核心比較如下。欄位 Brier／Log loss；FPR 和 near-full Precision 保留以檢查假陽性風險：
+
+| Cohort／lead | n | 固定 Persistence Brier／Log loss | Calibrated Persistence Brier／Log loss | Logistic Brier／Log loss | FPR（三者相同） | near-full Precision（三者相同） |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Offstreet 30m | 5,400 | 0.0130／0.0856 | **0.0115／0.0595** | 0.0254／0.1087 | 6.18% | 95.61% |
+| Offstreet 60m | 5,360 | 0.0178／0.1013 | **0.0163／0.0779** | 0.0289／0.1195 | 8.70% | 94.46% |
+| Roadside legacy partial 30m | 6,750 | 0.0966／0.3593 | 0.1046／1.0234 | **0.0922／0.3314** | 7.77% | 71.30% |
+| Roadside legacy partial 60m | 6,700 | 0.1169／0.4257 | 0.1271／1.1709 | **0.1094／0.3823** | 9.53% | 68.40% |
+| Roadside complete circle 30m | 41 | 未評估 | 未評估 | 未評估 | — | — |
+| Roadside complete circle 60m | 145 | 0.0025／0.0513 | 0.0000／0.0002 | 0.0124／0.1001 | 0.00% | 100.00% |
+
+Roadside complete 30m test 只有 41 筆，低於設定的 100 筆最低門檻，所有 test 指標均未開啟；60m 雖有 145 筆且同時有正負例，但只有 3 個已看過日期，屬探索性結果。完整 coverage test 每 lead 有 7,000 個候選：30m 接受 41／拒絕 6,959（40 正、1 負）；60m 接受 145／拒絕 6,855（60 正、85 負）。legacy partial 分別接受 6,750／7,000（2,052 正、4,698 負）及 6,700／7,000（2,040 正、4,660 負）。准入差異顯著，兩 policy 的分數不可混作同條件優劣，樣本接受率也不是使用者查詢預測覆蓋率。
+
+預設 gate：train 至少 500、validation/test 各至少 100，且三個 split 都要同時有正負例；validation 依 Brier 選模，完成選模才評估 test。新增 near-full、狀態轉換、臺北日期及 calibration 分桶／低樣本標記與拒絕原因。此輪不代表 S3-020 gate 已通過：時間外推僅 3 日、roadside 圈有重疊、來源更新時間語意未完全確認、完整 coverage 接受量極低、仍非 ETA-aware；正式 predictions 維持資料不足。
+
+私有報告：`data/private/collector-samples/calibrated-persistence-2026-10-25.md`；模型產物：`ml-training/models/calibrated-persistence-2026-10-25/`。執行版 `calibrated_persistence_v1` runner／ML Python source SHA-256：`eb29c492de5b954e9c29c8253b221657aa6542fc7bd068ff710f00aa3473c01f`。完整 unittest、compileall 與 Git diff 驗證在本次 PR 最終檢查記錄。
+
+### PR #96 第三輪審查修正與全量重跑（2026-10-25）
+
+- **時間切分可信度**：新版 calibrated runner 固定使用 `collected_at_taipei_v1`，以具明確時區的 `collected_at_utc` 轉成 `Asia/Taipei` 日期切分；as-of 與 arrival 都要求明示時區及 `collected_date_taipei`，並核對欄位日期與轉換日期一致。日期不一致以 `collected_date_taipei_mismatch` 拒收；arrival 跨 split 也拒收。原 0993b17 runner 保留 `file_date_v0993b17`，舊結果不因新版政策改寫。
+- **Roadside 對照開關與端到端測試**：`compareLegacyRoadsidePolicy` 現在直接控制是否建立 legacy cohort。新增合成暫存 ZIP 測試，實際呼叫 `run_calibrated_experiment()`，涵蓋新舊 cohort 開關、報告、測試 gate 與實驗限定 artifact；不使用私有 collector 資料。
+- **31 個 ZIP 全量結果**：roadside 2,522,054 列、offstreet 192,850 列；日期切分為 train／validation／test 25／3／3 日（約 80.6%／9.7%／9.7%）。全量 audit 中，offstreet 與 roadside 的台北日期不一致、時區缺失及台北日期欄位缺失均為 0，必要欄位 parser skip 合計 0。樣本配對日期不一致拒收亦為 0。
+- 新 timestamp policy 的三組 cohort 接受數與原報告相同：offstreet 96,666／385,700 個候選；roadside legacy 118,900／131,000；roadside complete-circle 83,902／131,000。與先前 calibrated 報告的 validation／test 48 列結果逐欄一致；原 0993b17 相容重跑的 24 列既有指標亦逐列一致。因此本次嚴格日期檢查沒有改變這批資料的分割或評估數值。
+- **測試集摘要**（2026-10-22 至 10-24 曾在前次分析使用，不是新 holdout）：offstreet 30m／60m calibrated persistence Brier 為 0.0115／0.0163，固定 persistence 為 0.0130／0.0178；roadside legacy 的 calibrated persistence Brier 為 0.1046／0.1271，Logistic 為 0.0922／0.1094。roadside complete-circle 30m 僅接受 41 筆，未達 100 筆門檻而不評估；60m 接受 145 筆，仍只有三個已分析日期，僅作探索性結果。完整指標與拒絕原因見私有報告。
+- 新政策完整報告：`data/private/collector-samples/timestamp-policy-third-review-2026-10-25.md`；artifact：`data/private/collector-samples/timestamp-policy-third-review-artifacts/`。0993b17 相容報告：`data/private/collector-samples/compatibility-third-review-2026-10-25.md`。上述路徑均屬 ignored 私有資料，未加入 Git；沒有呼叫官方 API 或 Google Routes。輸出均維持 `EXPERIMENT_ONLY`，不接入線上 predictions。
+- PR 驗證：`python -m unittest discover -s ml-training/tests` 24 tests 通過；`python -m compileall -q ml-training` 成功；`git diff --check` 通過。
+
+### PR #96 Finding #4：Roadside 重複 timestamp 相容性（2026-10-25）
+
+- `roadside_timestamp_index(timestamp_authoritative=False)` 恢復 0993b17 last-write-wins，重複 spot／timestamp 由最後列覆寫。嚴格模式保留不可信時間 metadata 以觸發拒收；同時出現多種無效原因時，依 timezone missing、日期欄位 missing、台北日期 mismatch 的固定政策順序選拒收原因，結果不依列順序改變。全部有效的 strict 重複列仍採 first-write。
+- 新增 legacy 雙順序、strict 有效／無效混合排列與實際拒收碼、無重複政策日期及 label pairing 測試；calibrated 小型 ZIP runner 整合測試通過。完整 ML unittest 27 tests 通過，compileall 與 diff check 通過。
+- 31 個 private ZIP 重跑：0993b17 相容報告與三份既有基準皆 24／24 指標逐欄一致；calibrated 報告與前兩份校準基準皆 48／48 指標逐欄一致。新輸出為 ignored 私有路徑 `data/private/collector-samples/compatibility-finding4-2026-10-25.md` 與 `data/private/collector-samples/calibrated-finding4-2026-10-25.md`；未加入 Git。

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -92,3 +93,14 @@ def validate_config(config: TrainingConfig) -> None:
         raise ValueError("Row-random split is not allowed for time-series training data")
     if config.publish_to_online_system:
         raise ValueError("Training config must not publish directly to the online system")
+    settings = config.baseline_experiment
+    for key in ("minTrainSamples", "minValidationSamples", "minTestSamples", "calibratedPersistenceMinStateSamples", "calibrationBins", "calibrationMinBucketSamples"):
+        if key in settings and int(settings[key]) < 1:
+            raise ValueError(f"{key} must be a positive integer")
+    if "calibratedPersistenceAlpha" in settings:
+        alpha = float(settings["calibratedPersistenceAlpha"])
+        if not math.isfinite(alpha) or alpha <= 0:
+            raise ValueError("calibratedPersistenceAlpha must be finite and positive")
+    policy = settings.get("roadsideCoveragePolicyVersion", "roadside_complete_circle_v1")
+    if policy != "roadside_complete_circle_v1":
+        raise ValueError("roadsideCoveragePolicyVersion must be roadside_complete_circle_v1")
