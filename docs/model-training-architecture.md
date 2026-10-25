@@ -1,10 +1,10 @@
 # 模型訓練架構
 
-更新日期：2026-10-07。狀態：已有 baseline／簡單 logistic regression 離線實驗，正式模型尚未發布。
+更新日期：2026-10-25。狀態：已有 baseline 與三段時間切分的 Logistic Regression 離線候選；正式模型尚未發布。
 
 ## DEMO 優先停點
 
-S3-021 已完成實驗重現與限制交接，見 s3-021-model-experiment-handoff.md。路邊所有格位狀態不變、圈重疊與 train labels 跨入 test 已確認；來源更新根因仍待查。暫停演算法擴張，線上維持空機率與資料不足。DEMO 發布驗收 S3-025 後再做 S3-018 → S3-019 → S3-020 → S3-026 → S3-009 → S3-027。S3-019 先修跨 split 標籤、catalog asOf、臺北時間與 coverage；後續新增 validation／未用過的日期 holdout。
+S3-021 已完成舊實驗重現與限制交接，見 s3-021-model-experiment-handoff.md。2026-10-25 另依使用者指示，在 31 日 collector 樣本上完成一輪 chronological 80/10/10 日期切分、Logistic Regression 訓練與留出測試；結果見 `current-state.md` 及私有報告。該實驗修正了 split 跨界標籤與 train-only roadside circle 建立，但仍是固定 30／60 分鐘 lead、單一區域資料。來源逐筆觀測語意、ETA-aware 樣本、coverage 與 S3-020 gate 尚未完成；線上維持空機率與資料不足。DEMO 發布驗收 S3-025 後，正式資料工作仍依 S3-018 → S3-019 → S3-020 → S3-026 → S3-009 → S3-027 推進。
 
 ## 目的
 
@@ -98,6 +98,12 @@ S3-021 已完成實驗重現與限制交接，見 s3-021-model-experiment-handof
 | test | 2026-10-01 至 2026-10-02 | holdout 評估，不回流訓練 |
 
 此切分約 75/25。等資料天數更多後，再改成 chronological 80/20 或 rolling-window evaluation。
+
+## 首輪三段時間切分（2026-10-25）
+
+對本機 2026-09-24 至 2026-10-24 的 31 天 collector 樣本，使用 train 09-24 至 10-18（25 天）、validation 10-19 至 10-21（3 天）、test 10-22 至 10-24（3 天）。日期比例為 80.6/9.7/9.7；樣本比例會因 unknown 與 label 配對拒絕而變動。每個樣本的 arrival label 必須和 as-of feature 落在相同 split；roadside 500m candidate circles 只用 train 結束前可知座標建立。週期特徵以 Asia/Taipei 時間計算。
+
+本輪每個 dataset／lead 在 train 擬合 Logistic Regression，validation 依 Brier 選擇比較方法，test 只作最後評估。路外兩個 lead 與路邊 30m 在 validation 選 current-state persistence；路邊 60m 選 Logistic Regression，test Brier 為 0.1094，相較 persistence 0.1169。路外 Logistic Regression 未超越 persistence。因 test 僅三天、資料單一區域且尚未完成 ETA-aware／S3-020 gate，全部產物仍是 `EXPERIMENT_ONLY`，不得接入線上。
 
 ## 後續 Issue 對應
 

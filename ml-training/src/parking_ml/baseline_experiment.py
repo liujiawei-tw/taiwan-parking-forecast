@@ -174,6 +174,8 @@ def build_offstreet_samples(
     offstreet_by_lot: dict,
     config: TrainingConfig,
     settings: LabelDryRunSettings,
+    *,
+    strict_split_boundaries: bool = False,
 ) -> list[LabelSample]:
     samples: list[LabelSample] = []
     for lot_id, rows in offstreet_by_lot.items():
@@ -188,10 +190,13 @@ def build_offstreet_samples(
                     continue
                 if arrival.collected_at <= as_of.collected_at:
                     continue
+                if strict_split_boundaries and config.split.split_for(arrival.file_date) != split_name:
+                    continue
                 if not as_of.has_source_response:
                     continue
                 if arrival.is_unknown or arrival.available_car is None or arrival.available_car < 0:
                     continue
+                feature_time = as_of.collected_at + timedelta(hours=8) if strict_split_boundaries else as_of.collected_at
                 samples.append(
                     LabelSample(
                         split=split_name,
@@ -199,8 +204,8 @@ def build_offstreet_samples(
                         entity_id=lot_id,
                         current_available=current_available(as_of.available_car, as_of.is_unknown),
                         current_ratio=current_ratio(as_of.availability_ratio),
-                        weekday=as_of.collected_at.weekday(),
-                        hour=as_of.collected_at.hour,
+                        weekday=feature_time.weekday(),
+                        hour=feature_time.hour,
                         label=arrival.available_car > 0,
                     )
                 )
@@ -211,9 +216,18 @@ def build_roadside_samples(
     roadside_by_spot: dict,
     config: TrainingConfig,
     settings: LabelDryRunSettings,
+    *,
+    strict_split_boundaries: bool = False,
 ) -> list[LabelSample]:
     samples: list[LabelSample] = []
-    latest_by_spot = {spot_id: rows[-1] for spot_id, rows in roadside_by_spot.items() if rows}
+    if strict_split_boundaries:
+        latest_by_spot = {
+            spot_id: eligible[-1]
+            for spot_id, rows in roadside_by_spot.items()
+            if (eligible := [row for row in rows if row.file_date <= config.split.train.end])
+        }
+    else:
+        latest_by_spot = {spot_id: rows[-1] for spot_id, rows in roadside_by_spot.items() if rows}
     centers = select_candidate_centers(latest_by_spot, settings.max_roadside_candidate_centers)
     circle_spots = [
         spots_within_radius(center, latest_by_spot, settings.roadside_radius_meters)
@@ -242,6 +256,8 @@ def build_roadside_samples(
                 arrival_time = nearest_timestamp(timestamps, as_of + timedelta(minutes=lead), settings.tolerance)
                 if arrival_time is None or arrival_time <= as_of:
                     continue
+                if strict_split_boundaries and config.split.split_for(timestamp_dates.get(arrival_time)) != split_name:
+                    continue
                 arrival_rows = [
                     by_timestamp[arrival_time][spot_id]
                     for spot_id in spot_ids
@@ -251,6 +267,7 @@ def build_roadside_samples(
                     continue
                 arrival_labels = [bool(row.is_available) for row in arrival_rows]
                 available_count = sum(1 for label in as_of_labels if label)
+                feature_time = as_of + timedelta(hours=8) if strict_split_boundaries else as_of
                 samples.append(
                     LabelSample(
                         split=split_name,
@@ -258,8 +275,8 @@ def build_roadside_samples(
                         entity_id=entity_id,
                         current_available=available_count > 0,
                         current_ratio=available_count / len(as_of_labels),
-                        weekday=as_of.weekday(),
-                        hour=as_of.hour,
+                        weekday=feature_time.weekday(),
+                        hour=feature_time.hour,
                         label=any(arrival_labels),
                     )
                 )
@@ -378,15 +395,22 @@ def current_state_predictions(train: list[LabelSample], test: list[LabelSample])
 
 
 def logistic_regression_predictions(train: list[LabelSample], test: list[LabelSample], config: TrainingConfig) -> list[float]:
+    weights = fit_logistic_regression(train, config)
+    return [predict_logistic_regression(weights, sample) for sample in test]
+
+
+def fit_logistic_regression(train: list[LabelSample], config: TrainingConfig) -> list[float]:
+    if not train:
+        raise ValueError("Logistic regression requires training samples")
     settings = config.baseline_experiment
     iterations = int(settings.get("logisticIterations", 300))
     learning_rate = float(settings.get("logisticLearningRate", 0.05))
     l2 = float(settings.get("logisticL2", 0.001))
     weights = [0.0] * len(features(train[0]))
+    feature_rows = [features(sample) for sample in train]
     for _ in range(iterations):
         gradients = [0.0] * len(weights)
-        for sample in train:
-            values = features(sample)
+        for sample, values in zip(train, feature_rows):
             prediction = sigmoid(dot(weights, values))
             error = prediction - (1.0 if sample.label else 0.0)
             for index, value in enumerate(values):
@@ -394,7 +418,11 @@ def logistic_regression_predictions(train: list[LabelSample], test: list[LabelSa
         for index in range(len(weights)):
             penalty = l2 * weights[index] if index else 0.0
             weights[index] -= learning_rate * ((gradients[index] / len(train)) + penalty)
-    return [sigmoid(dot(weights, features(sample))) for sample in test]
+    return weights
+
+
+def predict_logistic_regression(weights: list[float], sample: LabelSample) -> float:
+    return sigmoid(dot(weights, features(sample)))
 
 
 def features(sample: LabelSample) -> list[float]:

@@ -2,6 +2,13 @@
 
 更新日期：2026-10-25。
 
+## 2026-10-25 Sprint 3 離線 ML 80/10/10 首輪訓練與測試
+
+- **資料與切分**：讀取本機 `data/private/collector-samples` 內 2026-09-24 至 2026-10-24 的 31 個 daily ZIP，包含 roadside 2,522,054 列與 offstreet 192,850 列；沒有呼叫官方 API。依時間順序用 25／3／3 個日期切分（train 80.6%、validation 9.7%、test 9.7%）；有效標籤數因 unknown 與配對拒絕而呈 train 約 77.7–78.5%、validation 約 10.4–10.9%、test 約 11.1–11.3%。as-of 與 arrival 必須在同一 split；跨界標籤排除。roadside 圈只用 train 結束前座標建立，週期特徵改為臺北時間。
+- **模型與測試**：每類資料各訓練 30／60 分鐘 Logistic Regression，共 4 個本機候選 JSON。validation 依 Brier 選比較方法；四組中 offstreet 30／60m 與 roadside 30m 選 current-state persistence，roadside 60m 選 logistic。最後 test（10/22–10/24）roadside 60m Logistic Brier 0.1094，persistence 0.1169；路外 Logistic test Brier 0.0254／0.0289，均高於 persistence 的 0.0130／0.0178。其餘詳細分數、FPR、低可用比例 precision 見私有報告 `data/private/collector-samples/experiment-80-10-10-2026-10-25.md`。
+- **資料限制與判讀**：全期 roadside raw 狀態有 25,113 次相鄰變化；offstreet unknown／負值／空值占 72.21%。有效樣本正例率差異大（路外約 90%、路邊 test 約 30%），需避免只看 accuracy。test 僅 3 日；單一區域、重疊候選圈與約 30 分鐘收集間隔限制泛化與短 ETA 解讀；roadside 狀態依已記錄規則離線 re-label。這是固定 lead 離線實驗，不是 ETA-aware 產品模型，也未通過 S3-020 准入。
+- **產物與後續**：模型 JSON 位於已忽略的 `ml-training/models/experiment-80-10-10-2026-10-25/`，標記 `EXPERIMENT_ONLY`／`publishToOnlineSystem=false`；未接線上 `predictions`，線上仍為 `INSUFFICIENT_DATA`／null probability。重跑方式見 `ml-training/README.md`。下一步仍需確認來源觀測更新語意、擴大時間／地區資料，並在正式 ETA-aware 樣本與 S3-020 gate 下再次評估。
+
 ## 2026-10-25 Issue #94 同源規劃查詢 403 修復與驗證
 
 - **診斷基準**：乾淨工作樹從 `main@ea7e930aff28c5fa2c32c7bd4a072b028594a43a` 切到遠端既有的 `codex/fix-parking-query-403`。修正前，本機 Docker Web `POST /api/v1/parking-queries` 無 `Origin` 回 `202` 並建立 `queryId`；相同 JSON 加 `Origin: http://127.0.0.1:18088` 回 `403 Invalid CORS request`。因此根因是 Spring MVC CORS 對代理後 request origin 的判定，不是 API 業務驗證或 Nginx 限流。

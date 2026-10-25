@@ -29,7 +29,7 @@
 
 ## 目前狀態
 
-更新至 2026-10-24：Sprint 2 主系統基線與 Sprint 3 預測前置工作已存在。核心資料表與 Flyway、附近目錄查詢（目前產品半徑 500 公尺）、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為、Redis query state、Google Maps／Places 載入路徑、頁面可見時的受控自動刷新，以及 Sprint 3 預測進入條件均已存在。此分支統一起訖點 Places 搜尋並將 Docker Compose 收斂為單一安全預設設定；PR 審查結果及其精確驗證狀態以本次交付記錄為準。
+更新至 2026-10-25：Sprint 2 主系統基線與 Sprint 3 預測前置工作已存在。核心資料表與 Flyway、附近目錄查詢（目前產品半徑 500 公尺）、候選快照正規化與發布、MySQL 冷卻與 Redis 短鎖、Google Routes ETA 與降級行為、Redis query state、Google Maps／Places 載入路徑、頁面可見時的受控自動刷新，以及 Sprint 3 預測進入條件均已存在。2026-10-25 已完成 31 日 collector 樣本的首輪 chronological 80/10/10 離線 ML 訓練與測試；候選只保留在本機實驗產物，尚未接線上查詢。此分支統一起訖點 Places 搜尋並將 Docker Compose 收斂為單一安全預設設定；PR 審查結果及其精確驗證狀態以本次交付記錄為準。
 
 現階段目錄已從少量合成種子資料推進為可追溯的新北市官方 Open Data 小樣本與來源 ID 對應，但仍不是完整新莊目錄。設定受限 browser key 時可載入 Maps／Places；沒有 key 時搜尋會明確顯示不可用，已核實的新莊捷運站預設地點仍可使用，畫面不提供手動座標欄位。真實 Places 候選互動與可見頁官方刷新仍需人工驗收，預測模型尚未開始輸出機率。
 
@@ -77,5 +77,6 @@ docker compose --env-file .env up -d --build
 python ml-training/scripts/plan_training_run.py --config ml-training/config/training-config.example.json
 python ml-training/scripts/generate_label_dry_run.py --config ml-training/config/training-config.example.json --input data/private/collector-samples --output data/private/collector-samples/label-dry-run-2026-09-24_2026-10-02.md
 python ml-training/scripts/run_baseline_experiment.py --config ml-training/config/training-config.example.json --input data/private/collector-samples --output data/private/collector-samples/baseline-experiment-2026-09-24_2026-10-02.md
+python ml-training/scripts/run_801010_experiment.py --config ml-training/config/training-config-80-10-10.example.json --input data/private/collector-samples --output data/private/collector-samples/experiment-80-10-10-2026-10-25.md --artifact-dir ml-training/models/experiment-80-10-10-2026-10-25
 python -m unittest discover -s ml-training/tests
 ```

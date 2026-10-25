@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "ml-training-config-v1",
+  "project": "taiwan-parking-forecast",
+  "source": {
+    "type": "collector-daily-zip",
+    "description": "parking-data-collector Google Drive daily ZIP exports",
+    "localSampleDirectory": "data/private/collector-samples",
+    "excludedDates": [
+      {
+        "date": "2026-09-23",
+        "reason": "User reported incomplete sample; excluded from the first training period."
+      }
+    ]
+  },
+  "datasets": {
+    "roadside": {
+      "labelPolicy": "confirmed_available_status_2_else_false_offline_relabel",
+      "entityKey": "spot_id",
+      "target": "is_available",
+      "minimumReliableLabelRatio": 0.0
+    },
+    "offstreet": {
+      "labelPolicy": "available_car_non_negative_with_unknown_rejected",
+      "entityKey": "lot_id",
+      "target": "availability_ratio",
+      "minimumReliableLabelRatio": 0.2
+    }
+  },
+  "split": {
+    "strategy": "chronological_date_80_10_10",
+    "trainStart": "2026-09-24",
+    "trainEnd": "2026-10-18",
+    "validationStart": "2026-10-19",
+    "validationEnd": "2026-10-21",
+    "testStart": "2026-10-22",
+    "testEnd": "2026-10-24",
+    "rowRandomSplitAllowed": false,
+    "futureDefault": "chronological_date_split_with_embargoed_cross_boundary_labels"
+  },
+  "labelDryRun": {
+    "leadMinutes": [30, 60],
+    "labelToleranceMinutes": 15,
+    "roadsideRadiusMeters": 500,
+    "maxRoadsideCandidateCenters": 50,
+    "allowProvisionalRoadsideLabels": false
+  },
+  "baselineExperiment": {
+    "minTrainSamples": 500,
+    "minTestSamples": 100,
+    "maxTestBrierForCandidate": 0.2,
+    "logisticIterations": 300,
+    "logisticLearningRate": 0.05,
+    "logisticL2": 0.001
+  },
+  "outputs": {
+    "reportDirectory": "ml-training/reports/private",
+    "artifactDirectory": "ml-training/models",
+    "publishToOnlineSystem": false
+  }
+}

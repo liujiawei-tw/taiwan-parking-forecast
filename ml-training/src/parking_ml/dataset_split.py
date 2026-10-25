@@ -38,16 +38,28 @@ class DateRange:
 class ChronologicalSplit:
     train: DateRange
     test: DateRange
+    validation: DateRange | None = None
 
     def __post_init__(self) -> None:
-        if self.train.overlaps(self.test):
-            raise ValueError("Training and test date ranges must not overlap")
-        if self.train.end >= self.test.start:
-            raise ValueError("Training range must end before test range starts")
+        if self.validation is None:
+            if self.train.overlaps(self.test):
+                raise ValueError("Training and test date ranges must not overlap")
+            if self.train.end >= self.test.start:
+                raise ValueError("Training range must end before test range starts")
+            return
+
+        if self.train.overlaps(self.validation) or self.validation.overlaps(self.test):
+            raise ValueError("Training, validation, and test date ranges must not overlap")
+        if self.train.end >= self.validation.start:
+            raise ValueError("Training range must end before validation range starts")
+        if self.validation.end >= self.test.start:
+            raise ValueError("Validation range must end before test range starts")
 
     def split_for(self, value: date) -> str | None:
         if self.train.contains(value):
             return "train"
+        if self.validation is not None and self.validation.contains(value):
+            return "validation"
         if self.test.contains(value):
             return "test"
         return None

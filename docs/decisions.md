@@ -2,6 +2,12 @@
 
 以下只記錄已明確採納的方向。草案與尚待驗證的選項請放到 `open-questions.md`。
 
+## 2026-10-25：首輪 ML 候選採 80/10/10 日期順序切分
+
+- **決策**：依使用者指示，以 2026-09-24 至 2026-10-24 的本機 collector 樣本進行 80% train、10% validation、10% test 的離線實驗。採連續日期切分（25／3／3 日），不使用 row-random；as-of 與 arrival label 必須在同一 split，跨界樣本排除。Logistic Regression 只用 train 擬合，validation 依 Brier 選比較方法，test 留作最後回測。
+- **原因**：停車資料同日與相鄰收集輪高度相關，保留時間順序較能檢查近期時間外推；test 不回流訓練可避免回報訓練內分數。
+- **本輪狀態**：日曆日期比例為 80.6／9.7／9.7；因 label 缺值與 arrival 配對拒絕，實際可用樣本比例約 77.7–78.5／10.4–10.9／11.1–11.3，結果記於 `current-state.md` 與私有實驗報告。這只決定本輪實驗，不是模型上線門檻；全部候選保持 `EXPERIMENT_ONLY`。
+
 ## 2026-10-25：同源 API 代理保留 Host port 並限制 Forwarded 標頭
 
 - **決策**：Web Nginx 以原始 `Host`（含 port）代理 API。正常 HTTP 不送 `X-Forwarded-Proto`；只有已列入 Nginx 既有私有 `set_real_ip_from` 網段的上游，送出值恰為 `https` 時，才將該 scheme 傳給 Spring，並只在原始 Host 明確帶 port 時合成相同的 `X-Forwarded-Port`。Nginx 清除 client-supplied `X-Forwarded-Host`／`X-Forwarded-Port`、prefix 與標準 `Forwarded`，並只轉送已解析的單一 client IP。Spring 使用 `forward-headers-strategy=framework` 處理這組正規化標頭。

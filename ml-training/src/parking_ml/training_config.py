@@ -34,6 +34,11 @@ class TrainingConfig:
                 f"- Local samples: {self.local_sample_directory}",
                 f"- Excluded dates: {excluded}",
                 f"- Train dates: {self.split.train.start.isoformat()}..{self.split.train.end.isoformat()}",
+                *(
+                    [f"- Validation dates: {self.split.validation.start.isoformat()}..{self.split.validation.end.isoformat()}"]
+                    if self.split.validation is not None
+                    else []
+                ),
                 f"- Test dates: {self.split.test.start.isoformat()}..{self.split.test.end.isoformat()}",
                 f"- Row-random split allowed: {str(self.row_random_split_allowed).lower()}",
                 f"- Publish to online system: {str(self.publish_to_online_system).lower()}",
@@ -49,6 +54,10 @@ def load_training_config(path: Path) -> TrainingConfig:
     outputs = data["outputs"]
     source = data["source"]
     excluded_dates = tuple(item["date"] for item in source.get("excludedDates", []))
+    validation_start = split.get("validationStart")
+    validation_end = split.get("validationEnd")
+    if (validation_start is None) != (validation_end is None):
+        raise ValueError("Validation start and end dates must be configured together")
     config = TrainingConfig(
         schema_version=str(data["schemaVersion"]),
         source_type=str(source["type"]),
@@ -56,6 +65,11 @@ def load_training_config(path: Path) -> TrainingConfig:
         split=ChronologicalSplit(
             train=DateRange(parse_date(split["trainStart"]), parse_date(split["trainEnd"])),
             test=DateRange(parse_date(split["testStart"]), parse_date(split["testEnd"])),
+            validation=(
+                DateRange(parse_date(validation_start), parse_date(validation_end))
+                if validation_start is not None
+                else None
+            ),
         ),
         row_random_split_allowed=bool(split["rowRandomSplitAllowed"]),
         publish_to_online_system=bool(outputs["publishToOnlineSystem"]),
