@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "ml-training" / "src"))
 
 from parking_ml.offstreet_shadow import (  # noqa: E402
     DEFAULT_ARRIVAL_TOLERANCE_MINUTES,
+    DEFAULT_MAX_AS_OF_AGE_MINUTES,
     DEFAULT_MAX_PREDICTIONS_PER_LEAD,
     DEFAULT_SOURCE_TIME_TOLERANCE_MINUTES,
     generate_predictions,
@@ -58,13 +59,18 @@ def main() -> int:
     commands = parser.add_subparsers(dest="command", required=True)
 
     predict = commands.add_parser("predict", help="產生不含抵達標籤的私有預測 JSONL")
+    predict.add_argument("--mode", choices=("REPLAY", "PROSPECTIVE"), required=True,
+                         help="REPLAY 使用歷史回放；PROSPECTIVE 使用執行當下的來源資料")
     predict.add_argument("--input", type=Path, required=True, help="本機 collector ZIP 檔或其資料夾")
     predict.add_argument("--training-config", type=Path, default=DEFAULT_TRAINING_CONFIG)
     predict.add_argument("--output", type=Path, required=True, help="預測列 JSONL，必須位於 ignored private 目錄")
     predict.add_argument("--logistic-artifact-dir", type=Path, help="合格 v2 Logistic artifact 資料夾；缺省時不輸出 Logistic 機率")
-    predict.add_argument("--generated-at", type=parse_timestamp, help="預測產生時間，必須帶時區；預設目前時間")
+    predict.add_argument("--runtime-at", "--generated-at", dest="runtime_at", type=parse_timestamp,
+                         help="程式實際執行時間，必須帶時區；預設目前時間")
     predict.add_argument("--arrival-tolerance-minutes", type=int, default=DEFAULT_ARRIVAL_TOLERANCE_MINUTES)
     predict.add_argument("--source-time-tolerance-minutes", type=int, default=DEFAULT_SOURCE_TIME_TOLERANCE_MINUTES)
+    predict.add_argument("--max-as-of-age-minutes", type=int, required=True,
+                         help=f"as-of 來源回應相對 predictionAt 的最大年齡；Shadow MVP 建議 {DEFAULT_MAX_AS_OF_AGE_MINUTES} 分鐘")
     predict.add_argument("--max-predictions-per-lead", type=int, default=DEFAULT_MAX_PREDICTIONS_PER_LEAD)
 
     verify = commands.add_parser("verify", help="等目標時間經過後配對實際觀測，僅輸出 aggregate Markdown／JSON")
@@ -78,22 +84,30 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.command == "predict":
+            if args.mode == "PROSPECTIVE" and args.runtime_at is not None:
+                parser.error("PROSPECTIVE 的 predictionAt 必須使用 runner 執行時間；請勿傳入 --runtime-at")
             require_private_path(args.output, "預測列")
             require_new_paths([args.output])
             metadata = generate_predictions(
                 args.input,
                 args.training_config,
                 args.output,
-                generated_at=args.generated_at,
+                mode=args.mode,
+                runtime_at=args.runtime_at,
                 logistic_artifact_dir=args.logistic_artifact_dir,
                 arrival_tolerance_minutes=args.arrival_tolerance_minutes,
                 source_time_tolerance_minutes=args.source_time_tolerance_minutes,
+                max_as_of_age_minutes=args.max_as_of_age_minutes,
                 max_predictions_per_lead=args.max_predictions_per_lead,
             )
             print(json.dumps({
                 "status": metadata["status"],
                 "publishToOnlineSystem": metadata["publishToOnlineSystem"],
                 "sourceType": metadata["sourceType"],
+                "mode": metadata["mode"],
+                "evaluationType": metadata["evaluationType"],
+                "runtimeAtUtc": metadata["runtimeAtUtc"],
+                "maxAsOfAgeMinutes": metadata["maxAsOfAgeMinutes"],
                 "sourceZipCount": metadata["sourceZipCount"],
                 "sourceRows": metadata["sourceRows"],
                 "candidateAuditByLead": metadata["candidateAuditByLead"],

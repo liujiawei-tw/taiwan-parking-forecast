@@ -1101,3 +1101,12 @@ Roadside complete 30m test 只有 41 筆，低於設定的 100 筆最低門檻�
 - 本機資料實跑共讀取 192,850 列，兩個 lead 合計 40,600 候選；as-of 有效後依不使用 label 的固定 hash 抽樣各 50 筆。抵達核對 98／100 可驗證（30m 50、60m 48），另 2 筆因抵達觀測缺失而不可驗證；覆蓋 3 個日期、38 個停車場。30m 正／負例為 46／4，60m 為 40／8。Persistence 的 Brier 為 0.00250／0.02125，Calibrated Persistence 為 0.00087／0.01863；兩者各 lead 的 FPR 為 0、Precision 為 1.00。只涵蓋 3 日，結果一律 `EXPLORATORY_ONLY`，不作上線或門檻依據。
 - 本機 Logistic v2 artifact 的訓練 metadata 未通過 runner 資格檢查，故不輸出其預測機率，也不納入比較。報告中的正式預測狀態為 `EXPERIMENT_ONLY`、`publishToOnlineSystem=false`、`onlinePredictionsWritten=false`、`onlineModelVersion=null`、`onlineProbability=null`。
 - 驗證：`python -m unittest discover -s ml-training/tests` 31 tests 通過；`python -m compileall -q ml-training` 通過。Windows 預設暫存目錄及 worktree 編譯快取受 sandbox 權限限制，執行時將測試暫存與 bytecode cache 指向 ignored private 目錄。`git diff --check` 通過。
+
+### PR #97 review：Shadow Test 時間因果性與模式區分（2026-10-25）
+
+- **時間欄位與新鮮度**：prediction rows 明確記錄 `collectedAtUtc`、`sourceResponseAtUtc`、`predictionAtUtc`、`targetArrivalAtUtc`。REPLAY 的模擬時間取收集列與來源回應兩者較晚者；PROSPECTIVE 的預測時間由 CLI 執行時取得。來源回應晚於預測時間、收集列晚於預測時間、缺少時間 metadata，或來源回應距預測時間超過 15 分鐘都拒收。15 分鐘是可調整且寫入報告的 Shadow MVP 參數，不是已確認的產品 TTL。30／60 分鐘 lead 與 train label 均從 `predictionAt` 起算。
+- **REPLAY／PROSPECTIVE**：REPLAY 標記 `RETROSPECTIVE_REPLAY`，保留實際 runner 時間與逐筆歷史模擬時間，使用既有 test 日期範圍，不宣稱前瞻或新 holdout。PROSPECTIVE 只採既有 test 日期結束後、執行時已取得且新鮮的觀測；每場只保留最新合格列。核對端若抵達列已收集但來源回應時間晚於 `verifiedAt`，保持 `PENDING`；缺列或品質不合格仍為 `UNVERIFIABLE`。正式 predictions 不受影響。
+- **本機資料回放**：31 個 collector ZIP／192,850 列。新輸出位於 ignored private 路徑 `data/private/collector-samples/pr97-time-causality-2026-10-25/`，未覆寫既有報告。REPLAY 仍為 98／100 可驗證（30m 50、60m 48），2 筆因抵達觀測缺失而不可驗證；覆蓋 3 個日期、38 個場站。四組既有 Brier 與舊報告逐值相等：Persistence 0.002500／0.021250、Calibrated Persistence 0.0008710952／0.0186322579；兩者各 lead FPR 0、Precision 1.00。本機 Logistic artifact 因 training metadata 不符合新 runner 的訓練樣本資格檢查而安全停用。此結果仍是探索性歷史回放。
+- **前瞻資料**：目前 ZIP 的資料日期只到 2026-10-24，且屬既有 test 範圍；PROSPECTIVE 報告狀態為 `NO_QUALIFYING_PROSPECTIVE_DATA`，候選與預測均為 0。需要有既有 test 日期之後的新鮮 collector 觀測，才可進行前瞻等待與核對。
+- **驗證**：`python -m unittest discover -s ml-training/tests` 36 tests 通過；`python -m compileall -q ml-training` 通過；`git diff --check` 通過。涵蓋來源回應早晚於預測時刻、新鮮度拒收、歷史時間回放、過去目標拒收、抵達回應尚未收到時保持 pending、既有資料不得冒充新 holdout、原有標籤拒收／同 cohort 指標／aggregate 隱私回歸。
+- **前輪 CI 診斷**：GitHub Actions run `40196934879` 回報 Docker、Frontend、Backend 三個 job failure；GitHub connector 回傳 job `steps=[]`，三個 job log 下載均為 `BlobNotFound`。目前無足夠證據區分 runner／平台問題與各自程式失敗，不推測失敗原因；待本次推送後檢查新 run。

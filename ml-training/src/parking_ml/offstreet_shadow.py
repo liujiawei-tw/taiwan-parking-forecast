@@ -31,6 +31,7 @@ LEADS = (30, 60)
 MODEL_NAMES = ("current_state_persistence", "calibrated_state_persistence_v1", "logistic_regression_v1")
 DEFAULT_ARRIVAL_TOLERANCE_MINUTES = 15
 DEFAULT_SOURCE_TIME_TOLERANCE_MINUTES = 10
+DEFAULT_MAX_AS_OF_AGE_MINUTES = 15
 DEFAULT_MAX_PREDICTIONS_PER_LEAD = 50
 EXPLORATORY_MINIMUM_SAMPLES = 50
 EXPLORATORY_MINIMUM_DISTINCT_DATES = 5
@@ -73,25 +74,33 @@ def generate_predictions(
     training_config_path: Path,
     output_path: Path,
     *,
+    mode: str,
     generated_at: datetime | None = None,
+    runtime_at: datetime | None = None,
     logistic_artifact_dir: Path | None = None,
     arrival_tolerance_minutes: int = DEFAULT_ARRIVAL_TOLERANCE_MINUTES,
     source_time_tolerance_minutes: int = DEFAULT_SOURCE_TIME_TOLERANCE_MINUTES,
+    max_as_of_age_minutes: int = DEFAULT_MAX_AS_OF_AGE_MINUTES,
     max_predictions_per_lead: int | None = DEFAULT_MAX_PREDICTIONS_PER_LEAD,
 ) -> dict[str, Any]:
-    """Write private prediction rows without labels or future-result features."""
-    if arrival_tolerance_minutes < 0 or source_time_tolerance_minutes < 0:
+    """Write private prediction rows using either historical replay or runtime time."""
+    if mode not in {"REPLAY", "PROSPECTIVE"}:
+        raise ValueError("shadow_mode_must_be_REPLAY_or_PROSPECTIVE")
+    if generated_at is not None and runtime_at is not None:
+        raise ValueError("specify_only_one_of_generated_at_or_runtime_at")
+    if arrival_tolerance_minutes < 0 or source_time_tolerance_minutes < 0 or max_as_of_age_minutes < 0:
         raise ValueError("shadow_time_tolerances_must_not_be_negative")
     if max_predictions_per_lead is not None and max_predictions_per_lead < 1:
         raise ValueError("max_predictions_per_lead_must_be_positive_or_none")
     config = load_training_config(training_config_path)
     if tuple(int(x) for x in config.label_dry_run.get("leadMinutes", LEADS)) != LEADS:
         raise ValueError("shadow_test_supports_fixed_30_and_60_minute_leads_only")
-    generated_at = as_utc(generated_at or datetime.now(timezone.utc))
+    runtime_at = as_utc(runtime_at or generated_at or datetime.now(timezone.utc))
     dataset = read_dataset(input_path)
     groups = grouped_observations(dataset.by_lot)
     train_samples, train_rejections = build_training_samples(
-        groups, config, generated_at, arrival_tolerance_minutes, source_time_tolerance_minutes
+        groups, config, runtime_at, arrival_tolerance_minutes, source_time_tolerance_minutes,
+        max_as_of_age_minutes,
     )
     config_sha = sha256_file(training_config_path)
     artifacts = {
@@ -116,12 +125,25 @@ def generate_predictions(
                 representative = representative_of(group)
                 sample_row = representative or group[0]
                 obs = sample_row.observation
-                if config.split.split_for(taipei_date(obs.collected_at)) != "test":
+                observation_date = taipei_date(obs.collected_at)
+                if mode == "REPLAY" and config.split.split_for(observation_date) != "test":
                     continue
+                if mode == "PROSPECTIVE":
+                    prior_holdout_end = config.split.test.end if config.split.test else config.split.validation.end
+                    if observation_date <= prior_holdout_end:
+                        continue
                 candidate_count += 1
                 reason = group_reason(group, source_time_tolerance_minutes, "as_of")
-                if reason is None and obs.collected_at > generated_at:
-                    reason = "as_of_timestamp_after_prediction_time"
+                prediction_at = prediction_time_for(sample_row, mode, runtime_at)
+                if mode == "REPLAY" and reason is None and (
+                    obs.collected_at > runtime_at
+                    or (sample_row.source_response_at is not None and sample_row.source_response_at > runtime_at)
+                ):
+                    reason = "replay_observation_after_runtime"
+                if mode == "PROSPECTIVE" and reason is None and obs.collected_at > runtime_at:
+                    reason = "as_of_collected_after_prediction_time"
+                if reason is None:
+                    reason = as_of_time_reason(sample_row, prediction_at, max_as_of_age_minutes)
                 if reason is None and obs.is_unknown:
                     reason = "as_of_availability_unknown"
                 if reason is None and (obs.available_car is None or obs.available_car < 0):
@@ -130,6 +152,30 @@ def generate_predictions(
                     rejected[reason] += 1
                 else:
                     candidates.append(representative)
+
+        if mode == "PROSPECTIVE":
+            # Evaluate one current snapshot per lot. The newest eligible row
+            # wins explicitly so result order cannot create duplicate trials.
+            newest_by_lot: dict[str, ShadowObservation] = {}
+            for item in candidates:
+                lot_id = item.observation.lot_id
+                previous = newest_by_lot.get(lot_id)
+                item_rank = (
+                    item.source_response_at or item.observation.collected_at,
+                    item.observation.collected_at,
+                    item.fingerprint,
+                )
+                previous_rank = None if previous is None else (
+                    previous.source_response_at or previous.observation.collected_at,
+                    previous.observation.collected_at,
+                    previous.fingerprint,
+                )
+                if previous_rank is None or item_rank > previous_rank:
+                    newest_by_lot[lot_id] = item
+            superseded = len(candidates) - len(newest_by_lot)
+            if superseded:
+                rejected["superseded_by_newer_prospective_observation"] += superseded
+            candidates = list(newest_by_lot.values())
 
         selected = select_candidates(candidates, lead, max_predictions_per_lead)
         candidate_audit[str(lead)] = {
@@ -160,6 +206,7 @@ def generate_predictions(
         }
         for item in selected:
             obs = item.observation
+            prediction_at = prediction_time_for(item, mode, runtime_at)
             local = taipei_time(obs.collected_at)
             sample = LabelSample(
                 split="test", lead_minutes=lead, entity_id=obs.lot_id,
@@ -173,6 +220,7 @@ def generate_predictions(
                 "sampleId": hashlib.sha256(f"{item.fingerprint}:{lead}".encode()).hexdigest(),
                 "parkingLotId": obs.lot_id,
                 "asOfObservationFingerprint": item.fingerprint,
+                "collectedAtUtc": iso_utc(obs.collected_at),
                 "asOfAtUtc": iso_utc(obs.collected_at),
                 "asOfDateTaipei": taipei_date(obs.collected_at).isoformat(),
                 "asOfAvailableCar": obs.available_car,
@@ -180,8 +228,9 @@ def generate_predictions(
                 "asOfQuality": "QUALIFIED",
                 "sourceResponseAtUtc": iso_utc(item.source_response_at),
                 "sourceTimeDeltaMinutes": source_time_delta(item),
+                "predictionAtUtc": iso_utc(prediction_at),
                 "leadMinutes": lead,
-                "targetArrivalAtUtc": iso_utc(obs.collected_at + timedelta(minutes=lead)),
+                "targetArrivalAtUtc": iso_utc(prediction_at + timedelta(minutes=lead)),
                 "probabilities": {
                     "current_state_persistence": current_state_predictions(train, [sample])[0],
                     "calibrated_state_persistence_v1": calibrated.predict(sample) if calibrated else None,
@@ -203,7 +252,14 @@ def generate_predictions(
         "sourceRows": dataset.source_rows, "parsedRows": dataset.parsed_rows,
         "parseSkippedRows": dataset.skipped_rows,
         "sourceZipSha256AtPrediction": dataset.zip_sha256,
-        "trainingConfigSha256": config_sha, "generatedAtUtc": iso_utc(generated_at),
+        "trainingConfigSha256": config_sha,
+        "generatedAtUtc": iso_utc(runtime_at), "runtimeAtUtc": iso_utc(runtime_at),
+        "mode": mode,
+        "evaluationType": "RETROSPECTIVE_REPLAY" if mode == "REPLAY" else "PROSPECTIVE",
+        "isNewHoldout": mode == "PROSPECTIVE" and any(
+            audit["sampledPredictionCount"] > 0 for audit in candidate_audit.values()
+        ),
+        "maxAsOfAgeMinutes": max_as_of_age_minutes,
         "leadMinutes": list(LEADS), "arrivalToleranceMinutes": arrival_tolerance_minutes,
         "sourceTimestampDeltaToleranceMinutes": source_time_tolerance_minutes,
         "maxPredictionsPerLead": max_predictions_per_lead,
@@ -226,7 +282,7 @@ def verify_predictions(
     report_markdown_path: Path | None = None,
     verified_at: datetime | None = None,
 ) -> dict[str, Any]:
-    """Pair only due predictions; a missing or invalid arrival stays unverifiable."""
+    """Pair only due predictions with observations available by verification time."""
     verified_at = as_utc(verified_at or datetime.now(timezone.utc))
     stored = read_jsonl(prediction_path)
     if not stored or stored[0].get("recordType") != "metadata":
@@ -250,6 +306,14 @@ def verify_predictions(
             continue
         target = parse_aware_datetime(prediction["targetArrivalAtUtc"])
         result = dict(prediction)
+        prediction_at = parse_aware_datetime(prediction.get("predictionAtUtc", prediction["asOfAtUtc"]))
+        if target <= prediction_at:
+            result.update({
+                "verificationStatus": "UNVERIFIABLE",
+                "verificationReason": "target_arrival_not_after_prediction_time",
+            })
+            results.append(result)
+            continue
         if target > verified_at:
             result.update({"verificationStatus": "PENDING", "verificationReason": "target_arrival_not_elapsed"})
             results.append(result)
@@ -262,18 +326,27 @@ def verify_predictions(
             continue
         reason = group_reason([as_of], int(metadata["sourceTimestampDeltaToleranceMinutes"]), "as_of")
         if reason is None:
+            reason = as_of_time_reason(
+                as_of, prediction_at,
+                int(metadata.get("maxAsOfAgeMinutes", DEFAULT_MAX_AS_OF_AGE_MINUTES)),
+            )
+        if reason is None:
             reason = availability_reason(as_of.observation, "as_of")
         if reason:
             result.update({"verificationStatus": "UNVERIFIABLE", "verificationReason": reason})
             results.append(result)
             continue
         arrival, reason, delta = find_arrival(
-            groups.get(prediction["parkingLotId"], []), as_of.observation, target,
+            groups.get(prediction["parkingLotId"], []), prediction_at, target,
             timedelta(minutes=int(metadata["arrivalToleranceMinutes"])),
             int(metadata["sourceTimestampDeltaToleranceMinutes"]), verified_at,
             timestamp_indexes.get(prediction["parkingLotId"], []),
         )
         if arrival is None:
+            if reason == "arrival_source_response_not_yet_available":
+                result.update({"verificationStatus": "PENDING", "verificationReason": reason})
+                results.append(result)
+                continue
             result.update({"verificationStatus": "UNVERIFIABLE", "verificationReason": reason or "arrival_observation_missing"})
             results.append(result)
             continue
@@ -369,6 +442,31 @@ def source_time_reason(item: ShadowObservation, tolerance_minutes: int) -> str |
     return None
 
 
+def prediction_time_for(item: ShadowObservation, mode: str, runtime_at: datetime) -> datetime:
+    if mode == "PROSPECTIVE":
+        return runtime_at
+    # Replay models the earliest defensible time when both the collector row
+    # and its source response were available; it never uses the run's wall clock.
+    if item.source_response_at is None:
+        return item.observation.collected_at
+    return max(item.observation.collected_at, item.source_response_at)
+
+
+def as_of_time_reason(
+    item: ShadowObservation, prediction_at: datetime, max_age_minutes: int,
+) -> str | None:
+    if item.source_response_at is None:
+        return "source_timestamp_missing"
+    if item.source_response_at > prediction_at:
+        return "source_response_after_prediction_time"
+    if item.observation.collected_at > prediction_at:
+        return "as_of_collected_after_prediction_time"
+    age_minutes = (prediction_at - item.source_response_at).total_seconds() / 60
+    if age_minutes > max_age_minutes:
+        return "as_of_source_observation_stale_at_prediction"
+    return None
+
+
 def group_reason(group: list[ShadowObservation], source_tolerance: int, role: str) -> str | None:
     reasons = []
     for item in group:
@@ -392,7 +490,8 @@ def availability_reason(observation: OffstreetObservation, role: str) -> str | N
 
 def build_training_samples(
     groups: dict[str, list[list[ShadowObservation]]], config: Any,
-    generated_at: datetime, arrival_tolerance: int, source_tolerance: int,
+    runtime_at: datetime, arrival_tolerance: int, source_tolerance: int,
+    max_as_of_age: int,
 ) -> tuple[dict[int, list[LabelSample]], dict[int, Counter[str]]]:
     samples = {lead: [] for lead in LEADS}
     rejected = {lead: Counter() for lead in LEADS}
@@ -407,17 +506,20 @@ def build_training_samples(
             if config.split.split_for(taipei_date(obs.collected_at)) != "train":
                 continue
             reason = group_reason(group, source_tolerance, "as_of")
+            prediction_at = prediction_time_for(item, "REPLAY", runtime_at)
+            if reason is None and (obs.collected_at > runtime_at or item.source_response_at > runtime_at):
+                reason = "train_as_of_after_runtime"
+            if reason is None:
+                reason = as_of_time_reason(item, prediction_at, max_as_of_age)
             if reason is None and not obs.is_unknown and (obs.available_car is None or obs.available_car < 0):
                 reason = "as_of_available_car_missing_or_negative"
-            if reason is None and obs.collected_at > generated_at:
-                reason = "as_of_timestamp_after_prediction_time"
             for lead in LEADS:
                 if reason:
                     rejected[lead][reason] += 1
                     continue
                 arrival, why, _ = find_arrival(
-                    lot_groups, obs, obs.collected_at + timedelta(minutes=lead),
-                    timedelta(minutes=arrival_tolerance), source_tolerance, generated_at, timestamps,
+                    lot_groups, prediction_at, prediction_at + timedelta(minutes=lead),
+                    timedelta(minutes=arrival_tolerance), source_tolerance, runtime_at, timestamps,
                 )
                 if arrival is None:
                     rejected[lead][why or "arrival_observation_missing"] += 1
@@ -438,7 +540,7 @@ def build_training_samples(
 
 
 def find_arrival(
-    lot_groups: list[list[ShadowObservation]], as_of: OffstreetObservation,
+    lot_groups: list[list[ShadowObservation]], as_of_at: datetime,
     target: datetime, tolerance: timedelta, source_tolerance: int,
     observed_through: datetime, timestamps: list[datetime] | None = None,
 ) -> tuple[ShadowObservation | None, str | None, float | None]:
@@ -449,14 +551,27 @@ def find_arrival(
     for index in range(lower, upper):
         group = lot_groups[index]
         timestamp = ordered_timestamps[index]
-        if timestamp <= as_of.collected_at or timestamp > observed_through:
+        if timestamp <= as_of_at or timestamp > observed_through:
             continue
         delta = abs((timestamp - target).total_seconds())
         if delta <= tolerance.total_seconds():
             matches.append((delta, timestamp, group))
     if not matches:
         return None, "arrival_observation_missing", None
-    _, timestamp, group = min(matches, key=lambda item: (item[0], item[1]))
+    available_matches = []
+    response_pending = False
+    for match in matches:
+        _, _, group = match
+        responses = [item.source_response_at for item in group]
+        if any(value is not None and value > observed_through for value in responses):
+            response_pending = True
+            continue
+        available_matches.append(match)
+    if not available_matches:
+        if response_pending:
+            return None, "arrival_source_response_not_yet_available", None
+        return None, "arrival_observation_missing", None
+    _, timestamp, group = min(available_matches, key=lambda item: (item[0], item[1]))
     reason = group_reason(group, source_tolerance, "arrival")
     item = representative_of(group)
     if reason is None and item is not None:
@@ -598,6 +713,7 @@ def aggregate_report(metadata: dict[str, Any], rows: list[dict[str, Any]], datas
             "sourceZipSha256AtVerification": dataset.zip_sha256,
         },
         "policy": {
+            "asOfFreshnessMinutes": metadata.get("maxAsOfAgeMinutes", DEFAULT_MAX_AS_OF_AGE_MINUTES),
             "leadMinutes": list(LEADS),
             "arrivalObservationToleranceMinutes": metadata["arrivalToleranceMinutes"],
             "sourceTimestampDeltaToleranceMinutes": metadata["sourceTimestampDeltaToleranceMinutes"],
@@ -609,6 +725,15 @@ def aggregate_report(metadata: dict[str, Any], rows: list[dict[str, Any]], datas
             "status": "EXPERIMENT_ONLY", "publishToOnlineSystem": False,
             "onlinePredictionsWritten": False, "onlineModelVersion": None, "onlineProbability": None,
         },
+        "mode": metadata.get("mode", "REPLAY"),
+        "evaluationType": metadata.get("evaluationType", "RETROSPECTIVE_REPLAY"),
+        "runtimeAtUtc": metadata.get("runtimeAtUtc", metadata["generatedAtUtc"]),
+        "isNewHoldout": metadata.get("isNewHoldout", False),
+        "prospectiveDataStatus": (
+            "NOT_APPLICABLE" if metadata.get("mode") != "PROSPECTIVE"
+            else "QUALIFYING_PROSPECTIVE_DATA_AVAILABLE" if totals["sampledPredictionCount"]
+            else "NO_QUALIFYING_PROSPECTIVE_DATA"
+        ),
         "generatedAtUtc": metadata["generatedAtUtc"], "verifiedAtUtc": iso_utc(verified_at),
         "candidateCount": totals["candidateCount"], "sampledPredictionCount": totals["sampledPredictionCount"],
         "verifiedCount": len(all_verified), "unverifiableCount": totals["unverifiableCount"],
@@ -648,6 +773,9 @@ def render_markdown_report(report: dict[str, Any]) -> str:
     lines = [
         "# 路外停車 Shadow Test MVP 摘要", "",
         f"- 狀態：{report['status']}",
+        f"- 評估模式：{report.get('evaluationType', 'RETROSPECTIVE_REPLAY')}；程式執行時間：{report.get('runtimeAtUtc', report['generatedAtUtc'])}。",
+        f"- as-of 新鮮度門檻：{report['policy'].get('asOfFreshnessMinutes', DEFAULT_MAX_AS_OF_AGE_MINUTES)} 分鐘。",
+        f"- 前瞻資料狀態：{report.get('prospectiveDataStatus', 'NOT_APPLICABLE')}。",
         f"- 資料來源：{report['source']['type']}；ZIP {report['source']['sourceZipCountAtPrediction']} 個、路外原始列 {report['source']['sourceRowsAtPrediction']} 列。",
         f"- 抵達觀測容忍：±{report['policy']['arrivalObservationToleranceMinutes']} 分鐘；來源時間與收集時間容忍：±{report['policy']['sourceTimestampDeltaToleranceMinutes']} 分鐘。",
         f"- 候選 {report['candidateCount']}；抽樣預測 {report['sampledPredictionCount']}；可驗證 {report['verifiedCount']}；不可驗證 {report['unverifiableCount']}；as-of 拒收 {report['rejectedAsOfCount']}；尚未到期 {report['pendingCount']}。",

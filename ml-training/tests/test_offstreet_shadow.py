@@ -19,6 +19,186 @@ from parking_ml.calibrated_experiment import FEATURE_NAMES
 
 
 class OffstreetShadowTest(unittest.TestCase):
+    def test_prospective_features_require_available_fresh_source_response(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            rows = [
+                offstreet_row("lot-private-future-response", "2026-10-25", "10:00", 4,
+                              source_offset_minutes=8),
+                offstreet_row("lot-private-fresh-response", "2026-10-25", "10:00", 5,
+                              source_offset_minutes=6),
+                offstreet_row("lot-private-stale-at-prediction", "2026-10-25", "09:40", 3,
+                              source_offset_minutes=6),
+            ]
+            missing_source = offstreet_row("lot-private-missing-source", "2026-10-25", "10:00", 2)
+            missing_source["source_api_response_at_utc"] = ""
+            rows.append(missing_source)
+            source = root / "source"
+            write_rows_by_day(source, rows)
+            predictions = root / "private-predictions.jsonl"
+            early_predictions = root / "private-early-predictions.jsonl"
+
+            early = generate_predictions(
+                source, config_path, early_predictions,
+                mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T10:02:00+08:00"),
+                max_as_of_age_minutes=15,
+            )
+            self.assertFalse([
+                row for row in read_jsonl(early_predictions)
+                if row.get("recordType") == "prediction"
+            ])
+            self.assertEqual(
+                early["candidateAuditByLead"]["30"]["rejectedAsOf"].get("source_response_after_prediction_time"),
+                2,
+            )
+
+            metadata = generate_predictions(
+                source, config_path, predictions,
+                mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T10:07:00+08:00"),
+                max_as_of_age_minutes=15,
+            )
+
+            prediction_rows = [row for row in read_jsonl(predictions) if row.get("recordType") == "prediction"]
+            self.assertEqual(len(prediction_rows), 2)
+            self.assertTrue(all(row["parkingLotId"] == "lot-private-fresh-response" for row in prediction_rows))
+            for prediction in prediction_rows:
+                self.assertEqual(prediction["collectedAtUtc"], "2026-10-25T02:00:00Z")
+                self.assertEqual(prediction["sourceResponseAtUtc"], "2026-10-25T02:06:00Z")
+                self.assertEqual(prediction["predictionAtUtc"], "2026-10-25T02:07:00Z")
+                expected_target = "2026-10-25T02:37:00Z" if prediction["leadMinutes"] == 30 else "2026-10-25T03:07:00Z"
+                self.assertEqual(prediction["targetArrivalAtUtc"], expected_target)
+            self.assertEqual(
+                metadata["candidateAuditByLead"]["30"]["rejectedAsOf"].get("source_response_after_prediction_time"),
+                1,
+            )
+            self.assertEqual(
+                metadata["candidateAuditByLead"]["30"]["rejectedAsOf"].get("as_of_source_observation_stale_at_prediction"),
+                1,
+            )
+            self.assertEqual(
+                metadata["candidateAuditByLead"]["30"]["rejectedAsOf"].get("source_timestamp_missing"),
+                1,
+            )
+            self.assertEqual(metadata["maxAsOfAgeMinutes"], 15)
+            self.assertTrue(metadata["isNewHoldout"])
+
+    def test_replay_uses_historical_source_availability_clock(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            source = root / "source"
+            write_rows_by_day(source, [
+                offstreet_row("lot-private-replay", "2026-10-22", "10:00", 4,
+                              source_offset_minutes=6),
+            ])
+            predictions = root / "private-predictions.jsonl"
+
+            metadata = generate_predictions(
+                source, config_path, predictions, mode="REPLAY",
+                runtime_at=datetime.fromisoformat("2026-10-25T12:00:00+08:00"),
+            )
+
+            prediction_rows = [row for row in read_jsonl(predictions) if row.get("recordType") == "prediction"]
+            lead30 = next(row for row in prediction_rows if row["leadMinutes"] == 30)
+            self.assertEqual(metadata["evaluationType"], "RETROSPECTIVE_REPLAY")
+            self.assertFalse(metadata["isNewHoldout"])
+            self.assertEqual(metadata["runtimeAtUtc"], "2026-10-25T04:00:00Z")
+            self.assertEqual(lead30["collectedAtUtc"], "2026-10-22T02:00:00Z")
+            self.assertEqual(lead30["sourceResponseAtUtc"], "2026-10-22T02:06:00Z")
+            self.assertEqual(lead30["predictionAtUtc"], "2026-10-22T02:06:00Z")
+            self.assertEqual(lead30["targetArrivalAtUtc"], "2026-10-22T02:36:00Z")
+
+    def test_prospective_mode_does_not_relabel_old_test_zip_as_new_data(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            source = root / "source"
+            write_rows_by_day(source, [offstreet_row("lot-private-old", "2026-10-24", "10:00", 4)])
+            predictions = root / "private-predictions.jsonl"
+            metadata = generate_predictions(
+                source, config_path, predictions, mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T12:00:00+08:00"),
+            )
+
+            self.assertEqual(metadata["evaluationType"], "PROSPECTIVE")
+            self.assertFalse(metadata["isNewHoldout"])
+            self.assertEqual(metadata["candidateAuditByLead"]["30"]["candidateCount"], 0)
+            report = verify_predictions(
+                source, predictions,
+                verified_at=datetime.fromisoformat("2026-10-25T12:00:00+08:00"),
+            )
+            self.assertEqual(report["prospectiveDataStatus"], "NO_QUALIFYING_PROSPECTIVE_DATA")
+            self.assertEqual(report["sampledPredictionCount"], 0)
+
+    def test_verification_rejects_target_not_after_prediction_time(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            source = root / "source"
+            write_rows_by_day(source, [offstreet_row("lot-private-target", "2026-10-25", "10:00", 4)])
+            predictions = root / "private-predictions.jsonl"
+            generate_predictions(
+                source, config_path, predictions, mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T10:07:00+08:00"),
+            )
+            stored = read_jsonl(predictions)
+            for row in stored:
+                if row.get("recordType") == "prediction":
+                    row["targetArrivalAtUtc"] = row["predictionAtUtc"]
+            predictions.write_text("".join(json.dumps(row) + "\n" for row in stored), encoding="utf-8")
+
+            results_path = root / "private-results.jsonl"
+            verify_predictions(
+                source, predictions, results_path=results_path,
+                verified_at=datetime.fromisoformat("2026-10-25T12:00:00+08:00"),
+            )
+            results = [row for row in read_jsonl(results_path) if row.get("recordType") == "prediction"]
+            self.assertTrue(all(row["verificationStatus"] == "UNVERIFIABLE" for row in results))
+            self.assertTrue(all(
+                row["verificationReason"] == "target_arrival_not_after_prediction_time"
+                and "label" not in row for row in results
+            ))
+
+    def test_arrival_source_response_after_verification_time_stays_pending(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config_path = write_config(root)
+            source = root / "source"
+            write_rows_by_day(source, [
+                offstreet_row("lot-private-pending", "2026-10-25", "10:00", 4),
+                offstreet_row("lot-private-pending", "2026-10-25", "10:30", 3,
+                              source_offset_minutes=5),
+            ])
+            predictions = root / "private-predictions.jsonl"
+            generate_predictions(
+                source, config_path, predictions, mode="PROSPECTIVE",
+                runtime_at=datetime.fromisoformat("2026-10-25T10:00:00+08:00"),
+            )
+
+            early_results = root / "early-results.jsonl"
+            verify_predictions(
+                source, predictions, results_path=early_results,
+                verified_at=datetime.fromisoformat("2026-10-25T10:31:00+08:00"),
+            )
+            early = [row for row in read_jsonl(early_results) if row.get("recordType") == "prediction"]
+            lead30 = next(row for row in early if row["leadMinutes"] == 30)
+            self.assertEqual(lead30["verificationStatus"], "PENDING")
+            self.assertEqual(lead30["verificationReason"], "arrival_source_response_not_yet_available")
+            self.assertNotIn("label", lead30)
+
+            later_results = root / "later-results.jsonl"
+            verify_predictions(
+                source, predictions, results_path=later_results,
+                verified_at=datetime.fromisoformat("2026-10-25T10:36:00+08:00"),
+            )
+            later = [row for row in read_jsonl(later_results) if row.get("recordType") == "prediction"]
+            lead30 = next(row for row in later if row["leadMinutes"] == 30)
+            self.assertEqual(lead30["verificationStatus"], "VERIFIED")
+            self.assertTrue(lead30["label"])
+
     def test_prediction_phase_does_not_read_or_emit_future_labels(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -41,8 +221,8 @@ class OffstreetShadowTest(unittest.TestCase):
             generated_at = datetime.fromisoformat("2026-10-22T10:15:00+08:00").astimezone(timezone.utc)
             positive_file = root / "positive-predictions.jsonl"
             negative_file = root / "negative-predictions.jsonl"
-            generate_predictions(root / "positive", config_path, positive_file, generated_at=generated_at, max_predictions_per_lead=50)
-            generate_predictions(root / "negative", config_path, negative_file, generated_at=generated_at, max_predictions_per_lead=50)
+            generate_predictions(root / "positive", config_path, positive_file, mode="REPLAY", generated_at=generated_at, max_predictions_per_lead=50)
+            generate_predictions(root / "negative", config_path, negative_file, mode="REPLAY", generated_at=generated_at, max_predictions_per_lead=50)
 
             positive_rows = [json.loads(line) for line in positive_file.read_text(encoding="utf-8").splitlines()]
             negative_rows = [json.loads(line) for line in negative_file.read_text(encoding="utf-8").splitlines()]
@@ -70,7 +250,7 @@ class OffstreetShadowTest(unittest.TestCase):
             write_rows_by_day(source, rows)
             predictions = root / "private-predictions.jsonl"
             generated_at = datetime.fromisoformat("2026-10-24T23:45:00+08:00")
-            metadata = generate_predictions(source, config_path, predictions, generated_at=generated_at)
+            metadata = generate_predictions(source, config_path, predictions, mode="REPLAY", generated_at=generated_at)
             for lead in ("30", "60"):
                 self.assertEqual(
                     metadata["modelsByLead"][lead]["logistic_regression_v1"]["reason"],
@@ -160,6 +340,7 @@ class OffstreetShadowTest(unittest.TestCase):
             predictions = root / "private-predictions.jsonl"
             generate_predictions(
                 source, config_path, predictions,
+                mode="REPLAY",
                 generated_at=datetime.fromisoformat("2026-10-25T12:00:00+08:00"),
             )
             prediction_rows = [row for row in read_jsonl(predictions) if row.get("recordType") == "prediction"]
@@ -238,6 +419,7 @@ class OffstreetShadowTest(unittest.TestCase):
             predictions = root / "private-predictions.jsonl"
             metadata = generate_predictions(
                 source, config_path, predictions, logistic_artifact_dir=artifact_dir,
+                mode="REPLAY",
                 generated_at=datetime.fromisoformat("2026-10-25T12:00:00+08:00"),
             )
             for lead in ("30", "60"):

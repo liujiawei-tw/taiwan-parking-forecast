@@ -152,11 +152,29 @@ remain unverifiable. The private result JSONL keeps per-row matches and
 reasons; Markdown and JSON reports contain aggregate counts and metrics only.
 Outputs are EXPERIMENT_ONLY and never update production predictions.
 
+### 時間語意（PR #97 review 修正）
+
+產物會分開記錄 `collectedAtUtc`、`sourceResponseAtUtc`、`predictionAtUtc`
+與 `targetArrivalAtUtc`。as-of 特徵必須在預測時間時已收集且已收到來源回應；
+來源回應晚於預測時間、缺少／無效時間或相對預測時間超過新鮮度門檻時，會拒收。
+新鮮度門檻是 Shadow MVP 的明確實驗參數，預設 15 分鐘並寫進報告；它不是主系統
+產品 TTL 或上線准入門檻。
+
+- `--mode REPLAY` 以每筆資料的 `max(collectedAt, sourceResponseAt)` 作歷史模擬預測時間，
+  lead 從該時間起算。報告標示 `RETROSPECTIVE_REPLAY`、區分實際執行時間，並明確說明
+  這不是前瞻測試或新 holdout。
+- `--mode PROSPECTIVE` 以 runner 執行時間預測，只採既有 test 日期範圍之後、當下已收到且
+  新鮮的每場最新觀測；目標時間到達前保持 `PENDING`。若抵達列已收集但來源回應晚於核對
+  時間，也保持 `PENDING`；缺失或不合格觀測為 `UNVERIFIABLE`。只有舊 ZIP 時會報告
+  `NO_QUALIFYING_PROSPECTIVE_DATA`，不會將回放結果冒充前瞻結果。
+
+本機沒有已確認的產品 freshness 契約，所以執行時明確指定 15 分鐘：
+
 Use a new ignored output directory for each run. Keep the prediction and result
 JSONL files under data/private/, ml-training/data/, or
 ml-training/reports/private/:
 
-    python ml-training/scripts/run_offstreet_shadow_test.py predict --input data/private/collector-samples --training-config ml-training/config/training-config-80-10-10.example.json --output data/private/collector-samples/shadow-mvp-run-2026-10-25/predictions.jsonl --logistic-artifact-dir ml-training/models/calibrated-persistence-2026-10-25
+    python ml-training/scripts/run_offstreet_shadow_test.py predict --mode REPLAY --max-as-of-age-minutes 15 --input data/private/collector-samples --training-config ml-training/config/training-config-80-10-10.example.json --output data/private/collector-samples/shadow-mvp-run-2026-10-25/predictions.jsonl --logistic-artifact-dir ml-training/models/calibrated-persistence-2026-10-25
     python ml-training/scripts/run_offstreet_shadow_test.py verify --input data/private/collector-samples --predictions data/private/collector-samples/shadow-mvp-run-2026-10-25/predictions.jsonl --results data/private/collector-samples/shadow-mvp-run-2026-10-25/results.jsonl --report-json data/private/collector-samples/shadow-mvp-run-2026-10-25/report.json --report-markdown data/private/collector-samples/shadow-mvp-run-2026-10-25/report.md
 
 This first sample target is 50–100 verifiable cases, not a statistical
