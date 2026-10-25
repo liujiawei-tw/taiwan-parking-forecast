@@ -11,7 +11,58 @@ public record ParkingQueryResponse(
         RoadsideSection roadside,
         OffStreetSection offStreet,
         PredictionsSection predictions,
-        RefreshSection refresh) {
+        RefreshSection refresh,
+        GooglePlacesSection googlePlaces) {
+
+    public ParkingQueryResponse(
+            QuerySection query,
+            DestinationSection destination,
+            AreaSection area,
+            EtaSection eta,
+            RoadsideSection roadside,
+            OffStreetSection offStreet,
+            PredictionsSection predictions,
+            RefreshSection refresh) {
+        this(query, destination, area, eta, roadside, offStreet, predictions, refresh,
+                new GooglePlacesSection("NOT_REQUESTED", "GOOGLE_PLACES", 500, null, List.of(),
+                        "Google Places supplementary parking search was not requested."));
+    }
+
+    public ParkingQueryResponse withGooglePlaces(GooglePlacesSection value) {
+        return new ParkingQueryResponse(query, destination, area, eta, roadside, offStreet, predictions, refresh, value);
+    }
+
+    public record GooglePlacesSection(
+            String status,
+            String provider,
+            int radiusMeters,
+            OffsetDateTime generatedAt,
+            List<GoogleParkingPlace> items,
+            String message) {
+    }
+
+    public record GoogleParkingPlace(
+            String placeId,
+            String name,
+            double latitude,
+            double longitude,
+            Double navigationLatitude,
+            Double navigationLongitude,
+            boolean navigationAvailable,
+            int distanceMeters,
+            String address,
+            String googleMapsUri,
+            String availabilityStatus,
+            String source,
+            OffsetDateTime sourceObservedAt,
+            OffsetDateTime systemCollectedAt,
+            String message) {
+        public GoogleParkingPlace {
+            availabilityStatus = "UNKNOWN";
+            source = "GOOGLE_PLACES";
+            sourceObservedAt = null;
+        }
+    }
 
     public record QuerySection(
             String queryId,

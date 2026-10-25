@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -22,6 +23,7 @@ import parking.forecast.controller.dto.ParkingQueryResponse;
 import parking.forecast.controller.dto.ParkingQueryResponse.AreaSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.DestinationSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.EtaSection;
+import parking.forecast.controller.dto.ParkingQueryResponse.GooglePlacesSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.OffStreetPrediction;
 import parking.forecast.controller.dto.ParkingQueryResponse.OffStreetSection;
 import parking.forecast.controller.dto.ParkingQueryResponse.MapDataResponse;
@@ -81,9 +83,11 @@ public class ParkingQueryService {
     private final PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService;
     private final SourceRefreshCoordinationService sourceRefreshCoordinationService;
     private final GoogleEtaService googleEtaService;
+    private final GoogleParkingPlaceSearchService googleParkingPlaceSearchService;
     private final ParkingQueryStateStore parkingQueryStateStore;
     private final ParkingQueryStateProperties queryStateProperties;
     private final SourceMappingRepository sourceMappingRepository;
+    private final NtpcRoadsideFeeRateLookupService ntpcRoadsideFeeRateLookupService;
 
     @Autowired
     public ParkingQueryService(
@@ -91,11 +95,15 @@ public class ParkingQueryService {
             PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
             SourceRefreshCoordinationService sourceRefreshCoordinationService,
             GoogleEtaService googleEtaService,
+            GoogleParkingPlaceSearchService googleParkingPlaceSearchService,
             ParkingQueryStateStore parkingQueryStateStore,
             ParkingQueryStateProperties queryStateProperties,
-            SourceMappingRepository sourceMappingRepository
+            SourceMappingRepository sourceMappingRepository,
+            NtpcRoadsideFeeRateLookupService ntpcRoadsideFeeRateLookupService
     ) {
-        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService, parkingQueryStateStore, queryStateProperties, sourceMappingRepository);
+        this(Clock.systemUTC(), nearbyParkingSearchService, publishedAvailabilitySnapshotService,
+                sourceRefreshCoordinationService, googleEtaService, googleParkingPlaceSearchService,
+                parkingQueryStateStore, queryStateProperties, sourceMappingRepository, ntpcRoadsideFeeRateLookupService);
     }
 
     ParkingQueryService(
@@ -107,7 +115,9 @@ public class ParkingQueryService {
             ParkingQueryStateStore parkingQueryStateStore,
             ParkingQueryStateProperties queryStateProperties
     ) {
-        this(clock, nearbyParkingSearchService, publishedAvailabilitySnapshotService, sourceRefreshCoordinationService, googleEtaService, parkingQueryStateStore, queryStateProperties, null);
+        this(clock, nearbyParkingSearchService, publishedAvailabilitySnapshotService,
+                sourceRefreshCoordinationService, googleEtaService, null, parkingQueryStateStore,
+                queryStateProperties, null, null);
     }
 
     ParkingQueryService(
@@ -120,14 +130,49 @@ public class ParkingQueryService {
             ParkingQueryStateProperties queryStateProperties,
             SourceMappingRepository sourceMappingRepository
     ) {
+        this(clock, nearbyParkingSearchService, publishedAvailabilitySnapshotService,
+                sourceRefreshCoordinationService, googleEtaService, null, parkingQueryStateStore,
+                queryStateProperties, sourceMappingRepository, null);
+    }
+
+    ParkingQueryService(
+            Clock clock,
+            NearbyParkingSearchService nearbyParkingSearchService,
+            PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
+            SourceRefreshCoordinationService sourceRefreshCoordinationService,
+            GoogleEtaService googleEtaService,
+            GoogleParkingPlaceSearchService googleParkingPlaceSearchService,
+            ParkingQueryStateStore parkingQueryStateStore,
+            ParkingQueryStateProperties queryStateProperties,
+            SourceMappingRepository sourceMappingRepository
+    ) {
+        this(clock, nearbyParkingSearchService, publishedAvailabilitySnapshotService,
+                sourceRefreshCoordinationService, googleEtaService, googleParkingPlaceSearchService,
+                parkingQueryStateStore, queryStateProperties, sourceMappingRepository, null);
+    }
+
+    ParkingQueryService(
+            Clock clock,
+            NearbyParkingSearchService nearbyParkingSearchService,
+            PublishedAvailabilitySnapshotService publishedAvailabilitySnapshotService,
+            SourceRefreshCoordinationService sourceRefreshCoordinationService,
+            GoogleEtaService googleEtaService,
+            GoogleParkingPlaceSearchService googleParkingPlaceSearchService,
+            ParkingQueryStateStore parkingQueryStateStore,
+            ParkingQueryStateProperties queryStateProperties,
+            SourceMappingRepository sourceMappingRepository,
+            NtpcRoadsideFeeRateLookupService ntpcRoadsideFeeRateLookupService
+    ) {
         this.clock = clock;
         this.nearbyParkingSearchService = nearbyParkingSearchService;
         this.publishedAvailabilitySnapshotService = publishedAvailabilitySnapshotService;
         this.sourceRefreshCoordinationService = sourceRefreshCoordinationService;
         this.googleEtaService = googleEtaService;
+        this.googleParkingPlaceSearchService = googleParkingPlaceSearchService;
         this.parkingQueryStateStore = parkingQueryStateStore;
         this.queryStateProperties = queryStateProperties;
         this.sourceMappingRepository = sourceMappingRepository;
+        this.ntpcRoadsideFeeRateLookupService = ntpcRoadsideFeeRateLookupService;
     }
 
     public ParkingQueryResponse create(CreateParkingQueryRequest request) {
@@ -167,6 +212,14 @@ public class ParkingQueryService {
                 eta.durationSeconds(),
                 eta.message());
 
+        GooglePlacesSection googlePlaces = googleParkingPlaceSearchService == null
+                ? new GooglePlacesSection("NOT_REQUESTED", "GOOGLE_PLACES", SEARCH_RADIUS_METERS, null,
+                        List.of(), "Google Places search was not configured in this service instance.")
+                : googleParkingPlaceSearchService.findNearby(
+                        request.destination().latitude(),
+                        request.destination().longitude(),
+                        SEARCH_RADIUS_METERS);
+
         ParkingQueryResponse response = new ParkingQueryResponse(
                 new QuerySection(queryId, "READY", false, now, now, now.plus(queryStateProperties.getTtl()), "Parking query is ready."),
                 new DestinationSection(
@@ -185,9 +238,14 @@ public class ParkingQueryService {
                 roadsideSection,
                 offStreetSection,
                 buildPredictionsSection(nearby, etaSection, roadsideSection, offStreetSection, now),
-                buildRefreshSection(roadsideSection, offStreetSection));
+                buildRefreshSection(roadsideSection, offStreetSection),
+                googlePlaces);
 
-        parkingQueryStateStore.save(request.requestToken(), new StoredParkingQuery(response, request));
+        ParkingQueryResponse stateResponse = googlePlaces.items().isEmpty()
+                || googleParkingPlaceSearchService == null
+                ? response
+                : response.withGooglePlaces(googleParkingPlaceSearchService.notRetrieved(SEARCH_RADIUS_METERS));
+        parkingQueryStateStore.save(request.requestToken(), new StoredParkingQuery(stateResponse, request));
         return response;
     }
 
@@ -564,6 +622,9 @@ public class ParkingQueryService {
         }
         String dataSource = availability.snapshotId() == null ? LOCAL_CATALOG_SOURCE : "NTPC_OPEN_DATA";
         String itemId = (roadside ? "spot-" : "lot-") + place.parkingPlaceId();
+        RoadsideFeeDetails feeDetails = roadside
+                ? resolveRoadsideFeeDetails(place, mapping, false)
+                : RoadsideFeeDetails.from(place);
         return new MapMarker(
                 itemId,
                 roadside ? "ROADSIDE" : "OFF_STREET",
@@ -586,10 +647,10 @@ public class ParkingQueryService {
                 systemCollectedAt,
                 place.address(),
                 place.parkingSpaceType(),
-                place.feeStatus(),
-                place.feeDescription(),
-                place.chargingDays(),
-                place.chargingHours(),
+                feeDetails.feeStatus(),
+                feeDetails.feeDescription(),
+                feeDetails.chargingDays(),
+                feeDetails.chargingHours(),
                 place.notes(),
                 mapMarkerMessage(status, place.carEligibleStatus())
         );
@@ -695,7 +756,8 @@ public class ParkingQueryService {
                 roadsideSection,
                 offStreetSection,
                 buildPredictionsSection(nearby, existing.eta(), roadsideSection, offStreetSection, now),
-                buildRefreshSection(roadsideRefresh, offStreetRefresh));
+                buildRefreshSection(roadsideRefresh, offStreetRefresh),
+                existing.googlePlaces());
         parkingQueryStateStore.save(request.requestToken(), new StoredParkingQuery(refreshed, request));
         return refreshed;
     }
@@ -788,6 +850,15 @@ public class ParkingQueryService {
         List<NearbyParkingPlace> roadsidePlaces = nearby.places().stream()
                 .filter(place -> place.placeType() == ParkingPlaceType.ON_STREET_SPOT)
                 .toList();
+        Map<Long, SourceMappingEntity> roadsideMappings = findUniqueVerifiedMappings(
+                DatasetCode.NTPC_ROADSIDE_SPOT,
+                roadsidePlaces
+        );
+        roadsidePlaces.forEach(place -> resolveRoadsideFeeDetails(
+                place,
+                roadsideMappings.get(place.parkingPlaceId()),
+                true
+        ));
         PublishedAvailabilityView availability = publishedAvailabilitySnapshotService.findLatest(
                 DatasetCode.NTPC_ROADSIDE_SPOT,
                 roadsidePlaces.stream().map(NearbyParkingPlace::parkingPlaceId).toList()
@@ -811,7 +882,7 @@ public class ParkingQueryService {
                 ? roadsidePlaces.stream()
                         .filter(place -> place.carEligibleStatus() == EligibilityStatus.CONFIRMED)
                         .filter(place -> isFreshAvailableRoadsideSpot(availability, place.parkingPlaceId()))
-                        .map(place -> toRoadsideSpot(place, availability))
+                        .map(place -> toRoadsideSpot(place, roadsideMappings.get(place.parkingPlaceId()), availability))
                         .toList()
                 : List.of();
 
@@ -960,7 +1031,90 @@ public class ParkingQueryService {
                 && isUsableMapQuality(observation.qualityStatus());
     }
 
-    private RoadsideSpot toRoadsideSpot(NearbyParkingPlace place, PublishedAvailabilityView availability) {
+    private RoadsideFeeDetails resolveRoadsideFeeDetails(
+            NearbyParkingPlace place,
+            SourceMappingEntity mapping,
+            boolean allowSourceRefresh
+    ) {
+        RoadsideFeeDetails original = RoadsideFeeDetails.from(place);
+        if (ntpcRoadsideFeeRateLookupService == null
+                || mapping == null
+                || hasText(place.feeDescription())) {
+            return original;
+        }
+
+        String fullRoadName = resolveFullRoadName(place, mapping);
+        if (!hasText(fullRoadName)) {
+            return original;
+        }
+
+        var rateLookup = allowSourceRefresh
+                ? ntpcRoadsideFeeRateLookupService.findUniqueRate(MVP_SERVICE_AREA, fullRoadName)
+                : ntpcRoadsideFeeRateLookupService.findCachedUniqueRate(MVP_SERVICE_AREA, fullRoadName);
+        var officialRate = rateLookup.orElse(null);
+        if (officialRate == null) {
+            return original;
+        }
+
+        String officialSchedule = formatOfficialSchedule(officialRate);
+        String description = "官方路段費率：" + officialRate.rates();
+        if (!hasText(place.chargingDays()) && !hasText(place.chargingHours()) && hasText(officialSchedule)) {
+            description += "（" + officialSchedule + "）";
+        }
+        return new RoadsideFeeDetails(
+                place.feeStatus(),
+                description,
+                place.chargingDays(),
+                hasText(place.chargingHours()) ? place.chargingHours() : officialSchedule
+        );
+    }
+
+    private String resolveFullRoadName(NearbyParkingPlace place, SourceMappingEntity mapping) {
+        String rawNameHint = mapping.getRawNameHint();
+        if (hasText(rawNameHint)) {
+            int roadNameLabel = indexOfIgnoreCase(rawNameHint, "roadName=");
+            if (roadNameLabel >= 0) {
+                int valueStart = roadNameLabel + "roadName=".length();
+                int valueEnd = rawNameHint.indexOf(';', valueStart);
+                return rawNameHint.substring(valueStart, valueEnd < 0 ? rawNameHint.length() : valueEnd).strip();
+            }
+            int legacyCellId = indexOfIgnoreCase(rawNameHint, " cellid=");
+            if (legacyCellId > 0) {
+                return rawNameHint.substring(0, legacyCellId).strip();
+            }
+        }
+        return place.displayName();
+    }
+
+    private int indexOfIgnoreCase(String value, String target) {
+        return value.toLowerCase(Locale.ROOT).indexOf(target.toLowerCase(Locale.ROOT));
+    }
+
+    private String formatOfficialSchedule(NtpcRoadsideFeeRateLookupService.RoadsideFeeRate rate) {
+        List<String> periods = new ArrayList<>();
+        addSchedulePeriod(periods, "平日", rate.weekdaysTime());
+        addSchedulePeriod(periods, "週六", rate.saturdayChargingTime());
+        addSchedulePeriod(periods, "週日", rate.sundayChargingTime());
+        addSchedulePeriod(periods, "國定假日", rate.nationalHolidaysChargingTime());
+        return String.join("；", periods);
+    }
+
+    private void addSchedulePeriod(List<String> periods, String label, String value) {
+        if (hasText(value)) {
+            periods.add(label + " " + value.strip());
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private RoadsideSpot toRoadsideSpot(
+            NearbyParkingPlace place,
+            SourceMappingEntity mapping,
+            PublishedAvailabilityView availability
+    ) {
+        RoadsideFeeDetails feeDetails = resolveRoadsideFeeDetails(place, mapping, false);
         return new RoadsideSpot(
                 place.parkingPlaceId().toString(),
                 place.displayName(),
@@ -973,10 +1127,10 @@ public class ParkingQueryService {
                 place.totalCarSpaces(),
                 place.totalCarSpaces(),
                 place.parkingSpaceType(),
-                place.feeStatus(),
-                place.feeDescription(),
-                place.chargingDays(),
-                place.chargingHours(),
+                feeDetails.feeStatus(),
+                feeDetails.feeDescription(),
+                feeDetails.chargingDays(),
+                feeDetails.chargingHours(),
                 place.notes()
         );
     }
@@ -1213,6 +1367,22 @@ public class ParkingQueryService {
 
     private String resolveCoverageStatus(NearbyParkingSearchResult nearby) {
         return nearby.places().isEmpty() ? "NO_CATALOG_RESULTS" : "PARTIAL";
+    }
+
+    private record RoadsideFeeDetails(
+            String feeStatus,
+            String feeDescription,
+            String chargingDays,
+            String chargingHours
+    ) {
+        private static RoadsideFeeDetails from(NearbyParkingPlace place) {
+            return new RoadsideFeeDetails(
+                    place.feeStatus(),
+                    place.feeDescription(),
+                    place.chargingDays(),
+                    place.chargingHours()
+            );
+        }
     }
 
     public static class ParkingQueryNotFoundException extends RuntimeException {

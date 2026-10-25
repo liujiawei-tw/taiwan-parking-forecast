@@ -18,6 +18,8 @@ parking:
   google:
     routes:
       external-calls-enabled: false
+    places:
+      external-calls-enabled: false
   sources:
     ntpc:
       external-calls-enabled: false

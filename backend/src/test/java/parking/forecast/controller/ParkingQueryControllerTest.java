@@ -416,6 +416,38 @@ class ParkingQueryControllerTest {
     }
 
     @Test
+    void xinzhuangStadiumMapDataReturnsVerifiedRoadsideCatalogEvenWithoutFreshAvailability() {
+        var request = new CreateParkingQueryRequest(
+                "xinzhuang-stadium-map-data-" + UUID.randomUUID(),
+                new LocationInput("起點", 25.03633, 121.45336),
+                new LocationInput("新莊體育館", 25.036, 121.4505),
+                new DepartureInput("NOW", null));
+        var query = controller.create(request).getBody();
+
+        var mapData = controller.getMapData(query.query().queryId());
+
+        assertThat(mapData.candidateCount()).isEqualTo(5);
+        assertThat(mapData.verifiedCandidateCount()).isEqualTo(5);
+        assertThat(mapData.returnedItemCount()).isEqualTo(5);
+        assertThat(mapData.items())
+                .extracting(item -> item.type())
+                .containsOnly("ROADSIDE");
+        assertThat(mapData.items())
+                .extracting(item -> item.availabilityStatus())
+                .containsOnly("NO_REALTIME_AVAILABILITY");
+        assertThat(mapData.items())
+                .extracting(item -> item.label())
+                .contains(
+                        "中華路一段路邊汽車格 20",
+                        "中華路一段路邊汽車格 21",
+                        "中華路一段路邊汽車格 22",
+                        "中華路一段路邊汽車格 23",
+                        "中華路一段路邊汽車格 24");
+        assertThat(query.offStreet().status()).isEqualTo("NO_CATALOG_RESULTS");
+        assertThat(query.offStreet().parkingLots()).isEmpty();
+    }
+
+    @Test
     void createQueryAcceptsSameOriginBrowserOriginIncludingNonDefaultPort() throws Exception {
         mockMvc.perform(post("/api/v1/parking-queries")
                         .with(publicRequest("127.0.0.1", 18088))

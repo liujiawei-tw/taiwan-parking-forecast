@@ -23,7 +23,6 @@ import {
   clusterRoadsideMarkers,
   countMapMarkerCategories,
   describeMapMarker,
-  formatMapCapacity,
   filterMapMarkers,
   refreshSelectedMapPopup,
 } from './mapMarkers.js'
@@ -64,9 +63,15 @@ const MAP_DATA_RETRY_DELAY_MS = 15000
 const MAP_VIEWPORT_IDLE_DELAY_MS = 250
 
 const mapElement = ref(null)
+const mapStageElement = ref(null)
+const workspaceElement = ref(null)
+const mobileSheetSnap = ref('half')
+const mobileSheetMapHeight = ref(null)
+const mobileSheetDragging = ref(false)
 const originAutocompleteHost = ref(null)
 const destinationAutocompleteHost = ref(null)
 const selectedDestination = ref({ ...defaultDestination })
+const googlePlacesByQueryId = ref({})
 const origin = ref({ ...DEFAULT_ORIGIN })
 const departureType = ref('NOW')
 const scheduledDepartureLocal = ref('')
@@ -89,7 +94,9 @@ const mapDataError = ref('')
 const mapViewportRevision = ref(0)
 const mapFreshnessNow = ref(Date.now())
 const activeMapPanel = ref('')
-const showResultPanel = ref(false)
+const activeNavigation = ref('map')
+const activeParkingTypeFilter = ref('ALL')
+const favoriteItemIds = ref([])
 const mapFilters = ref({
   layers: { roadside: true, offStreet: true },
   statuses: { AVAILABLE: true, OCCUPIED: true, FULL: true, UNKNOWN: true, STALE: true },
@@ -114,6 +121,8 @@ let parkingMarkers = []
 let clusterMarkers = []
 let pollTimer
 let destinationSelectionVersion = 0
+let sheetDragState = null
+let suppressSheetClickUntil = 0
 const markersById = new Map()
 
 const originPlaceSelectionHandler = createPlaceSelectionHandler({
@@ -146,8 +155,6 @@ const destinationPlaceSelectionHandler = createPlaceSelectionHandler({
   onError: (message) => { destinationPlaceError.value = message },
 })
 
-const roadsideSpotCount = computed(() => queryResult.value?.roadside?.availableSpots?.length ?? 0)
-const parkingLotCount = computed(() => queryResult.value?.offStreet?.parkingLots?.length ?? 0)
 const resultDestination = computed(() => queryResult.value?.destination ?? selectedDestination.value)
 const refreshInProgress = computed(() => Boolean(
   queryResult.value?.refresh?.roadside?.refreshInProgress
@@ -161,6 +168,12 @@ const etaMessage = computed(() => {
     return '原預計抵達時間已過，請重新規劃'
   }
   if (eta.status === 'READY') return `Google 預估抵達：${formatDateTime(eta.estimatedArrivalAt)}`
+  if (/external calls are disabled/i.test(eta.message ?? '')) {
+    return '抵達時間尚未估算：本機 Google Routes 呼叫目前關閉；目前觀測與資料品質仍可查看。'
+  }
+  if (/not configured|missing (?:an? )?api key/i.test(eta.message ?? '')) {
+    return '抵達時間尚未估算：Google Routes 尚未完成伺服器設定。'
+  }
   return 'Google 路線無法估算，請調整起點後重新規劃；目前車位仍可參考'
 })
 const roadsideMessage = computed(() => {
@@ -196,7 +209,114 @@ const predictionMessage = computed(() => {
   }
   return '尚無合格的抵達時車位機率；以下僅顯示目前資料。'
 })
+const googlePlacesMessage = computed(() => {
+  const section = currentGooglePlacesSection()
+  const count = section?.items?.length ?? googlePlacesByQueryId.value[queryId.value]?.items?.length ?? 0
+  if (count > 0) return `另列 ${count} 個 Google Places 停車場地點；此地點資料不含即時空位，也不代表新北市官方觀測。`
+  if (section?.status === 'DISABLED') return 'Google Places 輔助搜尋目前未啟用。'
+  if (section?.status === 'NOT_CONFIGURED') return 'Google Places 輔助搜尋尚未完成伺服器設定。'
+  if (section?.status === 'FAILED') return 'Google Places 輔助搜尋失敗；請檢查 Places API (New) 啟用狀態、伺服器 key 限制與可用額度。'
+  if (section?.status === 'NOT_RETRIEVED') return 'Google Places 地點資料未保存；若需要輔助地點，請重新規劃查詢。'
+  if (section?.status === 'NO_RESULTS') return section.message || 'Google Places 未回傳 500 公尺內的停車設施地點。'
+  if (section?.message) return section.message
+  return 'Google Places 未提供可顯示的停車場地點；路邊逐格資料仍以官方目錄為準。'
+})
+
+function rememberGooglePlaces(result) {
+  const id = result?.query?.queryId
+  const section = result?.googlePlaces
+  if (!id || !Array.isArray(section?.items) || section.items.length === 0) return
+  googlePlacesByQueryId.value = { ...googlePlacesByQueryId.value, [id]: section }
+}
+
+function currentGooglePlacesSection() {
+  const id = queryId.value
+  const current = queryResult.value?.googlePlaces
+  if (current?.items?.length) return current
+  return googlePlacesByQueryId.value[id] ?? current ?? null
+}
+
+function googlePlacesMapItems() {
+  const section = currentGooglePlacesSection()
+  const destination = resultDestination.value
+  return (section?.items ?? []).flatMap((place) => {
+    const latitude = Number(place.latitude ?? place.location?.latitude)
+    const longitude = Number(place.longitude ?? place.location?.longitude)
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)
+        || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return []
+
+    const calculatedDistance = distanceBetweenMeters(destination.latitude, destination.longitude, latitude, longitude)
+    const hasDistance = place.distanceMeters !== null && place.distanceMeters !== undefined
+      && Number.isFinite(Number(place.distanceMeters))
+    const distanceMeters = hasDistance
+      ? Math.round(Number(place.distanceMeters))
+      : calculatedDistance
+    if (distanceMeters > DEFAULT_RADIUS_METERS) return []
+
+    const placeId = String(place.placeId ?? place.id ?? `${latitude.toFixed(6)}-${longitude.toFixed(6)}`)
+    const hasNavigationPoint = place.navigationAvailable === true
+      && place.navigationLatitude !== null && place.navigationLatitude !== undefined
+      && Number.isFinite(Number(place.navigationLatitude))
+      && Math.abs(Number(place.navigationLatitude)) <= 90
+      && place.navigationLongitude !== null && place.navigationLongitude !== undefined
+      && Number.isFinite(Number(place.navigationLongitude))
+      && Math.abs(Number(place.navigationLongitude)) <= 180
+    return [{
+      id: `google-place-${placeId}`,
+      rawId: placeId,
+      type: 'OFF_STREET',
+      label: place.name ?? place.displayName?.text ?? 'Google Places 停車場',
+      latitude,
+      longitude,
+      navigationLatitude: hasNavigationPoint ? Number(place.navigationLatitude) : null,
+      navigationLongitude: hasNavigationPoint ? Number(place.navigationLongitude) : null,
+      distanceMeters,
+      availabilityStatus: 'UNKNOWN',
+      availableCarSpaces: null,
+      totalCarSpaces: null,
+      carEligibleStatus: 'UNKNOWN',
+      navigationAvailable: hasNavigationPoint,
+      source: 'GOOGLE_PLACES',
+      dataOrigin: 'GOOGLE_PLACES',
+      googlePlaceId: placeId,
+      googleMapsUri: place.googleMapsUri ?? null,
+      sourceObservedAt: null,
+      address: place.address ?? place.formattedAddress ?? '',
+      systemCollectedAt: place.systemCollectedAt ?? section.generatedAt ?? null,
+      message: hasNavigationPoint
+        ? 'Google Places 地點目錄不提供即時空位；路邊逐格資料仍以官方目錄為準。'
+        : 'Google Places 地點目錄不提供即時空位或確認過的開車入口；請在 Google Maps 地點頁確認入口。',
+      currentValue: '即時空位未知',
+    }]
+  })
+}
+
+function distanceBetweenMeters(startLatitude, startLongitude, endLatitude, endLongitude) {
+  const toRadians = (degrees) => degrees * Math.PI / 180
+  const latitudeDelta = toRadians(endLatitude - Number(startLatitude))
+  const longitudeDelta = toRadians(endLongitude - Number(startLongitude))
+  const start = toRadians(Number(startLatitude))
+  const end = toRadians(endLatitude)
+  const arc = 2 * Math.asin(Math.sqrt(
+    Math.sin(latitudeDelta / 2) ** 2
+      + Math.cos(start) * Math.cos(end) * Math.sin(longitudeDelta / 2) ** 2,
+  ))
+  return Math.round(6371000 * arc)
+}
+
+function mergeGooglePlaces(officialItems, googleItems) {
+  const distinctGoogleItems = googleItems.filter((place) => !officialItems.some((official) => {
+    if (official.type !== 'OFF_STREET') return false
+    const distance = distanceBetweenMeters(official.latitude, official.longitude, place.latitude, place.longitude)
+    const sameName = String(official.label ?? '').trim().toLocaleLowerCase()
+      === String(place.label ?? '').trim().toLocaleLowerCase()
+    return distance <= 12 || (sameName && distance <= 80)
+  }))
+  return [...officialItems, ...distinctGoogleItems]
+}
+
 const resultItems = computed(() => {
+  const googleItems = googlePlacesMapItems()
   if (mapData.value && queryResult.value?.query?.queryId
       && mapData.value.queryId === queryResult.value.query.queryId) {
     const freshItems = applyMapDisplayFreshness(
@@ -208,11 +328,12 @@ const resultItems = computed(() => {
       },
       MAP_DISPLAY_FRESHNESS_MS,
     )
-    return freshItems.map((item) => ({
+    const officialItems = freshItems.map((item) => ({
       ...item,
       rawId: item.id.replace(/^(spot-|lot-)/, ''),
       currentValue: describeMapMarker(item).value,
     }))
+    return mergeGooglePlaces(officialItems, googleItems)
   }
 
   const lots = queryResult.value?.offStreet?.parkingLots ?? []
@@ -271,9 +392,19 @@ const resultItems = computed(() => {
       message: '路邊格位只代表目前觀測，不代表抵達時仍有位。',
     })),
   ]
-  return fallbackItems.map((item) => ({ ...item, currentValue: describeMapMarker(item).value }))
+  const officialItems = fallbackItems.map((item) => ({ ...item, currentValue: describeMapMarker(item).value }))
+  return mergeGooglePlaces(officialItems, googleItems)
 })
-const visibleMapItems = computed(() => filterMapMarkers(resultItems.value, mapFilters.value))
+const visibleMapItems = computed(() => filterMapMarkers(resultItems.value, mapFilters.value)
+  .filter((item) => activeParkingTypeFilter.value === 'ALL'
+    || (activeParkingTypeFilter.value === 'ROADSIDE' && item.type === 'ROADSIDE')
+    || (activeParkingTypeFilter.value === 'OFF_STREET' && item.type === 'OFF_STREET')))
+const favoriteMapItems = computed(() => visibleMapItems.value.filter((item) => favoriteItemIds.value.includes(item.id)))
+const displayedMapItems = computed(() => {
+  if (activeNavigation.value === 'favorites') return favoriteMapItems.value
+  if (activeNavigation.value === 'map') return visibleMapItems.value.slice(0, 5)
+  return visibleMapItems.value
+})
 const mapMarkerCounts = computed(() => countMapMarkerCategories(resultItems.value))
 const selectedMapItem = computed(() => resultItems.value.find((item) => item.id === selectedItemId.value) ?? null)
 const mapViewportSupportMessage = computed(() => {
@@ -344,6 +475,7 @@ onBeforeUnmount(() => {
   clearMapFreshnessTimer()
   clearMapDataRetryTimer(true)
   if (mapViewportLoadTimer) window.clearTimeout(mapViewportLoadTimer)
+  sheetDragState = null
   mapIdleListener?.remove?.()
 })
 
@@ -358,7 +490,6 @@ watch(currentPlanningInputs, (next, previous) => {
     queryResult.value = null
     clearMapDataState()
     selectedItemId.value = ''
-    showResultPanel.value = false
     refreshMessage.value = ''
     clearProgressPolling()
   }
@@ -417,11 +548,11 @@ async function createParkingQuery() {
     const result = await response.json()
     if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value)) return
 
+    rememberGooglePlaces(result)
     queryResult.value = result
     selectedItemId.value = ''
     clearMapDataState()
     refreshMessage.value = ''
-    showResultPanel.value = true
     await nextTick()
     await loadMapData()
     renderMap()
@@ -473,6 +604,7 @@ async function refreshParkingAvailability(trigger = 'MANUAL_REFRESH') {
     if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) return
     if (!shouldApplyQueryResult(queryResult.value, result)) return
 
+    rememberGooglePlaces(result)
     queryResult.value = result
     await loadMapData(true)
     if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) return
@@ -533,6 +665,7 @@ async function readParkingQuery(forceMapData = false) {
     if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) return
     if (!shouldApplyQueryResult(queryResult.value, result)) return
 
+    rememberGooglePlaces(result)
     queryResult.value = result
     await loadMapData(forceMapData)
     if (!queryRequestGuard.isCurrent(requestContext, currentPlanningInputs.value, queryId.value)) return
@@ -600,11 +733,19 @@ async function loadMapData(force = false, retryAfterFailure = true, allowAutoRef
   try {
     let payload
     if (request.useViewport) {
-      payload = await loadMapViewportPages(fetch, {
-        apiBaseUrl,
-        queryId: id,
-        bounds: request.viewport,
-      })
+      try {
+        payload = await loadMapViewportPages(fetch, {
+          apiBaseUrl,
+          queryId: id,
+          bounds: request.viewport,
+        })
+      } catch (viewportError) {
+        // Older API images do not expose the viewport route yet. Keep the
+        // destination-area results usable while the API container is updated.
+        const fallbackResponse = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${id}/map-data`)
+        if (!fallbackResponse.ok) throw viewportError
+        payload = await fallbackResponse.json()
+      }
     } else {
       const response = await fetch(`${apiBaseUrl}/api/v1/parking-queries/${id}/map-data`)
       if (!response.ok) throw await readApiError(response)
@@ -798,7 +939,22 @@ async function initializeGoogleMap() {
     zoom: 15,
     mapTypeControl: false,
     streetViewControl: false,
-    fullscreenControl: true,
+    fullscreenControl: false,
+    zoomControl: false,
+    scaleControl: true,
+    styles: [
+      { featureType: 'all', elementType: 'labels.text.fill', stylers: [{ color: '#496357' }] },
+      { featureType: 'all', elementType: 'labels.text.stroke', stylers: [{ color: '#fffdf7' }] },
+      { featureType: 'landscape', elementType: 'geometry.fill', stylers: [{ color: '#f4f0e5' }] },
+      { featureType: 'landscape.man_made', elementType: 'geometry.fill', stylers: [{ color: '#eae5d9' }] },
+      { featureType: 'poi', elementType: 'geometry.fill', stylers: [{ color: '#e2ead8' }] },
+      { featureType: 'poi.park', elementType: 'geometry.fill', stylers: [{ color: '#c9dfba' }] },
+      { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#fffdf7' }] },
+      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#d6cebc' }] },
+      { featureType: 'road.highway', elementType: 'geometry.fill', stylers: [{ color: '#f2dca1' }] },
+      { featureType: 'transit', elementType: 'geometry.fill', stylers: [{ color: '#d9d2c4' }] },
+      { featureType: 'water', elementType: 'geometry.fill', stylers: [{ color: '#a9d8d2' }] },
+    ],
   })
   mapIdleListener = map.addListener('idle', () => {
     mapViewportRevision.value++
@@ -898,6 +1054,11 @@ function setupPlaceAutocomplete({ host, PlaceAutocompleteElement, placeholder, s
   autocomplete.style.width = '100%'
   autocomplete.style.maxWidth = '100%'
   autocomplete.style.minWidth = '0'
+  autocomplete.style.colorScheme = 'light'
+  autocomplete.style.color = '#20394e'
+  autocomplete.style.backgroundColor = 'transparent'
+  autocomplete.style.border = '0'
+  autocomplete.style.borderRadius = '0'
   autocomplete.setAttribute('aria-label', placeholder)
   autocomplete.addEventListener('gmp-select', selectionHandler)
   host.appendChild(autocomplete)
@@ -924,11 +1085,11 @@ function renderMap() {
       map,
       center: destinationPosition,
       radius: queryResult.value?.area?.radiusMeters ?? DEFAULT_RADIUS_METERS,
-      strokeColor: '#1d4ed8',
+      strokeColor: '#16824b',
       strokeOpacity: 0.8,
       strokeWeight: 2,
-      fillColor: '#60a5fa',
-      fillOpacity: 0.12,
+      fillColor: '#62a881',
+      fillOpacity: 0.08,
     })
   } else {
     radiusCircle.setCenter(destinationPosition)
@@ -961,8 +1122,10 @@ function renderMap() {
       marker = new window.google.maps.Marker({
         map: null,
         position: { lat: item.latitude, lng: item.longitude },
-        title: item.label,
-        label: { text: markerText, color: '#ffffff', fontSize: '10px', fontWeight: '800' },
+        title: item.dataOrigin === 'GOOGLE_PLACES'
+          ? `${item.label} · Google Places 地點資料，空位未知`
+          : item.label,
+        label: item.type === 'OFF_STREET' ? null : { text: markerText, color: '#ffffff', fontSize: '12px', fontWeight: '800' },
         icon: createMarkerIcon(item, style.color),
         zIndex: item.type === 'OFF_STREET' ? 20 : 10,
       })
@@ -971,8 +1134,10 @@ function renderMap() {
       parkingMarkers.push(marker)
     } else {
       marker.setPosition({ lat: item.latitude, lng: item.longitude })
-      marker.setTitle(`${item.label} · ${style.statusLabel}`)
-      marker.setLabel({ text: markerText, color: '#ffffff', fontSize: '10px', fontWeight: '800' })
+      marker.setTitle(item.dataOrigin === 'GOOGLE_PLACES'
+        ? `${item.label} · Google Places 地點資料，空位未知`
+        : `${item.label} · ${style.statusLabel}`)
+      marker.setLabel(item.type === 'OFF_STREET' ? null : { text: markerText, color: '#ffffff', fontSize: '12px', fontWeight: '800' })
       marker.setIcon(createMarkerIcon(item, style.color))
     }
     marker.setMap(visibleIds.has(id) && !clusteredIds.has(id) ? map : null)
@@ -1027,11 +1192,18 @@ function zoomToRoadsideCluster(group) {
 }
 
 function createMarkerIcon(item, color) {
+  if (item.type === 'OFF_STREET') {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 42 48"><path d="M21 1.5C10.2 1.5 1.5 10.1 1.5 20.7c0 12 19.5 25.7 19.5 25.7s19.5-13.7 19.5-25.7C40.5 10.1 31.8 1.5 21 1.5Z" fill="#3c6f9e" stroke="#fffefa" stroke-width="2"/><text x="21" y="21.5" fill="#fffefa" font-family="Arial,sans-serif" font-size="18" font-weight="800" text-anchor="middle" dominant-baseline="central">P</text></svg>'
+    return {
+      url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+      scaledSize: new window.google.maps.Size(42, 48),
+      anchor: new window.google.maps.Point(21, 46),
+    }
+  }
+
   return {
-    path: item.type === 'OFF_STREET'
-      ? window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW
-      : window.google.maps.SymbolPath.CIRCLE,
-    scale: item.type === 'OFF_STREET' ? 12 : 10,
+    path: window.google.maps.SymbolPath.CIRCLE,
+    scale: 20,
     fillColor: color,
     fillOpacity: 1,
     strokeColor: '#ffffff',
@@ -1053,6 +1225,103 @@ function toggleMapPanel(panel) {
   activeMapPanel.value = activeMapPanel.value === panel ? '' : panel
 }
 
+const mobileSheetSnapRatios = { peek: 0.5, half: 0.34, expanded: 0.18 }
+
+function getMobileSheetMapHeight(snap) {
+  const workspaceHeight = workspaceElement.value?.clientHeight ?? window.innerHeight
+  const minimum = Math.min(150, Math.max(112, workspaceHeight * 0.24))
+  const maximum = Math.max(minimum, workspaceHeight - 220)
+  const desired = workspaceHeight * mobileSheetSnapRatios[snap]
+  return Math.round(Math.min(maximum, Math.max(minimum, desired)))
+}
+
+function startMobileSheetDrag(event) {
+  if (window.matchMedia('(min-width: 781px)').matches) return
+  if (event.button !== undefined && event.button !== 0) return
+
+  const currentMapHeight = mapStageElement.value?.getBoundingClientRect().height
+  if (!Number.isFinite(currentMapHeight)) return
+
+  event.currentTarget.setPointerCapture?.(event.pointerId)
+  sheetDragState = {
+    pointerId: event.pointerId,
+    startY: event.clientY,
+    startMapHeight: currentMapHeight,
+    moved: false,
+  }
+  mobileSheetDragging.value = true
+}
+
+function moveMobileSheetDrag(event) {
+  if (!sheetDragState || event.pointerId !== sheetDragState.pointerId) return
+
+  const deltaY = event.clientY - sheetDragState.startY
+  if (Math.abs(deltaY) > 6) sheetDragState.moved = true
+  const workspaceHeight = workspaceElement.value?.clientHeight ?? window.innerHeight
+  const minimum = Math.min(150, Math.max(112, workspaceHeight * 0.24))
+  const maximum = Math.max(minimum, workspaceHeight - 220)
+  mobileSheetMapHeight.value = Math.round(Math.min(
+    maximum,
+    Math.max(minimum, sheetDragState.startMapHeight + deltaY),
+  ))
+}
+
+function finishMobileSheetDrag(event) {
+  if (!sheetDragState || event.pointerId !== sheetDragState.pointerId) return
+
+  if (sheetDragState.moved) {
+    const currentHeight = mobileSheetMapHeight.value ?? sheetDragState.startMapHeight
+    mobileSheetSnap.value = Object.keys(mobileSheetSnapRatios).reduce((closest, snap) => (
+      Math.abs(getMobileSheetMapHeight(snap) - currentHeight)
+        < Math.abs(getMobileSheetMapHeight(closest) - currentHeight) ? snap : closest
+    ), 'peek')
+    suppressSheetClickUntil = Date.now() + 450
+  }
+
+  sheetDragState = null
+  mobileSheetMapHeight.value = null
+  mobileSheetDragging.value = false
+}
+
+function toggleMobileSheet(event) {
+  if (event.detail > 0 && Date.now() < suppressSheetClickUntil) {
+    event.preventDefault()
+    return
+  }
+  const snaps = ['peek', 'half', 'expanded']
+  const currentIndex = snaps.indexOf(mobileSheetSnap.value)
+  mobileSheetSnap.value = snaps[(currentIndex + 1) % snaps.length]
+}
+
+function toggleFavorite(itemId) {
+  favoriteItemIds.value = favoriteItemIds.value.includes(itemId)
+    ? favoriteItemIds.value.filter((id) => id !== itemId)
+    : [...favoriteItemIds.value, itemId]
+}
+
+function getSpotBadge(item) {
+  if (!item) return '⌖'
+  if (item.type === 'OFF_STREET') return 'P'
+  const match = String(item.label ?? '').match(/\d+/)
+  return match?.[0] ?? '格'
+}
+
+async function shareSelectedItem() {
+  const item = selectedMapItem.value
+  if (!item) return
+  const shareText = `${item.label} · ${item.currentValue} · 距離約 ${item.distanceMeters} 公尺`
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: item.label, text: shareText, url: window.location.href })
+      return
+    }
+    await navigator.clipboard.writeText(`${shareText}\n${window.location.href}`)
+    refreshMessage.value = '已複製停車資訊連結。'
+  } catch (error) {
+    if (error?.name !== 'AbortError') errorMessage.value = '無法分享停車資訊，請稍後再試。'
+  }
+}
+
 function focusDestination() {
   if (!map) return
   map.panTo(getDestinationLatLng())
@@ -1061,7 +1330,6 @@ function focusDestination() {
 
 function selectResultItem(itemId, fromMarker = false) {
   selectedItemId.value = itemId
-  showResultPanel.value = true
   const item = resultItems.value.find((candidate) => candidate.id === itemId)
   const marker = markersById.get(itemId)
   if (!item || !marker || !map) return
@@ -1090,15 +1358,22 @@ function createInfoWindowContent(item) {
   const status = document.createElement('strong')
   status.className = 'marker-info-status'
   status.style.color = visual.color
-  status.textContent = `${visual.statusLabel} · ${visual.value}`
+  status.textContent = isGooglePlace
+    ? '即時空位未知'
+    : `${visual.statusLabel} · ${visual.value}`
   wrapper.appendChild(status)
 
+  const isGooglePlace = item.dataOrigin === 'GOOGLE_PLACES'
   const source = document.createElement('span')
-  source.textContent = `資料來源：${item.source || '新北市 Open Data（系統快照）'}`
+  source.textContent = isGooglePlace
+    ? '資料來源：Google Places 停車場地點目錄'
+    : `資料來源：${item.source || '新北市 Open Data（系統快照）'}`
   wrapper.appendChild(source)
 
   const observedTime = document.createElement('span')
-  observedTime.textContent = `官方逐筆觀測：${item.sourceObservedAt ? formatDateTime(item.sourceObservedAt) : '未提供可信時間'}`
+  observedTime.textContent = isGooglePlace
+    ? '即時空位：Google Places 未提供'
+    : `官方逐筆觀測：${item.sourceObservedAt ? formatDateTime(item.sourceObservedAt) : '未提供可信時間'}`
   wrapper.appendChild(observedTime)
 
   const systemTime = document.createElement('span')
@@ -1106,10 +1381,12 @@ function createInfoWindowContent(item) {
   wrapper.appendChild(systemTime)
 
   const eligibility = document.createElement('span')
-  eligibility.textContent = `一般汽車適用性：${formatEligibility(item.carEligibleStatus)}`
+  eligibility.textContent = isGooglePlace
+    ? '一般汽車適用性：Google Places 未提供'
+    : `一般汽車適用性：${formatEligibility(item.carEligibleStatus)}`
   wrapper.appendChild(eligibility)
 
-  if (item.qualityStatus) {
+  if (item.qualityStatus && !isGooglePlace) {
     const quality = document.createElement('span')
     quality.textContent = `資料品質：${item.qualityStatus}`
     wrapper.appendChild(quality)
@@ -1120,13 +1397,15 @@ function createInfoWindowContent(item) {
   message.textContent = item.message || '目前觀測不代表抵達時仍有位。'
   wrapper.appendChild(message)
 
-  if (visual.navigationAvailable) {
+  if (hasExternalMapAction(item)) {
     const route = document.createElement('a')
     route.className = 'marker-route-link'
     route.href = buildExternalRouteUrl(item)
     route.target = '_blank'
     route.rel = 'noopener noreferrer'
-    route.textContent = '在 Google Maps 開啟路線'
+    route.setAttribute('aria-label', getExternalMapActionDescription(item))
+    route.title = getExternalMapActionDescription(item)
+    route.textContent = getExternalMapActionLabel(item)
     wrapper.appendChild(route)
   }
   return wrapper
@@ -1186,14 +1465,64 @@ function useCurrentLocation() {
 }
 
 function buildExternalRouteUrl(item) {
+  if (!hasNavigationCoordinates(item)) return getGoogleMapsUri(item)
+
   const latitude = item.navigationLatitude ?? item.latitude
   const longitude = item.navigationLongitude ?? item.longitude
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${latitude},${longitude}`)}&travelmode=driving`
+  const parameters = new URLSearchParams({
+    api: '1',
+    destination: `${latitude},${longitude}`,
+    travelmode: 'driving',
+  })
+  if (item.googlePlaceId && item.navigationLatitude == null && item.navigationLongitude == null) {
+    parameters.set('destination_place_id', item.googlePlaceId)
+  }
+  return `https://www.google.com/maps/dir/?${parameters.toString()}`
 }
 
 function openExternalRoute(item) {
-  if (!describeMapMarker(item).navigationAvailable) return
+  if (!hasExternalMapAction(item)) return
   window.open(buildExternalRouteUrl(item), '_blank', 'noopener,noreferrer')
+}
+
+function hasNavigationCoordinates(item) {
+  if (item?.navigationAvailable === false) return false
+  const latitude = Number(item?.navigationLatitude ?? item?.latitude)
+  const longitude = Number(item?.navigationLongitude ?? item?.longitude)
+  return Number.isFinite(latitude) && Math.abs(latitude) <= 90
+    && Number.isFinite(longitude) && Math.abs(longitude) <= 180
+}
+
+function getGoogleMapsUri(item) {
+  if (item?.dataOrigin !== 'GOOGLE_PLACES' || typeof item.googleMapsUri !== 'string') return null
+
+  try {
+    const uri = new URL(item.googleMapsUri)
+    const isGoogleMapsHost = uri.hostname === 'maps.google.com'
+      || ((uri.hostname === 'www.google.com' || uri.hostname === 'google.com')
+        && uri.pathname.startsWith('/maps/'))
+    return uri.protocol === 'https:' && isGoogleMapsHost ? uri.toString() : null
+  } catch {
+    return null
+  }
+}
+
+function hasExternalMapAction(item) {
+  return hasNavigationCoordinates(item) || Boolean(getGoogleMapsUri(item))
+}
+
+function getExternalMapActionLabel(item) {
+  return hasNavigationCoordinates(item) ? '導航' : '查看地圖'
+}
+
+function getExternalMapActionDescription(item) {
+  const action = hasNavigationCoordinates(item) ? '使用 Google Maps 導航至' : '在 Google Maps 查看'
+  return `${action}${item?.label ?? '停車地點'}`
+}
+
+function getSourceTimingLabel(item) {
+  if (item.dataOrigin === 'GOOGLE_PLACES') return 'Google Places 地點資料 · 不含即時空位'
+  return `官方觀測 ${item.sourceObservedAt ? formatDateTime(item.sourceObservedAt) : '未提供'}`
 }
 
 function formatDateTime(value) {
@@ -1227,147 +1556,78 @@ function logAcceptanceEvent(type, message, details = {}) {
 </script>
 
 <template>
-  <main class="app-shell">
-    <section class="top-bar" aria-labelledby="app-title">
+  <main class="app-shell" :class="`view-${activeNavigation}`">
+    <header class="top-bar" aria-labelledby="app-title">
       <div class="brand-lockup">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 40"><path d="M16 1.5C7.9 1.5 1.5 7.8 1.5 15.7c0 10.6 14.5 22.8 14.5 22.8s14.5-12.2 14.5-22.8C30.5 7.8 24.1 1.5 16 1.5Z"/><circle cx="16" cy="15.5" r="5.1"/></svg>
+        </span>
         <h1 id="app-title">台灣停車預測</h1>
-        <p class="top-tagline">官方觀測、資料品質與抵達時間預測分開呈現</p>
       </div>
-      <div class="service-status">
-        <span class="status-dot" :class="{ ready: mapReady }" aria-hidden="true"></span>
-        {{ mapReady ? '地圖與地點搜尋已載入' : googleMapsLoadError ? '地點搜尋載入失敗' : hasGoogleMapsKey ? '地圖尚未載入' : '地點搜尋不可用' }}
+      <div class="header-tools">
+        <span class="header-caption">官方觀測 · 預測尚未驗證</span>
+        <button class="icon-button settings-shortcut" type="button" aria-label="開啟設定" @click="activeNavigation = 'settings'">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z"/><path d="m19.4 13.5 1.1.9-1.7 3-1.4-.5a7.8 7.8 0 0 1-1.3.8l-.3 1.5h-3.5l-.3-1.5a7.8 7.8 0 0 1-1.4-.8l-1.3.5-1.8-3 1.2-.9a7 7 0 0 1 0-1.6l-1.2-.9 1.8-3 1.3.5c.4-.3.9-.6 1.4-.8l.3-1.5h3.5l.3 1.5c.5.2 1 .5 1.3.8l1.4-.5 1.7 3-1.1.9a7 7 0 0 1 0 1.6Z"/></svg>
+        </button>
       </div>
-    </section>
+    </header>
 
-    <section class="planner-panel" aria-label="行程規劃">
-      <div class="field-group destination-field">
-        <label>目的地</label>
-        <div v-if="hasGoogleMapsKey" ref="destinationAutocompleteHost" class="autocomplete-host"></div>
-        <p v-else class="places-help" role="status">
-          地點搜尋目前不可用，請設定 Google Maps browser key；已選取的預設目的地仍可規劃查詢。
-        </p>
-        <p v-if="googleMapsLoadError" class="places-error" role="alert">{{ googleMapsLoadError }}</p>
-        <p v-else-if="hasGoogleMapsKey && !mapReady" class="places-help" role="status">正在載入 Google 地點搜尋…</p>
-        <p v-if="destinationPlaceError" class="places-error" role="alert">{{ destinationPlaceError }}</p>
-        <div class="selected-place">
-          <strong>{{ selectedDestination.label }}</strong>
-          <span>{{ selectedDestination.address || '所選地點未提供地址' }}</span>
-          <span>{{ Number(selectedDestination.latitude).toFixed(6) }}, {{ Number(selectedDestination.longitude).toFixed(6) }}</span>
-        </div>
+    <section class="planner-panel" :class="{ 'filter-panel-open': activeMapPanel === 'layers' }" aria-label="目的地與地圖篩選">
+      <div class="destination-field search-field">
+        <template v-if="hasGoogleMapsKey">
+          <div ref="destinationAutocompleteHost" class="autocomplete-host"></div>
+        </template>
+        <template v-else>
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7.2"/><path d="m16.2 16.2 5 5"/></svg>
+          <div class="places-unavailable" role="status"><small>地點搜尋未設定</small></div>
+        </template>
+        <button class="search-reset" type="button" aria-label="回到預設目的地" @click="useDefaultDestination">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
       </div>
+      <p v-if="googleMapsLoadError" class="places-error" role="alert">{{ googleMapsLoadError }}</p>
+      <p v-else-if="destinationPlaceError" class="places-error" role="alert">{{ destinationPlaceError }}</p>
+      <p v-if="errorMessage" class="error-message" role="alert">{{ errorMessage }}</p>
+      <p v-if="refreshMessage" class="refresh-message" role="status">{{ refreshMessage }}</p>
 
-      <details class="planning-details">
-        <summary>起點與出發時間 · {{ origin.label }} · {{ departureType === 'NOW' ? '立即出發' : '指定時間' }}</summary>
-        <div class="planning-details-grid">
+      <nav class="quick-filters" aria-label="地圖快速篩選">
+        <button class="filter-chip location-chip" type="button" :disabled="locating" @click="useCurrentLocation">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.3"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3"/></svg>
+          <span>{{ locating ? '定位中' : '我的位置' }}</span><span class="chip-chevron" aria-hidden="true"></span>
+        </button>
+        <button class="filter-chip" :class="{ selected: activeParkingTypeFilter !== 'ALL' }" type="button" :aria-pressed="activeParkingTypeFilter !== 'ALL'" @click="activeParkingTypeFilter = activeParkingTypeFilter === 'ALL' ? 'OFF_STREET' : activeParkingTypeFilter === 'OFF_STREET' ? 'ROADSIDE' : 'ALL'">
+          <span class="parking-chip-icon">P</span>
+          <span>{{ activeParkingTypeFilter === 'ALL' ? '全部停車場' : activeParkingTypeFilter === 'OFF_STREET' ? '路外停車場' : '路邊格位' }}</span><span class="chip-chevron" aria-hidden="true"></span>
+        </button>
+        <button class="filter-chip more-chip" :class="{ selected: activeMapPanel === 'layers' }" type="button" aria-controls="parking-filter-panel" :aria-expanded="activeMapPanel === 'layers'" @click="toggleMapPanel('layers')">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h8m4 0h4M4 17h3m4 0h9"/><circle cx="14" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>更多</span><span class="chip-chevron" aria-hidden="true"></span>
+        </button>
+      </nav>
+
+      <section id="parking-filter-panel" v-show="activeMapPanel === 'layers'" class="map-control-panel filter-popover" aria-label="其他搜尋與狀態篩選">
+        <header class="map-control-heading"><strong>搜尋與篩選</strong><button class="panel-close" type="button" @click="activeMapPanel = ''">完成</button></header>
+        <div class="advanced-planning-grid">
           <div class="field-group origin-field">
-            <label>起點</label>
-            <div v-if="hasGoogleMapsKey" ref="originAutocompleteHost" class="autocomplete-host"></div>
-            <p v-else class="places-help" role="status">
-              地點搜尋目前不可用，請設定 Google Maps browser key；已選取的新莊捷運站仍可規劃查詢。
-            </p>
-            <p v-if="googleMapsLoadError" class="places-error" role="alert">{{ googleMapsLoadError }}</p>
-            <p v-else-if="hasGoogleMapsKey && !mapReady" class="places-help" role="status">正在載入 Google 地點搜尋…</p>
+            <label>出發地</label>
+            <div v-if="hasGoogleMapsKey" ref="originAutocompleteHost" class="autocomplete-host origin-autocomplete"></div>
+            <p v-else class="places-help" role="status">請設定 Google Maps browser key 後使用地點搜尋。</p>
             <p v-if="originPlaceError" class="places-error" role="alert">{{ originPlaceError }}</p>
-            <div class="selected-place">
-              <strong>{{ origin.label }}</strong>
-              <span>{{ origin.address || '裝置未提供地址' }}</span>
-              <span>{{ Number(origin.latitude).toFixed(6) }}, {{ Number(origin.longitude).toFixed(6) }}</span>
-            </div>
-            <div class="origin-row">
-              <button class="utility-button" type="button" :disabled="locating" @click="useCurrentLocation">
-                {{ locating ? '定位中' : '使用目前位置' }}
-              </button>
-            </div>
+            <span class="origin-current-label">目前出發地：{{ origin.label }}</span>
           </div>
-
-          <div class="field-group">
+          <div class="field-group departure-field">
             <label>出發時間</label>
             <div class="segmented-control" role="group" aria-label="出發時間類型">
-              <button type="button" :class="{ active: departureType === 'NOW' }" @click="departureType = 'NOW'">
-                立即
-              </button>
-              <button type="button" :class="{ active: departureType === 'SCHEDULED' }" @click="departureType = 'SCHEDULED'">
-                指定
-              </button>
+              <button type="button" :class="{ active: departureType === 'NOW' }" @click="departureType = 'NOW'">立即</button>
+              <button type="button" :class="{ active: departureType === 'SCHEDULED' }" @click="departureType = 'SCHEDULED'">指定</button>
             </div>
-            <input
-              v-if="departureType === 'SCHEDULED'"
-              v-model="scheduledDepartureLocal"
-              type="datetime-local"
-              aria-label="指定出發時間"
-            >
+            <input v-if="departureType === 'SCHEDULED'" v-model="scheduledDepartureLocal" type="datetime-local" aria-label="指定出發時間">
           </div>
-        </div>
-      </details>
-
-      <div class="action-row">
-        <button class="primary-button" type="button" :disabled="loading" @click="createParkingQuery">
-          {{ loading ? '處理中' : '規劃停車查詢' }}
-        </button>
-        <button class="utility-button" type="button" @click="useDefaultDestination">
-          回到新莊體育館
-        </button>
-      </div>
-
-      <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-      <p v-if="refreshMessage" class="refresh-message">{{ refreshMessage }}</p>
-    </section>
-
-    <section class="workspace" aria-label="地圖與結果">
-      <section class="map-stage" aria-label="停車地圖">
-        <div class="map-toolbar">
-          <div>
-            <strong>{{ resultDestination.label }}</strong>
-            <span>目的地周邊 {{ queryResult?.area?.radiusMeters ?? DEFAULT_RADIUS_METERS }} 公尺 · 目前觀測</span>
-          </div>
-          <button class="utility-button map-return-button" type="button" @click="focusDestination">回到目的地</button>
-        </div>
-
-        <nav class="map-tools" aria-label="地圖工具">
-          <button
-            class="map-tool-button"
-            type="button"
-            :aria-expanded="showResultPanel"
-            aria-label="顯示停車結果清單"
-            @click="showResultPanel = !showResultPanel; activeMapPanel = ''"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
-            <span>結果</span>
-            <small>{{ resultItems.length }}</small>
-          </button>
-          <button
-            class="map-tool-button"
-            type="button"
-            :aria-expanded="activeMapPanel === 'layers'"
-            aria-label="圖層與狀態篩選"
-            @click="toggleMapPanel('layers')"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5M3 16l9 5 9-5" /></svg>
-            <span>篩選</span>
-          </button>
-          <button
-            class="map-tool-button"
-            type="button"
-            :aria-expanded="activeMapPanel === 'legend'"
-            aria-label="圖例說明"
-            @click="toggleMapPanel('legend')"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7h.01" /></svg>
-            <span>圖例</span>
-          </button>
-        </nav>
-
-        <section v-if="activeMapPanel === 'layers'" class="map-control-panel" aria-label="圖層與狀態篩選">
-          <header class="map-control-heading">
-            <strong>圖層與狀態</strong>
-            <button class="panel-close" type="button" @click="activeMapPanel = ''">關閉</button>
-          </header>
           <fieldset class="map-filter-group">
             <legend>資料類型</legend>
             <label class="map-filter-option map-filter-option-layer"><input v-model="mapFilters.layers.roadside" type="checkbox"><span>路邊格位</span></label>
             <label class="map-filter-option map-filter-option-layer"><input v-model="mapFilters.layers.offStreet" type="checkbox"><span>路外停車場</span></label>
           </fieldset>
-          <fieldset class="map-filter-group">
+          <fieldset class="map-filter-group status-filter-group">
             <legend>車位狀態</legend>
             <label class="map-filter-option"><input v-model="mapFilters.statuses.AVAILABLE" type="checkbox"><i class="status-swatch available" aria-hidden="true"></i><span>有位</span><small>{{ mapMarkerCounts.AVAILABLE }}</small></label>
             <label class="map-filter-option"><input v-model="mapFilters.statuses.OCCUPIED" type="checkbox"><i class="status-swatch occupied" aria-hidden="true"></i><span>已占用</span><small>{{ mapMarkerCounts.OCCUPIED }}</small></label>
@@ -1375,195 +1635,165 @@ function logAcceptanceEvent(type, message, details = {}) {
             <label class="map-filter-option"><input v-model="mapFilters.statuses.UNKNOWN" type="checkbox"><i class="status-swatch unknown" aria-hidden="true"></i><span>未知／無即時資料</span><small>{{ mapMarkerCounts.UNKNOWN }}</small></label>
             <label class="map-filter-option"><input v-model="mapFilters.statuses.STALE" type="checkbox"><i class="status-swatch stale" aria-hidden="true"></i><span>資料過期</span><small>{{ mapMarkerCounts.STALE }}</small></label>
           </fieldset>
-          <p class="filter-result-count">地圖顯示 {{ visibleMapItems.length }} / {{ resultItems.length }} 筆</p>
-        </section>
+        </div>
+        <button class="primary-button plan-query-button" type="button" :disabled="loading" @click="createParkingQuery">{{ loading ? '正在規劃…' : '規劃停車查詢' }}</button>
+      </section>
+    </section>
 
-        <section v-if="activeMapPanel === 'legend'" class="map-control-panel map-legend-panel" aria-label="地圖圖例">
-          <header class="map-control-heading">
-            <strong>標記說明</strong>
-            <button class="panel-close" type="button" @click="activeMapPanel = ''">關閉</button>
-          </header>
-          <div class="legend-row"><i class="status-swatch available" aria-hidden="true"></i><span>路邊「有」：目前觀測有位</span></div>
-          <div class="legend-row"><i class="status-swatch occupied" aria-hidden="true"></i><span>「占」或「滿」：已占用／已滿</span></div>
-          <div class="legend-row"><i class="status-swatch unknown" aria-hidden="true"></i><span>「?」：未知、未確認資格或無資料</span></div>
-          <div class="legend-row"><i class="status-swatch stale" aria-hidden="true"></i><span>「舊」：快照已過期</span></div>
-          <p>路邊格位會依縮放合併群聚，拉近後逐格顯示；路外停車場維持獨立標記。群聚數是格位筆數，不代表空位數。</p>
-          <p>位置依官方目錄座標顯示，本專案尚未完成實地位置精度校驗。</p>
-        </section>
-
+    <section
+      ref="workspaceElement"
+      class="workspace"
+      :class="[`mobile-sheet-${mobileSheetSnap}`, { 'sheet-dragging': mobileSheetDragging }]"
+      :style="mobileSheetMapHeight === null ? undefined : { '--mobile-map-height': `${mobileSheetMapHeight}px` }"
+      aria-label="地圖與停車資訊"
+    >
+      <section ref="mapStageElement" class="map-stage" aria-label="停車地圖">
         <div v-if="hasGoogleMapsKey" ref="mapElement" class="google-map" aria-label="Google 地圖"></div>
         <div v-if="!mapReady" class="map-fallback" :class="{ overlay: hasGoogleMapsKey }">
           <div class="fallback-circle">{{ queryResult?.area?.radiusMeters ?? DEFAULT_RADIUS_METERS }}m</div>
           <strong>{{ mapStatus }}</strong>
-          <span>下方結果列表仍可查看目前車位與資料時間。</span>
+          <span>地圖上只會顯示查詢後取得的停車資料。</span>
         </div>
-
-        <div class="map-summary" aria-live="polite">
-          <strong>即時資料狀態</strong>
-          <span>{{ mapDataLoading ? '地圖標記更新中' : `${visibleMapItems.length} / ${resultItems.length} 筆資料符合篩選；近距離格位依縮放合併顯示` }}</span>
+        <div class="map-toolbar">
+          <div class="map-place-pin"><span class="destination-dot" aria-hidden="true"></span><div><strong>{{ resultDestination.label }}</strong><span>目的地周邊 {{ queryResult?.area?.radiusMeters ?? DEFAULT_RADIUS_METERS }} 公尺</span></div></div>
+          <button class="map-return-button" type="button" aria-label="回到目的地" @click="focusDestination">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3"/></svg>
+          </button>
+        </div>
+        <section v-if="activeMapPanel === 'legend'" class="map-control-panel map-legend-panel" aria-label="地圖圖例">
+          <header class="map-control-heading"><strong>停車格圖例</strong><button class="panel-close" type="button" @click="activeMapPanel = ''">關閉</button></header>
+          <div class="legend-row"><i class="status-swatch available" aria-hidden="true"></i><span>有位 · 官方目前觀測</span></div>
+          <div class="legend-row"><i class="status-swatch occupied" aria-hidden="true"></i><span>已占用或已滿</span></div>
+          <div class="legend-row"><i class="status-swatch unknown" aria-hidden="true"></i><span>未知或沒有即時資料</span></div>
+          <div class="legend-row"><i class="status-swatch stale" aria-hidden="true"></i><span>觀測資料已過期</span></div>
+          <p>路邊位置依官方目錄座標顯示，尚未完成實地精度校驗。群聚數代表格位筆數，不代表空位數。</p>
+        </section>
+        <div class="map-legend" aria-label="停車狀態圖例">
+          <span><i class="status-swatch available" aria-hidden="true"></i>有位</span>
+          <span><i class="status-swatch occupied" aria-hidden="true"></i>已占用</span>
+          <span><i class="status-swatch unknown" aria-hidden="true"></i>未知</span>
+        </div>
+        <button class="map-locate-button" type="button" aria-label="使用目前位置" :disabled="locating" @click="useCurrentLocation">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.4"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3m15 0h3"/></svg>
+        </button>
+        <div v-if="mapDataError || mapViewportSupportMessage" class="map-summary" aria-live="polite">
+          <span class="status-dot" :class="{ ready: mapReady }" aria-hidden="true"></span>
+          <span>{{ mapDataLoading ? '停車資料更新中' : queryResult ? `${visibleMapItems.length} 個官方觀測符合篩選` : '先規劃查詢，再查看附近車位' }}</span>
+          <span v-if="mapData?.generatedAt" class="map-read-time">系統取得 {{ formatDateTime(mapData.generatedAt) }}</span>
           <span v-if="mapViewportSupportMessage" class="map-support-message">{{ mapViewportSupportMessage }}</span>
-          <span v-if="mapData?.generatedAt">畫面讀取：{{ formatDateTime(mapData.generatedAt) }}</span>
-          <span v-if="mapData?.roadside?.systemCollectedAt || mapData?.offStreet?.systemCollectedAt">
-            系統取得：路邊 {{ formatDateTime(mapData?.roadside?.systemCollectedAt) }} · 路外 {{ formatDateTime(mapData?.offStreet?.systemCollectedAt) }}
-          </span>
           <span v-if="mapDataError" class="map-data-error">{{ mapDataError }}</span>
-          <span v-if="mapData && (mapData.excludedUnverifiedCount || mapData.omittedItemCount)">
-            未顯示 {{ mapData.excludedUnverifiedCount }} 筆未通過 mapping，另省略 {{ mapData.omittedItemCount }} 筆以控制標記數量。
-          </span>
-          <span v-if="queryResult">{{ etaMessage }}；車位為目前觀測，不是抵達預測。</span>
-          <span v-if="queryResult && queryResult.area?.coverageStatus !== 'COMPLETE'">
-            目前只涵蓋已審查的目的地周邊 500 公尺：{{ queryResult.area?.coverageStatus === 'NO_CATALOG_RESULTS' ? '尚無已審查目錄資料' : '目錄僅部分收錄' }}
-          </span>
         </div>
       </section>
 
-      <aside v-if="showResultPanel" class="result-panel" aria-label="查詢結果">
-        <div class="panel-header">
-          <div>
-            <h2>停車結果</h2>
-            <span class="panel-subtitle">{{ mapData?.viewport ? '目前地圖範圍' : `目的地周邊 ${queryResult?.area?.radiusMeters ?? DEFAULT_RADIUS_METERS} 公尺` }} · {{ visibleMapItems.length }} 筆符合篩選</span>
-          </div>
-          <div class="panel-actions">
-            <button class="utility-button" type="button" :disabled="loading || !queryResult" @click="refreshParkingAvailability()">
-              {{ loading ? '更新中' : '更新車位' }}
-            </button>
-            <button class="panel-close" type="button" aria-label="關閉停車結果" @click="showResultPanel = false">關閉</button>
-          </div>
+      <aside class="result-panel" aria-label="選取停車位與附近結果">
+        <div v-if="activeNavigation === 'settings'" class="settings-view">
+          <div class="panel-view-heading"><span class="panel-eyebrow">PARKING GUIDE</span><h2>使用設定與資料說明</h2></div>
+          <article class="result-card"><strong>資料呈現方式</strong><span>官方目前觀測、資料品質與抵達時間預測分開顯示。沒有通過驗證的預測會標示「資料不足」。</span></article>
+          <article class="result-card"><strong>地圖位置</strong><span>格位位置依官方目錄座標呈現，目前尚未完成實地精度校驗。</span></article>
+          <article class="result-card"><strong>系統狀態</strong><span>地圖：{{ mapReady ? '已載入' : '尚未載入' }}</span><span>Google Places：{{ hasGoogleMapsKey ? '已設定' : '未設定' }}</span><span>API：{{ apiBaseUrlLabel }}</span></article>
+          <article class="result-card muted"><strong>更新方式</strong><span>建立查詢後顯示附近資料；「更新車位」只更新目前官方觀測，不會重新估算 ETA。</span></article>
         </div>
 
-        <article v-if="selectedMapItem" class="selected-spot-card">
-          <header class="selected-spot-heading">
-            <div class="selected-spot-mark" :class="selectedMapItem.type === 'OFF_STREET' ? 'off-street' : 'roadside'">
-              {{ selectedMapItem.type === 'OFF_STREET' ? 'P' : '格' }}
-            </div>
-            <div class="selected-spot-title">
-              <strong>{{ selectedMapItem.label }}</strong>
-              <span>{{ selectedMapItem.type === 'OFF_STREET' ? '路外停車場' : '路邊格位' }} · 距離約 {{ selectedMapItem.distanceMeters }} 公尺</span>
-            </div>
-          </header>
-          <div class="selected-spot-facts">
-            <div><span>目前官方觀測</span><strong>{{ selectedMapItem.currentValue }}</strong></div>
-            <div><span>目前可用／總車位</span><strong>{{ formatMapCapacity(selectedMapItem) }}</strong></div>
-            <div><span>資料品質</span><strong>{{ formatQuality(selectedMapItem.qualityStatus) }}</strong></div>
-            <div><span>一般汽車適用性</span><strong>{{ formatEligibility(selectedMapItem.carEligibleStatus) }}</strong></div>
-            <div><span>官方逐筆時間</span><strong>{{ selectedMapItem.sourceObservedAt ? formatDateTime(selectedMapItem.sourceObservedAt) : '來源未提供可信時間' }}</strong></div>
-            <div><span>系統取得時間</span><strong>{{ formatDateTime(selectedMapItem.systemCollectedAt) }}</strong></div>
-            <div><span>位置</span><strong>{{ selectedMapItem.address || '依官方目錄座標顯示' }}</strong></div>
-            <div><span>收費</span><strong>{{ selectedMapItem.feeDescription || selectedMapItem.feeStatus || '來源未提供' }}</strong></div>
-            <div><span>收費時段</span><strong>{{ [selectedMapItem.chargingDays, selectedMapItem.chargingHours].filter(Boolean).join(' · ') || '來源未提供' }}</strong></div>
-            <div><span>抵達時預測</span><strong>{{ queryResult?.predictions?.status === 'READY' ? '已完成驗證' : '資料不足' }}</strong></div>
-          </div>
-          <p v-if="selectedMapItem.qualityReason || selectedMapItem.notes || selectedMapItem.message" class="selected-spot-note">
-            {{ selectedMapItem.qualityReason || selectedMapItem.notes || selectedMapItem.message }}
-          </p>
+        <div v-else-if="activeNavigation === 'favorites'" class="favorites-view">
+          <div class="panel-view-heading"><span class="panel-eyebrow">SAVED PLACES</span><h2>我的最愛</h2><span>{{ favoriteMapItems.length }} 個已收藏項目</span></div>
+          <article v-for="item in favoriteMapItems" :key="item.id" class="parking-item" :class="{ selected: selectedItemId === item.id }">
+            <button class="parking-select" type="button" @click="selectResultItem(item.id)"><span class="spot-badge" :class="item.availabilityStatus?.toLowerCase()">{{ getSpotBadge(item) }}</span><span class="parking-item-copy"><strong>{{ item.label }}</strong><small>{{ item.distanceMeters }} 公尺 · {{ item.currentValue }}</small></span><span class="parking-row-chevron" aria-hidden="true">›</span></button>
+          </article>
+          <div v-if="favoriteMapItems.length === 0" class="empty-results"><span class="empty-icon">♡</span><strong>還沒有收藏停車位</strong><p>查詢附近車位後，點選車位詳情旁的愛心即可收藏。</p><button class="secondary-button" type="button" @click="activeNavigation = 'map'">回到地圖</button></div>
+        </div>
+
+        <div v-else class="map-results-view">
           <button
-            v-if="describeMapMarker(selectedMapItem).navigationAvailable"
-            class="route-link selected-route-link"
+            class="sheet-handle"
             type="button"
-            @click="openExternalRoute(selectedMapItem)"
-          >在地圖中規劃路線</button>
-        </article>
-
-        <template v-if="queryResult">
-          <div class="status-grid">
-            <div>
-              <span>資料查詢</span>
-              <strong>{{ queryResult.query.status === 'READY' ? '已完成' : queryResult.query.status }}</strong>
+            :aria-label="mobileSheetSnap === 'expanded' ? '收合資訊欄' : mobileSheetSnap === 'peek' ? '展開資訊欄' : '調整資訊欄高度'"
+            :aria-expanded="mobileSheetSnap === 'expanded'"
+            @pointerdown="startMobileSheetDrag"
+            @pointermove="moveMobileSheetDrag"
+            @pointerup="finishMobileSheetDrag"
+            @pointercancel="finishMobileSheetDrag"
+            @click="toggleMobileSheet"
+          ><span></span></button>
+          <article class="selected-spot-card">
+            <header class="selected-spot-heading">
+              <div class="selected-spot-mark" :class="selectedMapItem?.type === 'OFF_STREET' ? 'off-street' : selectedMapItem ? 'roadside' : 'destination'">{{ getSpotBadge(selectedMapItem) }}</div>
+              <div class="selected-spot-title">
+                <strong>{{ selectedMapItem?.label ?? resultDestination.label }}</strong>
+                <span>{{ selectedMapItem ? `${selectedMapItem.type === 'OFF_STREET' ? '路外停車場' : '路邊格位'} · 距離約 ${selectedMapItem.distanceMeters} 公尺` : queryResult ? '目的地附近停車資訊' : '目的地 · 尚未查詢停車資料' }}</span>
+              </div>
+              <div class="selected-spot-actions">
+                <button v-if="selectedMapItem" class="icon-button" type="button" :aria-label="favoriteItemIds.includes(selectedMapItem.id) ? '取消收藏' : '收藏停車位'" :aria-pressed="favoriteItemIds.includes(selectedMapItem.id)" @click="toggleFavorite(selectedMapItem.id)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.9c0 5.2-8.8 11.1-8.8 11.1S3.2 14.1 3.2 8.9a4.4 4.4 0 0 1 8.8-1 4.4 4.4 0 0 1 8.8 1Z"/></svg>
+                </button>
+                <button v-if="selectedMapItem" class="icon-button" type="button" aria-label="分享停車資訊" @click="shareSelectedItem">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+                </button>
+              </div>
+            </header>
+            <div class="selected-spot-facts">
+              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 14 1.4-4.2A2 2 0 0 1 8.3 8h7.4a2 2 0 0 1 1.9 1.8L19 14"/><path d="M4 14h16v5h-2v-2H6v2H4z"/><circle cx="7.5" cy="19" r="1"/><circle cx="16.5" cy="19" r="1"/></svg>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? '空位狀態' : '目前觀測' }}</span><strong :class="selectedMapItem?.availabilityStatus?.toLowerCase()">{{ selectedMapItem?.currentValue ?? (queryResult ? roadsideDisplaySummary.availableSpaces === null ? '未知' : `${roadsideDisplaySummary.availableSpaces} 格` : '尚未查詢') }}</strong></div>
+              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.2"/></svg>距離</span><strong>{{ selectedMapItem ? `${selectedMapItem.distanceMeters} 公尺` : '目的地周邊' }}</strong></div>
+              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg>資料品質</span><strong>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? '地點目錄，無即時觀測' : selectedMapItem ? formatQuality(selectedMapItem.qualityStatus) : queryResult ? '依來源狀態判定' : '尚未取得' }}</strong></div>
+              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? '即時觀測時間' : '官方觀測時間' }}</span><strong>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? 'Google Places 不提供' : selectedMapItem?.sourceObservedAt ? formatDateTime(selectedMapItem.sourceObservedAt) : '來源未提供' }}</strong></div>
+              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 14 1.4-4.2A2 2 0 0 1 8.3 8h7.4a2 2 0 0 1 1.9 1.8L19 14"/><path d="M4 14h16v5h-2v-2H6v2H4z"/><circle cx="7.5" cy="19" r="1"/><circle cx="16.5" cy="19" r="1"/></svg>一般汽車適用性</span><strong>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? 'Google Places 未提供' : selectedMapItem ? formatEligibility(selectedMapItem.carEligibleStatus) : '尚未確認' }}</strong></div>
+              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17a4 4 0 0 1 .4-8 5.4 5.4 0 0 1 10.3 1.2A3.5 3.5 0 1 1 18 17H7Z"/><path d="M12 12v6m0 0-2-2m2 2 2-2"/></svg>系統取得</span><strong>{{ selectedMapItem ? formatDateTime(selectedMapItem.systemCollectedAt) : mapData?.generatedAt ? formatDateTime(mapData.generatedAt) : '尚未取得' }}</strong></div>
+              <div class="fee-fact"><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5c-.8-.7-1.7-1-3-1-1.4 0-2.5.8-2.5 2s1.1 1.8 2.5 2.2 2.5.9 2.5 2.3-1.1 2.3-2.7 2.3c-1.2 0-2.4-.4-3.2-1.2M12 6v12"/></svg>收費</span><strong>{{ selectedMapItem?.feeDescription || selectedMapItem?.feeStatus || '來源未提供' }}</strong><a v-if="selectedMapItem && selectedMapItem.type !== 'OFF_STREET' && selectedMapItem.dataOrigin !== 'GOOGLE_PLACES'" class="fee-source-link" href="https://parkweb.traffic.ntpc.gov.tw/route.aspx" target="_blank" rel="noopener noreferrer">查看新北市官方路段費率</a></div>
+              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/><path d="M16.5 4.5 19 5v2.5"/></svg>抵達預測</span><strong>{{ queryResult?.predictions?.status === 'READY' ? '通過驗證' : '資料不足' }}</strong></div>
             </div>
-            <div>
-              <span>Google 預估抵達</span>
-              <strong>{{ queryResult.eta.status === 'READY' ? '已估算' : '尚無 ETA' }}</strong>
+            <p v-if="selectedMapItem?.qualityReason || selectedMapItem?.notes || selectedMapItem?.message" class="selected-spot-note">{{ selectedMapItem.qualityReason || selectedMapItem.notes || selectedMapItem.message }}</p>
+            <p v-else-if="!queryResult" class="selected-spot-note">選定目的地並按下「規劃停車查詢」後，這裡會顯示官方觀測、資料品質和抵達時間預測。</p>
+            <p v-if="queryResult" class="selected-spot-note">{{ predictionMessage }} · {{ etaMessage }}</p>
+            <a v-if="selectedMapItem && hasExternalMapAction(selectedMapItem)" class="route-link selected-route-link" :href="buildExternalRouteUrl(selectedMapItem)" :aria-label="getExternalMapActionDescription(selectedMapItem)" :title="getExternalMapActionDescription(selectedMapItem)" target="_blank" rel="noopener noreferrer">{{ getExternalMapActionLabel(selectedMapItem) }}</a>
+            <button v-else-if="!queryResult" class="primary-button plan-query-button" type="button" :disabled="loading" @click="createParkingQuery">{{ loading ? '正在規劃…' : '規劃停車查詢' }}</button>
+          </article>
+
+          <section class="nearby-section" aria-labelledby="nearby-title">
+            <header class="nearby-heading"><div><h2 id="nearby-title">{{ activeNavigation === 'list' ? '附近停車結果' : '附近停車位與停車場' }}</h2><span>{{ queryResult ? `${visibleMapItems.length} 個符合篩選` : '官方資料 · 查詢後載入' }}</span></div><span class="nearby-note">{{ queryResult ? '目前觀測' : '' }}</span><button v-if="queryResult" class="refresh-button refresh-compact" type="button" :disabled="loading" @click="refreshParkingAvailability()">{{ loading ? '更新中' : '更新車位' }}</button></header>
+            <template v-if="queryResult && displayedMapItems.length">
+              <article v-for="item in displayedMapItems" :key="item.id" class="parking-item" :class="{ selected: selectedItemId === item.id }">
+                <button class="parking-select" type="button" @click="selectResultItem(item.id)">
+                  <span class="spot-badge" :class="item.availabilityStatus?.toLowerCase()">{{ getSpotBadge(item) }}</span>
+                  <span class="parking-item-copy"><strong>{{ item.label }}</strong><small>{{ item.distanceMeters }} 公尺 <span class="item-type">{{ item.type === 'OFF_STREET' ? '停車場' : '路邊格位' }}</span></small></span>
+                  <span class="parking-row-status"><i class="status-swatch" :class="item.availabilityStatus?.toLowerCase()" aria-hidden="true"></i>{{ item.currentValue }}</span>
+                  <span class="parking-row-fee">{{ item.feeDescription || item.feeStatus || '—' }}</span>
+                  <span class="parking-row-chevron" aria-hidden="true">›</span>
+                </button>
+                <a v-if="hasExternalMapAction(item)" class="parking-route-button" :href="buildExternalRouteUrl(item)" :aria-label="getExternalMapActionDescription(item)" :title="getExternalMapActionDescription(item)" target="_blank" rel="noopener noreferrer" @click.stop>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></svg><span>{{ getExternalMapActionLabel(item) }}</span>
+                </a>
+                <span class="parking-item-times">{{ getSourceTimingLabel(item) }} · 系統取得 {{ formatDateTime(item.systemCollectedAt) }}</span>
+              </article>
+            </template>
+            <div v-else-if="!queryResult" class="empty-results compact-empty">
+              <strong>查詢目的地附近車位</strong><p>不會顯示合成車位數。按下上方按鈕後，系統才會讀取已審查的官方資料。</p>
             </div>
-            <div>
-              <span>抵達時預測</span>
-              <strong>{{ queryResult.predictions.status === 'INSUFFICIENT_DATA' ? '資料不足' : queryResult.predictions.status }}</strong>
-            </div>
-          </div>
+            <div v-else class="empty-results compact-empty"><strong>{{ resultItems.length ? '目前篩選沒有符合結果' : '附近暫無可顯示資料' }}</strong><p>{{ resultItems.length ? '請調整車位類型或狀態篩選。' : '沒有資料不代表附近沒有停車位。' }}</p></div>
+            <p v-if="queryResult" class="coverage-note google-places-note">{{ googlePlacesMessage }}</p>
+            <p v-if="queryResult && queryResult.area?.coverageStatus !== 'COMPLETE'" class="coverage-note">{{ queryResult.area?.coverageStatus === 'NO_CATALOG_RESULTS' ? '此區尚無已審查的停車目錄。' : '此區目錄僅部分收錄；未顯示不代表沒有車位。' }}</p>
+          </section>
 
-          <article class="result-card">
-            <strong>路邊區域</strong>
-            <span>{{ roadsideDisplaySummary.message }}</span>
-            <span>目前可用：{{ roadsideDisplaySummary.availableSpaces ?? '未知' }}</span>
-            <span>資料時間：{{ formatDateTime(queryResult.roadside.systemCollectedAt) }}</span>
-          </article>
-
-          <article class="result-card">
-            <strong>路外停車場</strong>
-            <span>{{ offStreetMessage }}</span>
-            <span>資料時間：{{ formatDateTime(queryResult.offStreet.systemCollectedAt) }}</span>
-          </article>
-
-          <article class="result-card warning">
-            <strong>抵達時預測</strong>
-            <span>{{ predictionMessage }}</span>
-            <span>目標抵達：{{ formatDateTime(queryResult.predictions.targetArrivalAt) }}</span>
-          </article>
-
-          <div class="list-header">
-            <strong>查看全部結果</strong>
-            <span>{{ visibleMapItems.length }} / {{ resultItems.length }} 筆</span>
-          </div>
-
-          <article
-            v-for="item in visibleMapItems"
-            :key="item.id"
-            class="parking-item"
-            :class="{ selected: selectedItemId === item.id }"
-          >
-            <button class="parking-select" type="button" @click="selectResultItem(item.id)">
-              <span class="item-type">{{ item.type === 'OFF_STREET' ? '路外' : '路邊' }}</span>
-              <strong>{{ item.label }}</strong>
-              <span>{{ item.distanceMeters }} 公尺 · {{ item.currentValue }}</span>
-              <span>官方逐筆觀測：{{ item.sourceObservedAt ? formatDateTime(item.sourceObservedAt) : '未提供可信時間' }}</span>
-              <span>系統取得：{{ formatDateTime(item.systemCollectedAt) }}</span>
-              <span>{{ item.message }}</span>
-            </button>
-            <button
-              v-if="describeMapMarker(item).navigationAvailable"
-              class="route-link"
-              type="button"
-              @click="openExternalRoute(item)"
-            >
-              查看路線
-            </button>
-          </article>
-          <article v-if="visibleMapItems.length === 0" class="result-card">
-            <strong>{{ resultItems.length ? '目前篩選沒有符合標記' : '目前沒有可顯示的停車資料' }}</strong>
-            <span>{{ resultItems.length ? '調整圖層或狀態篩選即可查看其他資料。' : '地圖只呈現已審查目錄與已發布快照；不會替缺失資料產生標記。' }}</span>
-          </article>
-        </template>
-
-        <template v-else>
-          <article class="result-card">
-            <strong>尚未送出查詢</strong>
-            <span>選定目的地與出發設定後，前端才會呼叫主系統建立查詢。</span>
-          </article>
-          <article class="result-card">
-            <strong>資料邊界</strong>
-            <span>前端只提交座標與時間，不提交自算 ETA、車位數或預測機率。</span>
-          </article>
-        </template>
-
-        <article class="result-card muted">
-          <strong>設定</strong>
-          <span>API：{{ apiBaseUrlLabel }}</span>
-          <span>Google Key：{{ hasGoogleMapsKey ? '已設定' : '未設定' }}</span>
-          <span>自動刷新：頁面可見且來源狀態需更新時，每個查詢狀態組合只嘗試一次。</span>
-        </article>
-
-        <article class="result-card acceptance-log">
-          <strong>人工驗收事件</strong>
-          <span>只記錄狀態碼、trigger 與 payload 欄位摘要；不顯示 key 或完整 API 回應。</span>
-          <ol v-if="acceptanceEvents.length">
-            <li v-for="(event, index) in acceptanceEvents" :key="`${event.occurredAt}-${event.type}-${index}`">
-              <span>{{ formatDateTime(event.occurredAt) }} · {{ event.type }}</span>
-              <strong>{{ event.message }}</strong>
-              <code>{{ JSON.stringify(event.details) }}</code>
-            </li>
-          </ol>
-          <span v-else>尚無事件。送出查詢或載入 Places 後會在此出現。</span>
-        </article>
+          <section v-if="activeNavigation === 'list' && queryResult" class="data-source-details">
+            <article class="result-card"><strong>路邊區域</strong><span>{{ roadsideDisplaySummary.message }}</span><span>抵達時預測：{{ predictionMessage }}</span></article>
+            <article class="result-card"><strong>路外停車場</strong><span>{{ offStreetMessage }}</span><span>{{ etaMessage }}</span></article>
+            <article class="result-card muted acceptance-log"><strong>人工驗收事件</strong><span>僅記錄狀態碼與 payload 欄位摘要，不顯示金鑰或完整 API 回應。</span><ol v-if="acceptanceEvents.length"><li v-for="(event, index) in acceptanceEvents" :key="`${event.occurredAt}-${event.type}-${index}`"><span>{{ formatDateTime(event.occurredAt) }} · {{ event.type }}</span><strong>{{ event.message }}</strong><code>{{ JSON.stringify(event.details) }}</code></li></ol><span v-else>尚無事件。</span></article>
+          </section>
+        </div>
       </aside>
     </section>
+
+    <nav class="bottom-navigation" aria-label="主要導覽">
+      <button type="button" :class="{ active: activeNavigation === 'map' }" :aria-current="activeNavigation === 'map' ? 'page' : undefined" @click="activeNavigation = 'map'">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/></svg><span>地圖</span>
+      </button>
+      <button type="button" :class="{ active: activeNavigation === 'list' }" :aria-current="activeNavigation === 'list' ? 'page' : undefined" @click="activeNavigation = 'list'">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h12M9 12h12M9 19h12"/><circle cx="4" cy="5" r=".8"/><circle cx="4" cy="12" r=".8"/><circle cx="4" cy="19" r=".8"/></svg><span>清單</span>
+      </button>
+      <button type="button" :class="{ active: activeNavigation === 'favorites' }" :aria-current="activeNavigation === 'favorites' ? 'page' : undefined" @click="activeNavigation = 'favorites'">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/></svg><span>我的最愛</span>
+      </button>
+      <button type="button" :class="{ active: activeNavigation === 'settings' }" :aria-current="activeNavigation === 'settings' ? 'page' : undefined" @click="activeNavigation = 'settings'">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>設定</span>
+      </button>
+    </nav>
   </main>
 </template>

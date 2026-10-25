@@ -2,14 +2,18 @@
 
 更新日期：2026-10-25。每題解決後，將結論移入 `decisions.md`，必要時同步更新需求。
 
-## 2026-10-25 車位地圖改版待驗證
+## 2026-10-25 參考圖版桌面／手機 UI 待驗收
 
-- 使用者已明確偏好「臺灣街道圖集」完整手機稿，決策與設計規範已記錄；viewport、跨格距離群聚、選取詳情、可用／總格數、支援範圍提示與 RWD 樣式已實作。獨立規格審查發現的標記閃爍、群聚格界、容量顯示與支援範圍提示均已修正。指定尺寸的真實瀏覽器檢查仍待完成：自動化瀏覽器安全政策拒絕讀取本機 Vite 頁，且明確禁止透過其他瀏覽器路徑重試。待能使用本機瀏覽器時驗收 1280×720、1440×900、375×812、390×844、430×932，並保存截圖；Docker MySQL migration 也待既有環境可存取時驗收。
-- 新增 viewport endpoint 已以 H2 整合測試驗證；仍需在 Docker MySQL profile 核對 migration，並確認 verified mapping 分頁與高密度 viewport 的 DB query latency。禁止以重建既有 Docker volume 當作此驗收方式。
+- 使用者已明確選擇「臺灣街道圖集」參考圖，並要求桌面版也套用。前端已實作：手機上方搜尋／篩選、地圖與底部詳情；桌面地圖主區與右側詳情欄。viewport、格位群聚、選取詳情、可用／總格數、支援範圍提示與 RWD 樣式已完成。指定尺寸的視覺／互動人工檢查仍待完成：1280×720、1440×900、375×812、390×844、430×932。新版 Docker API／Web 已重建；實際 viewport、query、資產與四服務健康 smoke 已通過。Docker MySQL 已套用 V2 nullable 欄位 migration。
+- API 啟動已在保留的 Docker MySQL volume 實際套用 V2 migration；repeatable seed checksum 相同而未重跑。高密度 viewport 全量 catalog 的 DB query latency 仍待量測；本次 10 筆小樣本 smoke 不能代表完整 catalog 效能。
 - ParkBoss 參考地圖的逐格點選、狀態色、篩選和車位類型圖示已瀏覽；程式已有縮放式群聚、獨立路外標記、地圖／清單選取同步、資料詳情和資格／狀態導航 gate。仍待真實瀏覽器驗收點選、縮放、平移、篩選及 viewport 請求是否維持唯讀。
 - 來源座標已通過格式與範圍檢查，但其是否落在每個實體路邊格位仍未經本專案實地校驗；定位精度和資料品質需持續分開描述，不宣稱地面實測精度。
 - 新北路邊 `CELLSTATUS` 語意仍沒有官方 codebook；車位狀態 `parkingstatus` 的未知／封閉碼仍應依既有驗證文件拒絕推成可用。費率欄位 `pay`／`paycash` 的正式 enum 與計價語意若無明確來源定義，UI 應原樣標成官方分類或顯示未提供，不把 code 當價格。
-- Docker 既有頁面已於 2026-10-25 實際開啟，地圖正常載入；尚未按查詢按鈕，避免未知的 Routes／政府來源請求。此次 Docker daemon pipe 回覆拒絕存取，未重建或修改既有容器／volume；目前 MySQL V2 migration 仍未驗收。需在本地受控資料與外部呼叫關閉環境完成互動驗收。
+- 原 Docker 頁面雖可載入地圖，但截圖確認仍是舊版介面；之後已重建 API／Web 並以本機 HTTP 確認新版資產、viewport 10 筆 verified 標記及四服務健康。既有 MySQL volume 保留；V2 migration 僅新增 nullable 欄位。仍需使用者在瀏覽器確認參考圖版的桌面／手機呈現與 Places、地圖操作。
+
+## ETA 上游驗收
+
+- 本機 Docker `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=false`，已確認新查詢會回 `ETA=FAILED` 並指出外部呼叫已關閉；Google ETA mock 測試通過。真實 Routes 呼叫可能產生費用，尚未取得使用者授權，因此不開啟設定或送出真實 ETA 請求。模型預測另依 Sprint 3 驗證條件維持 `INSUFFICIENT_DATA`，不能用 ETA 取代停車機率。
 
 ## 本次整合仍待驗證
 
@@ -75,3 +79,4 @@
 36. **GitHub 任務管理與 CI**：PM 拆任務與 Human-in-the-loop 流程已定；仍需建立 GitHub 遠端、Issues／Project board、Issue template、PR template，以及決定第一版 GitHub Actions 的 Maven test、前端 build、Docker build 檢查範圍。Harness 暫不導入，除非後續 Sponsor 明確指定。
 37. **TDX 新莊區即時資料篩選能力**：Sponsor 更新 `.env` 後，TDX token 已可成功取得；TDX 基礎即時路邊正確 endpoint 已確認為 `/api/basic/v1/Parking/OnStreet/ParkingSpotAvailability/City/NewTaipei`，且可用 `$filter=ParkingSpotID eq '153854'` 查單格位。TDX NewTaipei 路外靜態與即時 endpoint 目前回空集合，不能作新莊 MVP 路外來源。待確認：TDX 是否有正式行政區／座標 server-side filter、NewTaipei 路外空集合是否長期狀態，以及未來用 TDX 擴充全臺時的點數／速率成本。
 38. **TDX 2026-09-17..2026-09-23 新莊歷史資料取得方式**：TDX 歷史路邊格位 API 只確認到 NewTaipei city-level metadata，7 日全市為 35,480,193 rows／5,403,073,037 bytes，依 20 MB／點粗估約 270.15 點；單日 2026-09-23 為 5,711,400 rows／869,765,771 bytes，約 43.49 點。本機既有資料顯示新北市 Open Data `id` 可對上 TDX `ParkingSpotID`，但實測 `$filter=ParkingSpotID eq '153854'` 被 endpoint 忽略，回傳未篩選前幾筆；若找不到其他可用 server-side filter，需 Sponsor 明確決定是否願意消耗大量點數下載全新北再本地篩選。TDX 歷史路外 City endpoint 不接受 NewTaipei，需另找來源或維持使用新北市官方即時累積。
+39. **Google Places 停車設施補充的部署與涵蓋**：後端已新增 Places Nearby Search 路徑。Spring 預設關閉外呼；Compose 預設啟用，但目前 `.env` 沒有 `GOOGLE_PLACES_SERVER_API_KEY`，因此回 `NOT_CONFIGURED` 且不會呼叫 Google。加入 Places 可用且限制適當的伺服器 key 後，每次新的支援範圍規劃才會查詢一次；仍需核對雲端 key 限制、可接受用量、配額警示與 attribution 呈現。Google 搜尋最多回 20 筆停車類 Places；不能保證路側逐格清單完整或每筆都是可停車場，也沒有即時空位資料。初次 POST 結果遵守 Places 暫存限制、不寫 Redis；重整／新 session 後需建立新查詢才能再次取得目錄內容。導航現已只用 Places `navigationPoints` 合格點；仍待真實回應確認新北思源公共停車場是否有 `DRIVE`／`PARKING` 導航點，缺少時 UI 只提供地圖地點頁。

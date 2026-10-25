@@ -38,6 +38,10 @@ public class NtpcOpenDataProperties {
     @NotNull
     private Dataset offStreetCatalog = new Dataset("B1464EF0-9C7C-4A6F-ABF7-6BDF32847E68");
 
+    @Valid
+    @NotNull
+    private Dataset roadsideFeeRates = new Dataset("d9f18db5-41c7-41d4-b7f0-82a335255b08");
+
     public URI getBaseUrl() {
         return baseUrl;
     }
@@ -92,6 +96,14 @@ public class NtpcOpenDataProperties {
 
     public void setOffStreetCatalog(Dataset offStreetCatalog) {
         this.offStreetCatalog = offStreetCatalog;
+    }
+
+    public Dataset getRoadsideFeeRates() {
+        return roadsideFeeRates;
+    }
+
+    public void setRoadsideFeeRates(Dataset roadsideFeeRates) {
+        this.roadsideFeeRates = roadsideFeeRates;
     }
 
     public static class Dataset {

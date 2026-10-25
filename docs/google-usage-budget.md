@@ -69,6 +69,10 @@ Sponsor 先前確認已有 Gemini API 的帳單，當時檢視的舊專案已啟
 - [Google Maps JavaScript API 用量與計費](https://developers.google.com/maps/documentation/javascript/usage-and-billing)
 - [Google Maps Platform 入門與啟用順序](https://developers.google.com/maps/get-started)
 - [Places Autocomplete 會話計費](https://developers.google.com/maps/documentation/places/web-service/session-pricing)
+- [Places API (New) Nearby Search](https://developers.google.com/maps/documentation/places/web-service/nearby-search)
+- [Places API 欄位遮罩計費](https://developers.google.com/maps/documentation/places/web-service/usage-and-billing)
+- [Places API 政策與歸屬標示](https://developers.google.com/maps/documentation/places/web-service/policies)
+- [Places API (New) 官方價格表](https://developers.google.com/maps/billing-and-pricing/pricing)
 - [Routes API 用量與計費](https://developers.google.com/maps/documentation/routes/usage-and-billing)
 - [Google Maps Platform 費用管理](https://developers.google.com/maps/billing-and-pricing/manage-costs)
 - [Google Cloud 一般預算與通知](https://docs.cloud.google.com/billing/docs/how-to/budgets)
@@ -78,3 +82,11 @@ Sponsor 先前確認已有 Gemini API 的帳單，當時檢視的舊專案已啟
 - [Google Cloud：查詢專案連結的帳單帳戶](https://docs.cloud.google.com/billing/docs/how-to/view-linked)
 - [Google One：雲端儲存訂閱說明](https://support.google.com/googleone/answer/9004014)
 - [Gemini API 帳單與預付點數用途](https://ai.google.dev/gemini-api/docs/billing)
+
+## 2026-10-25：Places Nearby Search 停車目錄呼叫
+
+後端一次新的受支援行程規劃最多發出一個 Nearby Search (New) 請求，查詢 500 公尺、最多 20 筆。固定 field mask 包含 `places.id`、`places.displayName`、`places.location`、`places.formattedAddress`、`places.googleMapsUri`、`places.navigationPoints`；這些欄位均屬 Nearby Search Pro 欄位，因此整次請求按最高適用欄位 SKU 計費，不要求 `places.parkingOptions`。加入 `navigationPoints` 仍在現有 Pro 欄位級別內。
+
+依 2026-10-25 官方全球價格表，Places API Nearby Search Pro 每月有 5,000 個免費 billable events；超過免費額度後，第一級全球牌價為每 1,000 個成功 billable events USD 32，之後按月量級採用更低的 tier 單價。實際計費依帳單帳戶、區域資格、當期價表和可用折扣；用量會依 Google 的帳單維度彙總，故這只是當日參考，不是實際帳單或每月成本保證。新建 query 成功的 Places call 才可先按一個成功 request 粗估；API 失敗、請求重試與使用者建立查詢頻率須從 Cloud Billing 實測核對。
+
+Spring 應用程式本身的外呼預設關閉；目前 Compose 為符合產品需求，將 `GOOGLE_PLACES_EXTERNAL_CALLS_ENABLED` 預設設為 `true`，並從 `GOOGLE_PLACES_SERVER_API_KEY` 讀取伺服器金鑰。Compose 若沒有 Places key，後端回 `NOT_CONFIGURED` 且不發外部請求；設定有效 key 後，每次新的支援範圍查詢最多會送出一個請求，可能產生費用。建議使用獨立且只允許 Places API (New) 的伺服器 key；若 Routes key 的雲端限制同時允許 Places 與 Routes，也可注入 Places 欄位，但不要把 key 貼進 repository／輸出。Places 搜尋內容不寫 Redis；Place ID 可永久留存、座標最多可暫存 30 個連續日，但本功能目前也不暫存這兩欄。Places 目錄地點須顯示於 Google Map 並保留 Google attribution；Google 輔助目錄不能被標成新北市官方資料或即時空位。

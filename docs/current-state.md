@@ -2,12 +2,41 @@
 
 更新日期：2026-10-25。
 
+## 2026-10-25 新莊棒球場周邊路邊格位未顯示診斷與資料修復
+
+- **修復前根因**：Compose 主系統 MySQL 的 `NEW_TAIPEI_XINZHUANG` ACTIVE 目錄只有路邊 7 筆、路外 3 筆；S3-022 已審查子集先前只匯入隔離 demo DB。`ParkingQueryService.findMapData()`／`findMapViewport()` 以本機目錄為候選，且只回傳唯一 `VERIFIED` mapping；官方資料刷新不會自動建立缺少的目錄／mapping，因此附近有官方路邊格也不會出現在地圖。
+- **受控匯入**：重新對官方新北市目錄做完整唯讀 dry-run（2,250 筆範圍列），依目前來源資料產生 manifest SHA-256 `0d21b380c68e4c9cd67a4c64556b68c293cd8111c1cfea6ec80c5498325aade7`，再以該 hash 鎖定既有 reviewed-subset 寫入命令匯入主系統。匯入前先在 repo 外建立 MySQL 備份。現行 ACTIVE verified 目錄為路邊 1,880 筆、路外 95 筆（修復前分別 7、3）。
+- **官方觀測刷新**：使用既有 NTPC 單次量測 runner 發布新快照，沒有呼叫 TDX 或 Google。路邊 run/snapshot 36 使用 1 個 HTTP request，發布 1,880 筆觀測；路外 run/snapshot 37 使用 2 個 HTTP requests，發布 95 筆觀測。兩次皆 `published=true`、`failedObservations=0`，來源狀態為 `IDLE`。Compose 的 API、MySQL、Redis、Web 均 healthy。
+- **球場周邊唯讀驗證與範圍限制**：依新北市政府公告的新莊棒球場 WGS-84 中心座標換算為 25.0411833, 121.4490583，對主 DB 做直線距離 500 公尺 spatial query，找到 105 筆 verified 路邊格與 4 個 verified 路外場站；[新北市政府公告附件](https://doc2-exthird.ntpc.gov.tw/NTPC_SODPUBLISH/FILE/0000000/PUBLISH/114/2/11427.pdf)。dry-run 另有 164 筆資格未知、111 筆不符合資格而排除；匯入僅限已確認 eligible 的 reviewed subset，不代表新莊完整道路覆蓋。尚未在瀏覽器重播該目的地的 API／viewport 流程，因此不宣稱 UI 端到端已驗收。使用者重新整理或重新規劃查詢即可載入更新後的主系統目錄／快照；本輪未建立查詢，避免觸發可能計費的 Google Routes。沒有修改程式碼或執行測試。
+
 ## 2026-10-25 Sprint 3 離線 ML 80/10/10 首輪訓練與測試
 
 - **資料與切分**：讀取本機 `data/private/collector-samples` 內 2026-09-24 至 2026-10-24 的 31 個 daily ZIP，包含 roadside 2,522,054 列與 offstreet 192,850 列；沒有呼叫官方 API。依時間順序用 25／3／3 個日期切分（train 80.6%、validation 9.7%、test 9.7%）；有效標籤數因 unknown 與配對拒絕而呈 train 約 77.7–78.5%、validation 約 10.4–10.9%、test 約 11.1–11.3%。as-of 與 arrival 必須在同一 split；跨界標籤排除。roadside 圈只用 train 結束前座標建立，週期特徵改為臺北時間。
 - **模型與測試**：每類資料各訓練 30／60 分鐘 Logistic Regression，共 4 個本機候選 JSON。validation 依 Brier 選比較方法；四組中 offstreet 30／60m 與 roadside 30m 選 current-state persistence，roadside 60m 選 logistic。最後 test（10/22–10/24）roadside 60m Logistic Brier 0.1094，persistence 0.1169；路外 Logistic test Brier 0.0254／0.0289，均高於 persistence 的 0.0130／0.0178。其餘詳細分數、FPR、低可用比例 precision 見私有報告 `data/private/collector-samples/experiment-80-10-10-2026-10-25.md`。
 - **資料限制與判讀**：全期 roadside raw 狀態有 25,113 次相鄰變化；offstreet unknown／負值／空值占 72.21%。有效樣本正例率差異大（路外約 90%、路邊 test 約 30%），需避免只看 accuracy。test 僅 3 日；單一區域、重疊候選圈與約 30 分鐘收集間隔限制泛化與短 ETA 解讀；roadside 狀態依已記錄規則離線 re-label。這是固定 lead 離線實驗，不是 ETA-aware 產品模型，也未通過 S3-020 准入。
 - **產物與後續**：模型 JSON 位於已忽略的 `ml-training/models/experiment-80-10-10-2026-10-25/`，標記 `EXPERIMENT_ONLY`／`publishToOnlineSystem=false`；未接線上 `predictions`，線上仍為 `INSUFFICIENT_DATA`／null probability。重跑方式見 `ml-training/README.md`。下一步仍需確認來源觀測更新語意、擴大時間／地區資料，並在正式 ETA-aware 樣本與 S3-020 gate 下再次評估。
+
+## 2026-10-25 附近清單契約修復與 Compose 前後端同步
+
+- **根因**：正在執行的舊 Docker API 沒有目前前端呼叫的 `GET /api/v1/parking-queries/{queryId}/map-data/viewport`，因此回 404；前端原本把整個地圖資料載入判定為失敗，附近清單也就沒有資料。新北市官方路邊／路外 connector、catalog、verified mapping 與已發布快照流程均已存在，並非缺少 API 串接。此小樣本最後成功快照在 2026-10-25 13:06 左右，觀測已過期，必須標示 `STALE`。
+- **修正與部署**：前端 viewport 失敗時改讀既有目的地半徑唯讀 `/map-data`，避免新舊 API 短暫不合時清單整片空白。Docker API、Web 均以目前分支原始碼重建，Web 仍由 `127.0.0.1:18088` 提供；四個 Compose 服務 healthy。API 啟動時只套用 V2 nullable 停車場詳情欄位 migration；Flyway repeatable seed checksum 未變，未重跑 seed。既有 MySQL volume 未移除或重建。
+- **本機契約 smoke**：經 Web 同源代理建立一筆短期查詢（`READY`，Redis 查詢狀態），新 API viewport 回 10 筆 verified 標記：7 路邊、3 路外；當前都標為過期。原目的地 500 公尺內的基礎 `/map-data` 對應 5 筆路邊、無已審查路外場站。這反映小樣本 catalog 覆蓋，不代表完整新莊目錄；沒有資料也不代表沒有停車位。
+- **ETA 與外部呼叫**：Docker `GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED=false`；煙霧查詢回 `ETA=FAILED`，訊息是外部 Routes 呼叫由設定關閉。前端已將此狀態翻為明確繁體中文。未送 Google Routes 請求、未觸發新北市來源刷新；沒有虛構 ETA 或現況空位。若要驗證真實 ETA，需先明確核准開啟可能計費的 Google Routes 呼叫。
+- **驗證**：前端 `npm test`（7 組）、`npm run build` 通過；`impeccable detect --json frontend/src/App.vue` 回傳 `[]`。後端完整 Maven suite 為 113 tests、0 failures、0 errors、0 skipped。新增精確目的地測試先抓到狀態斷言應為 `NO_REALTIME_AVAILABILITY`，更正後通過。實際 HTTP smoke 確認 viewport 不再 404、10 筆 verified 標記、HTML／最新 JS 資產為 200，四個 Docker 服務 healthy。
+- **未完成驗收**：真實瀏覽器不同視窗尺寸及 Google Places 下拉仍待人工視覺／互動驗收；Routes ETA 真實上游驗證未執行；官方來源刷新仍待使用者於前端觸發，或另行授權後由操作執行。
+
+## 2026-10-25 參考圖版桌面／手機 UI 與 Docker Web 更新
+
+- **問題證據**：使用者在 `http://127.0.0.1:18088/` 截圖仍看到舊版「新莊即時車位地圖」與舊式起訖欄位，與已選的「臺灣街道圖集」稿不同。舊版不只是顏色不符，頁面結構也沒有載入新版搜尋列／篩選列／資訊抽屜。
+- **實作**：Vue 頁面已改為參考圖的暖紙色、深綠品牌、目的地搜尋、快捷篩選、圖例、選取車位詳情、附近清單與底部導覽；手機採上方地圖／下方詳情，桌面採地圖主區／右側詳情欄。Google Places 欄位使用官方提供的 CSS part 與淺色 scheme。保留原有 API、地圖標記、位置／狀態篩選、收藏、分享、資料品質、官方觀測時間及預測限制；未查詢時不製作合成車位數。
+- **部署／證據**：`npm run build` 成功。Docker Compose 只重建並強制替換 `web`；四服務 health 皆為 healthy，Web 綁定 `127.0.0.1:18088`。Web 容器內 HTTP 讀取回傳 `<title>台灣停車預測</title>`、新 Vite 雜湊資產與 `Cache-Control: no-store, max-age=0`；雜湊資產採 immutable cache。MySQL volume 未變更，未建立查詢，也未觸發 Routes／政府即時來源。
+- **尚未驗收**：指定桌面與手機尺寸、Google Places 搜尋下拉及圖例／清單操作仍待使用者在瀏覽器檢視；參考圖的地圖插畫被替換為暖色 Google 地圖樣式，以保留真實地理底圖與官方格位位置。
+
+## 2026-10-25 Docker Compose 前端重建與啟動
+
+- 前端 Docker production image 已重建，npm run build 成功；Compose 啟動 mysql、redis、api、web，四項服務均為 healthy。Web 僅綁定 127.0.0.1:18088，前端頁面已排入 Codex 頁籤供使用者查看。
+- MySQL 掛載沿用 taiwan-parking-forecast_mysql-data；本次未執行刪除或重建 volume 的操作。未送出停車查詢，也未觸發 Google Routes 或官方來源呼叫。
+- 本次 build 的 npm ci 輸出提示 2 項 high severity audit advisories，尚未盤點套件與影響。桌面／手機 viewport 的實際視覺操作仍待人工驗收。
 
 ## 2026-10-25 Issue #94 同源規劃查詢 403 修復與驗證
 
@@ -930,3 +959,47 @@ Chrome 本機 DEMO 桌面畫面確認 Places 目的地「雙鳳路」、測試�
 兩軸獨立 code review 的規格缺口已修正：viewport 載入期間標記閃爍、網格邊界附近的群聚、詳情容量與支援範圍提示。標準審查指出的重複 CSS 主題覆寫已合併；來源文字清理方法改名為 `normalizeAndLimitText`。回應 record 欄位相似屬低風險維護建議，保留各 API 契約欄位以維持明確性。
 
 本機驗證：前端 `npm test` 通過 7 組測試，`npm run build` 成功；後端完整 Maven 套件 112/112 通過；`impeccable detect --json frontend/src/App.vue` 回傳空清單。真實瀏覽器操作與五種 viewport 截圖尚未完成：自動化瀏覽器安全政策拒絕讀取本機 Vite 頁，且明確禁止改用其他瀏覽器路徑重試。Docker CLI pipe 亦回拒絕存取；既有 Docker 網頁先前作為基線開啟，但此輪沒有重建或修改容器／volume，也沒有送出查詢。Docker MySQL 尚未驗收 V2 migration。座標未經實地精度校驗仍是產品資料限制。
+
+### 手機資訊欄拖曳驗收
+
+使用者指出手機資訊欄上方的灰色橫條應可上下拉動。檢查後確認它原本只是 `aria-hidden` 裝飾，沒有事件處理。現已改為具無障礙名稱的按鈕，支援觸控／指標拖曳及點擊切換，地圖高度可在「更多地圖」、「一般瀏覽」、「展開資訊」三個停靠點間調整；資訊內容維持面板內獨立捲動。
+
+本機 Docker `api`／`web` 已重建並重新啟動，既有 MySQL／Redis volumes 保留。使用 Chromium 428×940 手機視窗操作已確認向上拖曳會展開資訊欄、露出附近結果，向下拖曳會縮回並增加地圖空間；輔助樹的控制名稱會隨狀態改為「收合資訊欄」或「展開資訊欄」。頁面留在展開狀態供 Sponsor 檢視。前端 `npm run build` 通過，Impeccable detector 回傳空清單；未呼叫 Routes、NTPC 刷新，也未執行測試套件。
+
+搜尋欄初始狀態已移除預設目的地名稱，改顯示通用的「搜尋目的地、地址或地標」提示；地圖與資訊卡仍顯示既有預設目的地。使用者透過 Places 明確選取地點後，搜尋欄才顯示該選取結果；回到預設目的地會再次清空欄位覆蓋文字。Docker `web` 已重新建置並以 428×940 瀏覽器確認搜尋欄不含預設名稱。
+
+## 2026-10-25：Google Places 停車設施目錄補充契約
+
+新增 `GooglePlacesClient` 與 `GoogleParkingPlaceSearchService`。新建且通過新莊支援範圍驗證的行程規劃 POST，會在不依賴 NTPC 結果數量的情況下，向 Places API (New) Nearby Search 查詢目的地 500 公尺圓形範圍；請求限制為 `parking`、`parking_lot`、`parking_garage`，距離排序，最多 20 筆。座標再由後端用直線距離精確裁至 500 公尺內。結果以 `queryResult.googlePlaces` 獨立回傳，含來源、半徑、目錄地點與呼叫狀態，不與 NTPC 官方路側逐格、路外觀測或預測合併；Google 結果的 `availabilityStatus` 強制為 `UNKNOWN`，`sourceObservedAt` 固定為 null。
+
+新增 `GOOGLE_PLACES_EXTERNAL_CALLS_ENABLED` 與 `GOOGLE_PLACES_SERVER_API_KEY`。Spring 預設關閉外呼；Compose 預設啟用以符合附近停車場地點補充需求。Compose 中若缺 server key 則回 `NOT_CONFIGURED`，不發外部請求；Spring 關閉與啟用但缺 key 時分別回 `DISABLED`／`NOT_CONFIGURED`。上游失敗回 `FAILED`；成功無候選回 `NO_RESULTS`。固定欄位遮罩含 Place ID、名稱、地點座標、地址、Google Maps URI 與 `places.navigationPoints`，沒有 `places.parkingOptions`。後端只把具有效座標、適用 `DRIVE` 且用途為 `PARKING`（或用途未指定）的導航點當作導航終點；不再把 Place 地點中心代替入口。若來源沒有合格導航點，前端提供 Google Maps 地點頁，不標示成直接導航。上限、逾時、路徑與 endpoint 可設定；viewport、map-data、GET 恢復與 NTPC refresh 均不呼叫 Places，query token idempotency 可防止重送造成重複請求。
+
+Places 目錄結果只存在初次 POST 的即時回應；若查詢有 Google 項目，Redis query state 只存 `NOT_RETRIEVED` 空清單狀態，避免快取名稱／地址／Maps URI 等 Places 內容。相同 token 讀取及 refresh 不重新外呼，因此頁面需在目前 session 保留首次 POST 收到的 Google 清單；需恢復遺失清單時，要由使用者明確建立新查詢。此實作不建立 Google 路邊格位，也不能保證所有合法停車設施皆被 Places 收錄。
+
+驗證界線：`backend/.\mvnw.cmd -DskipTests compile` 編譯 88 個後端來源檔成功；未新增或執行測試、未呼叫真實 Google API、未讀取／輸出 secrets。Compose 已接線 Places 旗標與伺服器 key，目前 `.env` 未設定 `GOOGLE_PLACES_SERVER_API_KEY`，所以 Docker 後端應回 `NOT_CONFIGURED`，不會產生 Google Places 呼叫或結果。請求欄位符合官方 Nearby Search (New) 結構；真實回應、帳單 SKU、Google attribution 呈現及結果完整性尚未實測。
+
+### 2026-10-25：修正 Google Places 停車場導航終點
+
+實際問題來自前端仍以 Google Places 的 `location` 地點中心建立導航，即使項目明確標示 `navigationAvailable=false`；路外官方標記也曾在缺少入口座標時退回顯示座標導航。已將導航顯示改為遵守 `navigationAvailable`，並在 Places Nearby Search 欄位遮罩加入 `places.navigationPoints`。後端只選具有效位置、適用 `DRIVE` 且標示 `PARKING`（或用途未指定）的導航點，將其獨立回傳為導航座標；前端以該座標建立 Google Maps 行車路線，讓終點明確採用道路導航點座標。未取得合格導航點時，改提供 Places 回傳的 Google Maps 地點頁並標示「查看地圖」。
+
+新北思源公共停車場官方接駁資訊將其位置描述為中央路近思源路口，並提供該停車場的 Google Maps 地點連結。這次修正採 Google 導航點資料，不硬編場站座標；尚未用真實 Places 回應或實地行車確認此停車場是否有回傳 `DRIVE`／`PARKING` 導航點。前端 `npm run build` 與後端 `./mvnw.cmd -DskipTests compile` 均成功；未執行測試套件。由於目前 `.env` 沒有 Places server key，本輪未呼叫 Google API。
+
+### 2026-10-25：桌面與手機地圖 UI 收斂及 Docker 驗收
+
+完成本輪地圖介面項目：桌面頂欄縮為 60px、底導覽縮為 48px；篩選按鈕採自繪線條箭頭；「更多」面板固定在可視範圍內，內容獨立捲動、查詢按鈕固定可見；搜尋後不再建立 `.selected-destination-label`；路外地點改用 P 圖釘；路邊逐格標記放大；地圖資訊卡、選取資訊欄及附近清單項目新增 Google Maps 外部導航連結。行動版驗收到 390×844，發現出發地欄位盒模型造成 19px 水平溢位，已修正並重建 Web。
+
+Docker API 曾因 Google Places service 有兩個建構子且未標記注入建構子而無法啟動；已以 `@Autowired` 明確指定 Spring 建構子。之後 `api`、`web` 及既有 `mysql`、`redis` 均由 Compose 啟動，API health 已通過。桌面 1440×900 的頂欄／底導覽尺寸及篩選 CTA 可見；手機 390×844 的篩選 CTA 位於底導覽上方、水平溢位為 0；兩個畫面都確認目的地覆蓋標籤不存在。前端 production build 成功，未執行測試套件或實際建立停車查詢；因此地圖標記點擊與導航連結尚未用真實查詢結果人工驗收。
+
+本機 `.env` 未設定 `GOOGLE_PLACES_SERVER_API_KEY`；Compose 雖預設開啟 Places 外呼旗標，缺 key 時後端回 `NOT_CONFIGURED` 且不呼叫 Google。故本輪未取得 Google 停車地點，也未送 Google Routes／NTPC 查詢。官方與 Google Places 實際結果、Places attribution、導航目的座標以及其他手機尺寸仍需後續人工驗收。
+
+後續 UI 修正：Google Maps 導航連結在資訊卡、標記資訊卡與附近清單列皆改用內容寬度並限制最大寬度，避免 grid 預設 stretch 將按鈕撐滿或推出容器；按鈕顯示精簡為「導航」，無障礙名稱與 title 保留「使用 Google Maps 導航」。已重新執行前端 production build 並只更新 Docker Web。未建立查詢，故只驗證新版 CSS／bundle 載入，不代表有資料時的地圖資訊卡導航互動已完成人工驗收。
+
+### 2026-10-25：停車費率欄位防溢出與官方路段費率嚴格配對
+
+長費率造成桌面附近清單列寬度溢出；已把結果列改為固定欄位 grid，長費率移至名稱下方並限制最多兩行，完整文字保留於選取詳情、左對齊換行；路邊詳情增加新北市官方路段費率表連結。官方逐格即時資料 `pay`／`paycash`／`day`／`hour` 有值時優先使用。
+
+使用者決定缺少逐格費率時採嚴格唯一配對。新增官方路段費率資料集 client 與後端 24 小時記憶體快取，依服務行政區設定的 `areacode` 和完整路名索引。查詢僅接受恰好一筆且不含括號範圍／明確交叉路口的官方候選；不做座標推測、子字串或模糊配對。既有 `source_mapping.raw_name_hint` 會解析成道路名稱，確保目前種子格位的格位編號不會污染比對鍵。逐格 `feeDescription` 有值時不呼叫 fallback；逐格缺值且唯一命中時，回應費率明確標成「官方路段費率」，並附上官方時段。上游失敗時採最近成功快照，若尚無成功快照則保留原逐格值／未提供。
+
+資料來源：[新北市路邊收費停車場收費路段資訊](https://data.ntpc.gov.tw/datasets/d9f18db5-41c7-41d4-b7f0-82a335255b08)（官方每月更新）；詳情連結至[新北市交通局路段收費查詢](https://parkweb.traffic.ntpc.gov.tw/route.aspx)。歧義及區間仍不補費率，直到取得官方道路幾何／格位 crosswalk；這是刻意保留的限制，不是即時費率預測。
+
+本次後端編譯、Docker API 重建及實際官方資料命中情況待完成；未新增或執行測試套件。

@@ -32,6 +32,13 @@ parking:
       travel-mode: ${GOOGLE_ROUTES_TRAVEL_MODE:DRIVE}
       routing-preference: ${GOOGLE_ROUTES_ROUTING_PREFERENCE:TRAFFIC_AWARE_OPTIMAL}
       field-mask: ${GOOGLE_ROUTES_FIELD_MASK:routes.duration,routes.staticDuration,routes.distanceMeters}
+    places:
+      base-url: ${GOOGLE_PLACES_BASE_URL:https://places.googleapis.com}
+      search-nearby-path: ${GOOGLE_PLACES_SEARCH_NEARBY_PATH:/v1/places:searchNearby}
+      timeout: ${GOOGLE_PLACES_TIMEOUT:10s}
+      external-calls-enabled: ${GOOGLE_PLACES_EXTERNAL_CALLS_ENABLED:false}
+      api-key: ${GOOGLE_PLACES_SERVER_API_KEY:}
+      max-result-count: ${GOOGLE_PLACES_MAX_RESULT_COUNT:20}
 
   sources:
     ntpc:
@@ -48,6 +55,9 @@ parking:
       off-street-catalog:
         dataset-id: ${NTPC_OFF_STREET_CATALOG_DATASET_ID:B1464EF0-9C7C-4A6F-ABF7-6BDF32847E68}
         json-path: ${NTPC_OFF_STREET_CATALOG_JSON_PATH:/api/datasets/{datasetId}/json}
+      roadside-fee-rates:
+        dataset-id: ${NTPC_ROADSIDE_FEE_RATES_DATASET_ID:d9f18db5-41c7-41d4-b7f0-82a335255b08}
+        json-path: ${NTPC_ROADSIDE_FEE_RATES_JSON_PATH:/api/datasets/{datasetId}/json}
 
   catalog:
     ntpc:

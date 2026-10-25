@@ -18,6 +18,7 @@ import org.springframework.web.util.UriBuilder;
 import parking.forecast.adapter.ntpc.dto.NtpcOffStreetParkingAvailabilityDto;
 import parking.forecast.adapter.ntpc.dto.NtpcOffStreetParkingLotDto;
 import parking.forecast.adapter.ntpc.dto.NtpcRoadsideParkingAvailabilityDto;
+import parking.forecast.adapter.ntpc.dto.NtpcRoadsideFeeRateDto;
 import parking.forecast.config.NtpcOpenDataProperties;
 
 @Component
@@ -53,6 +54,16 @@ public class NtpcOpenDataClient {
                 size,
                 NtpcRoadsideParkingAvailabilityDto.class,
                 "NTPC roadside parking availability");
+    }
+
+    public NtpcOpenDataPage<NtpcRoadsideFeeRateDto> fetchRoadsideFeeRatesPage(int page, int size) {
+        validatePageRequest(page, size);
+        return fetch(
+                properties.getRoadsideFeeRates(),
+                page,
+                size,
+                NtpcRoadsideFeeRateDto.class,
+                "NTPC roadside parking fee rates");
     }
 
     public List<NtpcOffStreetParkingAvailabilityDto> fetchOffStreetAvailability(int page, int size) {

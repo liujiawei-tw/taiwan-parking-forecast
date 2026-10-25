@@ -301,14 +301,17 @@
     <div class="meta">
       <span class="pill doing">目前：Sprint 3 車位資料完整性／地圖 UI 改版</span>
       <span class="pill">更新：2026-10-25</span>
-      <span class="pill pending">前端 7 組測試／build 通過；視窗驗收待可用瀏覽器</span>
+      <span class="pill done">Docker API health／Web build 與 RWD smoke 通過</span>
       <span class="pill pending">Places 真實候選人工驗收：NOT RUN</span>
       <span class="pill pending">roadside prediction：尚未上線</span>
     </div>
+    <div class="notice"><strong>2026-10-25 桌面／手機 UI 驗收：</strong>本輪 Docker API、Web image 已重建；Spring Places service 的多建構子注入問題已修正，API health 通過。1440×900 桌面確認頂欄 60px、底導覽 48px，「更多」面板查詢按鈕可見；390×844 手機確認 CTA 位於底導覽上方，並修正搜尋框盒模型造成的水平溢位。目的地搜尋覆蓋標籤不存在。Google Places server key 未設定，未呼叫 Google／Routes／NTPC，也未建立停車查詢；地圖標記點擊與導航連結仍待有資料的端到端人工驗收。</div>
     <div class="notice"><strong>2026-10-25 首輪離線 ML 測試完成：</strong>使用 2026-09-24 至 10-24 共 31 個 collector daily ZIP，按日期切成 train 25 日、validation 3 日、test 3 日（80.6／9.7／9.7）；有效標籤樣本實際約 78／11／11，跨 split 的抵達標籤已排除。四組 Logistic Regression 候選已訓練，僅 roadside 60 分鐘在 validation 選出並於 test 比 persistence 取得較低 Brier（0.1094 vs 0.1169）；offstreet Logistic Regression 未勝過 persistence。test 僅 3 日，所有產物仍為離線實驗、未接線上 predictions；結果與限制見 current-state.md。</div>
+    <div class="notice"><strong>2026-10-25 附近停車資料根因已定位並部署：</strong>新北市官方 connector 與後端 catalog／snapshot 查詢已存在；原 Docker API image 缺少前端使用的 viewport endpoint，導致地圖請求 404、附近清單顯示空白。現在 API／Web 已在同一 Compose 重建，viewport 回 10 筆 verified 標記（7 路邊、3 路外），全部仍是過期官方快照，需保留過期狀態。原 MySQL volume 保留，API 只套用 V2 nullable 欄位 migration，未重跑 seed。Google Routes ETA 因計費外呼旗標關閉而標示未估算；本輪未送出 Routes 或 NTPC 刷新呼叫。完整原因與功能/API 矩陣見 <a href="parking-map-ui-audit.md">parking-map-ui-audit.md</a>。</div>
+    <div class="notice"><strong>2026-10-25 新莊棒球場周邊格位資料修復：</strong>根因是 Compose 主系統目錄只有 7 筆路邊、3 個路外場站；地圖只從目錄中唯一 verified mapping 取候選，官方刷新不會自行補目錄。已按目前官方來源完成唯讀 dry-run、manifest SHA-256 鎖定的 reviewed-subset 匯入，並先建立 repo 外資料庫備份。現在 ACTIVE 目錄有 1,880 筆 verified 路邊格、95 個路外場站；新快照分別發布 1,880／95 筆觀測（路邊 run 36／1 HTTP request，路外 run 37／2 HTTP requests），均無 failed observations。以新北市政府公告座標為中心做直線距離 500 公尺唯讀查詢，主 DB 已有 105 筆 verified 路邊格、4 個 verified 路外場站；<a href="https://doc2-exthird.ntpc.gov.tw/NTPC_SODPUBLISH/FILE/0000000/PUBLISH/114/2/11427.pdf">球場座標來源</a>。dry-run 排除資格未知 164 筆與不符合資格 111 筆，故不代表新莊完整覆蓋。未建立查詢或呼叫 Google／TDX；尚未重播瀏覽器目的地 viewport。請重新整理或重新規劃查詢載入更新資料。完整紀錄見 <a href="current-state.md">current-state.md</a>。</div>
     <div class="notice"><strong>前次整合基線：</strong>分支 <code>codex/unify-place-search-compose</code> 從最新 <code>main</code> 整合出發地／目的地 Places 隔離選取、O18 預設起點與單一安全 Compose。前端 5 組測試／production build、後端 102 個測試、Compose config／API 與 Web image build、隔離 runtime health、同源 <code>/api/health</code> 和 MySQL volume 重啟持久化均通過；Web 僅綁 <code>127.0.0.1:18088</code>，API／MySQL／Redis 無 host port。GPT RELAY 第三輪已對完整 <code>main...HEAD</code> 與精確 SHA <code>1901deb1f030b2ef56c65eb23b6f027e181a1d57</code> 回覆 PASS（0 項阻擋 Finding，可建立以 <code>main</code> 為 base 的待審 PR，不代表可 merge）；第一、二輪共 5 項 Finding 已修正。隔離驗證確認新 volume 僅有 localhost root、遠端舊 root TCP 認證失敗、舊認證停止備份順序可用，四服務 health、同源 API 與 MySQL 重啟持久化均通過；測試資源已按 project label 清除，實際 volume 保留。兩支 smoke 在隔離空資料庫因沒有已發布 snapshot 而未通過資料斷言；具完整 snapshot／審核 mapping 的 smoke 尚未驗收。以空 key 建置的 375px 手機畫面沒有水平溢出；真實 Places 與 Routes ETA 標為 NOT RUN。原 <code>taiwan-parking-forecast_mysql-data</code> 與未確認用途的 <code>s3022demo_mysql-data</code> 均保留；正式停車預測機率仍為 null／資料不足。</div>
     <div class="notice"><strong>2026-10-25 本機啟動修復：</strong>既有 MySQL volume 保留舊版 root／應用帳密，修改 `.env` 後健康檢查拒絕登入，導致 API／Web 未啟動。已先備份並以獨立 volume 還原核對 7 張資料表、58 筆資料，再同步帳密並移除遠端 root。MySQL、Redis、API、Web 均 healthy，同源 `/api/health` 回 `UP`；原資料 volume、隔離還原 volume 與 repo 外本機備份均保留。此驗證不代表正式備份保存／災難復原、Places、Routes ETA 或停車機率已驗收。</div>
-    <div class="notice"><strong>2026-10-25 地圖改版狀態：</strong>功能分支 <code>codex/parking-map-ui-redesign</code> 已完成後端唯讀 viewport API、來源欄位 mapping、鄰近距離群聚、單格詳情及 RWD 樣式；viewport 載入期間保留舊標記、顯示可用／總格數與支援範圍提示。前端 7 組測試、production build、後端 Maven 112/112 與 `impeccable detect` 均通過；獨立 code review 的規格缺口已修正。使用者已選「臺灣街道圖集」，規範記於 <a href="DESIGN.md">DESIGN.md</a>；欄位與資料限制稽核見 <a href="parking-map-ui-audit.md">parking-map-ui-audit.md</a>。安全政策拒絕讀取本機 Vite 頁並禁止換路徑重試，Docker daemon pipe 亦拒絕存取；五種尺寸與 map／sheet 操作、MySQL migration 因此仍待可用本機環境驗收。未重建或修改既有容器／volume，也未送出查詢。</div>
+    <div class="notice"><strong>2026-10-25 參考圖版 UI 部署：</strong>使用者確認希望「跟設計圖一模一樣」，並要求桌面版也要實作。前端已套用街道圖集的暖紙色、搜尋／篩選列、地圖、停車詳情與附近清單；手機採底部詳情抽屜，桌面採地圖主區與右側資訊欄。舊版畫面截圖確認為結構差異；已重建並替換 Compose 的 web，`npm run build` 成功、四服務 healthy。容器內 HTTP 回傳新版 `<title>`、Vite 雜湊資產與 index no-store 標頭；Places 元件設為淺色。未查詢官方停車資料，也未更動 MySQL volume。1280×720、1440×900、375×812、390×844、430×932 的實際視覺與互動仍待人工驗收。樣式規範見 <a href="DESIGN.md">DESIGN.md</a>，來源資料限制見 <a href="parking-map-ui-audit.md">parking-map-ui-audit.md</a>。</div>
   </header>
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
@@ -542,7 +545,7 @@
           <td>Sprint 3 下一批規劃</td>
           <td>S3-016、S3-017、S3-018、S3-019、S3-020、S3-009</td>
           <td><span class="pill doing">已建立 Issue</span></td>
-          <td>S3-016 已收斂 TDX／新北市來源覆蓋與 canonical 狀態對照；S3-017 已完成一輪完整新莊 catalog／mapping dry-run，結果為 2,037 筆 accepted candidates、174 筆 unknown eligibility、verified mapping coverage 0.45%，仍需 eligibility 審查；S3-018 定義 PUBLISHED 觀測歷史匯出與 ML 橋接；S3-019 建立 ETA-aware query-like 訓練樣本；S3-020 建立假陽性、near-full、calibration、coverage 與拒絕率 gate；S3-009 只在前述證據足夠後處理模型版本化、離線推論與回滾。</td>
+          <td>S3-016 已收斂 TDX／新北市來源覆蓋與 canonical 狀態對照；S3-017 舊一輪 dry-run 為 2,037 accepted／174 unknown。2026-10-25 依來源更新重新 dry-run 為 2,250 scoped rows、1,975 accepted、164 unknown、111 ineligible；已將 confirmed eligible reviewed subset 匯入 Compose 主 DB（路邊 1,880、路外 95），未知與不符合資格資料仍排除，完整新莊覆蓋仍需資格／範圍審查；S3-018 定義 PUBLISHED 觀測歷史匯出與 ML 橋接；S3-019 建立 ETA-aware query-like 訓練樣本；S3-020 建立假陽性、near-full、calibration、coverage 與拒絕率 gate；S3-009 只在前述證據足夠後處理模型版本化、離線推論與回滾。</td>
         </tr>
       </tbody>
     </table>
@@ -563,7 +566,7 @@
       <h3>2026-10-04 舊建議（保留歷史）</h3>
       <ol class="next-list">
         <li>S3-016 已收斂：新莊 MVP 即時來源以新北市官方 Open Data 為主，TDX 暫作全臺擴充與交叉驗證。</li>
-        <li>S3-017 已完成一輪真實 dry-run：scoped rows 2,224、accepted candidates 2,037、unknown eligibility 174、verified mapping coverage 0.45%。</li>
+        <li>S3-017 前一輪真實 dry-run 結果為 scoped rows 2,224、accepted candidates 2,037、unknown eligibility 174、verified mapping coverage 0.45%；2026-10-25 已依目前來源重跑並匯入 confirmed eligible reviewed subset，完整資格與區域覆蓋仍需審查。</li>
         <li>接著審查 S3-017 eligibility 規則：在 recommendation 變成 <code>READY_FOR_IMPORT_REVIEW</code> 前，不做完整 catalog <code>confirm-write=true</code>。</li>
         <li>再做 S3-018：定義主系統 PUBLISHED snapshot／observation 匯出給 ML 的契約，避免訓練資料只依賴 collector ZIP。</li>
         <li>S3-019 建立 ETA-aware sample builder：用出發地、目的地、出發時間與 ETA 產生 query-like training samples。</li>
