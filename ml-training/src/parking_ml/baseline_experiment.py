@@ -21,6 +21,8 @@ from parking_ml.label_dry_run import (
     select_candidate_centers,
     settings_from_config,
     spots_within_radius,
+    strict_time_rejection_reason,
+    taipei_date,
 )
 from parking_ml.training_config import TrainingConfig
 
@@ -204,6 +206,10 @@ def has_both_classes(samples: list[LabelSample]) -> bool:
     return {sample.label for sample in samples} == {False, True}
 
 
+DATE_POLICY_FILE_DATE_V0993B17 = "file_date_v0993b17"
+DATE_POLICY_TIMESTAMP_TAIPEI_V1 = "collected_at_taipei_v1"
+
+
 def build_offstreet_samples(
     offstreet_by_lot: dict,
     config: TrainingConfig,
@@ -211,12 +217,18 @@ def build_offstreet_samples(
     *,
     strict_split_boundaries: bool = False,
     admission_audit: dict[tuple[str, int], LabelStats] | None = None,
+    date_policy_version: str = DATE_POLICY_FILE_DATE_V0993B17,
 ) -> list[LabelSample]:
+    if date_policy_version not in {DATE_POLICY_FILE_DATE_V0993B17, DATE_POLICY_TIMESTAMP_TAIPEI_V1}:
+        raise ValueError(f"unsupported_date_policy:{date_policy_version}")
+    timestamp_authoritative = date_policy_version == DATE_POLICY_TIMESTAMP_TAIPEI_V1
+    strict_boundaries = strict_split_boundaries or timestamp_authoritative
     samples: list[LabelSample] = []
     for lot_id, rows in offstreet_by_lot.items():
         timestamps = [row.collected_at for row in rows]
         for as_of in rows:
-            split_name = config.split.split_for(as_of.file_date)
+            as_of_date = taipei_date(as_of.collected_at) if timestamp_authoritative else as_of.file_date
+            split_name = config.split.split_for(as_of_date)
             if split_name is None:
                 continue
             for lead in settings.lead_minutes:
@@ -224,6 +236,10 @@ def build_offstreet_samples(
                 if stats is not None:
                     stats.candidates += 1
                     stats.entity_ids.add(lot_id)
+                if timestamp_authoritative and (reason := strict_time_rejection_reason(as_of)) is not None:
+                    if stats is not None:
+                        stats.reject(reason)
+                    continue
 
                 arrival = nearest_observation(rows, timestamps, as_of.collected_at + timedelta(minutes=lead), settings.tolerance)
                 if arrival is None:
@@ -234,7 +250,12 @@ def build_offstreet_samples(
                     if stats is not None:
                         stats.reject("arrival_not_after_as_of")
                     continue
-                if strict_split_boundaries and config.split.split_for(arrival.file_date) != split_name:
+                if timestamp_authoritative and (reason := strict_time_rejection_reason(arrival)) is not None:
+                    if stats is not None:
+                        stats.reject(reason)
+                    continue
+                arrival_date = taipei_date(arrival.collected_at) if timestamp_authoritative else arrival.file_date
+                if strict_boundaries and config.split.split_for(arrival_date) != split_name:
                     if stats is not None:
                         stats.reject("arrival_crosses_split_boundary")
                     continue
@@ -247,7 +268,7 @@ def build_offstreet_samples(
                         stats.reject("arrival_unknown_or_negative")
                     continue
 
-                feature_time = taipei_time(as_of.collected_at) if strict_split_boundaries else as_of.collected_at
+                feature_time = taipei_time(as_of.collected_at) if strict_boundaries else as_of.collected_at
                 sample = LabelSample(
                     split=split_name,
                     lead_minutes=lead,
@@ -257,7 +278,7 @@ def build_offstreet_samples(
                     weekday=feature_time.weekday(),
                     hour=feature_time.hour,
                     label=arrival.available_car > 0,
-                    as_of_date=feature_time.date().isoformat() if strict_split_boundaries else None,
+                    as_of_date=feature_time.date().isoformat() if strict_boundaries else None,
                 )
                 samples.append(sample)
                 if stats is not None:
@@ -280,23 +301,32 @@ def build_roadside_samples(
     coverage_policy_version: str = COVERAGE_POLICY_LEGACY,
     admission_audit: dict[tuple[str, int], LabelStats] | None = None,
     coverage_audit: dict[tuple[str, int], RoadsideCoverageAudit] | None = None,
+    date_policy_version: str = DATE_POLICY_FILE_DATE_V0993B17,
 ) -> list[LabelSample]:
     if coverage_policy_version not in {COVERAGE_POLICY_LEGACY, COVERAGE_POLICY_COMPLETE}:
         raise ValueError(f"unsupported_roadside_coverage_policy:{coverage_policy_version}")
-    if coverage_policy_version == COVERAGE_POLICY_COMPLETE and not strict_split_boundaries:
+    if date_policy_version not in {DATE_POLICY_FILE_DATE_V0993B17, DATE_POLICY_TIMESTAMP_TAIPEI_V1}:
+        raise ValueError(f"unsupported_date_policy:{date_policy_version}")
+    timestamp_authoritative = date_policy_version == DATE_POLICY_TIMESTAMP_TAIPEI_V1
+    strict_boundaries = strict_split_boundaries or timestamp_authoritative
+    if coverage_policy_version == COVERAGE_POLICY_COMPLETE and not strict_boundaries:
         raise ValueError("complete_roadside_coverage_requires_strict_split_boundaries")
 
     samples: list[LabelSample] = []
-    if strict_split_boundaries:
+    if strict_boundaries:
         latest_by_spot = {
             spot_id: eligible[-1]
             for spot_id, rows in roadside_by_spot.items()
             if (eligible := [
                 row for row in rows
                 if (
-                    config.split.split_for(row.file_date) == "train"
-                    if coverage_policy_version == COVERAGE_POLICY_COMPLETE
-                    else row.file_date <= config.split.train.end
+                    (strict_time_rejection_reason(row) is None and config.split.split_for(taipei_date(row.collected_at)) == "train")
+                    if timestamp_authoritative
+                    else (
+                        config.split.split_for(row.file_date) == "train"
+                        if coverage_policy_version == COVERAGE_POLICY_COMPLETE
+                        else row.file_date <= config.split.train.end
+                    )
                 )
             ])
         }
@@ -307,7 +337,7 @@ def build_roadside_samples(
         spots_within_radius(center, latest_by_spot, settings.roadside_radius_meters)
         for center in centers
     ]
-    by_timestamp, timestamp_dates = roadside_timestamp_index(roadside_by_spot)
+    by_timestamp, timestamp_dates = roadside_timestamp_index(roadside_by_spot, timestamp_authoritative=timestamp_authoritative)
     timestamps = sorted(by_timestamp)
 
     for center_index, spot_ids in enumerate(circle_spots):
@@ -329,7 +359,11 @@ def build_roadside_samples(
                     stats.candidates += 1
                     stats.entity_ids.add(entity_id)
 
-                as_of_reason = roadside_rows_rejection_reason(as_of_rows, settings, side="as_of")
+                as_of_reason = (
+                    roadside_rows_time_rejection_reason(as_of_rows)
+                    if timestamp_authoritative
+                    else None
+                ) or roadside_rows_rejection_reason(as_of_rows, settings, side="as_of")
                 if as_of_reason is not None:
                     if stats is not None:
                         stats.reject(as_of_reason)
@@ -344,14 +378,17 @@ def build_roadside_samples(
                     if stats is not None:
                         stats.reject("arrival_not_after_as_of")
                     continue
-                if strict_split_boundaries and config.split.split_for(timestamp_dates.get(arrival_time)) != split_name:
-                    if stats is not None:
-                        stats.reject("arrival_crosses_split_boundary")
-                    continue
-
                 arrival_map = by_timestamp[arrival_time]
                 arrival_ids = expected_ids & arrival_map.keys()
                 arrival_rows = [arrival_map[spot_id] for spot_id in spot_ids if spot_id in arrival_map]
+                if timestamp_authoritative and (reason := roadside_rows_time_rejection_reason(arrival_rows)) is not None:
+                    if stats is not None:
+                        stats.reject(reason)
+                    continue
+                if strict_boundaries and config.split.split_for(timestamp_dates.get(arrival_time)) != split_name:
+                    if stats is not None:
+                        stats.reject("arrival_crosses_split_boundary")
+                    continue
                 coverage = coverage_audit.setdefault((split_name, lead), RoadsideCoverageAudit()) if coverage_audit is not None else None
                 if coverage is not None:
                     coverage.record(expected_count, set(as_of_ids), set(arrival_ids))
@@ -383,7 +420,7 @@ def build_roadside_samples(
                 as_of_labels = [bool(row.is_available) for row in as_of_rows]
                 arrival_labels = [bool(row.is_available) for row in arrival_rows]
                 available_count = sum(1 for label in as_of_labels if label)
-                feature_time = taipei_time(as_of) if strict_split_boundaries else as_of
+                feature_time = taipei_time(as_of) if strict_boundaries else as_of
                 sample = LabelSample(
                     split=split_name,
                     lead_minutes=lead,
@@ -393,7 +430,7 @@ def build_roadside_samples(
                     weekday=feature_time.weekday(),
                     hour=feature_time.hour,
                     label=any(arrival_labels),
-                    as_of_date=feature_time.date().isoformat() if strict_split_boundaries else None,
+                    as_of_date=feature_time.date().isoformat() if strict_boundaries else None,
                 )
                 samples.append(sample)
                 if stats is not None:
@@ -401,6 +438,14 @@ def build_roadside_samples(
                     stats.positive += int(sample.label)
                     stats.negative += int(not sample.label)
     return samples
+
+
+def roadside_rows_time_rejection_reason(rows: list[RoadsideObservation]) -> str | None:
+    for row in rows:
+        reason = strict_time_rejection_reason(row)
+        if reason is not None:
+            return reason
+    return None
 
 
 def reliable_roadside_rows(rows: list, settings: LabelDryRunSettings) -> bool:

@@ -75,6 +75,19 @@ excluded. The runner checks that each feature and arrival label remain in one
 split, builds roadside circles only from the training period, and uses Taipei
 time for calendar features.
 
+The calibrated runner uses the versioned collected_at_taipei_v1 policy. It
+splits by the date of collected_at_utc after conversion to Asia/Taipei, and
+requires an explicit timezone and matching collected_date_taipei on both
+as-of and arrival rows. An arrival in another split is rejected. Missing or
+invalid required fields are rejected or counted as parser skips; reports expose
+date mismatch rejection counts. Features continue to use as-of observations
+only. The original --legacy-v0993b17 runner keeps file_date_v0993b17 so its
+historical results remain reproducible.
+
+compareLegacyRoadsidePolicy controls whether the calibrated report includes
+the legacy partial-observation roadside cohort. When false, the runner omits
+that cohort and its coverage audit.
+
 Run the experiment and keep its report and model candidates in ignored local
 folders:
 

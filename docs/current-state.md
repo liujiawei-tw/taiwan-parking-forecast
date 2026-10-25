@@ -953,3 +953,13 @@ Roadside complete 30m test 只有 41 筆，低於設定的 100 筆最低門檻�
 預設 gate：train 至少 500、validation/test 各至少 100，且三個 split 都要同時有正負例；validation 依 Brier 選模，完成選模才評估 test。新增 near-full、狀態轉換、臺北日期及 calibration 分桶／低樣本標記與拒絕原因。此輪不代表 S3-020 gate 已通過：時間外推僅 3 日、roadside 圈有重疊、來源更新時間語意未完全確認、完整 coverage 接受量極低、仍非 ETA-aware；正式 predictions 維持資料不足。
 
 私有報告：`data/private/collector-samples/calibrated-persistence-2026-10-25.md`；模型產物：`ml-training/models/calibrated-persistence-2026-10-25/`。執行版 `calibrated_persistence_v1` runner／ML Python source SHA-256：`eb29c492de5b954e9c29c8253b221657aa6542fc7bd068ff710f00aa3473c01f`。完整 unittest、compileall 與 Git diff 驗證在本次 PR 最終檢查記錄。
+
+### PR #96 第三輪審查修正與全量重跑（2026-10-25）
+
+- **時間切分可信度**：新版 calibrated runner 固定使用 `collected_at_taipei_v1`，以具明確時區的 `collected_at_utc` 轉成 `Asia/Taipei` 日期切分；as-of 與 arrival 都要求明示時區及 `collected_date_taipei`，並核對欄位日期與轉換日期一致。日期不一致以 `collected_date_taipei_mismatch` 拒收；arrival 跨 split 也拒收。原 0993b17 runner 保留 `file_date_v0993b17`，舊結果不因新版政策改寫。
+- **Roadside 對照開關與端到端測試**：`compareLegacyRoadsidePolicy` 現在直接控制是否建立 legacy cohort。新增合成暫存 ZIP 測試，實際呼叫 `run_calibrated_experiment()`，涵蓋新舊 cohort 開關、報告、測試 gate 與實驗限定 artifact；不使用私有 collector 資料。
+- **31 個 ZIP 全量結果**：roadside 2,522,054 列、offstreet 192,850 列；日期切分為 train／validation／test 25／3／3 日（約 80.6%／9.7%／9.7%）。全量 audit 中，offstreet 與 roadside 的台北日期不一致、時區缺失及台北日期欄位缺失均為 0，必要欄位 parser skip 合計 0。樣本配對日期不一致拒收亦為 0。
+- 新 timestamp policy 的三組 cohort 接受數與原報告相同：offstreet 96,666／385,700 個候選；roadside legacy 118,900／131,000；roadside complete-circle 83,902／131,000。與先前 calibrated 報告的 validation／test 48 列結果逐欄一致；原 0993b17 相容重跑的 24 列既有指標亦逐列一致。因此本次嚴格日期檢查沒有改變這批資料的分割或評估數值。
+- **測試集摘要**（2026-10-22 至 10-24 曾在前次分析使用，不是新 holdout）：offstreet 30m／60m calibrated persistence Brier 為 0.0115／0.0163，固定 persistence 為 0.0130／0.0178；roadside legacy 的 calibrated persistence Brier 為 0.1046／0.1271，Logistic 為 0.0922／0.1094。roadside complete-circle 30m 僅接受 41 筆，未達 100 筆門檻而不評估；60m 接受 145 筆，仍只有三個已分析日期，僅作探索性結果。完整指標與拒絕原因見私有報告。
+- 新政策完整報告：`data/private/collector-samples/timestamp-policy-third-review-2026-10-25.md`；artifact：`data/private/collector-samples/timestamp-policy-third-review-artifacts/`。0993b17 相容報告：`data/private/collector-samples/compatibility-third-review-2026-10-25.md`。上述路徑均屬 ignored 私有資料，未加入 Git；沒有呼叫官方 API 或 Google Routes。輸出均維持 `EXPERIMENT_ONLY`，不接入線上 predictions。
+- PR 驗證：`python -m unittest discover -s ml-training/tests` 24 tests 通過；`python -m compileall -q ml-training` 成功；`git diff --check` 通過。

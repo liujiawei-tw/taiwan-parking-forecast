@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from parking_ml.collector_reader import CollectorRow, iter_collector_rows
 from parking_ml.dataset_split import ChronologicalSplit
@@ -34,6 +35,8 @@ class OffstreetObservation:
     availability_ratio: float | None
     is_unknown: bool
     has_source_response: bool
+    collected_at_timezone_explicit: bool = True
+    file_date_explicit: bool = True
 
 
 @dataclass(frozen=True)
@@ -51,6 +54,8 @@ class RoadsideObservation:
     not_confirmed_reason: str
     offline_relabel_applied: bool
     has_source_response: bool
+    collected_at_timezone_explicit: bool = True
+    file_date_explicit: bool = True
 
 
 @dataclass
@@ -151,8 +156,10 @@ def read_observations(input_path: Path) -> Observations:
 def parse_offstreet(row: CollectorRow) -> OffstreetObservation | None:
     values = row.values
     lot_id = value(values, "lot_id")
-    collected_at = parse_datetime(value(values, "collected_at_utc"))
-    file_date = parse_date(value(values, "collected_date_taipei") or row.file_date)
+    collected_at_text = value(values, "collected_at_utc")
+    collected_at = parse_datetime(collected_at_text)
+    file_date_text = value(values, "collected_date_taipei")
+    file_date = parse_date(file_date_text or row.file_date)
     if not lot_id or collected_at is None or file_date is None:
         return None
     raw_available = value(values, "available_car")
@@ -165,14 +172,18 @@ def parse_offstreet(row: CollectorRow) -> OffstreetObservation | None:
         availability_ratio=parse_float(value(values, "availability_ratio")),
         is_unknown=value(values, "is_unknown").lower() == "true",
         has_source_response=bool(value(values, "source_api_response_at_utc")),
+        collected_at_timezone_explicit=has_explicit_timezone(collected_at_text),
+        file_date_explicit=bool(file_date_text),
     )
 
 
 def parse_roadside(row: CollectorRow) -> RoadsideObservation | None:
     values = row.values
     spot_id = value(values, "spot_id")
-    collected_at = parse_datetime(value(values, "collected_at_utc"))
-    file_date = parse_date(value(values, "collected_date_taipei") or row.file_date)
+    collected_at_text = value(values, "collected_at_utc")
+    collected_at = parse_datetime(collected_at_text)
+    file_date_text = value(values, "collected_date_taipei")
+    file_date = parse_date(file_date_text or row.file_date)
     latitude = parse_float(value(values, "latitude"))
     longitude = parse_float(value(values, "longitude"))
     if not spot_id or collected_at is None or file_date is None or latitude is None or longitude is None:
@@ -205,6 +216,8 @@ def parse_roadside(row: CollectorRow) -> RoadsideObservation | None:
         not_confirmed_reason=not_confirmed_reason,
         offline_relabel_applied=offline_relabel_applied,
         has_source_response=bool(value(values, "source_api_response_at_utc")),
+        collected_at_timezone_explicit=has_explicit_timezone(collected_at_text),
+        file_date_explicit=bool(file_date_text),
     )
 
 
@@ -403,13 +416,23 @@ def spots_within_radius(
 
 def roadside_timestamp_index(
     roadside_by_spot: dict[str, list[RoadsideObservation]],
+    *,
+    timestamp_authoritative: bool = False,
 ) -> tuple[dict[datetime, dict[str, RoadsideObservation]], dict[datetime, date]]:
     index: dict[datetime, dict[str, RoadsideObservation]] = defaultdict(dict)
     timestamp_dates: dict[datetime, date] = {}
     for spot_id, rows in roadside_by_spot.items():
         for row in rows:
-            index[row.collected_at][spot_id] = row
-            timestamp_dates[row.collected_at] = row.file_date
+            existing = index[row.collected_at].get(spot_id)
+            if existing is None or (
+                timestamp_authoritative
+                and strict_time_rejection_reason(row) is not None
+                and strict_time_rejection_reason(existing) is None
+            ):
+                index[row.collected_at][spot_id] = row
+            timestamp_dates[row.collected_at] = (
+                taipei_date(row.collected_at) if timestamp_authoritative else row.file_date
+            )
     return index, timestamp_dates
 
 
@@ -523,6 +546,31 @@ def haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> floa
     delta_lambda = math.radians(lon2 - lon1)
     a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
     return 2 * radius * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def taipei_date(value: datetime) -> date:
+    return value.astimezone(ZoneInfo("Asia/Taipei")).date()
+
+
+def strict_time_rejection_reason(observation) -> str | None:
+    """Reject timestamps or date metadata that the strict v1 policy cannot trust."""
+    if not observation.collected_at_timezone_explicit:
+        return "collected_at_timezone_missing"
+    if not observation.file_date_explicit:
+        return "collected_date_taipei_missing"
+    if observation.file_date != taipei_date(observation.collected_at):
+        return "collected_date_taipei_mismatch"
+    return None
+
+
+def has_explicit_timezone(text: str) -> bool:
+    if not text:
+        return False
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None and parsed.utcoffset() is not None
 
 
 def parse_datetime(text: str) -> datetime | None:

@@ -113,6 +113,14 @@ Roadside legacy 規則 `roadside_partial_observation_v0993b17` 留作舊結果�
 
 Calibration 分 10 個等寬機率桶，小於 20 筆標示 `LOW_SAMPLE`；near-full 維持 `current_ratio <= 0.10` 的實驗定義；狀態轉換只作事後診斷。新 Logistic artifact 使用 `parking-logistic-experiment-v2` 與 `parking_features_as_of_v2`，週期時間特徵名稱及計算都指向 Taipei as-of hour。全部新舊產物仍為 `EXPERIMENT_ONLY`，不得接入線上 predictions。
 
+## Calibrated runner 時間政策與相容性
+
+新版 run_calibrated_experiment() 明確使用 collected_at_taipei_v1：先將帶有時區的 collected_at_utc 轉成 Asia/Taipei，再以實際台北日期決定 split。collected_date_taipei 必須存在且與轉換結果一致；as-of 與 arrival 都會檢查。arrival 的實際台北日期若落在另一個 split，該樣本拒收。缺少時區、日期欄位或無效必要欄位不會默默以檔名日期接受，報告會列出 mismatch rejection 與 parser skip 摘要。
+
+為重現 0993b17 歷史實驗，原始 runner 保持 file_date_v0993b17 日期政策。新舊政策採用不同的日期權威來源，重跑後需分開呈現准入樣本與指標。特徵時間只使用 as-of；arrival 僅提供標籤。
+
+compareLegacyRoadsidePolicy 控制 calibrated 報告是否建立 roadside_partial_observation_v0993b17 cohort；設為 false 時只產生 offstreet 與 complete-circle roadside cohort。ZIP 整合測試使用暫存的合成 CSV，覆蓋讀取、日期拒收、complete coverage、validation selection、test gate、報告與 artifact schema v2，不依賴私人 ZIP。
+
 ## 後續 Issue 對應
 
 - S3-006：資料品質盤點與匯入規格，提供可用日期、schema 差異與拒絕原因。

@@ -12,6 +12,7 @@ from pathlib import Path
 from parking_ml.baseline_experiment import (
     COVERAGE_POLICY_COMPLETE,
     COVERAGE_POLICY_LEGACY,
+    DATE_POLICY_TIMESTAMP_TAIPEI_V1,
     LabelSample,
     RoadsideCoverageAudit,
     build_offstreet_samples,
@@ -23,7 +24,7 @@ from parking_ml.baseline_experiment import (
     has_both_classes,
 )
 from parking_ml.collector_reader import iter_zip_paths
-from parking_ml.label_dry_run import LabelStats, read_observations, settings_from_config
+from parking_ml.label_dry_run import LabelStats, read_observations, settings_from_config, strict_time_rejection_reason
 from parking_ml.training_config import TrainingConfig
 
 FEATURE_NAMES = [
@@ -271,17 +272,27 @@ def run_calibrated_experiment(
     complete_policy = str(config.baseline_experiment.get("roadsideCoveragePolicyVersion", COVERAGE_POLICY_COMPLETE))
     observations = read_observations(input_path)
     admission: dict[str, dict[tuple[str, int], LabelStats]] = defaultdict(dict)
-    coverage: dict[str, dict[tuple[str, int], RoadsideCoverageAudit]] = {
-        "roadside_legacy": {}, "roadside_complete": {}
-    }
-    offstreet = build_offstreet_samples(observations.offstreet_by_lot, config, settings, strict_split_boundaries=True, admission_audit=admission["offstreet"])
-    roadside_legacy = build_roadside_samples(observations.roadside_by_spot, config, settings, strict_split_boundaries=True, coverage_policy_version=COVERAGE_POLICY_LEGACY, admission_audit=admission["roadside_legacy"], coverage_audit=coverage["roadside_legacy"])
-    roadside_complete = build_roadside_samples(observations.roadside_by_spot, config, settings, strict_split_boundaries=True, coverage_policy_version=complete_policy, admission_audit=admission["roadside_complete"], coverage_audit=coverage["roadside_complete"])
-    cohorts = {
-        "offstreet": ("OFFSTREET", offstreet),
-        "roadside_legacy": (COVERAGE_POLICY_LEGACY, roadside_legacy),
-        "roadside_complete": (COVERAGE_POLICY_COMPLETE, roadside_complete),
-    }
+    coverage: dict[str, dict[tuple[str, int], RoadsideCoverageAudit]] = {"roadside_complete": {}}
+    compare_legacy = bool(config.baseline_experiment.get("compareLegacyRoadsidePolicy", True))
+    offstreet = build_offstreet_samples(
+        observations.offstreet_by_lot, config, settings, admission_audit=admission["offstreet"],
+        date_policy_version=DATE_POLICY_TIMESTAMP_TAIPEI_V1,
+    )
+    roadside_complete = build_roadside_samples(
+        observations.roadside_by_spot, config, settings, coverage_policy_version=complete_policy,
+        admission_audit=admission["roadside_complete"], coverage_audit=coverage["roadside_complete"],
+        date_policy_version=DATE_POLICY_TIMESTAMP_TAIPEI_V1,
+    )
+    cohorts = {"offstreet": ("OFFSTREET", offstreet)}
+    if compare_legacy:
+        coverage["roadside_legacy"] = {}
+        roadside_legacy = build_roadside_samples(
+            observations.roadside_by_spot, config, settings, coverage_policy_version=COVERAGE_POLICY_LEGACY,
+            admission_audit=admission["roadside_legacy"], coverage_audit=coverage["roadside_legacy"],
+            date_policy_version=DATE_POLICY_TIMESTAMP_TAIPEI_V1,
+        )
+        cohorts["roadside_legacy"] = (COVERAGE_POLICY_LEGACY, roadside_legacy)
+    cohorts["roadside_complete"] = (COVERAGE_POLICY_COMPLETE, roadside_complete)
     zip_paths = iter_zip_paths(input_path)
     source_hash = hash_files(zip_paths)
     config_hash = hashlib.sha256(config_path.read_bytes()).hexdigest()
@@ -341,7 +352,9 @@ def run_calibrated_experiment(
     history_digest = hashlib.sha256(historical_report_path.read_bytes()).hexdigest() if historical_report_path and historical_report_path.is_file() else None
     report = render_report(
         input_path=input_path, config=config, source_hash=source_hash, config_hash=config_hash,
-        zip_count=len(zip_paths), source_rows=observations.source_rows, rows=rows,
+        zip_count=len(zip_paths), source_rows=observations.source_rows, skipped_rows=observations.skipped_rows, rows=rows,
+        compare_legacy=compare_legacy,
+        observation_time_rejections=observation_time_rejections(observations),
         admissions={name: _audit_rows(audit, name, "not_applicable" if name == "offstreet" else COVERAGE_POLICY_COMPLETE if name == "roadside_complete" else COVERAGE_POLICY_LEGACY) for name, audit in admission.items()},
         coverage=coverage, alpha=alpha, minimum_state=minimum_state,
         minimum_bin=minimum_bin, bins=bins, artifact_paths=artifact_paths,
@@ -353,7 +366,8 @@ def run_calibrated_experiment(
 
 
 def render_report(*, input_path: Path, config: TrainingConfig, source_hash: str, config_hash: str, zip_count: int,
-                  source_rows: Counter, rows: list[dict], admissions: dict[str, list[dict]], coverage: dict,
+                  source_rows: Counter, skipped_rows: Counter, rows: list[dict], admissions: dict[str, list[dict]],
+                  coverage: dict, compare_legacy: bool, observation_time_rejections: dict[str, Counter],
                   alpha: float, minimum_state: int, minimum_bin: int, bins: int, artifact_paths: list[str],
                   historical_report_path: Path | None, historical_report_sha256: str | None) -> str:
     lines = [
@@ -364,7 +378,11 @@ def render_report(*, input_path: Path, config: TrainingConfig, source_hash: str,
         f"- 日曆切分比例：{len(config.split.train.dates())}/{len(config.split.train.dates()) + len(config.split.validation.dates()) + len(config.split.test.dates())} train、{len(config.split.validation.dates())}/{len(config.split.train.dates()) + len(config.split.validation.dates()) + len(config.split.test.dates())} validation、{len(config.split.test.dates())}/{len(config.split.train.dates()) + len(config.split.validation.dates()) + len(config.split.test.dates())} test；有效標籤比例會因准入與跨界排除而異。",
         f"- ZIP SHA-256：`{source_hash}`；設定 SHA-256：`{config_hash}`。", "",
         "Calibrated Persistence 僅以 train 計算 dataset／lead cohort 內 True、False、Unknown 狀態正例率；Laplace alpha={:.2f}，每狀態最低樣本數={}，低於門檻回退至 train 全域平滑正例率。未知／空 train 不產生 NaN。".format(alpha, minimum_state),
-        "各 cohort 內四種方法使用同一份已准入樣本與日期切分；roadside 舊政策與完整 coverage 政策分開評估，兩者分數不可直接解讀為同條件模型勝負。Validation Brier 選模；只有資料門檻與正負類別檢查通過後才計算 test 指標。",
+        "新版時間政策 collected_at_taipei_v1 以 collected_at_utc 轉換到 Asia/Taipei 的日期切分，並拒收時區缺失、臺北日期欄位缺失或與轉換結果不一致的 as-of／arrival。原始 0993b17 runner 保留 file_date_v0993b17 政策以重現歷史結果。",
+        (
+            "各 cohort 內四種方法使用同一份已准入樣本與日期切分；roadside 舊政策與完整 coverage 政策分開評估，兩者分數不可直接解讀為同條件模型勝負。"
+            if compare_legacy else "本次設定停用 legacy roadside cohort，只評估 offstreet 與 complete-circle roadside。"
+        ) + " Validation Brier 選模；只有資料門檻與正負類別檢查通過後才計算 test 指標。",
         "2026-10-22 至 10-24 已被先前 0993b17 報告分析；本報告屬新增方法後的探索性重跑，不是獨立最終 holdout。", "",
         "## Roadside coverage 與資料准入", "",
         "嚴格政策以 train split 凍結候選圈；`roadside_complete_circle_v1` 要求 as-of、arrival、共同觀測格位皆完整，缺資料直接拒收。`roadside_partial_observation_v0993b17` 保留舊版部分觀測行為供重現。",
@@ -376,6 +394,24 @@ def render_report(*, input_path: Path, config: TrainingConfig, source_hash: str,
         for r in items:
             reasons = json.dumps(r["reasons"], ensure_ascii=False, sort_keys=True)
             lines.append(f"| {cohort} | `{r['policy']}` | {r['split']} | {r['lead']}m | {r['candidates']} | {r['accepted']} | {r['rejected']} | {r['positive']} | {r['negative']} | {fmt(r['acceptance_rate'])} | `{reasons}` |")
+    lines += ["", "## 時間日期一致性拒絕", "", "原始觀測列依下表計一次；准入配對拒絕會按 cohort／lead 列出，同一來源列可能因不同 lead 或 policy 重複計入。無效或缺少必要 key 的列則列於 parser skip 摘要。", "", "| Dataset | 臺北日期不一致 | 時區缺失 | 臺北日期欄位缺失 |", "| --- | ---: | ---: | ---: |"]
+    for dataset in ("offstreet", "roadside"):
+        reasons = observation_time_rejections[dataset]
+        lines.append(
+            f"| {dataset} | {reasons.get('collected_date_taipei_mismatch', 0)} | "
+            f"{reasons.get('collected_at_timezone_missing', 0)} | {reasons.get('collected_date_taipei_missing', 0)} |"
+        )
+    lines += ["", "配對拒絕依 cohort／split／lead 彙總：", "", "| Cohort | Split | Lead | 臺北日期不一致 | 時區缺失 | 臺北日期欄位缺失 |", "| --- | --- | ---: | ---: | ---: | ---: |"]
+    for cohort, items in admissions.items():
+        for r in items:
+            reasons = r["reasons"]
+            if any(reasons.get(reason, 0) for reason in ("collected_date_taipei_mismatch", "collected_at_timezone_missing", "collected_date_taipei_missing")):
+                lines.append(
+                    f"| {cohort} | {r['split']} | {r['lead']}m | {reasons.get('collected_date_taipei_mismatch', 0)} | "
+                    f"{reasons.get('collected_at_timezone_missing', 0)} | {reasons.get('collected_date_taipei_missing', 0)} |"
+                )
+    skipped_total = sum(skipped_rows.values())
+    lines.append(f"CSV 列解析失敗／缺少必要 key 的跳過數：offstreet {skipped_rows.get('offstreet_parse_or_missing_key', 0)}、roadside {skipped_rows.get('roadside_parse_or_missing_key', 0)}（合計 {skipped_total}）。")
     lines += ["", "Coverage 觀測統計以已找到 as-of／arrival 配對的格位觀測為分母；complete policy 逐配對拒收不完整集合。", "", "| Policy | Split | Lead | 配對數 | 預期格位總數 | as-of 觀測 | arrival 觀測 | 共同觀測 | as-of ratio | arrival ratio | common ratio |", "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
     for cohort, audits in coverage.items():
         for (split, lead), audit in sorted(audits.items()):
@@ -432,6 +468,20 @@ def render_report(*, input_path: Path, config: TrainingConfig, source_hash: str,
         "- 本報告只含彙總資料，不含逐列標籤、地點／格位 ID 或原始 ZIP；未呼叫官方 API／Google Routes。", "",
     ]
     return "\n".join(lines)
+
+
+def observation_time_rejections(observations) -> dict[str, Counter]:
+    counts = {"offstreet": Counter(), "roadside": Counter()}
+    for rows_by_entity, dataset in (
+        (observations.offstreet_by_lot, "offstreet"),
+        (observations.roadside_by_spot, "roadside"),
+    ):
+        for rows in rows_by_entity.values():
+            for row in rows:
+                reason = strict_time_rejection_reason(row)
+                if reason is not None:
+                    counts[dataset][reason] += 1
+    return counts
 
 
 def hash_files(paths: list[Path]) -> str:

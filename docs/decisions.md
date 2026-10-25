@@ -703,3 +703,11 @@
 - **准入與評估**：預設 train 至少 500、validation/test 各至少 100，且各 split 需同時存在正負類；validation 不足時不選模，只有 validation 選定後才開啟 test 評估。門檻是資料量防護，不是統計保證或上線 gate。
 - **影響**：四種方法在同一 cohort／split 樣本比較；兩種 roadside coverage policy 分開報接受、拒絕、正負例及指標。報告補上 near-full、狀態轉換、臺北日期、calibration 分桶及拒絕原因；artifact 升版至 v2 並修正為 `as_of_hour_*`。所有輸出維持 ignored 私有資料與 `EXPERIMENT_ONLY`，不接線上推論。
 - **狀態**：分支內實作完成；原 0993b17 24 筆指標重跑逐列一致。完整 coverage 在 test 30m 僅收 41 筆、60m 收 145 筆；2026-10-22 至 10-24 已被先前分析，新增模型後同期間只能作探索性比較，不能稱獨立最終 holdout。詳細結果見 `current-state.md`。
+
+
+## 2026-10-25：Calibrated runner 採用版本化台北 timestamp 日期政策
+
+- **原因**：僅依 collector 的 collected_date_taipei／file_date 切分，可能讓 UTC 時間在台北跨日、但日期欄位仍落在前一 split 的 arrival 標籤穿越 train／validation 邊界。
+- **決策**：新版 calibrated runner 使用 DATE_POLICY_TIMESTAMP_TAIPEI_V1（collected_at_taipei_v1），以具明確時區的 collected_at_utc 轉換至 Asia/Taipei 後決定 split，並要求 collected_date_taipei 與實際台北日期一致。as-of、arrival 兩端都拒收日期不一致；arrival 也不得跨越 as-of split。缺少時區或明示台北日期時拒收，無效必要欄位列由 parser 跳過並在報告摘要列出。
+- **相容性**：原始 0993b17 runner 維持 DATE_POLICY_FILE_DATE_V0993B17（file_date_v0993b17），保留歷史日期切分與特徵語意；新版政策只由 calibrated runner 明確啟用。兩種日期政策的樣本數與指標不可視為完全相同條件。
+- **影響**：報告列出日期不一致及時間欄位缺漏的准入拒絕數，arrival 只作標籤，特徵仍只從 as-of 產生。模型產物維持 EXPERIMENT_ONLY，正式線上預測不受影響。
