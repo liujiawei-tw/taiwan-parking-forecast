@@ -760,3 +760,19 @@
 - **子場站口徑**：體育局委外文件列網球場地下 189、體育館地下 399、臨復興路 37、臨公園路 32、臨中華路 49，共 706 格；新北市官方即時來源只提供單一整場場站 ID，沒有子場獨立即時車位。維持單一 706 格 mapping，不拆出重複即時場站。「公園路 D 區」可能對應臨公園路平面區，但官方文件未確認此別名。
 - **狀態與限制**：座標異常現在會被 mapper 拒收，`050064` 使用已審查地址點 fallback；新增 V3 migration 修正現有錯誤座標。更精確行政區 polygon、D 區別名與各子入口座標仍待官方證據／現地確認。
 - **來源**：[新北市路外公共停車場資訊](https://data.ntpc.gov.tw/datasets/B1464EF0-9C7C-4A6F-ABF7-6BDF32847E68)、[體育局委外文件](https://www.t-sports.ntpc.gov.tw/uploaddowndoc?file=anounce%2F202309271206440.pdf&filedisplay=4.%E9%82%80%E6%A8%99%E6%9B%B8.pdf&flag=doc)、[體育局交通 FAQ](https://www.t-sports.ntpc.gov.tw/home.jsp?act=be4f48068b2b0031&dataserno=c895a7bcc0e8e89ab4c9275d18c50812&id=24f533af7e16d877)、[新北市門牌位置數值資料](https://data.ntpc.gov.tw/datasets/d7b568ab-3819-40c8-a6e7-a6b199443101)。
+
+## 2026-10-25：Sprint 3 離線比較加入 train-only Calibrated Persistence 與完整 roadside coverage
+
+- **原因**：固定 0.95／0.05 persistence 的 Brier 表現可能混合狀態持續性與機率校準效果；路邊 as-of／arrival 兩端使用不同部分格位集合，也可能把來源缺漏標成狀態改變。
+- **決策**：保留 `roadside_partial_observation_v0993b17` 以重現舊實驗，並新增明確版本 `roadside_complete_circle_v1`。新政策只用 train split 凍結候選圈，要求 as-of、arrival 與共同格位完整觀測，不完整即拒絕並記錄原因。另新增 `calibrated_state_persistence_v1`，各 dataset／lead cohort 僅以 train 樣本按 True／False／Unknown 狀態估正例率，Laplace alpha=1.0，每狀態至少 20 筆，否則回退至 train 全域平滑正例率。
+- **准入與評估**：預設 train 至少 500、validation/test 各至少 100，且各 split 需同時存在正負類；validation 不足時不選模，只有 validation 選定後才開啟 test 評估。門檻是資料量防護，不是統計保證或上線 gate。
+- **影響**：四種方法在同一 cohort／split 樣本比較；兩種 roadside coverage policy 分開報接受、拒絕、正負例及指標。報告補上 near-full、狀態轉換、臺北日期、calibration 分桶及拒絕原因；artifact 升版至 v2 並修正為 `as_of_hour_*`。所有輸出維持 ignored 私有資料與 `EXPERIMENT_ONLY`，不接線上推論。
+- **狀態**：分支內實作完成；原 0993b17 24 筆指標重跑逐列一致。完整 coverage 在 test 30m 僅收 41 筆、60m 收 145 筆；2026-10-22 至 10-24 已被先前分析，新增模型後同期間只能作探索性比較，不能稱獨立最終 holdout。詳細結果見 `current-state.md`。
+
+
+## 2026-10-25：Calibrated runner 採用版本化台北 timestamp 日期政策
+
+- **原因**：僅依 collector 的 collected_date_taipei／file_date 切分，可能讓 UTC 時間在台北跨日、但日期欄位仍落在前一 split 的 arrival 標籤穿越 train／validation 邊界。
+- **決策**：新版 calibrated runner 使用 DATE_POLICY_TIMESTAMP_TAIPEI_V1（collected_at_taipei_v1），以具明確時區的 collected_at_utc 轉換至 Asia/Taipei 後決定 split，並要求 collected_date_taipei 與實際台北日期一致。as-of、arrival 兩端都拒收日期不一致；arrival 也不得跨越 as-of split。缺少時區或明示台北日期時拒收，無效必要欄位列由 parser 跳過並在報告摘要列出。
+- **相容性**：原始 0993b17 runner 維持 DATE_POLICY_FILE_DATE_V0993B17（file_date_v0993b17），保留歷史日期切分與特徵語意；新版政策只由 calibrated runner 明確啟用。兩種日期政策的樣本數與指標不可視為完全相同條件。
+- **影響**：報告列出日期不一致及時間欄位缺漏的准入拒絕數，arrival 只作標籤，特徵仍只從 as-of 產生。模型產物維持 EXPERIMENT_ONLY，正式線上預測不受影響。
