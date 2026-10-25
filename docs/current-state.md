@@ -1002,4 +1002,6 @@ Docker API 曾因 Google Places service 有兩個建構子且未標記注入建�
 
 資料來源：[新北市路邊收費停車場收費路段資訊](https://data.ntpc.gov.tw/datasets/d9f18db5-41c7-41d4-b7f0-82a335255b08)（官方每月更新）；詳情連結至[新北市交通局路段收費查詢](https://parkweb.traffic.ntpc.gov.tw/route.aspx)。歧義及區間仍不補費率，直到取得官方道路幾何／格位 crosswalk；這是刻意保留的限制，不是即時費率預測。
 
-本次後端編譯、Docker API 重建及實際官方資料命中情況待完成；未新增或執行測試套件。
+官方費率表僅在新查詢或使用者明確更新時載入／刷新；地圖 GET 與 viewport 查詢只讀記憶體快取，避免拖曳地圖觸發上游流量。後端 `mvnw -DskipTests compile` 成功；Docker API 重建後健康，Web、MySQL、Redis 也健康。未建立新查詢，因此沒有驗證實際官方資料命中，也未觸發 Places／Routes 外部查詢。
+
+Impeccable detector 已針對 `frontend/src/App.vue` 與 `frontend/src/style.css` 執行一次，只回報 Inter 字型通用性警示，沒有費率溢位警示；已安裝的 CLI 僅提供 `detect`，不支援文件所列 `audit` 子命令。桌面 1536px 與手機 390×844 空白查詢狀態的頁面 `scrollWidth` 均等於 viewport，沒有水平溢位；但當下沒有實際費率結果列，因此長費率的資料態仍未做瀏覽器驗收。Chrome 桌面分頁保留 API 更新前的 HTTP 502 錯誤狀態，重啟後尚無新查詢日誌可判定其原因。本次未新增或執行測試套件。
