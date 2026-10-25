@@ -1129,3 +1129,19 @@ Roadside complete 30m test 只有 41 筆，低於設定的 100 筆最低門檻�
 - **驗證**：`python -m unittest discover -s ml-training/tests` 42 tests 通過；`python -m compileall -q ml-training` 通過；`git diff --check` 通過。Focused offstreet shadow suite 15 tests 通過。
 - **31 個私有 ZIP 回放**：讀取 192,850 列，100 筆預測中 98 筆可驗證（30m 50、60m 48），2 筆 60m 因抵達觀測缺失不可驗證；3 個日期、38 個場站。30m：Persistence Brier 0.002500、Calibrated Persistence 0.0008710952，正／負例 46／4；60m：0.021250、0.0186322579，正／負例 40／8。兩方法各 lead FPR 均為 0、Precision 均為 1.00。與既有 98／100 aggregate 報告的樣本數、類別數與四組指標逐值一致；結果仍為三日 `EXPLORATORY_ONLY` 歷史回放。新輸出僅在 ignored 私有目錄 `data/private/collector-samples/pr97-findings56-2026-10-25/`，未提交。
 - 不修改模型演算法、預測特徵、正式資料庫或線上 predictions；未部署模型。前瞻測試仍需要既有 test 日期之後的新鮮 collector 觀測。
+
+## 2026-10-26 前端地圖比例與停車詳情卡調整
+
+- **地圖縮放**：點選路邊格位／路外停車場時，地圖中心移至該項目，分別以 5／20 公尺地面比例換算 Google Maps zoom；從 Places 選取目的地、重設預設目的地或按「回到目的地」時使用 50 公尺。換算依 Web Mercator 中心緯度校正，限制 zoom 3–21；地圖點標記與附近清單使用同一套選取流程。移除固定寫死 100 公尺的裝飾尺，保留會依地圖縮放更新的 Google Maps 原生比例尺。
+- **停車詳情卡**：主要呈現目前狀態、ETA、抵達時車位預測；距離放在標題下，收費與系統取得時間列為次要資訊。從卡片移除資料品質、官方觀測時間與一般汽車適用性欄位。路外離線實驗預測仍顯示百分比時，同時標明實驗性與未通過正式驗證，不會混作官方目前空位。
+- **規劃控制**：出發時間改為固定「立即」，查詢只送 `NOW`；桌面 planner-panel 將目的地輸入與快速篩選排成一列以增加 workspace 高度，手機 planner-panel 斷點維持原樣。將「更多」改名「預測車位」，桌面標題字級由流動大標改為 1.5rem。
+- **根因與修正**：使用者開啟的 `127.0.0.1:18088` 仍由舊 Docker Web 靜態資產服務，瀏覽器顯示舊的「更多」與舊卡片欄位；repo 的 build 已包含新版本。僅執行 `docker compose up -d --build --no-deps web` 重建並替換 Web 容器，API、MySQL、Redis 未重啟。瀏覽器重載後載入新版資產，確認按鈕為「預測車位」、卡片呈現預計抵達／抵達時車位預測，且資料品質與官方觀測時間欄位已移除。
+- **驗證**：前端 production build 與 Web image build 成功，`git diff --check` 通過；Impeccable detector 僅回報 style.css 既有 Inter 字型堆疊的三項警告；未執行測試套件。在 18088 初始目的地空狀態完成桌面截圖與 DOM 核對。Vite 開發埠 5173 無法從 sandbox 瀏覽器連線；手機 viewport、真實停車 marker／清單選取與實際地圖縮放互動尚未目視驗收，也未發出停車資料查詢。
+- **工程審查限制**：路邊 5 公尺比例在新莊緯度所需 zoom 高於 21，會受 helper 的 Google Maps zoom 上限約束；以固定 92px 參考距離計約為 6.2 公尺。原生比例尺的實際顯示值尚待可連線瀏覽器確認。沒有改動官方資料、查詢 API 或預測資料契約。
+
+## 2026-10-26 路外縮放、預測說明與桌面搜尋欄
+
+- **地圖比例**：點選路外停車場時，以地圖中心緯度換算 zoom，使 37 CSS 像素代表 20 公尺；比例尺像素寬度成為 viewport helper 的可調參數。路邊格位與目的地維持各自既有目標。
+- **機率文案**：路外實驗性預測百分比下方說明其意義為模型估計使用者抵達時該場仍有空位的可能性，並標明模型未通過正式驗證、結果不保證有位。這不是目前官方車位觀測。
+- **桌面 planner**：目的地搜尋欄寬限制為 600px；桌面欄位允許縮小，避免遮住「我的位置」與其他篩選按鈕。手機版樣式不變。
+- **驗證**：前端 production build 與 Docker Web image 重建成功，僅替換 `web` 服務。在 18088 重載後確認新版資產；桌面 viewport 寬 1536px 時搜尋欄寬 600px，與篩選列間距 349px，沒有覆蓋。「預測車位」仍可見，手機版樣式未修改。Impeccable detector 僅回報既有 Inter 字型堆疊警告；未執行測試套件，也未觸發官方資料查詢。路外 37px／20m zoom 與機率說明需待實際停車資料結果再驗收。

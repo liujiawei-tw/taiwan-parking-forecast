@@ -3,6 +3,48 @@ import { readApiError } from './apiErrors.js'
 export const MAP_VIEWPORT_PAGE_SIZE = 300
 export const MAP_VIEWPORT_MAX_PAGES = 68
 
+const DEFAULT_MAP_SCALE_REFERENCE_WIDTH_PX = 92
+const GOOGLE_MAPS_TILE_SIZE_PX = 256
+const WEB_MERCATOR_EARTH_RADIUS_METERS = 6378137
+const MAX_WEB_MERCATOR_LATITUDE = 85.05112878
+const DEFAULT_GOOGLE_MAPS_ZOOM = 15
+
+/**
+ * 計算讓指定像素寬度代表指定地面距離時的 Google Maps zoom。
+ * 無效距離回傳 zoom 15；無效緯度以赤道計算，超出 Web Mercator 範圍的緯度會先夾限。
+ * @param {number} distanceMeters 目標地面距離，單位為公尺。
+ * @param {number} latitude 地圖中心緯度，單位為度。
+ * @param {number} referenceWidthPixels 比例尺代表距離的像素寬度，預設 92px。
+ * @returns {number} 夾限在 3–21 的 Google Maps zoom。
+ */
+export function getMapZoomForGroundDistance(
+  distanceMeters,
+  latitude,
+  referenceWidthPixels = DEFAULT_MAP_SCALE_REFERENCE_WIDTH_PX,
+) {
+  if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) {
+    return DEFAULT_GOOGLE_MAPS_ZOOM
+  }
+
+  const safeReferenceWidthPixels = Number.isFinite(referenceWidthPixels) && referenceWidthPixels > 0
+    ? referenceWidthPixels
+    : DEFAULT_MAP_SCALE_REFERENCE_WIDTH_PX
+  const safeLatitude = Number.isFinite(latitude) ? latitude : 0
+  const clampedLatitude = Math.max(
+    -MAX_WEB_MERCATOR_LATITUDE,
+    Math.min(MAX_WEB_MERCATOR_LATITUDE, safeLatitude),
+  )
+  const latitudeRadians = (clampedLatitude * Math.PI) / 180
+  const groundMetersPerPixelAtZoomZero =
+    (2 * Math.PI * WEB_MERCATOR_EARTH_RADIUS_METERS * Math.cos(latitudeRadians))
+      / GOOGLE_MAPS_TILE_SIZE_PX
+  const rawZoom = Math.log2(
+    (groundMetersPerPixelAtZoomZero * safeReferenceWidthPixels) / distanceMeters,
+  )
+
+  return Math.max(3, Math.min(21, rawZoom))
+}
+
 export function normalizeMapViewportBounds(bounds) {
   if (!bounds) return null
   const normalized = {

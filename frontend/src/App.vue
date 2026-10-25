@@ -41,6 +41,7 @@ import {
   snapshotDestination,
 } from './mapDataLifecycle.js'
 import {
+  getMapZoomForGroundDistance,
   loadMapViewportPages,
   mapViewportRequestKey,
   normalizeMapViewportBounds,
@@ -62,6 +63,7 @@ const POLL_INTERVAL_MS = 5000
 const DEFAULT_RADIUS_METERS = 500
 const MAP_DATA_RETRY_DELAY_MS = 15000
 const MAP_VIEWPORT_IDLE_DELAY_MS = 250
+const DEPARTURE_TYPE = 'NOW'
 
 const mapElement = ref(null)
 const mapStageElement = ref(null)
@@ -74,8 +76,6 @@ const destinationAutocompleteHost = ref(null)
 const selectedDestination = ref({ ...defaultDestination })
 const googlePlacesByQueryId = ref({})
 const origin = ref({ ...DEFAULT_ORIGIN })
-const departureType = ref('NOW')
-const scheduledDepartureLocal = ref('')
 const queryResult = ref(null)
 const loading = ref(false)
 const locating = ref(false)
@@ -160,6 +160,7 @@ const destinationPlaceSelectionHandler = createPlaceSelectionHandler({
   onSelected(place) {
     automaticPlanningEnabled = true
     selectedDestination.value = place
+    focusMapAtGroundDistance(place, 50)
     logAcceptanceEvent('PLACE_SELECTED', '已選取 Google Places 目的地。')
     scheduleAutomaticParkingQuery({ force: true })
   },
@@ -449,6 +450,38 @@ const selectedOffStreetPredictionLead = computed(() => {
   const match = selectedOffStreetPrediction.value?.modelVersion?.match(/lead-(\d+)m/)
   return match ? Number(match[1]) : null
 })
+const selectedEtaArrivalLabel = computed(() => {
+  if (queryResult.value?.eta?.status === 'READY') {
+    return formatDateTime(queryResult.value.eta.estimatedArrivalAt)
+  }
+  return queryResult.value ? '尚未估算' : '尚未規劃'
+})
+const selectedEtaDescription = computed(() => {
+  if (!queryResult.value) return '選取目的地後估算行車時間。'
+  if (queryResult.value.eta?.status === 'READY') return '依本次行程的 Google Routes 結果。'
+  return etaMessage.value
+})
+const selectedPredictionValue = computed(() => {
+  const prediction = selectedOffStreetPrediction.value
+  if (prediction?.status === 'EXPERIMENTAL') {
+    return Number.isFinite(prediction.probability)
+      ? `${Math.round(prediction.probability * 100)}%`
+      : '實驗性估計'
+  }
+  if (queryResult.value?.predictions?.status === 'READY') return '通過驗證'
+  return queryResult.value ? '資料不足' : '尚未規劃'
+})
+const selectedPredictionDescription = computed(() => {
+  const prediction = selectedOffStreetPrediction.value
+  if (prediction?.status === 'EXPERIMENTAL') {
+    const lead = selectedOffStreetPredictionLead.value
+      ? `採用 ${selectedOffStreetPredictionLead.value} 分鐘離線模型；`
+      : '離線實驗估計；'
+    return lead + '此機率表示模型估計您抵達時該場仍有空位的可能性；不保證有位，模型尚未正式驗證。'
+  }
+  if (queryResult.value) return predictionMessage.value
+  return '選取目的地並完成查詢後顯示。'
+})
 const mapViewportSupportMessage = computed(() => {
   void mapViewportRevision.value
   const supportedArea = mapData.value?.supportedArea
@@ -487,8 +520,8 @@ const queryId = computed(() => queryResult.value?.query?.queryId ?? '')
 const currentPlanningInputs = computed(() => snapshotPlanningInputs({
   origin: origin.value,
   destination: selectedDestination.value,
-  departureType: departureType.value,
-  scheduledDepartureLocal: scheduledDepartureLocal.value,
+  departureType: DEPARTURE_TYPE,
+  scheduledDepartureLocal: '',
 }))
 
 onMounted(async () => {
@@ -569,7 +602,7 @@ function scheduleAutomaticParkingQuery({ force = false } = {}) {
   if (pendingPlanningInputKey === inputKey) return
 
   try {
-    buildDeparture(departureType.value, scheduledDepartureLocal.value)
+    buildDeparture(DEPARTURE_TYPE)
   } catch (error) {
     if (automaticPlanningTimer) window.clearTimeout(automaticPlanningTimer)
     automaticPlanningTimer = undefined
@@ -621,8 +654,7 @@ async function createParkingQuery() {
       requestToken: buildRequestToken(window.crypto),
       origin: submittedOrigin,
       destination: submittedDestination,
-      departureType: departureType.value,
-      scheduledDepartureLocal: scheduledDepartureLocal.value,
+      departureType: DEPARTURE_TYPE,
     })
     logAcceptanceEvent('QUERY_PAYLOAD_BUILT', '已建立查詢 payload 欄位摘要。', summarizeParkingQueryPayload(payload))
 
@@ -1234,7 +1266,7 @@ function renderMap() {
         icon: createMarkerIcon(item, style.color, isSelected),
         zIndex: isSelected ? 100 : item.type === 'OFF_STREET' ? 20 : 10,
       })
-      marker.addListener('click', () => selectResultItem(id, true))
+      marker.addListener('click', () => selectResultItem(id))
       markersById.set(id, marker)
       parkingMarkers.push(marker)
     } else {
@@ -1448,20 +1480,36 @@ async function shareSelectedItem() {
 }
 
 function focusDestination() {
-  if (!map) return
-  map.panTo(getDestinationLatLng())
-  map.setZoom(Math.max(map.getZoom() ?? 15, 15))
+  focusMapAtGroundDistance(getDestinationLatLng(), 50)
 }
 
-function selectResultItem(itemId, fromMarker = false) {
+function focusMapAtGroundDistance(location, distanceMeters) {
+  if (!map || !location) return
+  const latitude = Number(location.latitude ?? location.lat)
+  const longitude = Number(location.longitude ?? location.lng)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return
+
+  map.panTo({ lat: latitude, lng: longitude })
+  map.setZoom(getMapZoomForGroundDistance(distanceMeters, latitude))
+}
+
+function selectResultItem(itemId) {
   selectedItemId.value = itemId
   const item = resultItems.value.find((candidate) => candidate.id === itemId)
   const marker = markersById.get(itemId)
-  if (!item || !marker || !map) return
+  if (!item || !map) return
 
-  marker.setMap(map)
-  map.panTo(marker.getPosition())
-  if (!fromMarker) map.setZoom(Math.max(map.getZoom() ?? 15, 21))
+  marker?.setMap(map)
+  const markerPosition = marker?.getPosition()
+  const latitude = Number(markerPosition?.lat?.() ?? item.latitude)
+  const longitude = Number(markerPosition?.lng?.() ?? item.longitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return
+  map.panTo({ lat: latitude, lng: longitude })
+  const isOffStreet = item.type === 'OFF_STREET'
+  const targetScaleMeters = isOffStreet ? 20 : 5
+  const referenceWidthPixels = isOffStreet ? 37 : undefined
+  map.setZoom(getMapZoomForGroundDistance(targetScaleMeters, latitude, referenceWidthPixels))
+  if (!marker) return
   infoWindow?.setContent(createInfoWindowContent(item))
   infoWindow?.open({ map, anchor: marker })
 }
@@ -1562,6 +1610,7 @@ function useDefaultDestination() {
   destinationSelectionVersion++
   automaticPlanningEnabled = true
   selectedDestination.value = { ...defaultDestination }
+  focusMapAtGroundDistance(defaultDestination, 50)
   scheduleAutomaticParkingQuery({ force: true })
   renderMap()
 }
@@ -1725,7 +1774,7 @@ function logAcceptanceEvent(type, message, details = {}) {
           <span>{{ activeParkingTypeFilter === 'ALL' ? '全部停車場' : activeParkingTypeFilter === 'OFF_STREET' ? '路外停車場' : '路邊格位' }}</span><span class="chip-chevron" aria-hidden="true"></span>
         </button>
         <button class="filter-chip more-chip" :class="{ selected: activeMapPanel === 'layers' }" type="button" aria-controls="parking-filter-panel" :aria-expanded="activeMapPanel === 'layers'" @click="toggleMapPanel('layers')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h8m4 0h4M4 17h3m4 0h9"/><circle cx="14" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>更多</span><span class="chip-chevron" aria-hidden="true"></span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h8m4 0h4M4 17h3m4 0h9"/><circle cx="14" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>預測車位</span><span class="chip-chevron" aria-hidden="true"></span>
         </button>
       </nav>
 
@@ -1741,11 +1790,7 @@ function logAcceptanceEvent(type, message, details = {}) {
           </div>
           <div class="field-group departure-field">
             <label>出發時間</label>
-            <div class="segmented-control" role="group" aria-label="出發時間類型">
-              <button type="button" :class="{ active: departureType === 'NOW' }" @click="departureType = 'NOW'">立即</button>
-              <button type="button" :class="{ active: departureType === 'SCHEDULED' }" @click="departureType = 'SCHEDULED'">指定</button>
-            </div>
-            <input v-if="departureType === 'SCHEDULED'" v-model="scheduledDepartureLocal" type="datetime-local" aria-label="指定出發時間">
+            <span class="departure-now" role="status">立即</span>
           </div>
           <fieldset class="map-filter-group">
             <legend>資料類型</legend>
@@ -1851,20 +1896,26 @@ function logAcceptanceEvent(type, message, details = {}) {
                 </button>
               </div>
             </header>
+            <div class="selected-spot-status">
+              <span class="selected-spot-status-label">{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? '空位資訊' : selectedMapItem?.type === 'OFF_STREET' ? '官方剩餘汽車位' : selectedMapItem ? '官方路邊格位狀態' : queryResult ? '官方路邊目前有位' : '停車狀態' }}</span>
+              <strong :class="selectedMapItem?.availabilityStatus?.toLowerCase()">{{ selectedMapItem?.currentValue ?? (queryResult ? roadsideDisplaySummary.availableSpaces === null ? '未知' : `${roadsideDisplaySummary.availableSpaces} 格` : '尚未查詢') }}</strong>
+            </div>
+            <div class="selected-spot-outlook" role="group" aria-label="預計抵達與抵達時車位預測">
+              <div class="selected-spot-outlook-item">
+                <span class="outlook-label">預計抵達</span>
+                <strong>{{ selectedEtaArrivalLabel }}</strong>
+                <p>{{ selectedEtaDescription }}</p>
+              </div>
+              <div class="selected-spot-outlook-item prediction-outlook-item">
+                <span class="outlook-label">抵達時車位預測</span>
+                <strong :class="{ experimental: selectedOffStreetPrediction?.status === 'EXPERIMENTAL' }">{{ selectedPredictionValue }}</strong>
+                <p>{{ selectedPredictionDescription }}</p>
+              </div>
+            </div>
             <div class="selected-spot-facts">
-              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 14 1.4-4.2A2 2 0 0 1 8.3 8h7.4a2 2 0 0 1 1.9 1.8L19 14"/><path d="M4 14h16v5h-2v-2H6v2H4z"/><circle cx="7.5" cy="19" r="1"/><circle cx="16.5" cy="19" r="1"/></svg>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? '空位狀態' : selectedMapItem?.type === 'OFF_STREET' ? '目前剩餘汽車位' : selectedMapItem ? '路邊格位狀態' : queryResult ? '路邊目前有位' : '停車狀態' }}</span><strong :class="selectedMapItem?.availabilityStatus?.toLowerCase()">{{ selectedMapItem?.currentValue ?? (queryResult ? roadsideDisplaySummary.availableSpaces === null ? '未知' : `${roadsideDisplaySummary.availableSpaces} 格` : '尚未查詢') }}</strong></div>
-              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.2"/></svg>距離</span><strong>{{ selectedMapItem ? `${selectedMapItem.distanceMeters} 公尺` : '目的地周邊' }}</strong></div>
-              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg>資料品質</span><strong>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? '地點目錄，無即時觀測' : selectedMapItem ? formatQuality(selectedMapItem.qualityStatus) : queryResult ? '依來源狀態判定' : '尚未取得' }}</strong></div>
-              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? '即時觀測時間' : '官方觀測時間' }}</span><strong>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? 'Google Places 不提供' : selectedMapItem?.sourceObservedAt ? formatDateTime(selectedMapItem.sourceObservedAt) : '來源未提供' }}</strong></div>
-              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 14 1.4-4.2A2 2 0 0 1 8.3 8h7.4a2 2 0 0 1 1.9 1.8L19 14"/><path d="M4 14h16v5h-2v-2H6v2H4z"/><circle cx="7.5" cy="19" r="1"/><circle cx="16.5" cy="19" r="1"/></svg>一般汽車適用性</span><strong>{{ selectedMapItem?.dataOrigin === 'GOOGLE_PLACES' ? 'Google Places 未提供' : selectedMapItem ? formatEligibility(selectedMapItem.carEligibleStatus) : '尚未確認' }}</strong></div>
               <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17a4 4 0 0 1 .4-8 5.4 5.4 0 0 1 10.3 1.2A3.5 3.5 0 1 1 18 17H7Z"/><path d="M12 12v6m0 0-2-2m2 2 2-2"/></svg>系統取得</span><strong>{{ selectedMapItem ? formatDateTime(selectedMapItem.systemCollectedAt) : mapData?.generatedAt ? formatDateTime(mapData.generatedAt) : '尚未取得' }}</strong></div>
               <div class="fee-fact"><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5c-.8-.7-1.7-1-3-1-1.4 0-2.5.8-2.5 2s1.1 1.8 2.5 2.2 2.5.9 2.5 2.3-1.1 2.3-2.7 2.3c-1.2 0-2.4-.4-3.2-1.2M12 6v12"/></svg>收費</span><strong>{{ selectedMapItem?.feeDescription || selectedMapItem?.feeStatus || '來源未提供' }}</strong><a v-if="selectedMapItem && selectedMapItem.type !== 'OFF_STREET' && selectedMapItem.dataOrigin !== 'GOOGLE_PLACES'" class="fee-source-link" href="https://parkweb.traffic.ntpc.gov.tw/route.aspx" target="_blank" rel="noopener noreferrer">查看新北市官方路段費率</a></div>
-              <div><span class="fact-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/><path d="M16.5 4.5 19 5v2.5"/></svg>抵達預測</span><strong>{{ selectedOffStreetPrediction?.status === 'EXPERIMENTAL' ? '實驗性估計' : queryResult?.predictions?.status === 'READY' ? '通過驗證' : '資料不足' }}</strong></div>
             </div>
-            <p v-if="selectedOffStreetPrediction?.status === 'EXPERIMENTAL' && Number.isFinite(selectedOffStreetPrediction.probability)" class="selected-spot-note"><strong>實驗性抵達估計：{{ Math.round(selectedOffStreetPrediction.probability * 100) }}%</strong><span v-if="selectedOffStreetPredictionLead"> · 使用 {{ selectedOffStreetPredictionLead }} 分鐘模型</span>。這是離線 collector 歷史資料的估計，不是官方即時空位；模型尚未通過正式上線驗證。</p>
-            <p v-if="selectedMapItem?.qualityReason || selectedMapItem?.notes || selectedMapItem?.message" class="selected-spot-note">{{ selectedMapItem.qualityReason || selectedMapItem.notes || selectedMapItem.message }}</p>
-            <p v-else-if="!queryResult" class="selected-spot-note">選取目的地後會自動查詢附近停車資訊；官方觀測、資料品質與抵達時間預測會分開顯示。</p>
-            <p v-if="queryResult" class="selected-spot-note">{{ predictionMessage }} · {{ etaMessage }}</p>
             <a v-if="selectedMapItem && hasExternalMapAction(selectedMapItem)" class="route-link selected-route-link" :href="buildExternalRouteUrl(selectedMapItem)" :aria-label="getExternalMapActionDescription(selectedMapItem)" :title="getExternalMapActionDescription(selectedMapItem)" target="_blank" rel="noopener noreferrer">{{ getExternalMapActionLabel(selectedMapItem) }}</a>
           </article>
 
