@@ -930,3 +930,26 @@ Chrome 本機 DEMO 桌面畫面確認 Places 目的地「雙鳳路」、測試�
 兩軸獨立 code review 的規格缺口已修正：viewport 載入期間標記閃爍、網格邊界附近的群聚、詳情容量與支援範圍提示。標準審查指出的重複 CSS 主題覆寫已合併；來源文字清理方法改名為 `normalizeAndLimitText`。回應 record 欄位相似屬低風險維護建議，保留各 API 契約欄位以維持明確性。
 
 本機驗證：前端 `npm test` 通過 7 組測試，`npm run build` 成功；後端完整 Maven 套件 112/112 通過；`impeccable detect --json frontend/src/App.vue` 回傳空清單。真實瀏覽器操作與五種 viewport 截圖尚未完成：自動化瀏覽器安全政策拒絕讀取本機 Vite 頁，且明確禁止改用其他瀏覽器路徑重試。Docker CLI pipe 亦回拒絕存取；既有 Docker 網頁先前作為基線開啟，但此輪沒有重建或修改容器／volume，也沒有送出查詢。Docker MySQL 尚未驗收 V2 migration。座標未經實地精度校驗仍是產品資料限制。
+
+## 2026-10-25 Sprint 3 ML 評估可信度與 Calibrated Persistence
+
+在獨立分支 `codex/ml-801010-calibrated-persistence`（基準 `0993b1786c5861835786062bdca935cfbd91f09e`）完成離線實驗改造，未改動原工作樹中既有 UI／Places／Docker 修改。讀取原本 31 個 ignored collector ZIP：roadside 2,522,054 列、offstreet 192,850 列；無官方 API 或 Google Routes 呼叫。原 0993b17 compatibility runner 以新輸出路徑重跑，validation／test 四種 dataset-lead 共 24 筆既有方法指標與先前報告逐列一致。
+
+新增 `calibrated_state_persistence_v1`：每 dataset／lead 僅用 train 的 True／False／Unknown 狀態正例率，Laplace alpha=1，每狀態至少 20 筆，否則回退平滑後 train 全域正例率。新 Logistic artifact 使用 schema v2、feature version `parking_features_as_of_v2`，時間特徵命名為 `as_of_hour_*`。報告及權重只在 ignored 私有路徑；狀態保持 `EXPERIMENT_ONLY`，`publishToOnlineSystem=false`。
+
+測試集（2026-10-22 至 10-24；此前已分析，不是新 holdout）核心比較如下。欄位 Brier／Log loss；FPR 和 near-full Precision 保留以檢查假陽性風險：
+
+| Cohort／lead | n | 固定 Persistence Brier／Log loss | Calibrated Persistence Brier／Log loss | Logistic Brier／Log loss | FPR（三者相同） | near-full Precision（三者相同） |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Offstreet 30m | 5,400 | 0.0130／0.0856 | **0.0115／0.0595** | 0.0254／0.1087 | 6.18% | 95.61% |
+| Offstreet 60m | 5,360 | 0.0178／0.1013 | **0.0163／0.0779** | 0.0289／0.1195 | 8.70% | 94.46% |
+| Roadside legacy partial 30m | 6,750 | 0.0966／0.3593 | 0.1046／1.0234 | **0.0922／0.3314** | 7.77% | 71.30% |
+| Roadside legacy partial 60m | 6,700 | 0.1169／0.4257 | 0.1271／1.1709 | **0.1094／0.3823** | 9.53% | 68.40% |
+| Roadside complete circle 30m | 41 | 未評估 | 未評估 | 未評估 | — | — |
+| Roadside complete circle 60m | 145 | 0.0025／0.0513 | 0.0000／0.0002 | 0.0124／0.1001 | 0.00% | 100.00% |
+
+Roadside complete 30m test 只有 41 筆，低於設定的 100 筆最低門檻，所有 test 指標均未開啟；60m 雖有 145 筆且同時有正負例，但只有 3 個已看過日期，屬探索性結果。完整 coverage test 每 lead 有 7,000 個候選：30m 接受 41／拒絕 6,959（40 正、1 負）；60m 接受 145／拒絕 6,855（60 正、85 負）。legacy partial 分別接受 6,750／7,000（2,052 正、4,698 負）及 6,700／7,000（2,040 正、4,660 負）。准入差異顯著，兩 policy 的分數不可混作同條件優劣，樣本接受率也不是使用者查詢預測覆蓋率。
+
+預設 gate：train 至少 500、validation/test 各至少 100，且三個 split 都要同時有正負例；validation 依 Brier 選模，完成選模才評估 test。新增 near-full、狀態轉換、臺北日期及 calibration 分桶／低樣本標記與拒絕原因。此輪不代表 S3-020 gate 已通過：時間外推僅 3 日、roadside 圈有重疊、來源更新時間語意未完全確認、完整 coverage 接受量極低、仍非 ETA-aware；正式 predictions 維持資料不足。
+
+私有報告：`data/private/collector-samples/calibrated-persistence-2026-10-25.md`；模型產物：`ml-training/models/calibrated-persistence-2026-10-25/`。執行版 `calibrated_persistence_v1` runner／ML Python source SHA-256：`eb29c492de5b954e9c29c8253b221657aa6542fc7bd068ff710f00aa3473c01f`。完整 unittest、compileall 與 Git diff 驗證在本次 PR 最終檢查記錄。

@@ -695,3 +695,11 @@
 - **決策**：前端採地圖優先版面及圖集視覺語彙；桌面結果面板在地圖上展開，手機使用底部詳情抽屜。路邊格位依目前地圖縮放，以 56 CSS 像素鄰近距離群聚；鄰近格位跨越內部網格邊界時仍合併。拉近至 zoom 21 後逐格顯示，路外場站不加入群聚。群聚數代表格位筆數，不代表空位數。篩選先作用於資料，再重算群聚。
 - **資料限制**：車位位置來自已審查目錄座標；本專案尚未完成實地位置精度校驗，UI 需保留這項說明。官方目前觀測、品質、系統取得時間與抵達時預測各自呈現；模型未通過驗證時預測仍是資料不足。
 - **狀態**：方向已由使用者附件確認並開始實作；自適應樣式已加上，但指定尺寸的真實瀏覽器驗收尚未完成。
+
+## 2026-10-25：Sprint 3 離線比較加入 train-only Calibrated Persistence 與完整 roadside coverage
+
+- **原因**：固定 0.95／0.05 persistence 的 Brier 表現可能混合狀態持續性與機率校準效果；路邊 as-of／arrival 兩端使用不同部分格位集合，也可能把來源缺漏標成狀態改變。
+- **決策**：保留 `roadside_partial_observation_v0993b17` 以重現舊實驗，並新增明確版本 `roadside_complete_circle_v1`。新政策只用 train split 凍結候選圈，要求 as-of、arrival 與共同格位完整觀測，不完整即拒絕並記錄原因。另新增 `calibrated_state_persistence_v1`，各 dataset／lead cohort 僅以 train 樣本按 True／False／Unknown 狀態估正例率，Laplace alpha=1.0，每狀態至少 20 筆，否則回退至 train 全域平滑正例率。
+- **准入與評估**：預設 train 至少 500、validation/test 各至少 100，且各 split 需同時存在正負類；validation 不足時不選模，只有 validation 選定後才開啟 test 評估。門檻是資料量防護，不是統計保證或上線 gate。
+- **影響**：四種方法在同一 cohort／split 樣本比較；兩種 roadside coverage policy 分開報接受、拒絕、正負例及指標。報告補上 near-full、狀態轉換、臺北日期、calibration 分桶及拒絕原因；artifact 升版至 v2 並修正為 `as_of_hour_*`。所有輸出維持 ignored 私有資料與 `EXPERIMENT_ONLY`，不接線上推論。
+- **狀態**：分支內實作完成；原 0993b17 24 筆指標重跑逐列一致。完整 coverage 在 test 30m 僅收 41 筆、60m 收 145 筆；2026-10-22 至 10-24 已被先前分析，新增模型後同期間只能作探索性比較，不能稱獨立最終 holdout。詳細結果見 `current-state.md`。

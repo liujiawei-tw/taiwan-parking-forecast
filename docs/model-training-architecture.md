@@ -1,6 +1,6 @@
 # 模型訓練架構
 
-更新日期：2026-10-25。狀態：已有 baseline 與三段時間切分的 Logistic Regression 離線候選；正式模型尚未發布。
+更新日期：2026-10-25。狀態：已有 baseline、calibrated persistence 對照與三段時間切分的 Logistic Regression 離線候選；正式模型尚未發布。
 
 ## DEMO 優先停點
 
@@ -104,6 +104,14 @@ S3-021 已完成舊實驗重現與限制交接，見 s3-021-model-experiment-han
 對本機 2026-09-24 至 2026-10-24 的 31 天 collector 樣本，使用 train 09-24 至 10-18（25 天）、validation 10-19 至 10-21（3 天）、test 10-22 至 10-24（3 天）。日期比例為 80.6/9.7/9.7；樣本比例會因 unknown 與 label 配對拒絕而變動。每個樣本的 arrival label 必須和 as-of feature 落在相同 split；roadside 500m candidate circles 只用 train 結束前可知座標建立。週期特徵以 Asia/Taipei 時間計算。
 
 本輪每個 dataset／lead 在 train 擬合 Logistic Regression，validation 依 Brier 選擇比較方法，test 只作最後評估。路外兩個 lead 與路邊 30m 在 validation 選 current-state persistence；路邊 60m 選 Logistic Regression，test Brier 為 0.1094，相較 persistence 0.1169。路外 Logistic Regression 未超越 persistence。因 test 僅三天、資料單一區域且尚未完成 ETA-aware／S3-020 gate，全部產物仍是 `EXPERIMENT_ONLY`，不得接入線上。
+
+## 評估可信度補強與 Calibrated Persistence
+
+新增的固定日期實驗在同一 dataset／lead／coverage cohort 內比較 train 正例率、原固定 0.95／0.05 persistence、`calibrated_state_persistence_v1` 與 Logistic Regression。校準率只由 train split 估計；alpha 預設 1.0，每個 True／False／Unknown 狀態至少 20 筆才使用條件率，否則使用平滑後 train 全域正例率。Validation Brier 用來選比較方法；預設 train/validation/test 最低樣本數為 500/100/100，且每 split 要有正、負例。這些門檻只阻止資料量不足時產生看似有效的結論，不是模型通過或統計充分性的證明。
+
+Roadside legacy 規則 `roadside_partial_observation_v0993b17` 留作舊結果重現；新規則 `roadside_complete_circle_v1` 只以 train split 建立凍結圈，as-of、arrival 與共同格位都必須完整觀測。報告分政策呈現候選、接受、拒絕、正負例及原因，coverage 是離線樣本准入比例，不是使用者查詢的預測覆蓋率。缺少觀測不會轉成 occupied label。
+
+Calibration 分 10 個等寬機率桶，小於 20 筆標示 `LOW_SAMPLE`；near-full 維持 `current_ratio <= 0.10` 的實驗定義；狀態轉換只作事後診斷。新 Logistic artifact 使用 `parking-logistic-experiment-v2` 與 `parking_features_as_of_v2`，週期時間特徵名稱及計算都指向 Taipei as-of hour。全部新舊產物仍為 `EXPERIMENT_ONLY`，不得接入線上 predictions。
 
 ## 後續 Issue 對應
 
