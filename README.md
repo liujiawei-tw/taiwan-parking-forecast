@@ -51,9 +51,9 @@ Copy-Item .env.example .env
 docker compose --env-file .env up -d --build
 ```
 
-- Web 預設網址為 `http://127.0.0.1:18088`，只綁定主機 loopback；可用 `WEB_HTTP_PORT` 調整主機 port。
+- Web 預設網址為 `http://127.0.0.1:8080`，只綁定主機 loopback；可用 `WEB_HTTP_PORT` 調整主機 port。
 - 瀏覽器透過 Nginx 同源 `/api` 呼叫 API。API、MySQL 與 Redis 只在 Compose 網路內使用，不發布主機埠。
-- 主機公開網站時，由 Caddy 或既有 HTTPS reverse proxy 終止 TLS，並代理到 `127.0.0.1:18088`；網域、防火牆與 HTTPS 設定見 [`docs/docker-deployment.md`](docs/docker-deployment.md)。
+- 主機公開網站時，由 Caddy 或既有 HTTPS reverse proxy 終止 TLS，並代理到 `127.0.0.1:8080`；網域、防火牆與 HTTPS 設定見 [`docs/docker-deployment.md`](docs/docker-deployment.md)。
 - MySQL 資料保存在 `taiwan-parking-forecast_mysql-data` named volume。一般 `stop`／`down` 不刪除資料；不要使用 `down -v` 清除正式資料。
 - Routes 外部付費呼叫預設停用；無真實 Places key 時搜尋明確顯示不可用，不提供座標欄位。
 

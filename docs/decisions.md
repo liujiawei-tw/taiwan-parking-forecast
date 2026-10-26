@@ -2,6 +2,12 @@
 
 以下只記錄已明確採納的方向。草案與尚待驗證的選項請放到 `open-questions.md`。
 
+## 2026-10-26：Compose 前端主機埠改為 8080
+
+- **決策**：Compose Web 預設只綁定主機 loopback `127.0.0.1:8080`；本機 `.env` 與 `.env.example` 的 `WEB_HTTP_PORT` 亦設為 8080。API 的 8080 保持 Compose 內部埠，API／MySQL／Redis 不發布主機埠。
+- **原因與影響**：前端 Web 可由 `http://127.0.0.1:8080` 開啟，並透過同源 `/api` 由 Nginx 轉送至 Compose 網路內的 API。Vite 開發伺服器仍使用 5173，供直接連接本機 API 的開發模式使用。
+- **驗證限制**：Docker Desktop 引擎在本次設定更新時無法連線，因此尚未重建 Web 容器或確認埠綁定生效；Compose 靜態設定檢查結果記錄於 `current-state.md`。
+
 ## 2026-10-26：移除預設出發地，目的地可獨立查詢
 
 - **決策**：起點初始為未選擇，不預填捷運新莊站或其他座標。使用者選定目的地後即可建立附近停車查詢；只有使用者選取 Places 地點或明確使用裝置目前位置後，才請求 Routes ETA。

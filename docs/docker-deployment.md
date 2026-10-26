@@ -1,6 +1,6 @@
 # Docker Compose 部署
 
-更新日期：2026-10-24。狀態：唯一正式設定為根目錄的 docker-compose.yml；本機、作品展示與單機部署共用四個服務、網路隔離、同源 API 與 MySQL 持久化。沒有遠端主機與正式金鑰時，服務仍可按降級契約運行，但不代表 Routes ETA 或停車機率已驗收。
+更新日期：2026-10-26。狀態：唯一正式設定為根目錄的 docker-compose.yml；本機、作品展示與單機部署共用四個服務、網路隔離、同源 API 與 MySQL 持久化。沒有遠端主機與正式金鑰時，服務仍可按降級契約運行，但不代表 Routes ETA 或停車機率已驗收。
 
 ## 唯一 Compose 與網路
 
@@ -12,22 +12,22 @@ docker compose --env-file .env up -d --build
 
 Compose project name 固定為 taiwan-parking-forecast，MySQL named volume 為 taiwan-parking-forecast_mysql-data。此名稱沿用現有主系統資料 volume；Compose stop、down 與 image 重建都不會刪除該 volume。API、MySQL、Redis 不發布主機埠，只有 Web 可從主機 loopback 連線：
 
-- Web：http://127.0.0.1:18088
-- 同源 API health：http://127.0.0.1:18088/api/health
-- Web 主機埠可用 WEB_HTTP_PORT 設定，預設 18088。
+- Web：http://127.0.0.1:8080
+- 同源 API health：http://127.0.0.1:8080/api/health
+- Web 主機埠可用 WEB_HTTP_PORT 設定，預設 8080。
 - API 的 8080、MySQL 的 3306 與 Redis 的 6379 僅在 Compose 網路內可用。
 
 Nginx 將 /api/... 原樣代理給 Spring Boot，瀏覽器使用相對 /api 路徑。Web 的查詢建立入口保留來源 IP 限流：每分鐘 5 次、額外 burst 2 次，超量回 429、RATE_LIMITED 與 Retry-After。前置代理必須傳送正確的用戶端 IP 與 HTTPS scheme；Nginx 只信任指定私有網路的 forwarded IP。限流是基本濫用保護，不取代 WAF 或帳號級配額。
 
 代理來源資訊依下列邊界處理：Nginx 將瀏覽器原始 `Host`（含非預設 port）傳給 Spring；一般 HTTP 不額外送 `X-Forwarded-Proto`，避免 Spring 以預設 port 80 覆蓋原始 port。只有連線來源位於既有 `set_real_ip_from` 私有網段、且其 `X-Forwarded-Proto` 值恰為 `https` 時，Nginx 才將 `https` 傳給 Spring；此時若原始 Host 含明確 port，Nginx 會從 Host 合成對應的 `X-Forwarded-Port`，否則清除該標頭並由 Spring 使用 HTTPS 預設 port。`X-Forwarded-Host`、`X-Forwarded-Prefix` 與標準 `Forwarded` 一律由 Nginx 清除；用戶端提供的 `X-Forwarded-Port` 也不會轉送。`X-Forwarded-For` 只傳 Nginx 已解析的單一用戶端位址。Spring 的 `forward-headers-strategy=framework` 因此只會處理 Nginx 正規化後的 scheme／port／client IP。HTTPS 前置代理需保留瀏覽器原始 Host，並從上述可信來源送出單一 `X-Forwarded-Proto: https`；Nginx 不接受任意 client-supplied forwarded host 或 port。
 
-Controller 仍只允許 `http://localhost:5173` 與 `http://127.0.0.1:5173` 作為 Vite 開發來源。Docker Web 的同源請求依實際 scheme、host 與 port 判斷，不需將 `18088` 加入 CORS allowlist。
+Controller 仍只允許 `http://localhost:5173` 與 `http://127.0.0.1:5173` 作為 Vite 開發來源。Docker Web 的同源請求依實際 scheme、host 與 port 判斷，不需將 `8080` 加入 CORS allowlist。此處的 8080 是主機上的 Web 入口；API 的 8080 僅在 Compose 網路內使用。
 
 主機公開網站時，讓 Caddy 或既有 HTTPS reverse proxy 終止 TLS，並只反向代理至 loopback：
 
 ~~~caddy
 parking.example.com {
-    reverse_proxy 127.0.0.1:18088
+    reverse_proxy 127.0.0.1:8080
 }
 ~~~
 
@@ -59,7 +59,7 @@ Compose 會要求 PARKING_DB_PASSWORD 與 MYSQL_ROOT_PASSWORD 非空；沒有提
 - VITE_GOOGLE_MAPS_BROWSER_API_KEY：只作 Web image build argument，會出現在可下載的前端 bundle。只用受限 browser key，限制正式網域 referrer 與實際使用的 Google API。留空時 Places 搜尋顯示不可用；起點沒有預設座標，使用者可明確使用瀏覽器「我的位置」，畫面不提供座標輸入。
 - GOOGLE_ROUTES_SERVER_API_KEY：只注入 API runtime，不傳給 Web build。
 - GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED：預設 false。確認 Google 額度、預算與 server key 限制後才可手動設 true；停用或無有效 key 時 ETA 應明確顯示失敗／不可估算，機率仍維持 null 與 INSUFFICIENT_DATA。
-- WEB_HTTP_PORT：Web loopback HTTP port，預設 18088。
+- WEB_HTTP_PORT：Web loopback HTTP port，預設 8080。
 - GOOGLE_ROUTES_TIMEOUT、GOOGLE_ROUTES_ROUTING_PREFERENCE：後端 Routes 設定。
 
 Compose 解析可能包含環境變數值，因此檢查只使用 quiet 模式：
@@ -124,7 +124,7 @@ docker compose --env-file .env logs -f api
 以 Web 同源路徑檢查 API：
 
 ~~~bash
-curl -fsS http://127.0.0.1:18088/api/health
+curl -fsS http://127.0.0.1:8080/api/health
 ~~~
 
 停止與移除容器／網路時，MySQL volume 仍保留：
