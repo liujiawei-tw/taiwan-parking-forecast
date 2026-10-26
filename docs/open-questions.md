@@ -1,6 +1,12 @@
 # 待確認問題
 
-更新日期：2026-10-26。每題解決後，將結論移入 `decisions.md`，必要時同步更新需求。
+更新日期：2026-10-27。每題解決後，將結論移入 `decisions.md`，必要時同步更新需求。
+
+## 2026-10-27 部署 catalog 升版與泰山站涵蓋
+
+- 本機 reviewed catalog／mapping 已安全匯入伺服器並完成筆數回讀：路邊 1,880、路外 138。伺服器即時來源 dry-run 只產出 1,583 筆候選，無法重現本機完整已審查集合；本次使用的一次性 SQL bundle 已達成資料一致，未搬整個本機 MySQL volume。未來需決定是否實作可重複使用、具版本與 manifest 的 catalog bundle 工具。
+- 使用者確認本機「泰山站」查詢落點在新莊範圍且有結果；仍需在伺服器用相同目的地／座標完成瀏覽器回歸核對。若目錄位置已有列出但即時空位未提供，需再由伺服器官方刷新建立 snapshot。
+- 未來擴至三重的建議方案尚待決策：目前 catalog `Scope` 可容納多區，但應建立共用 service-area registry，讓 catalog import、查詢路由／行政區邊界、來源 mapping、費率查詢及 coverage 回應使用同一份設定；`ParkingQueryService` 目前仍固定新莊常數與矩形邊界。建議先完成區域設定與查詢契約，再以新北官方來源 dry-run／review／manifest-lock 流程上線。對於官方來源無法重現、但已完成審查的既有資料，另規劃版本化 catalog bundle 匯出／匯入工具，取代手工 SQL；snapshot 仍在伺服器端刷新。
 
 ## 2026-10-26 自立街家長接送區是否另做參考圖層
 

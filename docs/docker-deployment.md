@@ -136,6 +136,52 @@ docker compose --env-file .env down
 
 正式資料庫不可使用 down -v，也不要對沒有辨識 project 與資料用途的 volume 執行刪除。若曾使用舊 Demo project，先用 docker volume ls、docker volume inspect 與 container mounts 核對 project／volume 標籤。舊 parking-demo 或 s3022demo 的 volume 不會自動遷移至新的 taiwan-parking-forecast_mysql-data；未確認備份有效與資料已移轉／可捨棄前，必須保留。
 
+## 伺服器 catalog／mapping 審查匯入
+
+此流程用於把目前受支援 service area 的已審查目錄匯入伺服器 MySQL。它從新北市官方來源重新取得資料，不會複製本機 MySQL volume。執行前確認 repo 位於預期部署 commit、常駐 `api`／`mysql`／`redis` 健康，且 `.env` 可供 Compose 讀取；不要輸出或貼上 `.env` 內容。
+
+現有 `NtpcCatalogImportCommandRunner` 是一次性程序：以 `docker compose run --rm --no-deps` 啟動獨立 API 容器，連到既有 Compose 網路與 MySQL；完成後 runner 會退出，不會取代常駐 API。先執行只讀 dry-run：
+
+~~~bash
+docker compose --env-file .env run --rm --no-deps \
+  -e NTPC_CATALOG_IMPORT_COMMAND_ENABLED=true \
+  -e NTPC_CATALOG_IMPORT_CONFIRM_WRITE=false \
+  -e NTPC_CATALOG_IMPORT_REVIEWED_SUBSET=true \
+  -e NTPC_CATALOG_IMPORT_SERVICE_AREA=NEW_TAIPEI_XINZHUANG \
+  -e NTPC_CATALOG_IMPORT_DATASETS=NTPC_ROADSIDE_SPOT,NTPC_OFF_STREET_AVAILABILITY \
+  api
+~~~
+
+從輸出記下 `manifestSha256`，審查 `traversalComplete=true`、`readyForReview=true`、scope、候選／排除筆數及資料品質。若 traversal 未完成或子集尚未 READY_FOR_IMPORT_REVIEW，不可進入寫入步驟。每次 dry-run 都會重抓官方來源；不要直接沿用舊 manifest hash。
+
+確認本次審查結果後，先依「MySQL 備份與隔離還原」建立伺服器資料庫備份，並確認備份檔案存在且不在 Git 工作目錄。將剛才審查的完整 hash 放入變數，再執行 manifest 鎖定寫入：
+
+~~~bash
+EXPECTED_MANIFEST_SHA256='貼上剛才審查的完整 manifestSha256'
+docker compose --env-file .env run --rm --no-deps \
+  -e NTPC_CATALOG_IMPORT_COMMAND_ENABLED=true \
+  -e NTPC_CATALOG_IMPORT_CONFIRM_WRITE=true \
+  -e NTPC_CATALOG_IMPORT_REVIEWED_SUBSET=true \
+  -e NTPC_CATALOG_IMPORT_EXPECTED_MANIFEST_SHA256="$EXPECTED_MANIFEST_SHA256" \
+  -e NTPC_CATALOG_IMPORT_SERVICE_AREA=NEW_TAIPEI_XINZHUANG \
+  -e NTPC_CATALOG_IMPORT_DATASETS=NTPC_ROADSIDE_SPOT,NTPC_OFF_STREET_AVAILABILITY \
+  api
+~~~
+
+寫入程序會再次取得官方來源；若內容已變動，manifest hash 不符時應停止並重新 dry-run／審查，不可改成接受未審查的 hash。確認輸出中的 `createdMappings`、`skippedExistingMappings`、`rejectedCandidates` 與 `verifiedMappingsAfterImport` 符合這次審查預期。
+
+目錄寫入後，另以一次性 refresh runner 取得伺服器自己的即時觀測快照：
+
+~~~bash
+docker compose --env-file .env run --rm --no-deps \
+  -e PARKING_REFRESH_MEASUREMENT_COMMAND_ENABLED=true \
+  api
+~~~
+
+確認每個 dataset 的 `published=true`、failed／unmapped 數及 snapshotId；再以應用程式查詢目標地點。此 runner 會呼叫新北市官方來源並寫入正式資料庫，應低頻執行一次，不可密集重跑。上述覆寫環境變數只傳給一次性容器，不要加入 `.env` 或常駐 `api` 設定。
+
+**涵蓋範圍限制**：上述設定只匯入 `NEW_TAIPEI_XINZHUANG`。若擴大到未設定的 service area（例如三重），須先加入該區官方資料範圍與一般汽車資格審查，並同步擴充查詢服務區／coverage 邊界與即時來源支援；不可只匯入資料後就宣稱該區已支援。區域判斷應依實際查詢座標與已設定邊界，不只依目的地名稱。
+
 ## MySQL 備份與隔離還原
 
 先將備份寫入 Git 工作目錄以外的受保護目錄；備份含資料與個資風險，應依部署環境政策加密及異地保存。以下命令供 Linux 主機或 Git Bash 使用，請先將路徑改成部署主機的私有備份位置：

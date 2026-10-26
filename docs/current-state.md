@@ -1,6 +1,18 @@
 # 目前狀態
 
-更新日期：2026-10-26。
+更新日期：2026-10-27。
+
+## 2026-10-27 部署目錄資料升版方式盤點
+
+- **已確認**：repo 追蹤的 Xinzhuang seed 是小樣本；本機 MySQL 有經審查的 catalog／mapping（路邊 1,880 筆、路外 138 筆）。伺服器匯入前只有路邊 7 筆、路外 3 筆；匯入後已與本機筆數一致。Compose 的 MySQL 使用持久 volume，因此 `git pull`／重建 image 不會把本機資料搬到伺服器。
+- **診斷證據與限制**：使用者確認本機目前搜尋的「泰山站」查詢落點在新莊區內且可查到車位；因此兩端比較應以實際查詢座標為準，不只依地名推定行政區。先前新莊體育館本機 2 個場站、部署 0 個的觀察僅是另一個同點差異，不代表泰山查詢的完整驗收。
+- **伺服器唯讀 dry-run（2026-10-27）**：伺服器 MySQL／Redis 健康後，一次性 API runner 成功連上 MySQL 並完成新北市官方來源遍歷；執行時 `SPRING_FLYWAY_ENABLED=false`、`NTPC_CATALOG_IMPORT_CONFIRM_WRITE=false`，log 明確顯示寫入跳過。範圍是 `NEW_TAIPEI_XINZHUANG`：scoped rows 1,731、accepted candidates 1,583、unknown eligibility 78、existing verified mappings 10、traversal complete；整體 recommendation 為 `REVIEW_ELIGIBILITY_RULES`。reviewed subset 選取 1,583、排除 148，`readyForReview=true`，manifest SHA-256 為 `0870fd0faf6617d3866ce8a693d1bef3b51db2336fe943f53d85925c32be2398`。本次未執行 catalog 寫入。這次伺服器即時來源候選少於本機已審查目錄，不能單靠這次重抓達成本機筆數。
+- **本機已審查目錄唯讀盤點**：本機 Docker MySQL 以唯讀查詢確認 `NEW_TAIPEI_XINZHUANG` 有 1,880 筆 `ON_STREET_SPOT` 與 138 筆 `OFF_STREET_LOT`；兩類均為 `ACTIVE`、汽車資格 `CONFIRMED`、mapping `VERIFIED`。本次已將這批目錄／mapping 對齊到伺服器；不得搬整個本機 MySQL volume 或連帶覆蓋伺服器快照。
+- **伺服器 MySQL 匯入前唯讀盤點**：有 7 筆 `ON_STREET_SPOT` 與 3 筆 `OFF_STREET_LOT`，兩類均為 `ACTIVE`、`CONFIRMED`、`VERIFIED`；當時伺服器 catalog／mapping 總數為 10。
+- **資料包匯入完成**：從本機 DB 匯出排除 repo seed 的 2,008 筆新增位置與 2,008 筆 verified mapping，SQL 僅含 `INSERT IGNORE`，不含 DDL／DELETE。私有檔案 `data/private/catalog-transfer-20261027/catalog.sql` 為 2,487,837 bytes，SHA-256 `39972F345EA356F931F7F5F69133F0593B79BC832C6BB4218169306E3A6F195D`；伺服器收到的 `doc_e183e070e1f6_catalog.sql` 大小與 SHA-256 已核對一致。兩端既有 10 個 place ID 與 source ID 完全相同；mapping 自增 ID 不同，資料包排除共用 seed mapping，只匯出本機新增 mapping。
+- **伺服器匯入與回讀驗證完成**：備份檔 `/home/admin/private-backups/taiwan-parking-forecast-20261027013704/mysql.sql`，輸出 35 KB、權限 `600`。資料包 SHA-256 驗證通過後匯入；唯讀查詢確認伺服器已為路邊 1,880 筆、路外 138 筆，全部 `ACTIVE`／`CONFIRMED`／`VERIFIED`，且每筆有一筆 mapping，與本機目錄數量一致。API、MySQL、Redis、Web 現在均為 healthy；尚待瀏覽器以同一泰山站目的地／座標做查詢驗收。伺服器即時 snapshot 仍應在目標環境重新取得。
+- **未來擴區流程評估（尚未實作／決策）**：catalog 設定含多 scope list，但目前只有新莊；`ParkingQueryService` 仍把 service area 與查詢邊界固定為新莊。若新增三重，須同時登錄官方來源 scope、查詢服務區／邊界與即時來源查詢支援，再執行區域 dry-run、reviewed manifest、備份、hash 鎖定匯入及伺服器即時刷新。本次從本機匯出的 SQL 是為補齊與即時來源不一致的既有 reviewed data 所做的一次性操作，不是未來擴區的標準流程。
+- **資料邊界**：只升版已審查的停車目錄與 verified mapping；現況 snapshot 應在目標環境重新取得。不要搬移整個本機 MySQL volume、Redis query state 或離線訓練 CSV。區域判斷依實際查詢座標與已設定的 service-area／coverage 邊界，不只依目的地名稱。
 
 ## 2026-10-26 Compose 前端主機埠改為 8080
 
