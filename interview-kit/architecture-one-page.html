@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>全臺停車位抵達預測｜一頁式系統架構簡報</title>
+<style>
+  :root { color-scheme: light; --ink:#102b4e; --muted:#526579; --paper:#f7f9fc; --line:#d8e2ed; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; min-height:100%; background:#eef3f8; color:var(--ink); font-family:Inter,"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; }
+  .toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; max-width:1680px; margin:0 auto; padding:14px 20px 10px; }
+  .toolbar .hint { color:#53677d; font-size:14px; line-height:1.5; }
+  .actions { display:flex; gap:8px; }
+  button { appearance:none; border:1px solid #cbd7e4; background:#fff; color:#163a63; border-radius:9px; padding:9px 13px; font:inherit; font-weight:600; font-size:14px; cursor:pointer; }
+  button:hover { background:#edf5ff; border-color:#8eb7e7; }
+  button:focus-visible { outline:3px solid #79b6ff; outline-offset:2px; }
+  main { max-width:1680px; margin:0 auto; padding:0 12px 20px; }
+  .canvas { overflow:auto; border:1px solid #d8e2ed; border-radius:16px; background:#fff; box-shadow:0 10px 35px rgba(24,54,89,.09); }
+  svg { display:block; width:100%; height:auto; min-width:1000px; background:#fff; }
+  .footer-note { padding:12px 16px 16px; color:#5b6e82; font-size:13px; line-height:1.6; }
+  @media (max-width:700px) { .toolbar { padding:12px; } main { padding:0 8px 12px; } .toolbar .hint { font-size:12px; } }
+  @media print {
+    @page { size:A3 landscape; margin:8mm; }
+    html,body { background:#fff; }
+    .toolbar,.footer-note { display:none !important; }
+    main { max-width:none; padding:0; }
+    .canvas { overflow:visible; border:0; border-radius:0; box-shadow:none; }
+    svg { width:100%; min-width:0; }
+  }
+</style>
+</head>
+<body>
+<header class="toolbar">
+  <div class="hint"><strong>全臺停車位抵達預測｜整體架構圖</strong><br>獨立 HTML／SVG，可縮放、可列印，圖中文字可搜尋與複製；單頁展示與原本七頁面試簡報分開。</div>
+  <div class="actions"><button type="button" id="printBtn">列印／另存 PDF</button><button type="button" id="downloadSvgBtn">下載 SVG 圖檔</button></div>
+</header>
+<main>
+<div class="canvas" role="region" aria-label="可水平捲動的系統架構圖">
+<svg id="architecture" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" role="img" aria-labelledby="svgTitle svgDesc">
+<title id="svgTitle">全臺停車位抵達預測整體架構圖</title>
+<desc id="svgDesc">呈現使用者查詢、前端、後端 API、查詢服務、官方來源刷新與資料品質、MySQL 與 Redis、外部服務、離線機器學習訓練，以及基礎設施交付。路外預測目前仍為實驗性功能。</desc>
+<defs>
+  <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#183b60" flood-opacity=".08"/></filter>
+  <marker id="arrBlue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1685d8"/></marker>
+  <marker id="arrNavy" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#245b91"/></marker>
+  <marker id="arrOrange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ef6a32"/></marker>
+  <marker id="arrPurple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8b48d7"/></marker>
+  <marker id="arrSlate" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#718096"/></marker>
+  <style>
+    text { font-family:Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif; fill:#17324f; }
+    .title { font-size:34px; font-weight:800; letter-spacing:.5px; }
+    .subtitle { font-size:18px; font-weight:700; fill:#194b86; }
+    .flowlabel { font-size:14px; font-weight:750; }
+    .flowsub { font-size:12px; fill:#53677d; }
+    .head { font-size:16px; font-weight:800; fill:#fff; }
+    .headsub { font-size:12px; font-weight:600; fill:#fff; opacity:.95; }
+    .boxhead { font-size:13px; font-weight:800; }
+    .body { font-size:11.5px; fill:#42566c; }
+    .tiny { font-size:10.5px; fill:#526579; }
+    .card { fill:#fff; stroke:#d4e0eb; stroke-width:1.1; }
+    .soft { fill:#f7fbff; stroke:#d5e7f8; stroke-width:1; }
+    .service { fill:#fff; stroke:#d7e6dc; stroke-width:1.1; }
+    .dbcard { fill:#f5faff; stroke:#b9d8f5; stroke-width:1.1; }
+    .pill { font-size:11px; font-weight:750; }
+    .connector { fill:none; stroke-width:2.3; }
+  </style>
+</defs>
+<!-- Header -->
+<rect x="0" y="0" width="1600" height="1170" fill="#fff"/>
+<g transform="translate(28 18)">
+  <rect x="0" y="0" width="58" height="58" rx="17" fill="#dff1ff"/>
+  <path d="M13 36 L17 24 Q18 20 23 20 H36 Q40 20 42 25 L46 36 V44 H41 V40 H18 V44 H13 Z" fill="#1768b5"/>
+  <circle cx="21" cy="34" r="3" fill="#fff"/><circle cx="38" cy="34" r="3" fill="#fff"/>
+  <text x="74" y="29" class="title">全臺停車位抵達預測　整體架構圖</text>
+  <rect x="74" y="39" width="420" height="26" rx="13" fill="#e4f3ff"/>
+  <text x="284" y="57" text-anchor="middle" class="subtitle">新莊 MVP／預測前置與訓練資料治理</text>
+</g>
+<!-- Flow legend at top -->
+<g transform="translate(28 92)">
+  <line x1="0" y1="15" x2="48" y2="15" stroke="#1685d8" stroke-width="2.5" marker-end="url(#arrBlue)"/>
+  <text x="60" y="12" class="flowlabel" fill="#1678bd">使用者查詢主流程</text><text x="60" y="28" class="flowsub">查詢停車位與 ETA 資訊</text>
+  <line x1="315" y1="15" x2="363" y2="15" stroke="#ef6a32" stroke-width="2.5" marker-end="url(#arrOrange)"/>
+  <text x="375" y="12" class="flowlabel" fill="#c94e20">官方來源刷新流程</text><text x="375" y="28" class="flowsub">更新、檢查與發布資料</text>
+  <line x1="650" y1="15" x2="698" y2="15" stroke="#8b48d7" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#arrPurple)"/>
+  <text x="710" y="12" class="flowlabel" fill="#7a39c2">離線訓練流程</text><text x="710" y="28" class="flowsub">歷史資料與模型實驗</text>
+  <line x1="930" y1="15" x2="978" y2="15" stroke="#718096" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#arrSlate)"/>
+  <text x="990" y="12" class="flowlabel" fill="#5a6a7b">外部服務呼叫</text><text x="990" y="28" class="flowsub">政府資料／Google API</text>
+</g>
+<!-- Layer panels -->
+<g filter="url(#shadow)">
+  <rect x="12" y="142" width="160" height="555" rx="12" fill="#f7fbff" stroke="#69bdf2"/>
+  <rect x="181" y="142" width="176" height="555" rx="12" fill="#f5fcf8" stroke="#72c9a4"/>
+  <rect x="366" y="142" width="188" height="555" rx="12" fill="#f5faff" stroke="#70b4f2"/>
+  <rect x="563" y="142" width="218" height="555" rx="12" fill="#f7fcf8" stroke="#8ac9a5"/>
+  <rect x="790" y="142" width="222" height="555" rx="12" fill="#fff9f5" stroke="#f5a078"/>
+  <rect x="1021" y="142" width="220" height="555" rx="12" fill="#f5faff" stroke="#7db8f3"/>
+  <rect x="1250" y="142" width="338" height="555" rx="12" fill="#fcf8ff" stroke="#b89be9"/>
+</g>
+<!-- panel headers -->
+<g>
+  <path d="M24 142 H160 Q172 142 172 154 V194 H12 V154 Q12 142 24 142Z" fill="#087ac7"/>
+  <path d="M193 142 H345 Q357 142 357 154 V194 H181 V154 Q181 142 193 142Z" fill="#168b6a"/>
+  <path d="M378 142 H542 Q554 142 554 154 V194 H366 V154 Q366 142 378 142Z" fill="#176bc1"/>
+  <path d="M575 142 H769 Q781 142 781 154 V194 H563 V154 Q563 142 575 142Z" fill="#4a9a55"/>
+  <path d="M802 142 H1000 Q1012 142 1012 154 V194 H790 V154 Q790 142 802 142Z" fill="#ed6b2e"/>
+  <path d="M1033 142 H1229 Q1241 142 1241 154 V194 H1021 V154 Q1021 142 1033 142Z" fill="#2779c8"/>
+  <path d="M1262 142 H1576 Q1588 142 1588 154 V194 H1250 V154 Q1250 142 1262 142Z" fill="#7642bb"/>
+  <text x="92" y="166" text-anchor="middle" class="head">① 使用者／Client</text><text x="92" y="183" text-anchor="middle" class="headsub">使用端</text>
+  <text x="269" y="166" text-anchor="middle" class="head">② Frontend Layer</text><text x="269" y="183" text-anchor="middle" class="headsub">前端層</text>
+  <text x="460" y="166" text-anchor="middle" class="head">③ API Layer</text><text x="460" y="183" text-anchor="middle" class="headsub">後端 API 層</text>
+  <text x="672" y="166" text-anchor="middle" class="head">④ Query / Domain</text><text x="672" y="183" text-anchor="middle" class="headsub">查詢與業務服務層</text>
+  <text x="901" y="166" text-anchor="middle" class="head">⑤ Source Refresh</text><text x="901" y="183" text-anchor="middle" class="headsub">官方來源刷新與資料品質</text>
+  <text x="1131" y="166" text-anchor="middle" class="head">⑥ Data Layer</text><text x="1131" y="183" text-anchor="middle" class="headsub">資料儲存層</text>
+  <text x="1419" y="166" text-anchor="middle" class="head">⑦ External Services</text><text x="1419" y="183" text-anchor="middle" class="headsub">外部服務</text>
+</g>
+<!-- Client cards -->
+<g>
+  <rect x="25" y="211" width="134" height="102" rx="9" class="card"/><text x="92" y="239" text-anchor="middle" font-size="28">▣</text><text x="92" y="263" text-anchor="middle" class="boxhead">Web Browser</text><text x="92" y="281" text-anchor="middle" class="body">桌面瀏覽器</text><text x="92" y="297" text-anchor="middle" class="tiny">查詢與檢視結果</text>
+  <rect x="25" y="325" width="134" height="102" rx="9" class="card"/><text x="92" y="355" text-anchor="middle" font-size="28">▯</text><text x="92" y="378" text-anchor="middle" class="boxhead">Mobile Browser</text><text x="92" y="396" text-anchor="middle" class="body">手機瀏覽器</text><text x="92" y="412" text-anchor="middle" class="tiny">響應式操作</text>
+  <rect x="25" y="439" width="134" height="102" rx="9" class="card"/><text x="92" y="471" text-anchor="middle" font-size="27">● ● ●</text><text x="92" y="493" text-anchor="middle" class="boxhead">使用者／駕駛</text><text x="92" y="512" text-anchor="middle" class="body">一般民眾</text>
+  <rect x="25" y="555" width="134" height="121" rx="9" fill="#e5f3ff" stroke="#c1e2fb"/><text x="92" y="582" text-anchor="middle" class="boxhead">主要目的</text><text x="92" y="606" text-anchor="middle" class="body">查詢目的地附近</text><text x="92" y="624" text-anchor="middle" class="body">停車資訊</text><text x="92" y="650" text-anchor="middle" class="tiny">查看資料時間與狀態</text>
+</g>
+<!-- Frontend cards -->
+<g>
+  <rect x="194" y="211" width="150" height="58" rx="8" class="service"/><text x="269" y="235" text-anchor="middle" class="boxhead">Vue 3 + Vite</text><text x="269" y="253" text-anchor="middle" class="body">前端應用</text>
+  <rect x="194" y="278" width="150" height="58" rx="8" class="service"/><text x="269" y="301" text-anchor="middle" class="boxhead">地圖介面</text><text x="269" y="319" text-anchor="middle" class="body">Google Maps</text>
+  <rect x="194" y="345" width="150" height="58" rx="8" class="service"/><text x="269" y="368" text-anchor="middle" class="boxhead">Places 搜尋</text><text x="269" y="386" text-anchor="middle" class="body">地點與目的地</text>
+  <rect x="194" y="412" width="150" height="58" rx="8" class="service"/><text x="269" y="435" text-anchor="middle" class="boxhead">查詢結果頁</text><text x="269" y="453" text-anchor="middle" class="body">停車詳情與狀態</text>
+  <rect x="194" y="479" width="150" height="58" rx="8" class="service"/><text x="269" y="502" text-anchor="middle" class="boxhead">RWD 響應式版面</text><text x="269" y="520" text-anchor="middle" class="body">桌面／手機</text>
+  <rect x="194" y="555" width="150" height="121" rx="8" fill="#eaf8ef" stroke="#c6e9d2"/><text x="269" y="580" text-anchor="middle" class="boxhead">介面責任</text><text x="207" y="602" class="body">✓ 呈現已發布資料</text><text x="207" y="623" class="body">✓ 顯示來源與時間</text><text x="207" y="644" class="body">✓ 反映查詢狀態</text>
+</g>
+<!-- API cards -->
+<g>
+  <rect x="379" y="211" width="162" height="58" rx="8" class="soft"/><text x="460" y="235" text-anchor="middle" class="boxhead">Spring Boot REST API</text><text x="460" y="253" text-anchor="middle" class="body">HTTP 介面</text>
+  <rect x="379" y="278" width="162" height="58" rx="8" class="soft"/><text x="460" y="301" text-anchor="middle" class="boxhead">ParkingQueryController</text><text x="460" y="319" text-anchor="middle" class="body">查詢 API</text>
+  <rect x="379" y="345" width="162" height="58" rx="8" class="soft"/><text x="460" y="368" text-anchor="middle" class="boxhead" font-size="11">POST /{queryId}/refresh</text><text x="460" y="386" text-anchor="middle" class="body" font-size="10">ParkingQueryController</text>
+  <rect x="379" y="412" width="162" height="58" rx="8" class="soft"/><text x="460" y="435" text-anchor="middle" class="boxhead">DTO／Validation</text><text x="460" y="453" text-anchor="middle" class="body">請求驗證</text>
+  <rect x="379" y="479" width="162" height="58" rx="8" class="soft"/><text x="460" y="502" text-anchor="middle" class="boxhead">ApiExceptionHandler</text><text x="460" y="520" text-anchor="middle" class="body">全域例外處理</text>
+  <rect x="379" y="546" width="162" height="58" rx="8" class="soft"/><text x="460" y="569" text-anchor="middle" class="boxhead">API 契約草案</text><text x="460" y="587" text-anchor="middle" class="body">查詢與刷新契約</text>
+  <rect x="379" y="613" width="162" height="63" rx="8" fill="#e7f3ff" stroke="#c7e2fb"/><text x="460" y="638" text-anchor="middle" class="boxhead">API 責任</text><text x="460" y="657" text-anchor="middle" class="body">驗證、路由與回應</text>
+</g>
+<!-- Query/domain cards -->
+<g>
+  <rect x="576" y="207" width="192" height="53" rx="8" class="service"/><text x="672" y="228" text-anchor="middle" class="boxhead">ParkingQueryService</text><text x="672" y="245" text-anchor="middle" class="body">停車查詢協調</text>
+  <rect x="576" y="267" width="192" height="53" rx="8" class="service"/><text x="672" y="288" text-anchor="middle" class="boxhead">NearbyParkingSearchService</text><text x="672" y="305" text-anchor="middle" class="body">附近停車場搜尋</text>
+  <rect x="576" y="327" width="192" height="53" rx="8" class="service"/><text x="672" y="343" text-anchor="middle" class="boxhead" font-size="10.5">PublishedAvailabilitySnapshot</text><text x="672" y="356" text-anchor="middle" class="boxhead" font-size="10.5">Service</text><text x="672" y="373" text-anchor="middle" class="body">讀取已發布觀測快照</text>
+  <rect x="576" y="387" width="192" height="53" rx="8" class="service"/><text x="672" y="408" text-anchor="middle" class="boxhead">GoogleEtaService</text><text x="672" y="425" text-anchor="middle" class="body">抵達時間 ETA</text>
+  <rect x="576" y="447" width="192" height="53" rx="8" class="service"/><text x="672" y="463" text-anchor="middle" class="boxhead" font-size="11.5">GoogleParkingPlace</text><text x="672" y="477" text-anchor="middle" class="boxhead" font-size="11.5">SearchService</text><text x="672" y="493" text-anchor="middle" class="body">Google Places 搜尋</text>
+  <rect x="576" y="507" width="192" height="62" rx="8" fill="#f7f0ff" stroke="#dbc6f4"/><text x="672" y="529" text-anchor="middle" class="boxhead">ExperimentalOffStreet</text><text x="672" y="546" text-anchor="middle" class="boxhead">PredictionService</text><text x="672" y="561" text-anchor="middle" class="tiny">路外停車實驗性預測</text>
+  <rect x="576" y="576" width="192" height="53" rx="8" class="service"/><text x="672" y="597" text-anchor="middle" class="boxhead">ParkingQueryStateStore</text><text x="672" y="614" text-anchor="middle" class="body">查詢狀態儲存</text>
+  <rect x="576" y="636" width="192" height="40" rx="8" fill="#eaf8ef" stroke="#c6e9d2"/><text x="672" y="653" text-anchor="middle" class="body">讀取快照，不等於刷新來源</text><text x="672" y="667" text-anchor="middle" class="tiny">模型仍屬實驗階段</text>
+</g>
+<!-- Refresh cards -->
+<g>
+  <rect x="803" y="207" width="196" height="50" rx="8" fill="#fff" stroke="#f5c4a9"/><text x="901" y="227" text-anchor="middle" class="boxhead" font-size="11.5">SourceRefreshCoordinationService</text><text x="901" y="244" text-anchor="middle" class="body">讀 MySQL 冷卻並取得 Redis lock</text>
+  <path d="M901 257 V267" class="connector" stroke="#ef6a32" marker-end="url(#arrOrange)"/>
+  <rect x="803" y="270" width="196" height="50" rx="8" fill="#fff" stroke="#f5c4a9"/><text x="901" y="290" text-anchor="middle" class="boxhead" font-size="11.5">NtpcRealtimeSourceRefreshService</text><text x="901" y="307" text-anchor="middle" class="body">官方即時來源刷新</text>
+  <path d="M901 320 V330" class="connector" stroke="#ef6a32" marker-end="url(#arrOrange)"/>
+  <rect x="803" y="333" width="196" height="50" rx="8" fill="#fff" stroke="#f5c4a9"/><text x="901" y="353" text-anchor="middle" class="boxhead">NtpcOpenDataClient</text><text x="901" y="370" text-anchor="middle" class="body">取得官方分頁資料</text>
+  <path d="M901 383 V393" class="connector" stroke="#ef6a32" marker-end="url(#arrOrange)"/>
+  <rect x="803" y="396" width="196" height="50" rx="8" fill="#fff" stroke="#f5c4a9"/><text x="901" y="416" text-anchor="middle" class="boxhead">NtpcAvailabilityNormalizer</text><text x="901" y="433" text-anchor="middle" class="body">正規化與欄位整理</text>
+  <path d="M901 446 V456" class="connector" stroke="#ef6a32" marker-end="url(#arrOrange)"/>
+  <rect x="803" y="459" width="196" height="50" rx="8" fill="#fff" stroke="#f5c4a9"/><text x="901" y="479" text-anchor="middle" class="boxhead">Eligibility／Mapping 檢查</text><text x="901" y="496" text-anchor="middle" class="body">資格、識別與品質規則</text>
+  <path d="M901 509 V519" class="connector" stroke="#ef6a32" marker-end="url(#arrOrange)"/>
+  <rect x="803" y="522" width="196" height="50" rx="8" fill="#fff" stroke="#f5c4a9"/><text x="901" y="542" text-anchor="middle" class="boxhead">Candidate Snapshot</text><text x="901" y="559" text-anchor="middle" class="body">候選快照（尚未發布）</text>
+  <path d="M901 572 V582" class="connector" stroke="#ef6a32" marker-end="url(#arrOrange)"/>
+  <rect x="803" y="585" width="196" height="50" rx="8" fill="#fff" stroke="#f5c4a9"/><text x="901" y="605" text-anchor="middle" class="boxhead" font-size="10.5">AvailabilitySnapshotPublishingService</text><text x="901" y="622" text-anchor="middle" class="body">檢查後發布快照</text>
+  <rect x="803" y="644" width="196" height="32" rx="7" fill="#fff0e8" stroke="#f6c6ad"/><text x="901" y="664" text-anchor="middle" class="tiny" fill="#a74620">失敗時保留舊的有效快照</text>
+</g>
+<!-- Data layer -->
+<g>
+  <rect x="1034" y="207" width="194" height="252" rx="10" fill="#edf7ff" stroke="#a9d0f2"/>
+  <text x="1131" y="230" text-anchor="middle" class="boxhead" fill="#145c9c">A. MySQL（持久化儲存）</text>
+  <ellipse cx="1131" cy="258" rx="38" ry="11" fill="#fff" stroke="#438cc8" stroke-width="1.5"/><path d="M1093 258 V284 C1093 299 1169 299 1169 284 V258" fill="#fff" stroke="#438cc8" stroke-width="1.5"/><ellipse cx="1131" cy="284" rx="38" ry="11" fill="#e1f0ff" stroke="#438cc8" stroke-width="1.5"/><text x="1131" y="278" text-anchor="middle" font-size="16" font-weight="800" fill="#1767a7">MySQL</text>
+  <rect x="1045" y="310" width="172" height="38" rx="7" class="dbcard"/><text x="1131" y="326" text-anchor="middle" class="boxhead">停車目錄／Source Mapping</text><text x="1131" y="340" text-anchor="middle" class="tiny">場站識別與來源對應</text>
+  <rect x="1045" y="354" width="172" height="38" rx="7" class="dbcard"/><text x="1131" y="370" text-anchor="middle" class="boxhead">觀測資料</text><text x="1131" y="384" text-anchor="middle" class="tiny">觀測與 source_state／cooldown</text>
+  <rect x="1045" y="398" width="172" height="38" rx="7" class="dbcard"/><text x="1131" y="414" text-anchor="middle" class="boxhead">候選／已發布快照</text><text x="1131" y="428" text-anchor="middle" class="tiny">候選與正式發布分開</text>
+  <rect x="1034" y="470" width="194" height="206" rx="10" fill="#fff5f5" stroke="#f1b5b8"/>
+  <text x="1131" y="493" text-anchor="middle" class="boxhead" fill="#ad2934">B. Redis（快取／短期狀態）</text>
+  <rect x="1045" y="507" width="172" height="57" rx="8" fill="#fff" stroke="#f0c5c7"/><text x="1131" y="529" text-anchor="middle" class="boxhead">Query State（TTL）</text><text x="1131" y="547" text-anchor="middle" class="body">查詢狀態與有效期限</text>
+  <rect x="1045" y="572" width="172" height="57" rx="8" fill="#fff" stroke="#f0c5c7"/><text x="1131" y="594" text-anchor="middle" class="boxhead">Refresh Lock（TTL）</text><text x="1131" y="612" text-anchor="middle" class="body">Redis 短鎖／MySQL 冷卻</text>
+  <text x="1131" y="651" text-anchor="middle" class="tiny">依實際設定保存短期狀態</text>
+</g>
+<!-- External services -->
+<g>
+  <rect x="1264" y="207" width="310" height="142" rx="10" class="card"/><text x="1419" y="233" text-anchor="middle" font-size="22">🏛</text><text x="1419" y="256" text-anchor="middle" class="boxhead">新北市官方停車資料</text><text x="1419" y="275" text-anchor="middle" class="body">新北市政府開放資料</text><text x="1282" y="299" class="body">• 路邊／路外來源資料</text><text x="1282" y="319" class="body">• 由獨立刷新流程擷取</text><text x="1282" y="337" class="tiny">不是每次使用者查詢都刷新</text>
+  <rect x="1264" y="363" width="310" height="130" rx="10" class="card"/><text x="1284" y="390" font-size="24">📍</text><text x="1419" y="389" text-anchor="middle" class="boxhead">Google Routes ETA</text><text x="1282" y="416" class="body">• 起點到目的地的行車時間</text><text x="1282" y="437" class="body">• 路況／路徑資訊（依 API）</text><text x="1282" y="458" class="body">• 由查詢服務按條件呼叫</text><text x="1282" y="478" class="tiny">外部服務結果可能失敗或不可用</text>
+  <rect x="1264" y="507" width="310" height="169" rx="10" class="card"/><text x="1283" y="536" font-size="24">🗺</text><text x="1419" y="535" text-anchor="middle" class="boxhead">Google Maps／Places</text><text x="1282" y="562" class="body">• 地圖呈現</text><text x="1282" y="583" class="body">• 地點搜尋（Places）</text><text x="1282" y="604" class="body">• 地點詳細資訊</text><text x="1282" y="633" class="tiny">依實際前端與服務設定使用</text>
+</g>
+<!-- Main and external connectors: distinct paths, no implication that user queries trigger refresh -->
+<g>
+  <path d="M159 380 H190" class="connector" stroke="#1685d8" marker-end="url(#arrBlue)"/>
+  <path d="M344 380 H375" class="connector" stroke="#1685d8" marker-end="url(#arrBlue)"/>
+  <path d="M541 380 H570" class="connector" stroke="#245b91" marker-end="url(#arrNavy)"/>
+  <!-- Query service reads the published MySQL snapshot via the top margin, bypassing the refresh pipeline -->
+  <path d="M768 233 H780 V201 H1028 V417 H1034" class="connector" stroke="#245b91" marker-end="url(#arrNavy)"/>
+  <!-- Refresh publishes the checked snapshot to MySQL; route through the narrow inter-panel gutter -->
+  <path d="M999 610 H1016 V417 H1034" class="connector" stroke="#ef6a32" marker-end="url(#arrOrange)"/>
+  <!-- Government data is fetched by the independent refresh workflow, routed above the panels -->
+  <path d="M1419 207 V132 H1005 V207" class="connector" stroke="#ef6a32" stroke-dasharray="6 4" marker-end="url(#arrOrange)"/>
+</g>
+<!-- Offline ML band -->
+<g>
+  <rect x="12" y="715" width="1030" height="205" rx="12" fill="#fbf7ff" stroke="#c7a7ee" stroke-width="1.3"/>
+  <path d="M24 715 H1030 Q1042 715 1042 727 V752 H12 V727 Q12 715 24 715Z" fill="#7742bd"/>
+  <text x="30" y="739" class="head">⑧ Offline ML／Training　離線模型訓練（路外停車預測）</text>
+  <g>
+    <rect x="27" y="765" width="145" height="72" rx="8" class="card"/><text x="99" y="789" text-anchor="middle" class="boxhead">parking-data-collector</text><text x="99" y="808" text-anchor="middle" class="body">離線資料收集</text><text x="99" y="824" text-anchor="middle" class="tiny">歷史素材</text>
+    <path d="M172 801 H190" stroke="#8b48d7" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrPurple)"/>
+    <rect x="193" y="765" width="145" height="72" rx="8" class="card"/><text x="265" y="789" text-anchor="middle" class="boxhead">歷史資料／標籤</text><text x="265" y="808" text-anchor="middle" class="body">清理與時間切分</text><text x="265" y="824" text-anchor="middle" class="tiny">依實際訓練流程</text>
+    <path d="M338 801 H356" stroke="#8b48d7" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrPurple)"/>
+    <rect x="359" y="765" width="145" height="72" rx="8" class="card"/><text x="431" y="789" text-anchor="middle" class="boxhead">特徵與資料檢查</text><text x="431" y="808" text-anchor="middle" class="body">訓練／驗證／測試</text><text x="431" y="824" text-anchor="middle" class="tiny">防止資料洩漏</text>
+    <path d="M504 801 H522" stroke="#8b48d7" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrPurple)"/>
+    <rect x="525" y="765" width="145" height="72" rx="8" class="card"/><text x="597" y="789" text-anchor="middle" class="boxhead">Baseline／回測</text><text x="597" y="808" text-anchor="middle" class="body">比較候選模型</text><text x="597" y="824" text-anchor="middle" class="tiny">評估結果需有證據</text>
+    <path d="M670 801 H688" stroke="#8b48d7" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrPurple)"/>
+    <rect x="691" y="765" width="145" height="72" rx="8" class="card"/><text x="763" y="789" text-anchor="middle" class="boxhead">版本化模型產物</text><text x="763" y="808" text-anchor="middle" class="body">檢查產物與版本</text><text x="763" y="824" text-anchor="middle" class="tiny">依實際 gate 驗證</text>
+    <path d="M836 801 H854" stroke="#8b48d7" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrPurple)"/>
+    <rect x="857" y="765" width="169" height="72" rx="8" fill="#f7edff" stroke="#c8a8ec"/><text x="941" y="787" text-anchor="middle" class="boxhead">ExperimentalOffStreet</text><text x="941" y="804" text-anchor="middle" class="boxhead">PredictionService</text><text x="941" y="824" text-anchor="middle" class="tiny">實驗性推論整合</text>
+  </g>
+  <rect x="27" y="850" width="999" height="53" rx="9" fill="#fff0f1" stroke="#f4c4c7"/>
+  <rect x="43" y="863" width="155" height="27" rx="7" fill="#ffe1e3" stroke="#f3a9af"/><text x="120" y="881" text-anchor="middle" class="pill" fill="#a92331">EXPERIMENT_ONLY</text>
+  <rect x="207" y="863" width="190" height="27" rx="7" fill="#ffe1e3" stroke="#f3a9af"/><text x="302" y="881" text-anchor="middle" class="pill" fill="#a92331">NOT PRODUCTION VALIDATED</text>
+  <text x="414" y="874" class="body" fill="#a92331">路外模型仍屬實驗階段；僅供測試與展示，</text><text x="414" y="890" class="body" fill="#a92331">尚未驗證為正式生產預測服務。</text>
+</g>
+<!-- Infrastructure -->
+<g>
+  <rect x="1053" y="715" width="535" height="205" rx="12" fill="#f7f9fc" stroke="#b8c4d0" stroke-width="1.3"/>
+  <path d="M1065 715 H1576 Q1588 715 1588 727 V752 H1053 V727 Q1053 715 1065 715Z" fill="#667789"/>
+  <text x="1072" y="739" class="head">⑨ Infrastructure／Delivery　基礎設施與交付</text>
+  <rect x="1070" y="765" width="501" height="43" rx="8" class="card"/><text x="1090" y="791" font-size="21">▣</text><text x="1122" y="783" class="boxhead">Docker Compose</text><text x="1122" y="799" class="body">web／api／mysql／redis 容器編排</text>
+  <rect x="1070" y="814" width="501" height="43" rx="8" class="card"/><text x="1090" y="841" font-size="21">⌘</text><text x="1122" y="832" class="boxhead">本機驗證／Health Check</text><text x="1122" y="848" class="body">容器啟動、服務健康與必要測試</text>
+  <rect x="1070" y="863" width="501" height="43" rx="8" class="card"/><text x="1090" y="890" font-size="21">◉</text><text x="1122" y="881" class="boxhead">GitHub Repository</text><text x="1122" y="897" class="body">原始碼管理與版本控制</text>
+</g>
+<!-- Bottom legend and highlights -->
+<g>
+  <rect x="12" y="932" width="740" height="220" rx="12" fill="#fff" stroke="#cbd8e5"/>
+  <text x="28" y="958" font-size="17" font-weight="800">圖例（Legend）</text>
+  <line x1="31" y1="984" x2="74" y2="984" stroke="#1685d8" stroke-width="2.5" marker-end="url(#arrBlue)"/><text x="84" y="988" class="body">同步請求流程</text>
+  <line x1="220" y1="984" x2="263" y2="984" stroke="#718096" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrSlate)"/><text x="273" y="988" class="body">外部服務呼叫</text>
+  <line x1="413" y1="984" x2="456" y2="984" stroke="#ef6a32" stroke-width="2.5" marker-end="url(#arrOrange)"/><text x="466" y="988" class="body">官方資料刷新</text>
+  <line x1="31" y1="1017" x2="74" y2="1017" stroke="#8b48d7" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#arrPurple)"/><text x="84" y="1021" class="body">離線 ML／實驗流程</text>
+  <rect x="220" y="1006" width="23" height="20" rx="5" fill="#edf7ff" stroke="#a9d0f2"/><text x="253" y="1021" class="body">持久化資料</text>
+  <rect x="365" y="1006" width="23" height="20" rx="5" fill="#fff5f5" stroke="#f1b5b8"/><text x="398" y="1021" class="body">短期狀態／快取</text>
+  <rect x="31" y="1041" width="690" height="91" rx="9" fill="#f6faff" stroke="#e0eaf5"/>
+  <text x="47" y="1065" class="boxhead">閱讀架構圖時請記住</text>
+  <text x="47" y="1087" class="body">• 線上查詢讀取已發布快照；官方來源刷新是獨立流程。</text>
+  <text x="47" y="1107" class="body">• 候選快照與已發布快照分開，避免未通過檢查的資料直接對外。</text>
+  <text x="47" y="1125" class="body">• 路外模型目前為實驗性功能，不代表正式生產預測能力。</text>
+  <rect x="765" y="932" width="823" height="220" rx="12" fill="#f9fcff" stroke="#8dc4f5" stroke-width="1.3"/>
+  <text x="787" y="960" font-size="18" font-weight="800" fill="#145da0">系統重點（System Highlights）</text>
+  <g fill="#198754"><text x="790" y="993" font-size="19" font-weight="900">✓</text><text x="790" y="1027" font-size="19" font-weight="900">✓</text><text x="790" y="1061" font-size="19" font-weight="900">✓</text><text x="1190" y="993" font-size="19" font-weight="900">✓</text><text x="1190" y="1027" font-size="19" font-weight="900">✓</text><text x="1190" y="1061" font-size="19" font-weight="900">✓</text></g>
+  <text x="817" y="993" class="body">新莊 MVP 為目前展示範圍</text>
+  <text x="817" y="1027" class="body">線上查詢與官方來源刷新分離</text>
+  <text x="817" y="1061" class="body">使用已發布快照，並保留資料品質邊界</text>
+  <text x="1217" y="993" class="body">MySQL 與 Redis 責任分開</text>
+  <text x="1217" y="1027" class="body">ETA 依查詢條件呼叫外部服務</text>
+  <text x="1217" y="1061" class="body">路外預測仍為實驗性功能</text>
+  <line x1="787" y1="1080" x2="1567" y2="1080" stroke="#d9e7f4"/>
+  <text x="787" y="1105" class="tiny">本圖依目前專案架構與已知服務責任整理；實際能力以程式碼、設定與驗證紀錄為準。</text>
+  <text x="787" y="1127" class="tiny">不代表全臺所有停車場均已整合即時資料，也不保證抵達時一定有車位。</text>
+</g>
+</svg>
+</div>
+<div class="footer-note">使用方式：直接以瀏覽器開啟本檔即可檢視。手機畫面可左右捲動查看完整圖；使用「列印／另存 PDF」可輸出橫向大尺寸版本。此檔案不依賴外部 CDN 或遠端資源。</div>
+</main>
+<script>
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+  document.getElementById('downloadSvgBtn').addEventListener('click', () => {
+    const svg = document.getElementById('architecture').cloneNode(true);
+    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const source = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([source], {type:'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = '全臺停車位抵達預測-整體架構圖.svg'; a.click();
+    URL.revokeObjectURL(url);
+  });
+</script>
+</body>
+</html>
