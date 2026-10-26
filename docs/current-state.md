@@ -2,6 +2,21 @@
 
 更新日期：2026-10-26。
 
+## 2026-10-26 後端工程師面試 HTML 簡報
+
+- **定位**：以後端工程師面試為受眾，將原本長頁作品集改為六頁橫向簡報。觀眾頁聚焦查詢責任、Controller／Service／Adapter 邊界、MySQL／Redis 分工、API 時序與官方來源品質流程；不放長篇 JSON、模型分數、AI 工具清單或技術詞典。
+- **設計**：依使用者指定使用 `guizang-ppt-skill` 的簡報流程與講者備忘結構；採現有產品暖米白、深綠、無襯線樣式。架構圖、UML 時序圖、工作流程和產品示意均由 HTML／SVG 繪製，未使用生成圖片。
+- **事實邊界**：目前範圍明確標示新莊 MVP；全臺 TDX 即時資料尚未整合。`parking-data-collector` 仍只提供離線素材；路外模型仍是 `EXPERIMENT_ONLY`。2026-10-26 的 33 頁／2,151 列是官方目錄盤點，不代表即時空位或全臺覆蓋。
+- **驗證狀態**：Guizang Presenter validator 確認 6 頁、6 組講者備忘，0 errors／0 warnings；Python HTML 結構檢查確認無重複 ID、失效片段參照、缺少本機資源、外部資源或標籤解析錯誤；`git diff --check` 未發現 whitespace error（Git 僅提示 Windows CRLF 轉換）。瀏覽器安全政策先前拒絕本工作階段讀取 `file://`，且禁止以其他介面繞過；因此不宣稱已完成瀏覽器畫面／投影模式人工驗收。
+
+## 2026-10-26 taiwan-parking-forecast HTML 簡報工具評估
+
+- **已確認需求**：簡報用於面試作品介紹及技術分享，輸出只需 HTML；`taiwan-parking-forecast` 是簡報內容來源，不是 awesome-ai-ppt 的收錄候選。
+- **工具選用（已確認）**：使用 [op7418/guizang-ppt-skill](https://github.com/op7418/guizang-ppt-skill) 規劃單檔 HTML 簡報；以工程流程圖解和講者備忘呈現技術細節，視覺沿用專案前端。
+- **候選取捨**：[addsumtech/slides_maker](https://github.com/addsumtech/slides_maker) 明確讀取實際 repo 並追溯來源、審查投影片，但只產生可編輯 PPTX，不符合 HTML 輸出；[zarazhangrui/frontend-slides](https://github.com/zarazhangrui/frontend-slides) 適合以樣稿探索 HTML 簡報風格，但 repo 內容仍須先整理成簡報素材。
+- **工程審查重點／限制**：簡報內容須區分官方停車觀測、模型估計與無資料；路外預測仍屬實驗性，不得描述為已正式驗證。HTML 簡報已依使用者指定完成初稿，細節與驗證狀態見上方紀錄。
+- **參考資料**：[awesome-ai-ppt 收錄清單](https://github.com/ningzimu/awesome-ai-ppt/blob/main/docs/projects.json)、[Guizang PPT Skill](https://github.com/op7418/guizang-ppt-skill)、[slide-maker](https://github.com/addsumtech/slides_maker)、[Frontend Slides](https://github.com/zarazhangrui/frontend-slides)。
+
 ## 2026-10-26 建立 HTML 面試作品集
 
 - **範圍**：在 interview-kit/ 建立單頁自包含的繁體中文作品集，涵蓋產品狀態、系統與後端架構、技術棧、查詢降級、API 時序、線上／離線 ML、AI 協作、工程案例、驗證證據與 ERD。後端責任依目前的 Controller、Service、Repository、Domain、NTPC adapter、Spring Data JPA、MySQL、Redis 與實驗推論程式碼核對。

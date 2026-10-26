@@ -1,1048 +1,1581 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-Hant-TW">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <meta name="description" content="以實際程式碼、資料治理與驗證證據介紹全臺停車位抵達預測專案。">
-  <title>全臺停車位抵達預測｜工程面試作品集</title>
-  <style>
-    :root {
-      --paper: #f7f3e9;
-      --surface: #fffefa;
-      --surface-soft: #f1f3ed;
-      --ink: #20394e;
-      --ink-soft: #536982;
-      --green: #08784f;
-      --green-deep: #07533e;
-      --green-pale: #e8f2e8;
-      --line: #dce3dc;
-      --amber: #805000;
-      --amber-pale: #fff4dd;
-      --red: #a33b2c;
-      --red-pale: #fff0eb;
-      --blue: #2868a0;
-      --blue-pale: #edf5fb;
-      --radius: 18px;
-      --shadow: 0 14px 38px rgba(25, 55, 46, .08);
-      --font: Inter, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
-      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: 86px; }
-    body {
-      margin: 0;
-      background: var(--paper);
-      color: var(--ink);
-      font: 16px/1.65 var(--font);
-      -webkit-font-smoothing: antialiased;
-    }
-    a { color: var(--green-deep); text-underline-offset: .2em; }
-    a:hover { color: var(--green); }
-    button { font: inherit; }
-    code, pre, .mono { font-family: var(--mono); }
-    code { overflow-wrap: anywhere; }
-    .wrap { width: min(100% - 48px, 1586px); margin-inline: auto; }
-    .site-header {
-      min-height: 100px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-      border-bottom: 1px solid var(--line);
-      background: rgba(255, 254, 250, .94);
-    }
-    .brand { display: flex; align-items: center; gap: 12px; min-width: 280px; text-decoration: none; }
-    .brand-mark {
-      width: 42px; height: 42px; display: grid; place-items: center;
-      border-radius: 14px; color: white; background: var(--green);
-      font-size: 22px; font-weight: 800;
-    }
-    .brand-title { display: block; color: var(--green-deep); font-size: 19px; line-height: 1.2; font-weight: 850; }
-    .brand-subtitle { display: block; margin-top: 4px; color: var(--ink-soft); font-size: 12px; }
-    .nav { display: flex; justify-content: center; align-items: center; gap: clamp(12px, 2vw, 30px); flex-wrap: wrap; }
-    .nav a { color: var(--ink); font-size: 14px; font-weight: 750; text-decoration: none; }
-    .nav a:hover, .nav a:focus-visible { color: var(--green); }
-    .print-button, .button-link {
-      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      min-height: 42px; padding: 8px 15px; border: 1px solid var(--line);
-      border-radius: 12px; background: var(--surface); color: var(--ink);
-      font-weight: 750; text-decoration: none; cursor: pointer;
-    }
-    .print-button:hover, .button-link:hover { border-color: var(--green); color: var(--green); }
-    :focus-visible { outline: 3px solid #3e9f79; outline-offset: 3px; }
-    .hero-intro {
-      min-height: 198px; display: grid; grid-template-columns: 1.15fr 1fr;
-      align-items: center; gap: 24px; padding: 20px 10px 16px;
-    }
-    h1, h2, h3, p { margin-top: 0; }
-    h1 { max-width: 790px; margin-bottom: 10px; color: var(--green-deep); font-size: clamp(28px, 3vw, 42px); line-height: 1.22; letter-spacing: -.035em; }
-    .hero-copy { max-width: 760px; margin: 0; color: var(--ink-soft); font-size: 15px; }
-    .hero-callouts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .callout { min-height: 118px; padding: 15px 17px; border: 1px solid #c9ddec; border-radius: 16px; background: var(--blue-pale); }
-    .callout.warning { border-color: #f0d5b9; background: var(--amber-pale); }
-    .callout-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-weight: 850; }
-    .callout-number { width: 28px; height: 28px; display: inline-grid; place-items: center; flex: 0 0 28px; border-radius: 50%; background: var(--green-deep); color: white; font-size: 14px; }
-    .callout p { margin: 0; color: var(--ink-soft); font-size: 13px; }
-    .product-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(345px, 3fr); gap: 14px; min-height: 496px; }
-    .map-card, .product-panel, .catalog-teaser { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
-    .map-card { position: relative; min-height: 490px; overflow: hidden; isolation: isolate; background: #e8ece1; }
-    .map-card::before {
-      position: absolute; inset: 0; z-index: -2; content: "";
-      background:
-        linear-gradient(34deg, transparent 46%, rgba(255,255,255,.65) 46.2% 47.2%, transparent 47.4%),
-        linear-gradient(111deg, transparent 30%, rgba(255,255,255,.75) 30.2% 31.6%, transparent 31.8%),
-        linear-gradient(6deg, transparent 62%, rgba(255,255,255,.8) 62.2% 64%, transparent 64.2%),
-        linear-gradient(86deg, transparent 74%, rgba(255,255,255,.78) 74.2% 75.5%, transparent 75.7%),
-        #e8ece1;
-    }
-    .map-greenway { position: absolute; z-index: -1; background: rgba(91, 159, 121, .17); }
-    .map-greenway.one { width: 34%; height: 170%; top: -35%; left: 17%; transform: rotate(21deg); border-radius: 40%; }
-    .map-greenway.two { width: 15%; height: 100%; top: 10%; left: 67%; transform: rotate(-34deg); border-radius: 50%; }
-    .map-road { position: absolute; height: 13px; border: 3px solid rgba(255,255,255,.88); background: #e5d5aa; border-radius: 20px; box-shadow: 0 0 0 1px rgba(165,143,100,.15); }
-    .map-road.r1 { width: 115%; left: -7%; top: 68%; transform: rotate(-7deg); }
-    .map-road.r2 { width: 95%; left: 18%; top: 31%; transform: rotate(51deg); }
-    .map-road.r3 { width: 75%; left: 28%; top: 77%; transform: rotate(-55deg); }
-    .map-road.r4 { width: 60%; left: -10%; top: 43%; transform: rotate(14deg); }
-    .map-road.r5 { width: 88%; left: 20%; top: 18%; height: 8px; transform: rotate(-11deg); background: #f8f7ed; }
-    .map-label { position: absolute; color: #53685c; font-size: 12px; font-weight: 700; text-shadow: 0 1px 0 rgba(255,255,255,.9); }
-    .map-label.l1 { left: 13%; top: 16%; }
-    .map-label.l2 { left: 57%; top: 47%; }
-    .map-label.l3 { left: 20%; top: 78%; }
-    .map-label.l4 { right: 8%; top: 18%; }
-    .map-label.l5 { right: 12%; bottom: 15%; }
-    .map-destination {
-      position: absolute; left: 54%; top: 51%; width: 48px; height: 48px;
-      display: grid; place-items: center; border: 4px solid white; border-radius: 50% 50% 50% 8px;
-      transform: rotate(-45deg); background: var(--blue); box-shadow: 0 6px 18px rgba(15,57,87,.26); color: white; font-weight: 900;
-    }
-    .map-destination::after { width: 13px; height: 13px; border: 3px solid white; border-radius: 50%; content: ""; }
-    .map-marker { position: absolute; width: 18px; height: 18px; border: 4px solid white; border-radius: 50%; background: var(--green); box-shadow: 0 2px 8px rgba(17,68,50,.22); }
-    .map-marker.m1 { left: 22%; top: 48%; }
-    .map-marker.m2 { left: 36%; top: 27%; }
-    .map-marker.m3 { left: 78%; top: 64%; }
-    .map-marker.m4 { left: 69%; top: 22%; }
-    .map-search {
-      position: absolute; top: 16px; left: 16px; max-width: min(330px, 86%);
-      padding: 12px 15px; border: 1px solid rgba(16,58,43,.14); border-radius: 14px;
-      background: var(--surface); box-shadow: 0 5px 18px rgba(26,52,43,.12);
-    }
-    .map-search strong { display: block; color: var(--green-deep); }
-    .map-search small { color: var(--ink-soft); }
-    .map-note {
-      position: absolute; right: 14px; bottom: 14px; padding: 6px 10px;
-      border: 1px solid rgba(32,57,78,.16); border-radius: 10px; background: rgba(255,254,250,.93);
-      color: var(--ink-soft); font-size: 12px; font-weight: 700;
-    }
-    .map-legend { position: absolute; left: 15px; bottom: 15px; display: flex; gap: 12px; padding: 8px 12px; border-radius: 12px; background: var(--surface); font-size: 12px; font-weight: 750; }
-    .legend-dot { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 50%; background: var(--green); vertical-align: 1px; }
-    .legend-dot.blue { background: var(--blue); }
-    .legend-dot.gray { background: #89949a; }
-    .product-side { display: grid; grid-template-rows: 1fr auto; gap: 12px; }
-    .product-panel { padding: 17px; }
-    .destination-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-    .destination-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; color: var(--green); background: var(--green-pale); font-weight: 900; }
-    .destination-head h2 { margin: 0; color: var(--green-deep); font-size: 18px; }
-    .destination-head p { margin: 2px 0 0; color: var(--ink-soft); font-size: 12px; }
-    .availability-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px 13px; border-radius: 12px; background: var(--surface-soft); font-size: 13px; }
-    .availability-row strong { color: var(--ink); font-size: 18px; }
-    .state-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-    .state-card { min-height: 120px; padding: 12px; border: 1px solid #f1deb3; border-radius: 13px; background: #fffaf0; }
-    .state-card.red { border-color: #f1c9bf; background: var(--red-pale); }
-    .state-label { display: block; margin-bottom: 4px; color: var(--amber); font-size: 12px; font-weight: 850; }
-    .state-card.red .state-label { color: var(--red); }
-    .state-card strong { display: block; margin-bottom: 5px; color: var(--ink); font-size: 16px; }
-    .state-card p { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
-    .system-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
-    .system-meta span { display: block; color: var(--ink-soft); font-size: 12px; }
-    .system-meta strong { display: block; color: var(--ink); font-size: 13px; }
-    .catalog-teaser { padding: 15px 17px; }
-    .teaser-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 6px; }
-    .teaser-head h3 { margin: 0; color: var(--green-deep); font-size: 15px; }
-    .teaser-count { color: var(--ink-soft); font-size: 12px; }
-    .teaser-item { display: grid; grid-template-columns: 32px 1fr auto; gap: 9px; align-items: center; padding-top: 8px; }
-    .teaser-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #e9eef0; color: var(--ink-soft); font-weight: 850; }
-    .teaser-item strong { display: block; font-size: 12px; }
-    .teaser-item small { display: block; color: var(--ink-soft); font-size: 12px; }
-    .status-pill { display: inline-block; padding: 3px 8px; border-radius: 99px; background: var(--amber-pale); color: var(--amber); font-size: 12px; font-weight: 800; white-space: nowrap; }
-    .catalog-teaser .disclaimer { margin: 8px 0 0; color: var(--ink-soft); font-size: 12px; }
-    .section { padding: 86px 24px; border-top: 1px solid var(--line); }
-    .section.alt { background: rgba(255,254,250,.54); }
-    .section > .wrap { width: min(100%, 1586px); padding-inline: 0; }
-    .section-heading { display: grid; grid-template-columns: 1fr; gap: 0; align-items: start; max-width: 980px; margin-bottom: 34px; }
-    .section-heading h2 { margin: 0 0 8px; color: var(--green-deep); font-size: clamp(25px, 3vw, 34px); line-height: 1.25; }
-    .section-heading p { margin: 0; color: var(--ink-soft); font-size: 15px; }
-    .card-label { margin: 0 0 9px; color: var(--green-deep); font-size: 17px; font-weight: 850; }
-    .card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
-    .card-pad { padding: 22px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
-    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
-    .stack-card h3, .module-card h3, .case h3 { margin-bottom: 7px; color: var(--green-deep); font-size: 17px; }
-    .stack-card p, .module-card p, .case p { margin-bottom: 0; color: var(--ink-soft); font-size: 13px; }
-    .tech-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
-    .tech { padding: 4px 9px; border: 1px solid var(--line); border-radius: 99px; background: #fafbf7; color: var(--ink); font-size: 12px; font-weight: 700; }
-    .diagram-frame { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
-    .diagram-frame svg { display: block; width: 100%; height: auto; min-width: 920px; }
-    .diagram-caption { display: flex; flex-wrap: wrap; gap: 12px 20px; padding: 13px 17px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 12px; }
-    .key { display: inline-flex; align-items: center; gap: 7px; }
-    .key-line { width: 28px; height: 0; border-top: 2px solid var(--green); }
-    .key-line.dashed { border-top-style: dashed; border-color: var(--blue); }
-    .note { padding: 14px 17px; border: 1px solid #bfd4e4; border-radius: 12px; background: var(--blue-pale); color: var(--ink); font-size: 13px; }
-    .note.warning { border-color: #e5c58d; background: var(--amber-pale); }
-    .module-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 13px; margin-top: 18px; }
-    .module-card { padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
-    .module-card code { display: inline-block; margin-bottom: 8px; color: var(--blue); font-size: 12px; }
-    .flow-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
-    .flow-chip { padding: 5px 10px; border-radius: 99px; background: var(--green-pale); color: var(--green-deep); font-size: 12px; font-weight: 800; }
-    .flow-chip.gray { background: #edf0f1; color: #52616a; }
-    .flow-chip.red { background: var(--red-pale); color: var(--red); }
-    .api-route { display: grid; grid-template-columns: 74px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
-    .api-route:last-child { border: 0; }
-    .method { display: inline-grid; place-items: center; padding: 4px 7px; border-radius: 7px; background: var(--green-pale); color: var(--green-deep); font: 800 12px var(--mono); }
-    .api-route code { color: var(--ink); font-size: 12px; }
-    .api-route span:last-child { color: var(--ink-soft); font-size: 12px; text-align: right; }
-    pre {
-      overflow: auto; margin: 0; padding: 18px; border: 1px solid #dae1df;
-      border-radius: 14px; background: #f7f9f6; color: #163e33; font-size: 12px; line-height: 1.6;
-      tab-size: 2;
-    }
-    .split-label { display: flex; align-items: center; gap: 9px; margin: 0 0 14px; color: var(--green-deep); font-size: 17px; font-weight: 850; }
-    .lane-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--green); }
-    .lane-dot.blue { background: var(--blue); }
-    .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border: 1px solid #ecd8ac; border-radius: 99px; background: var(--amber-pale); color: #79520b; font-size: 12px; font-weight: 850; }
-    .status-badge::before { width: 7px; height: 7px; border-radius: 50%; background: currentColor; content: ""; }
-    .case { display: flex; flex-direction: column; gap: 12px; min-height: 300px; padding: 20px; border: 1px solid var(--line); border-radius: 17px; background: var(--surface); }
-    .case-context { color: var(--green); font-size: 12px; font-weight: 750; }
-    .case dl { display: grid; gap: 8px; margin: 0; }
-    .case dt { color: var(--green-deep); font-size: 12px; font-weight: 850; }
-    .case dd { margin: 2px 0 0; color: var(--ink-soft); font-size: 12px; }
-    .evidence-table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font-size: 12px; }
-    .table-scroll { overflow-x: auto; }
-    .evidence-table th, .evidence-table td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-    .evidence-table th { background: var(--surface-soft); color: var(--green-deep); font-weight: 850; }
-    .evidence-table tr:last-child td { border-bottom: 0; }
-    .state-columns { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 15px; }
-    .state-column { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
-    .state-column h3 { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; color: var(--green-deep); font-size: 16px; }
-    .state-column ul { margin: 0; padding-left: 18px; color: var(--ink-soft); font-size: 13px; }
-    .state-column li + li { margin-top: 7px; }
-    .state-dot { width: 9px; height: 9px; display: inline-block; border-radius: 50%; background: var(--green); }
-    .state-dot.amber { background: #d09220; }
-    .state-dot.gray { background: #849199; }
-    details { border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
-    details + details { margin-top: 12px; }
-    summary { padding: 15px 18px; color: var(--green-deep); font-weight: 850; cursor: pointer; }
-    details[open] summary { border-bottom: 1px solid var(--line); }
-    .details-content { padding: 18px; }
-    .details-content > :last-child { margin-bottom: 0; }
-    .glossary { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px 20px; margin: 0; }
-    .glossary div { padding-bottom: 9px; border-bottom: 1px solid var(--line); }
-    .glossary dt { color: var(--green-deep); font-weight: 850; }
-    .glossary dd { margin: 3px 0 0; color: var(--ink-soft); font-size: 13px; }
-    .source-list { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px 22px; margin: 0; padding-left: 20px; color: var(--ink-soft); font-size: 13px; }
-    .footer { padding: 34px 0 48px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 12px; }
-    .footer-row { display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
-    .muted { color: var(--ink-soft); }
-    .small { font-size: 12px; }
-    .mt-18 { margin-top: 18px; }
-    .mt-14 { margin-top: 14px; }
-    .mb-0 { margin-bottom: 0; }
-    .svg-title { font: 800 22px var(--font); fill: var(--green-deep); }
-    .svg-node-title { font: 800 18px var(--font); fill: var(--green-deep); }
-    .svg-node-copy { font: 14px var(--font); fill: var(--ink-soft); }
-    .svg-label { font: 700 13px var(--font); fill: var(--ink-soft); }
-    .svg-small { font: 12px var(--font); fill: var(--ink-soft); }
-    @media (max-width: 1050px) {
-      .wrap { width: min(100% - 32px, 980px); }
-      .site-header { flex-wrap: wrap; padding: 16px 0; }
-      .brand { flex: 1 1 260px; }
-      .nav { order: 3; width: 100%; justify-content: flex-start; }
-      .hero-intro { grid-template-columns: 1fr; padding-block: 24px; }
-      .hero-callouts { max-width: 820px; }
-      .product-grid { grid-template-columns: minmax(0, 1.4fr) minmax(310px, .9fr); }
-      .module-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
-      .grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
-    }
-    @media (max-width: 720px) {
-      .wrap { width: min(100% - 24px, 620px); }
-      .site-header { min-height: auto; gap: 12px; }
-      .brand { min-width: 0; }
-      .brand-subtitle { max-width: 230px; }
-      .nav { gap: 9px 16px; }
-      .nav a { font-size: 12px; }
-      .print-button { min-height: 38px; padding: 6px 10px; font-size: 12px; }
-      .hero-intro { gap: 17px; }
-      .hero-callouts { grid-template-columns: 1fr; }
-      .callout { min-height: 0; }
-      .product-grid { grid-template-columns: 1fr; }
-      .map-card { min-height: 380px; }
-      .product-side { grid-template-rows: auto auto; }
-      .section { padding: 58px 12px; }
-      .section > .wrap { width: 100%; }
-      .grid-2, .grid-3, .grid-4, .module-grid, .state-columns { grid-template-columns: 1fr; }
-      .section-heading { gap: 0; margin-bottom: 23px; }
-      .card-pad { padding: 17px; }
-      .api-route { grid-template-columns: 60px minmax(0,1fr); }
-      .api-route span:last-child { grid-column: 2; text-align: left; }
-      .source-list, .glossary { grid-template-columns: 1fr; }
-      .evidence-table { display: block; overflow-x: auto; }
-      .case { min-height: auto; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
-    }
-    @media print {
-      :root { --paper: #fff; --surface: #fff; --surface-soft: #f4f6f3; --shadow: none; }
-      html { scroll-behavior: auto; }
-      body { background: white; color: #172c3a; font-size: 10pt; }
-      .wrap { width: 100%; max-width: none; }
-      .site-header { position: static; min-height: 64px; }
-      .nav, .print-button, .screen-only { display: none !important; }
-      .hero-intro { min-height: 0; grid-template-columns: 1.1fr 1fr; padding: 12px 0; }
-      h1 { font-size: 25pt; }
-      .product-grid { min-height: 0; grid-template-columns: 1.4fr .9fr; }
-      .map-card { min-height: 320px; box-shadow: none; }
-      .section { padding: 30px 0; break-before: page; }
-      .card, .diagram-frame, .case, .module-card { box-shadow: none; break-inside: avoid; }
-      .diagram-frame { overflow: visible; }
-      .diagram-frame svg { min-width: 0; }
-      details { break-inside: avoid; }
-      details > .details-content { display: block !important; }
-      details:not([open]) > .details-content { display: block !important; }
-      a { color: inherit; }
-      a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 8pt; overflow-wrap: anywhere; }
-      .footer { padding: 20px 0; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>停車位抵達預測｜後端工程師面試簡報</title>
+<style>
+  :root{
+    /* ============ 主题色(默认:🖋 墨水经典) ============
+       切换主题:从 references/themes.md 复制对应的 :root 块
+       整体替换这几行(--ink / --ink-rgb / --paper / --paper-rgb)
+       其他地方散落的 rgba() 都走 var(--ink-rgb) / var(--paper-rgb),无需逐处改 */
+    --ink:#07533e;
+    --ink-rgb:7,83,62;
+    --paper:#f7f3e9;
+    --paper-rgb:247,243,233;
+    --paper-tint:#fffefa;
+    --ink-tint:#20394e;
+
+    /* ============ 字体(跨主题固定) ============ */
+    --mono:"Cascadia Code","SFMono-Regular",Consolas,monospace;
+    --serif-en:Inter,"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --serif-body-en:Inter,"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --serif-zh:Inter,"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --sans-zh:Inter,"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);color:var(--paper);font-family:var(--sans-zh);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+  /* ============ WebGL 双背景 ============ */
+  canvas.bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;display:block;transition:opacity 1.2s ease}
+  canvas#bg-light{opacity:0}
+  canvas#bg-dark{opacity:1}
+  body.light-bg canvas#bg-light{opacity:1}
+  body.light-bg canvas#bg-dark{opacity:0}
+  body.low-power canvas.bg{display:none!important}
+
+  /* ============ Deck 容器 + 翻页 ============ */
+  /* width: NSLIDES * 100vw，会在 JS 里动态矫正 */
+  #deck{position:fixed;inset:0;width:10000vw;height:100vh;display:flex;flex-wrap:nowrap;transition:transform .9s cubic-bezier(.77,0,.175,1);z-index:10;will-change:transform}
+  .slide{width:100vw;height:100vh;flex:0 0 100vw;position:relative;padding:6vh 6vw 10vh 6vw;display:flex;flex-direction:column;overflow:hidden}
+  .slide.light{color:var(--ink);background:var(--paper)}
+  .slide.dark{color:var(--paper);background:var(--ink)}
+
+  /* 默认页：遮罩较厚，保证文字可读 */
+  .slide::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;transition:background .7s ease}
+  .slide.light::before{background:rgba(var(--paper-rgb),.78);backdrop-filter:blur(3px)}
+  .slide.dark::before{background:rgba(var(--ink-rgb),.78);backdrop-filter:blur(3px)}
+  /* Hero 页：遮罩大幅降低，让 WebGL 背景明显透出 */
+  .slide.hero.light::before{background:rgba(var(--paper-rgb),.16);backdrop-filter:none}
+  .slide.hero.dark::before{background:rgba(var(--ink-rgb),.12);backdrop-filter:none}
+  /* Hero 页顶底微弱渐隐，保证 chrome/foot 区域可读 */
+  .slide.hero::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none}
+  .slide.hero.light::after{background:linear-gradient(180deg,rgba(var(--paper-rgb),.28) 0%,rgba(var(--paper-rgb),0) 14%,rgba(var(--paper-rgb),0) 86%,rgba(var(--paper-rgb),.28) 100%)}
+  .slide.hero.dark::after{background:linear-gradient(180deg,rgba(var(--ink-rgb),.32) 0%,rgba(var(--ink-rgb),0) 14%,rgba(var(--ink-rgb),0) 86%,rgba(var(--ink-rgb),.32) 100%)}
+
+  /* ============ Magazine chrome：顶部 meta + 底部 foot ============
+     （v1 布局 + v2 字級在此合并为唯一定义，不要在别处二次定义） */
+  .chrome{display:flex;justify-content:space-between;align-items:flex-start;font-family:var(--mono);font-size:max(11px,.78vw);letter-spacing:.2em;text-transform:uppercase;opacity:.62}
+  .chrome .left,.chrome .right{display:flex;gap:2.4em;align-items:center}
+  .chrome .sep{width:40px;height:1px;background:currentColor;opacity:.4}
+  .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--mono);font-size:max(11px,.78vw);letter-spacing:.18em;text-transform:uppercase;opacity:.5}
+  .foot .title{font-family:var(--serif-zh);font-weight:400;letter-spacing:.05em;text-transform:none;opacity:.75;font-size:13px}
+
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;padding:6px 14px;border:1px solid currentColor;opacity:.85}
+  .rule{width:100%;height:1px;background:currentColor;opacity:.25;margin:3vh 0}
+  .rule.v{width:1px;height:100%;margin:0}
+
+  /* ============ 字体规则 ============
+     · 衬线（Noto Serif SC / Playfair）：大標題、重点金句、数字
+     · 非衬线（Noto Sans SC）：正文描述、body、补充说明
+     · 等宽（IBM Plex Mono）：kicker、meta 小标签、foot 右侧
+  */
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.3em;text-transform:uppercase;opacity:.6;margin-bottom:2.6vh}
+  .display{font-family:var(--serif-en);font-weight:700;font-size:11vw;line-height:.92;letter-spacing:-.025em}
+  .display-zh{font-family:var(--serif-zh);font-weight:700;font-size:7.8vw;line-height:1.04;letter-spacing:-.005em}
+  .h1-zh{font-family:var(--serif-zh);font-weight:700;font-size:4.6vw;line-height:1.12;letter-spacing:-.005em}
+  .h2-zh{font-family:var(--serif-zh);font-weight:600;font-size:3.2vw;line-height:1.2;letter-spacing:0}
+  .h3-zh{font-family:var(--serif-zh);font-weight:500;font-size:1.9vw;line-height:1.35}
+  .body-zh{font-family:var(--sans-zh);font-weight:400;font-size:max(15px,1.22vw);line-height:1.75;opacity:.82;letter-spacing:.01em}
+  .body-serif{font-family:var(--serif-zh);font-weight:400;font-size:max(15px,1.3vw);line-height:1.65;opacity:.88}
+  .lead{font-family:var(--serif-zh);font-weight:400;font-size:1.75vw;line-height:1.5;opacity:.86}
+  .meta{font-family:var(--mono);font-size:max(11px,.88vw);letter-spacing:.16em;text-transform:uppercase;opacity:.6}
+  .big-num{font-family:var(--serif-en);font-weight:800;font-size:10vw;line-height:.85;letter-spacing:-.03em;font-feature-settings:"tnum"}
+  .mid-num{font-family:var(--serif-en);font-weight:700;font-size:5.5vw;line-height:.88;letter-spacing:-.02em;font-feature-settings:"tnum"}
+  .ghost{font-family:var(--serif-en);font-weight:900;font-size:34vw;line-height:.8;opacity:.06;letter-spacing:-.04em;position:absolute;font-feature-settings:"tnum"}
+  em{font-style:italic;font-family:var(--serif-en)}
+  .en{font-family:var(--serif-en);font-style:italic;font-weight:500}
+
+  /* ============ 布局工具 ============ */
+  .col{display:flex;flex-direction:column;gap:2.4vh}
+  .row{display:flex;align-items:center;gap:3vw}
+  .grid-6{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:4vw 6vw;flex:1;align-content:center;padding:2vh 0}
+  .grid-9{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:3vh 4vw;flex:1;align-content:center}
+  .grid-4{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:4vh 6vw;flex:1;align-content:center}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:4vw;flex:1;align-content:center}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:4vw;flex:1;align-items:center}
+  .split-55{display:grid;grid-template-columns:55fr 45fr;gap:5vw;flex:1;align-items:stretch}
+  .fill{flex:1}
+  .center{align-items:center;justify-content:center;text-align:center}
+  .bottom-left{position:absolute;left:6vw;bottom:9vh;max-width:50vw}
+  .bottom-right{position:absolute;right:6vw;bottom:9vh;max-width:50vw;text-align:right}
+  .top-right{position:absolute;right:6vw;top:6vh;text-align:right}
+
+  /* ============ Stat（数字矩阵） ============ */
+  .stat{display:flex;flex-direction:column;gap:1vh;align-items:flex-start}
+  .stat .n{font-family:var(--serif-en);font-weight:800;font-size:8vw;line-height:.88;letter-spacing:-.03em;font-feature-settings:"tnum"}
+  .stat .l{font-family:var(--sans-zh);font-size:max(13px,1.05vw);opacity:.7;margin-top:1vh;font-weight:400;line-height:1.5}
+  .stat .m{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.5;margin-bottom:.2vh}
+
+  /* ============ Callout（引用框） ============ */
+  .callout{padding:3vh 2.4vw;border-left:3px solid currentColor;position:relative;font-family:var(--serif-zh);font-size:max(15px,1.2vw);line-height:1.55;opacity:.92}
+  .slide.light .callout{background:rgba(var(--ink-rgb),.05)}
+  .slide.dark .callout{background:rgba(var(--paper-rgb),.06)}
+  .callout .cite{display:block;margin-top:1.6vh;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.6}
+  .callout .q-big{font-family:var(--serif-zh);font-weight:600;font-size:max(17px,1.6vw);line-height:1.42}
+
+  /* ============ Platform（平台卡） ============ */
+  .plat{display:flex;flex-direction:column;justify-content:flex-end;padding:2vh 0;border-top:1px solid currentColor;border-color:rgba(127,127,127,.35)}
+  .plat .name{font-family:var(--serif-zh);font-weight:700;font-size:1.8vw;margin-bottom:.6vh}
+  .plat .nb{font-family:var(--serif-en);font-weight:700;font-size:3.2vw;letter-spacing:-.02em;line-height:1;font-feature-settings:"tnum"}
+  .plat .sub{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;opacity:.55;margin-top:.6vh}
+  .plat .fill{font-family:var(--sans-zh);font-weight:300;font-size:2.4vw;opacity:.28;letter-spacing:-.01em;line-height:1}
+
+  /* ============ Rowline（表格行） ============ */
+  .rowline{display:grid;grid-template-columns:1fr 2fr 1fr;gap:2vw;padding:2.2vh 0;border-top:1px solid currentColor;align-items:center;border-color:rgba(127,127,127,.25)}
+  .rowline:last-child{border-bottom:1px solid currentColor;border-color:rgba(127,127,127,.25)}
+  .rowline .k{font-family:var(--serif-zh);font-weight:700;font-size:1.7vw}
+  .rowline .v{font-family:var(--sans-zh);font-weight:400;font-size:max(14px,1.2vw);opacity:.85;line-height:1.55}
+  .rowline .m{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.6;justify-self:end}
+
+  /* ============ Pillar（支柱卡片） ============ */
+  .pillar{display:flex;flex-direction:column;gap:1.8vh}
+  .pillar .ic{font-family:var(--serif-en);font-style:italic;font-size:2.6vw;opacity:.45;font-weight:400}
+  .pillar .ic svg{width:2.8vw;height:2.8vw;stroke-width:1.2;opacity:.7}
+  .pillar .t{font-family:var(--serif-zh);font-weight:700;font-size:2.4vw;line-height:1.1}
+  .pillar .d{font-family:var(--sans-zh);font-weight:400;font-size:max(14px,1.1vw);opacity:.76;line-height:1.6}
+
+  /* ============ Signature / Highlight ============ */
+  .sign{font-family:var(--serif-en);font-style:italic;font-weight:500;font-size:2vw;opacity:.7}
+  .hi{position:relative;display:inline}
+  .slide.dark .hi::after{content:"";position:absolute;left:-.1em;right:-.1em;bottom:-.05em;height:.28em;background:rgba(var(--paper-rgb),.15);z-index:-1}
+  .slide.light .hi::after{content:"";position:absolute;left:-.1em;right:-.1em;bottom:-.05em;height:.28em;background:rgba(var(--ink-rgb),.08);z-index:-1}
+
+  /* ============ Icons（Lucide via CDN） ============ */
+  .ico{width:1em;height:1em;display:inline-block;vertical-align:-.12em;stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+  .ico-lg,.ico-md,.ico-sm{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+  .ico-lg{width:2.6vw;height:2.6vw;stroke-width:1.2;display:inline-block}
+  .ico-md{width:1.8vw;height:1.8vw;stroke-width:1.3;display:inline-block;vertical-align:-.4em}
+  .ico-sm{width:1.1vw;height:1.1vw;stroke-width:1.4;display:inline-block;vertical-align:-.15em;opacity:.7}
+
+  /* ============ 图片占位（虚线框，提示设计师位置） ============ */
+  .img-slot{border:1.5px dashed rgba(127,127,127,.4);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1vh;padding:2vh 2vw;font-family:var(--mono);font-size:10px;letter-spacing:.28em;text-transform:uppercase;opacity:.55;position:relative;aspect-ratio:16/9;width:100%;max-height:56vh;margin-inline:auto;box-sizing:border-box}
+  .img-slot::before{content:"";position:absolute;inset:8px;border:1px solid currentColor;opacity:.2}
+  .img-slot .plus{font-size:2vw;font-weight:300;opacity:.5;letter-spacing:0}
+  .img-slot .label{position:relative;z-index:2;text-align:center}
+  .img-slot.r-4x3{aspect-ratio:4/3}
+  .img-slot.r-3x2{aspect-ratio:3/2}
+  .img-slot.r-1x1{aspect-ratio:1/1}
+
+  /* ============ 图片实填框（关键：固定高度 + 只裁底部） ============
+     重要约束：高度用内联 height:Nvh 精确控制，不要用 aspect-ratio（会撑破布局）
+     object-position:top center 保证严禁裁剪顶部和左右，只裁剪底部
+  */
+  .frame-img{overflow:hidden;position:relative;background:rgba(0,0,0,.04);box-sizing:border-box;width:100%;border-radius:4px}
+  .slide.dark .frame-img{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12)}
+  .frame-img > img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+  .frame-img.fit-contain > img{object-fit:contain;object-position:center center}
+  .frame-img.r-16x9{aspect-ratio:16/9;max-height:64vh}
+  .frame-img.r-16x10{aspect-ratio:16/10;max-height:56vh}
+  .frame-img.r-4x3{aspect-ratio:4/3;max-height:56vh}
+  .frame-img.r-3x2{aspect-ratio:3/2;max-height:46vh}
+  .frame-img.r-3x4{aspect-ratio:3/4;max-height:60vh}
+  .frame-img.r-1x1{aspect-ratio:1/1;max-height:50vh}
+  .frame-img.h-16{height:16vh}
+  .frame-img.h-18{height:18vh}
+  .frame-img.h-22{height:22vh}
+  .frame-img.h-26{height:26vh}
+  .frame-img.h-28{height:28vh}
+  .frame-cap{display:flex;justify-content:space-between;align-items:baseline;gap:1vw;margin-top:.8vh;font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.72}
+  .frame-cap .pf{font-family:var(--serif-zh);font-weight:600;font-size:max(13px,1vw);letter-spacing:.04em;text-transform:none;opacity:.94}
+  .frame-cap .nb{font-family:var(--serif-en);font-style:italic;font-size:max(15px,1.2vw);letter-spacing:.02em;text-transform:none;opacity:.88}
+  .frame-cap .idx{font-family:var(--mono);opacity:.5}
+  figure.tile{display:flex;flex-direction:column;margin:0;min-width:0}
+  figure.tile > .frame-img{flex:0 0 auto}
+
+  /* ============ 导航 ============ */
+  #nav{position:fixed;left:50%;bottom:2.6vh;transform:translateX(-50%);z-index:30;display:flex;gap:10px;padding:8px 14px;border-radius:999px;background:rgba(0,0,0,.18);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  #nav .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer;transition:all .3s ease;border:0;padding:0}
+  #nav .dot:hover{background:rgba(255,255,255,.5);transform:scale(1.15)}
+  #nav .dot.active{background:rgba(255,255,255,.95);width:22px;border-radius:999px}
+  body.light-bg #nav{background:rgba(255,255,255,.25)}
+  body.light-bg #nav .dot{background:rgba(var(--ink-rgb),.25)}
+  body.light-bg #nav .dot.active{background:rgba(var(--ink-rgb),.9)}
+  #hint{position:fixed;bottom:3vh;right:3vw;z-index:30;display:flex;align-items:center;gap:.65em;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.4;mix-blend-mode:difference;color:#aaa}
+  #hint button{all:unset;display:inline-flex;align-items:center;gap:.45em;cursor:pointer;color:inherit;white-space:nowrap}
+  #hint button:hover,#hint button:focus-visible{opacity:1;text-decoration:underline;text-underline-offset:.35em}
+  #hint .ppt-key{padding:.16em .38em;border:1px solid currentColor;border-radius:3px;letter-spacing:.08em}
+  #hint .ppt-sep{opacity:.55}
+  body.low-power #hint{opacity:.72;color:var(--paper);mix-blend-mode:normal}
+  body.light-bg.low-power #hint{color:var(--ink)}
+
+  /* ============ 講者模式 ============ */
+  body.ppt-audience #hint,body.ppt-audience #nav,
+  body.ppt-preview #hint,body.ppt-preview #nav{display:none!important}
+  body.ppt-audience{cursor:none}
+  body.ppt-preview{pointer-events:none}body.ppt-preview #deck{transition:none!important}
+  body.ppt-presenter>#deck,body.ppt-presenter>#nav,body.ppt-presenter>#hint,
+  body.ppt-presenter>.bg{visibility:hidden}
+  #ppt-presenter{position:fixed;inset:0;z-index:90;display:none;min-width:0;min-height:0;overflow:hidden;background:#101216;color:#f5f6f7;font-family:Inter,"Noto Sans SC",sans-serif}
+  body.ppt-presenter #ppt-presenter{display:grid;grid-template-rows:auto 1fr auto}
+  .ppt-presenter-top{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:18px 24px;border-bottom:1px solid #2b2e35;background:#15181d}
+  .ppt-presenter-brand{font-weight:650;letter-spacing:.02em}.ppt-presenter-meta{display:flex;align-items:center;gap:12px;color:#aeb4be;font-size:14px}
+  .ppt-sync{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border:1px solid #363a43;border-radius:999px;color:#d2d6dc;background:#1b1e24}
+  .ppt-sync::before{content:"";width:8px;height:8px;border-radius:50%;background:#818894}
+  .ppt-sync[data-state="synced"]::before{background:#72df99;box-shadow:0 0 0 4px rgba(114,223,153,.12)}
+  .ppt-sync[data-state="connecting"]::before,.ppt-sync[data-state="frozen"]::before{background:#f0c766}.ppt-sync[data-state="unsynced"]::before,.ppt-sync[data-state="blocked"]::before{background:#ff9e64}.ppt-sync[data-state="disconnected"]::before{background:#ff6b72}
+  .ppt-ui-btn{appearance:none;border:1px solid #3a3e48;background:#20242a;color:#f6f7f8;border-radius:8px;padding:9px 13px;font:600 14px/1 Inter,"Noto Sans SC",sans-serif;cursor:pointer}
+  .ppt-ui-btn:hover{background:#2a2f37;border-color:#525864}.ppt-ui-btn:focus-visible{outline:2px solid #84a8ff;outline-offset:2px}.ppt-ui-btn:disabled{opacity:.28;cursor:not-allowed}
+  .ppt-presenter-main{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(300px,.75fr);gap:18px;min-height:0;padding:18px 24px}
+  .ppt-preview-stack{position:relative;display:grid;grid-template-rows:minmax(0,1fr) clamp(132px,22vh,210px);gap:16px;min-width:0;min-height:0}
+  .ppt-stage-card,.ppt-notes-card,.ppt-presenter-overview{background:#171a20;border:1px solid #2b2f37;border-radius:12px;overflow:hidden}
+  .ppt-stage-card{display:grid;grid-template-rows:auto minmax(0,1fr);min-width:0;min-height:0}
+  .ppt-stage-label{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 14px;color:#aeb4be;font-size:13px;border-bottom:1px solid #292d34}
+  .ppt-annotation-tools{display:flex;align-items:center;gap:5px;margin-left:auto}.ppt-annotation-tools .ppt-ui-btn{padding:6px 9px;font-size:12px}.ppt-annotation-tools .ppt-ui-btn.is-active{color:#111318;background:#ff5b63;border-color:#ff5b63}.ppt-annotation-tools .ppt-grid-btn.is-active{color:#111318;background:#edf1f5;border-color:#edf1f5}.ppt-annotation-tools .ppt-clear-btn{min-width:0}.ppt-grid-btn{display:inline-flex;align-items:center;gap:6px}.ppt-grid-icon{display:grid;grid-template-columns:repeat(2,4px);gap:2px}.ppt-grid-icon i{width:4px;height:4px;background:currentColor}
+  .ppt-frame-viewport{position:relative;display:grid;place-items:center;min-width:0;min-height:0;overflow:hidden;background:#08090b}
+  .ppt-frame{display:block;width:0;height:0;max-width:100%;max-height:100%;aspect-ratio:16/9;border:0;background:#08090b}.ppt-next-frame{opacity:.86}#ppt-next-card.is-end .ppt-frame{visibility:hidden}#ppt-next-card.is-end .ppt-frame-viewport::after{content:"簡報結束";position:absolute;color:#727a86;font:650 14px/1 Inter,"Noto Sans SC",sans-serif;letter-spacing:.08em}
+  .ppt-annotation-layer{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;width:0;height:0;pointer-events:none;touch-action:none}.ppt-annotation-layer.is-active{pointer-events:auto;cursor:crosshair}
+  #ppt-audience-ink{position:fixed;inset:0;z-index:70;width:100vw;height:100vh;pointer-events:none}#ppt-audience-cover{position:fixed;inset:0;z-index:80;display:none;pointer-events:none}#ppt-audience-cover.is-ended{display:grid!important;place-items:center;background:#101216!important;color:#f5f6f7;font:650 clamp(24px,3vw,46px)/1.2 Inter,"Noto Sans SC",sans-serif;letter-spacing:.08em}
+  .ppt-preview-stack.is-overview>.ppt-stage-card{display:none}.ppt-presenter-overview{grid-row:1/-1;display:grid;grid-template-rows:auto minmax(0,1fr);min-width:0;min-height:0}.ppt-presenter-overview[hidden]{display:none}.ppt-overview-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid #292d34}.ppt-overview-head strong{font-size:15px}.ppt-overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start;overflow:auto;padding:14px}.ppt-overview-page{appearance:none;min-height:112px;display:grid;grid-template-rows:auto 1fr auto;gap:12px;padding:13px;border:1px solid #343943;border-radius:10px;background:#111318;color:#eef1f4;text-align:left;cursor:pointer}.ppt-overview-page:hover{background:#1d2128;border-color:#636b78}.ppt-overview-page.is-current{border-color:#84a8ff;box-shadow:inset 0 0 0 1px #84a8ff}.ppt-overview-page-no{color:#8f97a3;font:600 12px/1 var(--mono,monospace)}.ppt-overview-page-title{font-size:14px;font-weight:650;line-height:1.35}.ppt-overview-page-meta{display:flex;justify-content:space-between;gap:8px;color:#7f8793;font-size:11px}
+  .ppt-notes-card{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0}.ppt-notes-head{padding:16px 18px;border-bottom:1px solid #292d34}.ppt-notes-label{margin-bottom:6px;color:#848c98;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}.ppt-notes-title{font-size:21px;font-weight:680;line-height:1.32}.ppt-purpose-block{margin-top:14px;padding:11px 12px;border-left:3px solid #84a8ff;background:#111318}.ppt-purpose-copy{color:#c9ced6;font-size:14px;line-height:1.55}.ppt-notes-draft-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:15px;padding-top:13px;border-top:1px solid #2d3139}.ppt-notes-draft-head .ppt-notes-label{margin:0 0 4px}.ppt-note-meta{color:#8f97a3;font-size:12px}
+  .ppt-notes-tools{display:flex;align-items:center;gap:6px}.ppt-notes-tools .ppt-ui-btn{padding:7px 9px}.ppt-note-editor{width:100%;height:100%;min-height:0;resize:none;border:0;outline:0;background:#171a20;color:#edf0f3;padding:18px;font:400 var(--ppt-note-size,17px)/1.72 Inter,"Noto Sans SC",sans-serif}.ppt-note-editor:focus{box-shadow:inset 0 0 0 1px #3d4654}
+  .ppt-saved{color:#72df99;white-space:nowrap}.ppt-presenter-bottom{display:grid;grid-template-columns:minmax(330px,1fr) auto minmax(110px,1fr);align-items:center;gap:20px;padding:12px 24px;border-top:1px solid #2b2e35;background:#15181d}
+  .ppt-time-dashboard{display:flex;align-items:stretch;min-width:0}.ppt-time-stat{min-width:90px;display:grid;align-content:center;gap:4px;padding:0 16px}.ppt-time-stat:first-child{padding-left:0}.ppt-time-stat+.ppt-time-stat{border-left:1px solid #343943}.ppt-time-label{color:#89919d;font-size:11px;font-weight:700;letter-spacing:.1em}.ppt-time-value{color:#f7f8fa;font:650 23px/1 var(--mono,monospace);font-variant-numeric:tabular-nums}.ppt-time-hint{color:#747c88;font-size:11px;white-space:nowrap}.ppt-time-stat.is-over .ppt-time-label,.ppt-time-stat.is-over .ppt-time-value{color:#ff8a90}.ppt-time-stat.is-remaining .ppt-time-value{color:#72df99}
+  .ppt-control-stack{display:grid;gap:7px;justify-items:center}.ppt-controls,.ppt-session-actions{display:flex;align-items:center;justify-content:center;gap:7px}.ppt-controls .ppt-ui-btn,.ppt-session-actions .ppt-ui-btn{min-width:68px}.ppt-session-actions{padding-top:7px;border-top:1px solid #343943}.ppt-rehearsal-on{color:#ff8a90}.ppt-page-state{text-align:right}.ppt-page-state strong{display:block;color:#fff;font-size:17px;margin-bottom:5px}.ppt-page-state span{color:#8f97a3;font:600 13px/1 var(--mono,monospace)}.ppt-auto-state{display:inline-flex;align-items:center;gap:6px;border-radius:999px}.ppt-auto-state.is-on{color:#72df99;border-color:rgba(114,223,153,.45);background:rgba(114,223,153,.08)}.ppt-auto-state.is-paused{color:#f0c766;border-color:rgba(240,199,102,.42);background:rgba(240,199,102,.08)}
+  #ppt-presenter[data-layout="slides"] .ppt-presenter-main{grid-template-columns:minmax(0,2.15fr) minmax(260px,.58fr)}#ppt-presenter[data-layout="notes"] .ppt-presenter-main{grid-template-columns:minmax(0,1.15fr) minmax(380px,1fr)}
+  .ppt-dialog{position:fixed;inset:0;z-index:130;display:grid;place-items:center;padding:24px;background:rgba(4,6,9,.72);backdrop-filter:blur(10px)}.ppt-dialog[hidden]{display:none}.ppt-dialog-panel{width:min(720px,calc(100vw - 48px));max-height:min(760px,calc(100vh - 48px));display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden;border:1px solid #343943;border-radius:14px;background:#171a20;box-shadow:0 24px 80px rgba(0,0,0,.45)}.ppt-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border-bottom:1px solid #2b2f37}.ppt-dialog-title{font-size:20px;font-weight:700}.ppt-dialog-body{overflow:auto;padding:18px;color:#d8dce2;font-size:14px;line-height:1.6}.ppt-dialog-section+.ppt-dialog-section{margin-top:22px}.ppt-dialog-section h3{margin:0 0 10px;color:#fff;font-size:15px}.ppt-dialog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ppt-dialog-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #282c33}.ppt-dialog-row:last-child{border-bottom:0}.ppt-field{display:grid;gap:6px}.ppt-field label{color:#aeb4be;font-size:12px}.ppt-field input{width:100%;border:1px solid #3a3e48;border-radius:8px;background:#101216;color:#fff;padding:9px 10px;font:600 14px Inter,sans-serif}.ppt-check{display:flex;align-items:flex-start;gap:10px}.ppt-check-dot{width:9px;height:9px;margin-top:7px;border-radius:50%;background:#ff6b72}.ppt-check.is-ok .ppt-check-dot{background:#72df99}.ppt-check.is-warn .ppt-check-dot{background:#f0c766}.ppt-summary{width:100%;border-collapse:collapse;font-size:13px}.ppt-summary th,.ppt-summary td{padding:9px 8px;border-bottom:1px solid #2b2f37;text-align:left}.ppt-summary th{color:#9fa6b1;font-weight:600}.ppt-summary td:last-child,.ppt-summary th:last-child{text-align:right}.ppt-muted{color:#8f96a1}.ppt-shortcuts{display:grid;grid-template-columns:auto 1fr;gap:8px 14px}.ppt-shortcuts kbd{min-width:44px;padding:4px 7px;border:1px solid #3a3e48;border-radius:6px;background:#101216;color:#fff;text-align:center;font:600 12px var(--mono,monospace)}
+  .ppt-settings-card{padding:15px;border:1px solid #30353e;border-radius:12px;background:#12151a}.ppt-settings-card+.ppt-settings-card{margin-top:12px}.ppt-settings-card h3{margin:0 0 3px}.ppt-settings-copy{margin:0 0 14px;color:#858d99;font-size:12px}.ppt-switch-row{display:flex;align-items:center;justify-content:space-between;gap:18px;cursor:pointer}.ppt-switch-row input{position:absolute;opacity:0;pointer-events:none}.ppt-switch{width:48px;height:28px;flex:0 0 auto;padding:3px;border:1px solid #434955;border-radius:999px;background:#252a31;transition:.2s}.ppt-switch::after{content:"";display:block;width:20px;height:20px;border-radius:50%;background:#a8afb9;transition:.2s}.ppt-switch-row input:checked+.ppt-switch{border-color:#72df99;background:rgba(114,223,153,.16)}.ppt-switch-row input:checked+.ppt-switch::after{transform:translateX(20px);background:#72df99}.ppt-stepper{display:grid;grid-template-columns:38px minmax(72px,1fr) auto 38px;align-items:center;margin-top:14px;border:1px solid #363c46;border-radius:10px;background:#0d0f13;overflow:hidden}.ppt-stepper button{height:42px;border:0;background:#20242a;color:#fff;font-size:19px;cursor:pointer}.ppt-stepper button:hover{background:#2c323b}.ppt-stepper input{width:100%;height:42px;border:0!important;border-radius:0!important;background:transparent!important;text-align:center;font:650 16px var(--mono,monospace)!important;-moz-appearance:textfield}.ppt-stepper input::-webkit-inner-spin-button,.ppt-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.ppt-stepper-unit{color:#858d99;font-size:12px}.ppt-segmented{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.ppt-segmented.screen{grid-template-columns:repeat(4,1fr)}.ppt-segmented .ppt-ui-btn{min-width:0}.ppt-settings-save{width:100%;margin-top:14px;background:#edf1f5;color:#111318;border-color:#edf1f5}.ppt-settings-save:hover{background:#fff}.ppt-settings-save+.ppt-settings-copy{margin:10px 0 0}
+  #overview{z-index:110!important}
+  @media(max-width:1200px){.ppt-presenter-main{grid-template-columns:minmax(0,1.55fr) minmax(280px,.72fr)}}
+  @media(max-width:1100px){.ppt-presenter-bottom{grid-template-columns:minmax(292px,1fr) auto minmax(86px,.6fr);gap:12px}.ppt-time-stat{min-width:82px;padding:0 11px}.ppt-time-value{font-size:20px}.ppt-controls .ppt-ui-btn,.ppt-session-actions .ppt-ui-btn{min-width:60px;padding:8px 9px}}
+  @media(max-width:900px){.ppt-presenter-top{padding:12px 16px;flex-wrap:wrap}.ppt-presenter-top .ppt-presenter-meta{gap:6px}.ppt-presenter-top .ppt-ui-btn{padding:8px 9px}.ppt-presenter-main,#ppt-presenter[data-layout="slides"] .ppt-presenter-main,#ppt-presenter[data-layout="notes"] .ppt-presenter-main{grid-template-columns:minmax(0,1.45fr) minmax(250px,.72fr);gap:12px;padding:12px 16px}.ppt-preview-stack{gap:12px;grid-template-rows:minmax(0,1fr) clamp(104px,20vh,150px)}.ppt-saved{display:none}.ppt-presenter-bottom{grid-template-columns:minmax(270px,1fr) auto 74px;gap:8px;padding:9px 16px}.ppt-time-stat{min-width:0;padding:0 9px}.ppt-time-value{font-size:18px}.ppt-time-hint{max-width:78px;overflow:hidden;text-overflow:ellipsis}.ppt-controls,.ppt-session-actions{gap:5px}.ppt-controls .ppt-ui-btn,.ppt-session-actions .ppt-ui-btn{min-width:52px;padding:7px 8px;font-size:12px}.ppt-page-state strong{font-size:14px}.ppt-dialog-grid{grid-template-columns:1fr}.ppt-segmented.screen{grid-template-columns:repeat(2,1fr)}}
+  @media(max-height:700px){.ppt-presenter-top{padding-top:10px;padding-bottom:10px}.ppt-presenter-main{padding-top:10px;padding-bottom:10px}.ppt-preview-stack{grid-template-rows:minmax(0,1fr) clamp(88px,16vh,118px);gap:10px}.ppt-stage-label{padding:7px 10px}.ppt-notes-head{padding:12px 14px}.ppt-purpose-block{margin-top:10px;padding:8px 10px}.ppt-notes-draft-head{margin-top:10px;padding-top:9px}.ppt-presenter-bottom{padding-top:8px;padding-bottom:8px}.ppt-control-stack{gap:5px}.ppt-session-actions{padding-top:5px}}
+  /* ============ /講者模式 ============ */
+
+  /* ============================================================
+     ============ LAYOUTS API · 面向 agent 的类（v2）============
+     所有 layouts.md 中的骨架都基于下面这套命名。
+     如果你在 layouts.md 里看到某个类，它必须在下面有定义。
+     ============================================================ */
+
+  /* ---------- .frame：每页主内容容器 ---------- */
+  .frame{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  /* 当 .frame 同时加了 grid 类时，grid 的 display:grid 覆盖 flex */
+  .frame.grid-2-7-5,
+  .frame.grid-2-6-6,
+  .frame.grid-2-8-4,
+  .frame.grid-3-3,
+  .frame.grid-6{display:grid}
+
+  /* ---------- 標題层级（API 名称，衬线为主） ---------- */
+  .h-hero{
+    font-family:var(--serif-zh);
+    font-weight:900;
+    font-size:10vw;
+    line-height:.96;
+    letter-spacing:-.02em;
+  }
+  .h-xl{
+    font-family:var(--serif-zh);
+    font-weight:700;
+    font-size:6.2vw;
+    line-height:1.08;
+    letter-spacing:-.01em;
+  }
+  .h-sub{
+    font-family:var(--serif-zh);
+    font-weight:500;
+    font-size:3.1vw;
+    line-height:1.25;
+    letter-spacing:0;
+    opacity:.7;
+  }
+  .h-md{
+    font-family:var(--serif-zh);
+    font-weight:600;
+    font-size:2.3vw;
+    line-height:1.3;
+  }
+  /* 英文標題专用（Playfair 衬线） */
+  .h-hero-en,.h-xl-en{font-family:var(--serif-en);letter-spacing:-.025em}
+
+  /* ---------- lead 引语：定义见上方“字体规则”区块（已合并，勿重复定义） ---------- */
+
+  /* ---------- meta-row 底部元数据 ---------- */
+  .meta-row{
+    display:flex;
+    gap:1.2em;
+    align-items:baseline;
+    flex-wrap:wrap;
+    font-family:var(--mono);
+    font-size:max(12px,.92vw);
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    opacity:.6;
+  }
+
+  /* ---------- stat-card（数据大字报用） ---------- */
+  .stat-card{
+    display:flex;
+    flex-direction:column;
+    gap:.8vh;
+    align-items:flex-start;
+    padding-top:1.6vh;
+    border-top:1px solid currentColor;
+    border-color:rgba(127,127,127,.3);
+  }
+  .stat-card .stat-label{
+    font-family:var(--mono);
+    font-size:max(10px,.78vw);
+    letter-spacing:.24em;
+    text-transform:uppercase;
+    opacity:.55;
+  }
+  .stat-card .stat-nb{
+    font-family:var(--serif-en);
+    font-weight:800;
+    font-size:5.8vw;
+    line-height:.9;
+    letter-spacing:-.03em;
+    font-feature-settings:"tnum";
+    margin-top:.4vh;
+  }
+  .stat-card .stat-nb .stat-unit{
+    font-family:var(--serif-zh);
+    font-weight:500;
+    font-size:.38em;
+    letter-spacing:0;
+    opacity:.72;
+    margin-left:.14em;
+  }
+  .stat-card .stat-note{
+    font-family:var(--sans-zh);
+    font-weight:400;
+    font-size:max(13px,1.05vw);
+    line-height:1.5;
+    opacity:.72;
+    margin-top:.6vh;
+  }
+  /* 当 stat-card 用于 grid-4（2x2），数字适度放大；若页面有標題+引文在上方，可内联 style 覆盖为更小值 */
+  .grid-4 .stat-card .stat-nb{font-size:5vw}
+  /* 当只有 3 个，字也可以稍大 */
+  .grid-3 .stat-card .stat-nb{font-size:6.8vw}
+
+  /* ---------- pipeline（流水线） ---------- */
+  .pipeline-section{
+    margin-top:4.4vh;
+    padding-top:2.8vh;
+    border-top:1px dashed rgba(127,127,127,.32);
+  }
+  .pipeline-section:first-of-type{
+    border-top:0;
+    padding-top:0;
+    margin-top:3vh;
+  }
+  .pipeline-label{
+    font-family:var(--mono);
+    font-size:max(11px,.85vw);
+    letter-spacing:.24em;
+    text-transform:uppercase;
+    opacity:.62;
+    margin-bottom:2.2vh;
+  }
+  .pipeline{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:1.2vw;
+  }
+  .pipeline[data-cols="3"]{grid-template-columns:repeat(3,1fr)}
+  .pipeline[data-cols="4"]{grid-template-columns:repeat(4,1fr)}
+  .pipeline[data-cols="6"]{grid-template-columns:repeat(6,1fr)}
+  .step{
+    display:flex;
+    flex-direction:column;
+    gap:.8vh;
+    padding-top:1.4vh;
+    border-top:1px solid currentColor;
+    border-color:rgba(127,127,127,.35);
+  }
+  .step-nb{
+    font-family:var(--serif-en);
+    font-style:italic;
+    font-weight:500;
+    font-size:1.15vw;
+    opacity:.45;
+  }
+  .step-title{
+    font-family:var(--sans-zh);
+    font-weight:700;
+    font-size:1.55vw;
+    letter-spacing:.01em;
+    line-height:1.2;
+  }
+  .step-desc{
+    font-family:var(--sans-zh);
+    font-weight:400;
+    font-size:max(12px,.95vw);
+    line-height:1.45;
+    opacity:.72;
+  }
+
+  /* ---------- 网格（layouts.md 所用） ---------- */
+  /* 这些类独立挂到任何容器上都能生效，不依赖 .frame 复合選擇器 */
+  .grid-2-7-5{display:grid;grid-template-columns:7fr 5fr;gap:3vw 4vh;align-items:start}
+  .grid-2-6-6{display:grid;grid-template-columns:1fr 1fr;gap:3vw 4vh;align-items:start}
+  .grid-2-8-4{display:grid;grid-template-columns:8fr 4fr;gap:3vw 4vh;align-items:start}
+  .grid-3-3{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-auto-rows:minmax(0,1fr);
+    gap:2.4vh 2vw;
+  }
+  /* grid-6 已在旧样式里定义为 3x2，这里仅补 align */
+
+  /* ---------- 图片 frame-img（layouts.md 主命名） ---------- */
+  /* 在旧样式里已定义，这里补 img-cap 命名别名与增强 */
+  figure.frame-img{margin:0;display:flex;flex-direction:column;min-width:0}
+  /* 有图注时:图片弹性收缩,图注收进固定高度/比例框内部,
+     否则 img 的 height:100% 会把 figcaption 挤出 overflow:hidden 裁掉 */
+  figure.frame-img:has(> .img-cap) > img{flex:1 1 auto;min-height:0;height:auto}
+  .img-cap{
+    display:block;
+    flex:0 0 auto;
+    padding:.7vh .9em .9vh;
+    font-family:var(--mono);
+    font-size:max(10px,.8vw);
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    opacity:.6;
+  }
+  /* callout src 命名别名 */
+  .callout-src{
+    display:block;
+    margin-top:1.6vh;
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    opacity:.6;
+  }
+
+  /* ---------- chrome & foot：定义见上方“Magazine chrome”区块（已合并，勿重复定义） ---------- */
+
+  /* ============ 动效系统(Motion One 驱动) ============
+     所有 [data-anim] 元素默认隐藏,进入页面时由 JS 逐个揭示。
+     - cascade(默认):按 DOM 顺序 stagger 120ms 淡入 + y:16→0
+     - hero(hero 页自動):慢一点的 stagger 180ms
+     - quote(含 [data-anim="line"]):逐行 600ms 淡入
+     - directional(含 [data-anim="left|right"]):左→分隔线→右
+     - pipeline(data-animate="pipeline"):Space/→ 手动推进
+     Motion One 没加载成功时(CDN 断 + 本地丢),所有 [data-anim] 会兜底显示。
+  */
+  [data-anim]{opacity:1}
+  body.motion-ready [data-anim]{opacity:0}
+  body.motion-ready [data-anim="left"]{transform:translateX(-24px)}
+  body.motion-ready [data-anim="right"]{transform:translateX(24px)}
+  body.motion-ready [data-anim="line"]{opacity:0;transform:translateY(10px)}
+  body.motion-ready [data-animate="pipeline"] [data-anim]{opacity:.15}
+  body.low-power #deck{transition:none!important}
+  body.low-power *,
+  body.low-power *::before,
+  body.low-power *::after{animation:none!important;transition:none!important}
+  body.low-power.motion-ready [data-anim],
+  body.low-power [data-anim]{opacity:1!important;transform:none!important}
+  /* ESC 索引缩略图：克隆的 slide 不经过动效播放，强制显示所有待动画元素 */
+  #overview [data-anim]{opacity:1!important;transform:none!important}
+
+  /* ---------- 响应式降级 ---------- */
+  @media (max-width:900px){
+    .display{font-size:16vw}
+    .display-zh{font-size:12vw}
+    .h1-zh{font-size:7vw}
+    .h-hero{font-size:14vw}
+    .h-xl{font-size:9vw}
+    .pipeline{grid-template-columns:repeat(2,1fr)}
+    .grid-2-7-5,.grid-2-6-6,.grid-2-8-4{grid-template-columns:1fr}
+  }
+  /* Parking Forecast brand adaptation */
+  .slide.hero::before,.slide.hero::after{display:none}
+  .slide.hero.light{background:var(--paper);color:var(--ink)}
+  .slide.hero.dark{background:var(--ink);color:var(--paper)}
+  .display,.display-zh,.h1-zh,.h2-zh,.h3-zh,.h-hero,.h-xl,.h-md,.lead,.big-num,.mid-num,.stat .n{font-family:var(--sans-zh)}
+  .slide{font-family:var(--sans-zh)}
+  .chrome,.foot,.meta,.kicker,.tag{letter-spacing:.04em}
+  .flow-svg{display:block;width:100%;height:auto;max-height:62vh}
+  .flow-svg text{font-family:var(--sans-zh)}
+  .brand-card{border:1px solid rgba(7,83,62,.14);border-radius:18px;background:#fffefa;color:#20394e;box-shadow:0 8px 24px rgba(32,57,78,.08)}
+  .brand-card h3{color:#07533e}
+  .brand-pill{display:inline-flex;align-items:center;padding:.45em .75em;border:1px solid #e2ddd2;border-radius:999px;background:#fffefa;color:#20394e;font:700 14px/1.2 Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif}
+  @media(max-width:900px){.flow-svg{max-height:56vh}}
+</style>
 </head>
 <body>
-  <header class="site-header wrap">
-    <a class="brand" href="#top" aria-label="回到作品集首頁">
-      <span class="brand-mark" aria-hidden="true">停</span>
-      <span>
-        <span class="brand-title">全臺停車位抵達預測</span>
-        <span class="brand-subtitle">用官方觀測與資料證據，理解抵達時的停車風險</span>
-      </span>
-    </a>
-    <nav class="nav" aria-label="作品集導覽">
-      <a href="#overview">總覽</a><a href="#architecture">架構</a><a href="#journey">流程</a>
-      <a href="#api">API</a><a href="#ml">資料與 ML</a><a href="#collaboration">協作</a><a href="#evidence">證據</a>
-    </nav>
-    <button class="print-button" type="button" onclick="window.print()" aria-label="列印或另存為 PDF"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M6 17H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>匯出 PDF</button>
-  </header>
+<script>
+  (function(){
+    const KEY = 'guizang-ppt-low-power';
+    const reduced = true;
+    const stored = localStorage.getItem(KEY);
+    window.__lowPowerMode = stored === '1' || (stored === null && reduced);
+    function updateHint(){
+      const label = document.querySelector('.ppt-low-power-label');
+      if(label) label.textContent = window.__lowPowerMode ? '动态' : '靜態';
+    }
+    window.__setLowPowerMode = function(on, opts={}){
+      window.__lowPowerMode = !!on;
+      document.body.classList.toggle('low-power', window.__lowPowerMode);
+      if(opts.persist !== false) localStorage.setItem(KEY, window.__lowPowerMode ? '1' : '0');
+      if(window.__lowPowerMode && document.getAnimations){
+        document.getAnimations().forEach(a=>a.cancel());
+      }
+      updateHint();
+      dispatchEvent(new CustomEvent('ppt-low-power-change', {detail:{on:window.__lowPowerMode}}));
+      if(window.__playSlide) window.__playSlide(window.__currentSlideIndex || 0);
+    };
+    document.body.classList.toggle('low-power', window.__lowPowerMode);
+    addEventListener('DOMContentLoaded', updateHint, {once:true});
+  })();
+</script>
 
-  <main id="top">
-    <div class="wrap">
-      <section class="hero-intro" aria-labelledby="hero-title">
-        <div>
+<canvas id="bg-dark" class="bg"></canvas>
+<canvas id="bg-light" class="bg"></canvas>
+<div id="hint" role="toolbar" aria-label="快捷控制">
+  <span>← → 翻页</span><span class="ppt-sep">·</span>
+  <button id="ppt-low-power-btn" type="button"><span class="ppt-key">B</span><span class="ppt-low-power-label">靜態</span></button><span class="ppt-sep">·</span>
+  <button id="ppt-overview-btn" type="button"><span class="ppt-key">ESC</span>總覽</button><span class="ppt-sep">·</span>
+  <button id="ppt-presenter-btn" type="button"><span class="ppt-key">P</span>講者模式</button>
+</div>
 
-          <h1 id="hero-title">從地圖出發，查附近停車位，了解抵達預測的依據</h1>
-          <p class="hero-copy">這是目前產品介面的靜態重繪。它呈現查詢目的地與資料狀態；每一筆官方觀測、系統取得時間和模型估計都各自標示，不把過期或未知資料說成空位。</p>
-        </div>
-        <div class="hero-callouts" aria-label="目前畫面中的資料限制">
-          <article class="callout">
-            <div class="callout-head"><span class="callout-number">2</span><span>來源快照已過期</span></div>
-            <p>畫面記錄系統於 2026-10-26 取得快照；來源觀測時間與系統取得時間不同，過期快照不能代表現在仍有位。</p>
-          </article>
-          <article class="callout warning">
-            <div class="callout-head"><span class="callout-number">3</span><span>未提供出發地，預測資料不足</span></div>
-            <p>沒有起點時 ETA 為 <code>NOT_REQUESTED</code>，Routes 不會被呼叫；目前條件不足以估計抵達時的車位可能性。</p>
-          </article>
-        </div>
-      </section>
+<div id="deck">
 
-      <section class="product-grid" aria-label="產品介面與附近資料概況">
-        <div class="map-card" role="img" aria-label="新莊體育館周邊停車示意圖。道路街廓與標記是概念示意，不代表真實地圖座標。">
-          <div class="map-greenway one"></div><div class="map-greenway two"></div>
-          <div class="map-road r1"></div><div class="map-road r2"></div><div class="map-road r3"></div><div class="map-road r4"></div><div class="map-road r5"></div>
-          <span class="map-label l1">新莊示意街廓</span><span class="map-label l2">道路・示意</span>
-          <span class="map-label l3">公園綠地・示意</span><span class="map-label l4">搜尋範圍示意</span><span class="map-label l5">道路位置非比例</span>
-          <span class="map-marker m1" aria-hidden="true"></span><span class="map-marker m2" aria-hidden="true"></span>
-          <span class="map-marker m3" aria-hidden="true"></span><span class="map-marker m4" aria-hidden="true"></span>
-          <span class="map-destination" aria-hidden="true"></span>
-          <div class="map-search"><strong><span class="callout-number" aria-hidden="true">1</span><i class="legend-dot blue" aria-hidden="true"></i>新莊體育館</strong><small>目的地周邊 500 公尺</small></div>
-          <div class="map-legend" aria-label="圖例"><span><i class="legend-dot"></i>停車資料位置</span><span><i class="legend-dot blue"></i>目的地</span><span><i class="legend-dot gray"></i>狀態未知</span></div>
-          <div class="map-note">街廓與位置標記皆為示意，非底圖／座標</div>
-        </div>
-        <div class="product-side">
-          <section class="product-panel" aria-labelledby="destination-title">
-            <div class="destination-head">
-              <span class="destination-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-              <div><h2 id="destination-title">新莊體育館</h2><p>目的地附近停車資訊 · 搜尋半徑 500 公尺</p></div>
-            </div>
-            <div class="availability-row"><span>官方觀測符合篩選</span><strong>62 筆</strong></div>
-            <div class="state-grid">
-              <article class="state-card">
-                <span class="state-label">官方目前空位</span>
-                <strong>未知</strong>
-                <p>符合篩選的觀測筆數不是可用空位數；來源快照已過期。</p>
-              </article>
-              <article class="state-card red">
-                <span class="state-label">抵達時車位預測</span>
-                <strong>資料不足</strong>
-                <p>未提供出發地，ETA 未請求；不以模型估計補上缺少的官方資料。</p>
-              </article>
-            </div>
-            <div class="system-meta">
-              <div><span>系統取得</span><strong>2026-10-26 下午 03:07</strong></div>
-              <div><span>ETA</span><strong>NOT_REQUESTED</strong></div>
-            </div>
-          </section>
-          <section class="catalog-teaser" aria-labelledby="nearby-title">
-            <div class="teaser-head"><h3 id="nearby-title">附近停車位與停車場</h3><span class="teaser-count">依目的地距離排序</span></div>
-            <div class="teaser-item">
-              <span class="teaser-icon" aria-hidden="true">P</span>
-              <div><strong>官方目錄中的周邊設施</strong><small>資料可見不代表即時快照有效</small></div>
-              <span class="status-pill">資料過期</span>
-            </div>
-            <p class="disclaimer">此作品集重繪真實產品狀態，不連線即時 API；街廓和標記為示意。</p>
-          </section>
-        </div>
-      </section>
+<!-- ============================================================
+     SLIDES 插入区 · 在此处填充所有 <section class="slide ..."> 页面
+     每页模板参考 references/page-patterns.md
+     页面组件参考 references/components.md
+     ============================================================ -->
 
-      <section class="catalog-teaser mt-14" aria-label="下一節預告">
-        <div class="teaser-head"><h3>目錄、來源對應與快照如何支撐查詢</h3><a href="#architecture">往下看後端資料流</a></div>
-        <p class="small muted mb-0">主系統把目錄、來源 mapping、快照和觀測分開保存；使用者查詢讀取已發布快照，刷新則走獨立 API 和來源協調流程。</p>
-      </section>
+<section class="slide hero dark" data-slide-id="cover">
+  <div class="chrome"><div class="left"><span>TAIWAN PARKING FORECAST</span><span class="sep"></span><span>BACKEND CASE</span></div><div class="right"><span>新莊 MVP</span></div></div>
+  <div class="frame split" style="gap:4vw;align-items:center">
+    <div style="display:flex;flex-direction:column;gap:2.2vh">
+      <div class="kicker">後端工程師面試作品</div>
+      <h1 class="h-hero" style="font-size:6.2vw;line-height:1.08">讓資料可追溯<br>讓查詢有邊界</h1>
+      <p class="lead" style="max-width:48vw">以官方快照與明確降級規則，支撐附近停車查詢。</p>
+      <div class="meta">JAVA 21 · SPRING BOOT · MYSQL · REDIS</div>
     </div>
-
-    <section class="section" id="overview">
-      <div class="wrap">
-        <div class="section-heading">
-
-          <div><h2>把「附近有沒有位」拆成可解釋的資料狀態</h2><p>這個專案協助駕駛查看目的地周邊停車資料，並在 ETA、快照與場站資格條件足夠時探索抵達時仍有車位的可能性。它不保證抵達時一定有位。</p></div>
-        </div>
-        <div class="grid-3">
-          <article class="card card-pad"><h3>先找到附近選項</h3><p class="muted small mb-0">用目的地定位路外停車場與路邊格位；查看目前觀測、資料更新狀態及來源限制。</p></article>
-          <article class="card card-pad"><h3>資料狀態先於機率</h3><p class="muted small mb-0">新查詢不偷偷觸發來源更新；官方觀測與模型估計分開呈現，未知與過期不會轉成 0。</p></article>
-          <article class="card card-pad"><h3>新莊 MVP，逐步治理覆蓋</h3><p class="muted small mb-0">目前目錄與即時介接以新北市新莊為 MVP。TDX 歷史素材用於離線研究，不代表全臺即時來源已接入。</p></article>
-        </div>
-        <div class="grid-4 mt-18">
-          <article class="card card-pad stack-card"><span class="stack-label">前端</span><h3>Vue 3 + Vite</h3><p>地點輸入、地圖、停車清單、觀測與預測狀態。</p><div class="tech-list"><span class="tech">Vue 3.5.42</span><span class="tech">Vite 8.3.0</span><span class="tech">JavaScript</span></div></article>
-          <article class="card card-pad stack-card"><span class="stack-label">後端</span><h3>Java + Spring Boot</h3><p>HTTP 契約、查詢協調、外部來源轉接與推論護欄。</p><div class="tech-list"><span class="tech">Java 21</span><span class="tech">Spring Boot 4.1.1</span><span class="tech">Spring MVC</span></div></article>
-          <article class="card card-pad stack-card"><span class="stack-label">資料</span><h3>MySQL + Redis</h3><p>MySQL 保存可追溯目錄與快照；Redis 保存短期 query state 和刷新協調。</p><div class="tech-list"><span class="tech">Spring Data JPA</span><span class="tech">Flyway</span><span class="tech">Redis</span></div></article>
-          <article class="card card-pad stack-card"><span class="stack-label">外部服務與交付</span><h3>官方資料與 Google</h3><p>新北市來源、Google Maps／Places／Routes；本機以 Docker Compose 組合服務。</p><div class="tech-list"><span class="tech">NTPC Open Data</span><span class="tech">Google Routes</span><span class="tech">Docker Compose</span></div></article>
-        </div>
-        <p class="note warning mt-18">版本依本機 <code>frontend/package.json</code>、<code>backend/pom.xml</code> 與 <code>docker-compose.yml</code> 核對。Google 外部呼叫是否啟用由設定決定；服務存在不代表該環境已驗收或免費無限使用。</p>
+    <div class="brand-card" style="padding:2.2vw;max-width:44vw">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.3vh">
+        <strong style="font-size:1.5vw">新莊體育館附近</strong>
+        <span class="brand-pill">500 m</span>
       </div>
-    </section>
-
-    <section class="section alt" id="architecture">
-      <div class="wrap">
-        <div class="section-heading">
-
-          <div><h2>線上查詢、來源刷新與離線訓練各有責任邊界</h2><p>實線是目前主系統程式路徑；虛線代表離線產物經護欄載入實驗性推論。圖中服務名稱以程式碼為準，舊架構草案不當成實作證據。</p></div>
-        </div>
-        <div class="diagram-frame">
-          <svg viewBox="0 0 1480 760" role="img" aria-labelledby="arch-title arch-desc">
-            <title id="arch-title">停車預測系統架構圖</title>
-            <desc id="arch-desc">Vue 前端透過 REST API 呼叫 Spring Boot。後端查詢 MySQL 已發布快照、使用 Redis 保存短期查詢狀態，並在受控流程中呼叫新北市官方資料與 Google Routes、Places。離線 collector 只產生私有訓練素材；經驗證的參數型 JSON 以實驗性產物供路外推論服務讀取。</desc>
-            <defs>
-              <marker id="arr-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#08784f"/></marker>
-              <marker id="arr-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#2868a0"/></marker>
-              <marker id="arr-gray" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#74848a"/></marker>
-            </defs>
-            <rect x="0" y="0" width="1480" height="760" fill="#fffefa"/>
-            <text x="40" y="42" class="svg-title">主系統：使用者查詢與受控來源刷新</text>
-            <rect x="40" y="80" width="235" height="180" rx="18" fill="#f1f7f1" stroke="#b7d4be" stroke-width="2"/>
-            <text x="62" y="116" class="svg-node-title">瀏覽器</text>
-            <text x="62" y="146" class="svg-node-copy">Vue 3.5.42 · Vite 8.3.0</text>
-            <text x="62" y="172" class="svg-node-copy">目的地／Places 輸入</text>
-            <text x="62" y="198" class="svg-node-copy">地圖與結果狀態</text>
-            <text x="62" y="230" class="svg-small">不直接抓政府即時車位</text>
-
-            <rect x="360" y="70" width="490" height="385" rx="20" fill="#f8faf7" stroke="#9abdad" stroke-width="2"/>
-            <text x="385" y="108" class="svg-node-title">Java 21 · Spring Boot 4.1.1 API</text>
-            <rect x="385" y="130" width="210" height="104" rx="13" fill="#e7f1e9" stroke="#b3d1bd"/>
-            <text x="402" y="160" class="svg-node-title">Controller</text>
-            <text x="402" y="185" class="svg-node-copy">ParkingQueryController</text>
-            <text x="402" y="209" class="svg-small">DTO 驗證 · HTTP 契約</text>
-            <rect x="615" y="130" width="210" height="104" rx="13" fill="#e7f1e9" stroke="#b3d1bd"/>
-            <text x="632" y="160" class="svg-node-title">查詢協調</text>
-            <text x="632" y="185" class="svg-node-copy">ParkingQueryService</text>
-            <text x="632" y="209" class="svg-small">附近目錄 · 快照 · ETA · 預測</text>
-            <rect x="385" y="260" width="210" height="145" rx="13" fill="#edf5fb" stroke="#bfd4e4"/>
-            <text x="402" y="291" class="svg-node-title">來源刷新模組</text>
-            <text x="402" y="317" class="svg-node-copy">NtpcRealtimeSourceRefreshService</text>
-            <text x="402" y="344" class="svg-small">正規化 → 品質檢查</text>
-            <text x="402" y="368" class="svg-small">候選完整快照 → 發布</text>
-            <text x="402" y="390" class="svg-small">refresh gate / cooldown</text>
-            <rect x="615" y="260" width="210" height="145" rx="13" fill="#fff5e4" stroke="#ecd3a1"/>
-            <text x="632" y="291" class="svg-node-title">Experimental 推論</text>
-            <text x="632" y="317" class="svg-node-copy">ExperimentalOffStreetPredictionService</text>
-            <text x="632" y="344" class="svg-small">僅路外 · 30／60 分鐘</text>
-            <text x="632" y="368" class="svg-small">資料護欄不符 → 資料不足</text>
-            <text x="632" y="390" class="svg-small">不讀歷史 CSV／ZIP</text>
-
-            <rect x="930" y="88" width="220" height="145" rx="17" fill="#f4f6f2" stroke="#c9d4cd" stroke-width="2"/>
-            <text x="952" y="123" class="svg-node-title">MySQL 8.4</text>
-            <text x="952" y="151" class="svg-node-copy">Spring Data JPA</text>
-            <text x="952" y="177" class="svg-node-copy">Flyway migration</text>
-            <text x="952" y="205" class="svg-small">目錄／mapping／快照／觀測</text>
-            <rect x="930" y="276" width="220" height="132" rx="17" fill="#edf5fb" stroke="#bfd4e4" stroke-width="2"/>
-            <text x="952" y="311" class="svg-node-title">Redis</text>
-            <text x="952" y="339" class="svg-node-copy">短期 query state</text>
-            <text x="952" y="365" class="svg-node-copy">刷新協調／短鎖</text>
-            <text x="952" y="391" class="svg-small">不是唯一停車資料真相</text>
-
-            <rect x="1220" y="75" width="220" height="158" rx="17" fill="#f1f7f1" stroke="#b7d4be" stroke-width="2"/>
-            <text x="1242" y="111" class="svg-node-title">新北市官方來源</text>
-            <text x="1242" y="141" class="svg-node-copy">路邊／路外資料</text>
-            <text x="1242" y="168" class="svg-node-copy">Adapter 與欄位正規化</text>
-            <text x="1242" y="199" class="svg-small">目前 MVP；非全臺即時覆蓋</text>
-            <rect x="1220" y="276" width="220" height="132" rx="17" fill="#f6f3ed" stroke="#d8d0c1" stroke-width="2"/>
-            <text x="1242" y="311" class="svg-node-title">Google APIs</text>
-            <text x="1242" y="339" class="svg-node-copy">Routes ETA（有起點時）</text>
-            <text x="1242" y="365" class="svg-node-copy">Places 附近場站補充</text>
-            <text x="1242" y="391" class="svg-small">外部呼叫依金鑰／設定</text>
-
-            <path d="M275 167 H350" fill="none" stroke="#08784f" stroke-width="3" marker-end="url(#arr-green)"/>
-            <text x="287" y="153" class="svg-small">REST API</text>
-            <path d="M850 172 H915" fill="none" stroke="#08784f" stroke-width="3" marker-end="url(#arr-green)"/>
-            <text x="858" y="157" class="svg-small">JPA repositories</text>
-            <path d="M850 326 H915" fill="none" stroke="#2868a0" stroke-width="3" marker-start="url(#arr-blue)" marker-end="url(#arr-blue)"/>
-            <text x="865" y="313" class="svg-small">state / lock</text>
-            <path d="M595 327 H605 V210 H608" fill="none" stroke="#74848a" stroke-width="2" marker-end="url(#arr-gray)"/>
-            <text x="470" y="250" class="svg-small">published snapshot</text>
-            <path d="M850 309 H1208 V157 H1215" fill="none" stroke="#2868a0" stroke-width="2.5" marker-end="url(#arr-blue)"/>
-            <text x="1035" y="297" class="svg-small">refresh only</text>
-            <path d="M850 195 H1205 V340 H1215" fill="none" stroke="#74848a" stroke-width="2.5" marker-end="url(#arr-gray)"/>
-            <text x="1063" y="221" class="svg-small">conditional calls</text>
-            <path d="M850 365 H1165 V396 H1215" fill="none" stroke="#74848a" stroke-width="2" marker-end="url(#arr-gray)"/>
-
-            <line x1="40" y1="485" x2="1440" y2="485" stroke="#dce3dc" stroke-width="2"/>
-            <text x="40" y="522" class="svg-title">離線訓練與實驗產物：素材隔離，只有參數型產物進入推論</text>
-            <rect x="42" y="560" width="250" height="140" rx="17" fill="#f4f6f2" stroke="#c9d4cd" stroke-width="2"/>
-            <text x="64" y="595" class="svg-node-title">parking-data-collector</text>
-            <text x="64" y="624" class="svg-node-copy">獨立離線收集器</text>
-            <text x="64" y="651" class="svg-small">私有歷史 ZIP／CSV</text>
-            <text x="64" y="676" class="svg-small">不服務使用者、不刷新主系統</text>
-            <rect x="370" y="560" width="270" height="140" rx="17" fill="#edf5fb" stroke="#bfd4e4" stroke-width="2"/>
-            <text x="392" y="595" class="svg-node-title">Python 訓練工具</text>
-            <text x="392" y="624" class="svg-node-copy">品質盤點 → labels</text>
-            <text x="392" y="651" class="svg-node-copy">時間切分 → baseline／評估</text>
-            <text x="392" y="676" class="svg-small">aggregate 證據與准入判斷</text>
-            <rect x="722" y="560" width="270" height="140" rx="17" fill="#fff5e4" stroke="#ecd3a1" stroke-width="2"/>
-            <text x="744" y="595" class="svg-node-title">版本化 JSON 參數</text>
-            <text x="744" y="624" class="svg-node-copy">EXPERIMENT_ONLY</text>
-            <text x="744" y="651" class="svg-node-copy">publishToOnlineSystem=false</text>
-            <text x="744" y="676" class="svg-small">不含逐筆 collector 列</text>
-            <path d="M292 630 H360" fill="none" stroke="#2868a0" stroke-width="3" marker-end="url(#arr-blue)"/>
-            <path d="M640 630 H712" fill="none" stroke="#2868a0" stroke-width="3" marker-end="url(#arr-blue)"/>
-            <path d="M992 630 H1080 V448 H720 V415" fill="none" stroke="#2868a0" stroke-width="3" stroke-dasharray="9 7" marker-end="url(#arr-blue)"/>
-            <text x="1010" y="615" class="svg-small">受護欄讀取</text>
-            <text x="1100" y="455" class="svg-small">程式載入 artifact；</text>
-            <text x="1100" y="473" class="svg-small">不是線上讀歷史資料</text>
-          </svg>
-          <div class="diagram-caption"><span class="key"><i class="key-line"></i>線上呼叫與查詢路徑</span><span class="key"><i class="key-line dashed"></i>離線實驗產物的受控載入</span><span>新北市官方即時來源目前已接入新莊 MVP；TDX 全臺即時接入尚未完成。</span></div>
-        </div>
-        <div class="module-grid">
-          <article class="module-card"><code>controller/</code><h3>API 契約與錯誤格式</h3><p><code>ParkingQueryController</code> 收斂建立、讀取、地圖資料及刷新端點；<code>ApiExceptionHandler</code> 將領域錯誤轉成 HTTP 狀態。</p></article>
-          <article class="module-card"><code>service/</code><h3>查詢協調與資料護欄</h3><p><code>ParkingQueryService</code> 組合 ETA、附近目錄、已發布快照、Places 補充與預測；<code>ExperimentalOffStreetPredictionService</code> 執行路外實驗模型資格檢查。</p></article>
-          <article class="module-card"><code>adapter/ntpc/</code><h3>來源格式隔離</h3><p><code>NtpcRealtimeSourceRefreshService</code> 與 NTPC adapter 負責新北來源抓取、欄位映射、品質檢查與快照發布，不把原始欄位直接交給前端。</p></article>
-          <article class="module-card"><code>repository/ + domain/</code><h3>可追溯持久資料</h3><p>Spring Data JPA repository 存取目錄、source mapping、ingestion run、snapshot、observation 與 source state 等核心實體。</p></article>
-          <article class="module-card"><code>RedisParkingQueryStateStore</code><h3>短期查詢狀態</h3><p>Redis 保存有 TTL 的 query state、防重送 token 與刷新協調資料；MySQL 保留完整快照與來源時間。</p></article>
-          <article class="module-card"><code>docker-compose.yml</code><h3>本機服務組合</h3><p>Web、API、MySQL 8.4 與 Redis 8-alpine；Web 綁定本機 loopback。此設定是本機開發／demo，不等於正式部署驗收。</p></article>
-        </div>
+      <svg class="flow-svg" viewBox="0 0 720 290" role="img" aria-label="示意街區與停車場標記">
+        <rect width="720" height="290" rx="12" fill="#edf1e9"/>
+        <path d="M-20 220 L740 95 M110 -20 L400 320 M520 -20 L260 320 M-20 70 L740 240" fill="none" stroke="#fffefa" stroke-width="24"/>
+        <path d="M-20 220 L740 95 M110 -20 L400 320 M520 -20 L260 320 M-20 70 L740 240" fill="none" stroke="#e2ddd2" stroke-width="2"/>
+        <circle cx="360" cy="150" r="17" fill="#07533e" stroke="#fffefa" stroke-width="7"/>
+        <circle cx="182" cy="98" r="10" fill="#3c6f9e" stroke="#fffefa" stroke-width="5"/>
+        <circle cx="525" cy="205" r="10" fill="#3c6f9e" stroke="#fffefa" stroke-width="5"/>
+        <text x="380" y="155" fill="#20394e" font-size="18" font-weight="700">目的地</text>
+        <text x="22" y="270" fill="#536982" font-size="15">街區與標記為介面示意</text>
+      </svg>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1.2vh">
+        <div style="padding:10px;border-radius:12px;background:#f7f3e9"><small>官方觀測</small><div style="font-weight:800">快照狀態</div></div>
+        <div style="padding:10px;border-radius:12px;background:#f7f3e9"><small>ETA</small><div style="font:700 13px var(--mono)">NOT_REQUESTED</div></div>
+        <div style="padding:10px;border-radius:12px;background:#f7f3e9"><small>預測</small><div style="font-weight:800">受護欄控制</div></div>
       </div>
-    </section>
+    </div>
+  </div>
+  <div class="foot"><div>後端設計案例 · 新北市新莊 MVP</div><div>01 / 06</div></div>
+</section>
 
-    <section class="section" id="journey">
-      <div class="wrap">
-        <div class="section-heading">
+<section class="slide light" data-slide-id="query-flow">
+  <div class="chrome"><div>查詢工作流 · QUERY FLOW</div><div>02 / 06</div></div>
+  <div class="frame" style="padding-top:3vh">
+    <div class="kicker">輸入一次，回應分層</div>
+    <h2 class="h-xl" style="font-size:4.4vw">一次查詢，三種資料責任</h2>
+    <svg class="flow-svg" viewBox="0 0 1600 610" role="img" aria-label="停車查詢工作流">
+      <defs><marker id="q-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#08784f"/></marker></defs>
+      <g fill="#fffefa" stroke="#dce3dc" stroke-width="2">
+        <rect x="45" y="170" width="290" height="200" rx="24"/><rect x="425" y="170" width="320" height="200" rx="24"/>
+        <rect x="835" y="170" width="320" height="200" rx="24"/>
+        <rect x="1240" y="55" width="315" height="135" rx="22"/><rect x="1240" y="230" width="315" height="135" rx="22"/><rect x="1240" y="405" width="315" height="135" rx="22"/>
+      </g>
+      <g fill="none" stroke="#08784f" stroke-width="5" marker-end="url(#q-arrow)">
+        <path d="M335 270 H410"/><path d="M745 270 H820"/><path d="M1155 220 H1208 V122 H1225"/><path d="M1155 270 H1225"/><path d="M1155 320 H1208 V472 H1225"/>
+      </g>
+      <g fill="#07533e" font-size="27" font-weight="800">
+        <text x="82" y="230">查詢請求</text><text x="82" y="280">目的地</text><text x="82" y="324">出發地可選</text>
+        <text x="463" y="230">ParkingQueryService</text><text x="463" y="280">查附近目錄</text><text x="463" y="324">讀已發布快照</text>
+        <text x="883" y="230">資料判斷</text><text x="883" y="280">來源新鮮度</text><text x="883" y="324">ETA／預測護欄</text>
+      </g>
+      <g fill="#20394e" font-size="23" font-weight="800">
+        <text x="1270" y="107">官方觀測</text><text x="1270" y="151" font-size="18" font-weight="500">來源狀態與時間</text>
+        <text x="1270" y="282">ETA</text><text x="1270" y="326" font-size="18" font-weight="500">有 origin 才呼叫 Routes</text>
+        <text x="1270" y="457">抵達預測</text><text x="1270" y="501" font-size="18" font-weight="500">條件不足回 null</text>
+      </g>
+      <text x="45" y="585" fill="#536982" font-size="18">官方觀測 ≠ ETA ≠ 模型估計</text>
+    </svg>
+  </div>
+  <div class="foot"><div>缺少資料時，保留原因，不補造數值</div><div>FLOW</div></div>
+</section>
 
-          <div><h2>先查得到附近設施，再判斷各資料區塊能不能回答</h2><p>查詢、ETA、官方觀測與預測是不同結果區塊。某一項失敗或不足時，系統保留原因並降級，不以另一個區塊的值代替。</p></div>
-        </div>
-        <div class="diagram-frame">
-          <svg viewBox="0 0 1320 650" role="img" aria-labelledby="journey-title journey-desc">
-            <title id="journey-title">使用者查詢與降級流程</title>
-            <desc id="journey-desc">使用者選目的地和可選出發地後建立查詢。系統讀取目錄與已發布官方快照。若沒有起點，ETA 為 NOT_REQUESTED；若來源過期則現況未知；只有 ETA、最新觀測與場站資格符合條件時才回實驗預測，否則回資料不足。刷新由另一個端點受 gate 控制。</desc>
-            <defs>
-              <marker id="flow-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#08784f"/></marker>
-              <marker id="flow-gray" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#74848a"/></marker>
-            </defs>
-            <rect width="1320" height="650" fill="#fffefa"/>
-            <g fill="#f1f7f1" stroke="#afd0ba" stroke-width="2">
-              <rect x="40" y="88" width="190" height="100" rx="16"/><rect x="295" y="88" width="210" height="100" rx="16"/>
-              <rect x="570" y="88" width="215" height="100" rx="16"/><rect x="850" y="88" width="205" height="100" rx="16"/>
-              <rect x="1110" y="88" width="170" height="100" rx="16"/>
-            </g>
-            <g class="svg-node-title" text-anchor="middle">
-              <text x="135" y="128">1 · 選目的地</text><text x="400" y="128">2 · 建立查詢</text><text x="677" y="128">3 · 讀目錄／快照</text>
-              <text x="952" y="128">4 · 區塊分別判斷</text><text x="1195" y="128">5 · 顯示結果</text>
-            </g>
-            <g class="svg-node-copy" text-anchor="middle">
-              <text x="135" y="157">出發地為選填</text><text x="400" y="157">POST → 202 Accepted</text>
-              <text x="677" y="157">附近範圍約 500m</text><text x="952" y="157">ETA／現況／預測</text>
-              <text x="1195" y="157">保留狀態與原因</text>
-            </g>
-            <path d="M230 138 H285 M505 138 H560 M785 138 H840 M1055 138 H1100" stroke="#08784f" stroke-width="3" fill="none" marker-end="url(#flow-arrow)"/>
+<section class="slide dark" data-slide-id="backend-architecture">
+  <div class="chrome"><div>後端架構 · COMPONENT UML</div><div>03 / 06</div></div>
+  <div class="frame" style="padding-top:2vh">
+    <div class="kicker">責任分離</div>
+    <h2 class="h-xl" style="font-size:4.2vw">線上查詢與來源刷新，各走自己的路徑</h2>
+    <svg class="flow-svg" viewBox="0 0 1680 600" role="img" aria-label="停車預測後端元件架構 UML">
+  <defs>
+    <marker id="arch-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#8bbfa7"/></marker>
+    <marker id="arch-blue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#9bb9d3"/></marker>
+  </defs>
+  <g fill="#fffefa" stroke="#cfd9d0" stroke-width="2">
+    <rect x="35" y="65" width="220" height="125" rx="18"/>
+    <rect x="300" y="65" width="285" height="125" rx="18"/>
+    <rect x="630" y="65" width="340" height="125" rx="18"/>
+    <rect x="1015" y="65" width="300" height="125" rx="18"/>
+    <rect x="1360" y="65" width="290" height="125" rx="18"/>
+    <rect x="35" y="270" width="220" height="105" rx="18"/>
+    <rect x="300" y="270" width="285" height="105" rx="18"/>
+    <rect x="630" y="270" width="340" height="105" rx="18"/>
+    <rect x="1015" y="270" width="300" height="105" rx="18"/>
+    <rect x="1360" y="270" width="290" height="105" rx="18"/>
+    <rect x="300" y="465" width="285" height="105" rx="18"/>
+    <rect x="630" y="465" width="340" height="105" rx="18"/>
+    <rect x="1015" y="465" width="300" height="105" rx="18"/>
+    <rect x="1360" y="465" width="290" height="105" rx="18"/>
+  </g>
+  <g fill="#07533e" font-size="22" font-weight="800">
+    <text x="90" y="120">Vue client</text>
+    <text x="324" y="115">ParkingQuery</text><text x="352" y="148">Controller</text>
+    <text x="662" y="115">ParkingQueryService</text><text x="672" y="148">查詢／推論護欄</text>
+    <text x="1088" y="110">MySQL 8.4 + Redis 8</text><text x="1070" y="148">來源快照 + 短期 state</text>
+    <text x="1420" y="110">Google APIs</text><text x="1390" y="148">Routes · Places（選用）</text>
+    <text x="75" y="325">Refresh API</text>
+    <text x="326" y="310">Source gate</text><text x="335" y="344">Redis 協調／冷卻</text>
+    <text x="648" y="310">NTPC Adapter</text><text x="650" y="344">分頁／映射／品質</text>
+    <text x="1052" y="310">官方 NTPC</text><text x="1053" y="344">即時來源</text>
+    <text x="1395" y="310">候選快照</text><text x="1390" y="344">完整後才發布</text>
+    <text x="327" y="505">parking-data-collector</text><text x="332" y="540">離線歷史素材</text>
+    <text x="685" y="505">訓練／回測</text><text x="690" y="540">版本化產物</text>
+    <text x="1033" y="505">Model artifact</text><text x="1034" y="540">EXPERIMENT_ONLY</text>
+    <text x="1380" y="500">ExperimentalOffStreet</text><text x="1400" y="535">PredictionService</text>
+  </g>
+  <g fill="#536982" font-size="17">
+    <text x="1032" y="170">Catalog · Snapshot</text><text x="1032" y="187">Query state · TTL</text>
+    <text x="1368" y="570">只提供受控實驗推論</text>
+    <text x="35" y="425">線上查詢</text><text x="35" y="585">離線模型</text>
+  </g>
+  <g fill="none" stroke="#8bbfa7" stroke-width="4" marker-end="url(#arch-arrow)">
+    <path d="M255 128 H290"/><path d="M585 128 H620"/><path d="M970 112 H1010"/>
+    <path d="M970 88 V35 H1345 V128 H1358"/>
+    <path d="M255 322 H290"/><path d="M585 322 H620"/><path d="M970 322 H1005"/><path d="M1315 322 H1350"/>
+    <path d="M1505 270 V225 H1165 V190"/>
+  </g>
+  <g fill="none" stroke="#9bb9d3" stroke-width="3" stroke-dasharray="10 9" marker-end="url(#arch-blue)">
+    <path d="M585 517 H620"/><path d="M970 517 H1005"/><path d="M1315 517 H1350"/>
+    <path d="M1505 460 V425 H1660 V35 H800 V55"/>
+  </g>
+  <text x="1045" y="35" fill="#b7c9d8" font-size="17">僅在啟用且護欄通過時</text>
+</svg>
+    <div class="meta" style="margin-top:1vh">JAVA 21 · SPRING BOOT 4.1.1 · SPRING MVC · JPA / FLYWAY · MYSQL 8.4 · REDIS 8</div>
+  </div>
+  <div class="foot"><div>MySQL 保存來源資料 · Redis 保存短生命週期狀態</div><div>UML</div></div>
+</section>
 
-            <rect x="62" y="252" width="356" height="136" rx="16" fill="#edf5fb" stroke="#bfd4e4" stroke-width="2"/>
-            <text x="84" y="286" class="svg-node-title">ETA 分支：origin 有值嗎？</text>
-            <text x="84" y="316" class="svg-node-copy">沒有 → NOT_REQUESTED，不呼叫 Routes</text>
-            <text x="84" y="343" class="svg-node-copy">有 → Google Routes 回成功、失敗或停用</text>
-            <text x="84" y="370" class="svg-small">失敗只影響 ETA，不抹除附近停車目錄</text>
-            <path d="M400 188 V228 H240 V242" stroke="#74848a" stroke-width="2.5" fill="none" marker-end="url(#flow-gray)"/>
+<section class="slide light" data-slide-id="query-sequence">
+  <div class="chrome"><div>查詢時序 · UML SEQUENCE</div><div>04 / 06</div></div>
+  <div class="frame" style="padding-top:2vh">
+    <div class="kicker">API → application service → storage</div>
+    <h2 class="h-xl" style="font-size:4.2vw">查詢先讀已發布資料，不在讀取時刷新來源</h2>
+    <svg class="flow-svg" viewBox="0 0 1680 640" role="img" aria-label="建立停車查詢的 UML 時序圖">
+  <defs>
+    <marker id="seq-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#08784f"/></marker>
+    <marker id="seq-return" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#536982"/></marker>
+  </defs>
+  <g fill="#fffefa" stroke="#dce3dc" stroke-width="2">
+    <rect x="35" y="40" width="210" height="74" rx="14"/>
+    <rect x="300" y="40" width="255" height="74" rx="14"/>
+    <rect x="610" y="40" width="285" height="74" rx="14"/>
+    <rect x="950" y="40" width="230" height="74" rx="14"/>
+    <rect x="1235" y="40" width="220" height="74" rx="14"/>
+    <rect x="1500" y="40" width="145" height="74" rx="14"/>
+  </g>
+  <g fill="#07533e" font-size="20" font-weight="800">
+    <text x="90" y="86">前端</text><text x="328" y="86">Controller</text>
+    <text x="652" y="86">QueryService</text><text x="1018" y="86">MySQL</text>
+    <text x="1260" y="86">Routes</text><text x="1525" y="86">Redis</text>
+  </g>
+  <g stroke="#b8c8bd" stroke-width="2" stroke-dasharray="8 8">
+    <line x1="140" y1="115" x2="140" y2="585"/><line x1="428" y1="115" x2="428" y2="585"/>
+    <line x1="752" y1="115" x2="752" y2="585"/><line x1="1065" y1="115" x2="1065" y2="585"/>
+    <line x1="1345" y1="115" x2="1345" y2="585"/><line x1="1572" y1="115" x2="1572" y2="585"/>
+  </g>
+  <g fill="none" stroke="#08784f" stroke-width="3" marker-end="url(#seq-arrow)">
+    <path d="M140 160 H416"/><path d="M428 215 H740"/><path d="M752 270 H1053"/>
+    <path d="M752 370 H1333"/><path d="M752 460 H1560"/>
+  </g>
+  <g fill="#20394e" font-size="18" font-weight="650">
+    <text x="205" y="150">POST /parking-queries</text>
+    <text x="500" y="205">validate requestToken</text>
+    <text x="825" y="260">讀目錄 + 已發布快照</text>
+    <text x="1090" y="359">[origin 有值] 算 ETA</text>
+    <text x="870" y="450">儲存 query state · TTL</text>
+  </g>
+  <rect x="630" y="320" width="760" height="116" rx="14" fill="#e8f2e8" stroke="#b8d5c7" stroke-width="2"/>
+  <text x="660" y="348" fill="#07533e" font-size="17" font-weight="800">alt · 出發地可選</text>
+  <text x="660" y="414" fill="#536982" font-size="17">[origin 無值] ETA = NOT_REQUESTED；不呼叫 Routes</text>
+  <g fill="none" stroke="#536982" stroke-width="2.5" stroke-dasharray="8 7" marker-end="url(#seq-return)">
+    <path d="M1572 500 V535 H428"/><path d="M428 565 H140"/>
+  </g>
+  <text x="1150" y="526" fill="#536982" font-size="17">儲存成功</text>
+  <text x="184" y="555" fill="#536982" font-size="17">回應 202 Accepted</text>
+  <text x="35" y="612" fill="#536982" font-size="17">官方來源刷新使用獨立 refresh API 與 source gate。</text>
+</svg>
+  </div>
+  <div class="foot"><div>沒有出發地，仍可查附近資料；不製作虛構 ETA</div><div>SEQUENCE</div></div>
+</section>
 
-            <rect x="468" y="252" width="360" height="136" rx="16" fill="#fff5e4" stroke="#ecd3a1" stroke-width="2"/>
-            <text x="490" y="286" class="svg-node-title">官方觀測分支：快照可用嗎？</text>
-            <text x="490" y="316" class="svg-node-copy">PUBLISHED 且品質／時效合格 → 顯示觀測</text>
-            <text x="490" y="343" class="svg-node-copy">STALE／無觀測／狀態未知 → 明確降級</text>
-            <text x="490" y="370" class="svg-small">未知不轉成 0；查詢不暗中刷新來源</text>
-            <path d="M677 188 V242" stroke="#74848a" stroke-width="2.5" fill="none" marker-end="url(#flow-gray)"/>
+<section class="slide dark" data-slide-id="source-refresh">
+  <div class="chrome"><div>來源刷新 · DATA PIPELINE</div><div>05 / 06</div></div>
+  <div class="frame" style="padding-top:2vh">
+    <div class="kicker">先完整收齊，再發布</div>
+    <h2 class="h-xl" style="font-size:4.2vw">來源品質閘門保護目前已發布快照</h2>
+    <svg class="flow-svg" viewBox="0 0 1680 430" role="img" aria-label="官方來源刷新與品質驗證流程">
+      <defs><marker id="pipe-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#8bbfa7"/></marker></defs>
+      <g fill="#fffefa" stroke="#d1ded3" stroke-width="2">
+        <rect x="25" y="110" width="220" height="140" rx="18"/><rect x="275" y="110" width="245" height="140" rx="18"/>
+        <rect x="550" y="110" width="230" height="140" rx="18"/><rect x="810" y="110" width="250" height="140" rx="18"/>
+        <rect x="1090" y="110" width="240" height="140" rx="18"/><rect x="1360" y="110" width="270" height="140" rx="18"/>
+      </g>
+      <g fill="none" stroke="#8bbfa7" stroke-width="4" marker-end="url(#pipe-arrow)">
+        <path d="M245 180 H265"/><path d="M520 180 H540"/><path d="M780 180 H800"/><path d="M1060 180 H1080"/><path d="M1330 180 H1350"/>
+      </g>
+      <g fill="#07533e" font-size="23" font-weight="800">
+        <text x="68" y="165">Refresh API</text><text x="312" y="165">Source gate</text><text x="580" y="165">NTPC 分頁</text>
+        <text x="838" y="165">Mapping + QA</text><text x="1122" y="165">Candidate</text><text x="1400" y="165">Publish</text>
+      </g>
+      <g fill="#536982" font-size="18">
+        <text x="54" y="207">明確觸發</text><text x="306" y="207">協調／冷卻</text><text x="582" y="207">讀到空頁</text>
+        <text x="833" y="207">ID · 座標 · 資格</text><text x="1110" y="207">完整快照</text><text x="1385" y="207">切換 active</text>
+      </g>
+      <path d="M1210 254 V316 H951" fill="none" stroke="#dcae55" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#pipe-arrow)"/>
+      <rect x="638" y="290" width="315" height="72" rx="14" fill="#fff4dd" stroke="#dcae55" stroke-width="2"/>
+      <text x="676" y="335" fill="#805000" font-size="20" font-weight="750">失敗：保留舊快照</text>
+      <text x="25" y="405" fill="#c8d5cd" font-size="17">離線 collector 不服務使用者，也不控制主系統刷新頻率。</text>
+    </svg>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1.2vw;margin-top:.4vh">
+      <div style="border-top:1px solid rgba(255,255,255,.36);padding-top:1vh"><strong style="font-size:2.5vw">33</strong><span class="body-zh"> 頁官方資料</span></div>
+      <div style="border-top:1px solid rgba(255,255,255,.36);padding-top:1vh"><strong style="font-size:2.5vw">2,151</strong><span class="body-zh"> 筆來源列</span></div>
+      <div style="border-top:1px solid rgba(255,255,255,.36);padding-top:1vh"><strong style="font-size:2.5vw">1,880</strong><span class="body-zh"> 筆 mapping 已核對</span></div>
+      <div style="border-top:1px solid rgba(255,255,255,.36);padding-top:1vh"><strong style="font-size:2.5vw">0</strong><span class="body-zh"> ID／重複／座標錯誤</span></div>
+    </div>
+  </div>
+  <div class="foot"><div>新莊路邊目錄盤點 · 2026-10-26 · 不代表即時空位或全臺覆蓋</div><div>PIPELINE</div></div>
+</section>
 
-            <rect x="878" y="252" width="382" height="136" rx="16" fill="#f7f4ed" stroke="#d8d0c1" stroke-width="2"/>
-            <text x="900" y="286" class="svg-node-title">預測分支：實驗護欄全部成立嗎？</text>
-            <text x="900" y="316" class="svg-node-copy">汽車資格確認、現況一致、快照 ≤15 分鐘</text>
-            <text x="900" y="343" class="svg-node-copy">ETA 已就緒，目標約 30／60 分鐘（±15m）</text>
-            <text x="900" y="370" class="svg-small">符合才回 EXPERIMENTAL；其餘為 null／資料不足</text>
-            <path d="M952 188 V242" stroke="#74848a" stroke-width="2.5" fill="none" marker-end="url(#flow-gray)"/>
+<section class="slide hero light" data-slide-id="backend-takeaways">
+  <div class="chrome"><div>後端設計取捨 · TAKEAWAYS</div><div>06 / 06</div></div>
+  <div class="frame" style="padding-top:4vh">
+    <div class="kicker">可追溯 · 可降級 · 可審查</div>
+    <h2 class="h-xl" style="font-size:5vw">讓每個回應都說得清楚</h2>
+    <div class="grid-3" style="margin-top:4vh;gap:2vw">
+      <div class="brand-card" style="padding:2vw"><div class="kicker">PERSIST</div><h3 class="h-md">MySQL</h3><p class="body-zh">目錄、mapping、快照與來源觀測</p></div>
+      <div class="brand-card" style="padding:2vw"><div class="kicker">EPHEMERAL</div><h3 class="h-md">Redis</h3><p class="body-zh">短期 query state 與刷新協調</p></div>
+      <div class="brand-card" style="padding:2vw"><div class="kicker">GUARDRAIL</div><h3 class="h-md">資料不足 → null</h3><p class="body-zh">模型只在條件通過時回傳實驗性估計</p></div>
+    </div>
+    <div class="meta" style="margin-top:4vh">JAVA 21 · SPRING BOOT 4.1.1 · MYSQL 8.4 · REDIS 8 · DOCKER COMPOSE</div>
+    <div class="tag" style="align-self:flex-start;margin-top:2vh">目前範圍：新莊 MVP · 全臺 TDX 即時來源尚未整合</div>
+  </div>
+  <div class="foot"><div>官方觀測與模型估計，始終分開呈現</div><div>END</div></div>
+</section>
 
-            <rect x="75" y="456" width="340" height="110" rx="16" fill="#fff0eb" stroke="#efc5b8" stroke-width="2"/>
-            <text x="97" y="490" class="svg-node-title">錯誤也有穩定契約</text>
-            <text x="97" y="520" class="svg-node-copy">400／422 請求或範圍不符</text>
-            <text x="97" y="545" class="svg-node-copy">404／410 查詢不存在或過期；503 Redis 暫時不可用</text>
-            <rect x="495" y="456" width="760" height="110" rx="16" fill="#f4f6f2" stroke="#c9d4cd" stroke-width="2"/>
-            <text x="517" y="490" class="svg-node-title">來源刷新是另一個明確動作</text>
-            <text x="517" y="520" class="svg-node-copy">POST /{queryId}/refresh → SourceRefreshCoordinationService 檢查冷卻與鎖，再呼叫來源刷新、品質檢查及快照發布。</text>
-            <text x="517" y="545" class="svg-node-copy">可見區域自動刷新與手動刷新都有 trigger 類型；不由停車資料收集器排程決定。</text>
-            <path d="M870 188 V418 H840 V446" stroke="#74848a" stroke-width="2" fill="none" marker-end="url(#flow-gray)"/>
-          </svg>
-          <div class="diagram-caption"><span>結果設計原則：觀測值、系統取得時間、ETA、預測機率和拒絕原因分欄呈現。</span><span>顯示資料不足，是一種正確的產品回應，不是查詢失敗。</span></div>
-        </div>
-        <div class="flow-legend"><span class="flow-chip">已實作查詢路徑</span><span class="flow-chip gray">可選／條件式外部呼叫</span><span class="flow-chip red">明確保留的錯誤或資料不足</span></div>
-      </div>
-    </section>
+</div>
 
-    <section class="section alt" id="api">
-      <div class="wrap">
-        <div class="section-heading">
+<div id="nav"></div>
 
-          <div><h2>Controller 收 HTTP，Service 組流程，Repository 讀已發布資料</h2><p>建立查詢不等於刷新官方資料。API 先用目的地讀取既有新莊 catalog 與已發布 snapshot；刷新端點是另一個明確操作。</p></div>
-        </div>
-        <div class="diagram-frame">
-          <svg viewBox="0 0 1420 610" role="img" aria-labelledby="seq-title seq-desc">
-            <title id="seq-title">停車查詢後端時序圖</title>
-            <desc id="seq-desc">前端向 ParkingQueryController 建立查詢，ParkingQueryService 驗證 requestToken、目的地及 departure；有 origin 才呼叫 GoogleEtaService；讀取附近目錄、published snapshots 和觀測；Places 可補充附近場站；執行預測護欄後把短期回應存入 Redis 並回應 202。另有 refresh 端點經刷新協調與 NTPC adapter。</desc>
-            <defs><marker id="seq-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#08784f"/></marker><marker id="seq-blue" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#2868a0"/></marker></defs>
-            <rect width="1420" height="610" fill="#fffefa"/>
-            <g fill="#edf5ef" stroke="#b7d4be">
-              <rect x="25" y="40" width="170" height="72" rx="12"/><rect x="230" y="40" width="185" height="72" rx="12"/>
-              <rect x="450" y="40" width="185" height="72" rx="12"/><rect x="670" y="40" width="175" height="72" rx="12"/>
-              <rect x="880" y="40" width="185" height="72" rx="12"/><rect x="1100" y="40" width="145" height="72" rx="12"/>
-              <rect x="1270" y="40" width="125" height="72" rx="12"/>
-            </g>
-            <g class="svg-label" text-anchor="middle">
-              <text x="110" y="70">Vue 前端</text><text x="110" y="91">HTTP client</text>
-              <text x="322" y="70">ParkingQuery</text><text x="322" y="91">Controller</text>
-              <text x="542" y="70">ParkingQuery</text><text x="542" y="91">Service</text>
-              <text x="757" y="70">JPA Repository</text><text x="757" y="91">＋ MySQL</text>
-              <text x="972" y="70">Redis</text><text x="972" y="91">短期 query state</text>
-              <text x="1172" y="70">Google Routes／</text><text x="1172" y="91">Places</text>
-              <text x="1332" y="70">Prediction</text><text x="1332" y="91">Service</text>
-            </g>
-            <g stroke="#cbd5d1" stroke-width="2" stroke-dasharray="6 7">
-              <line x1="110" y1="112" x2="110" y2="525"/><line x1="322" y1="112" x2="322" y2="525"/>
-              <line x1="542" y1="112" x2="542" y2="525"/><line x1="757" y1="112" x2="757" y2="525"/>
-              <line x1="972" y1="112" x2="972" y2="525"/><line x1="1172" y1="112" x2="1172" y2="525"/><line x1="1332" y1="112" x2="1332" y2="525"/>
-            </g>
-            <g fill="none" stroke="#08784f" stroke-width="2.5" marker-end="url(#seq-arrow)">
-              <path d="M110 150 H312"/><path d="M322 190 H532"/><path d="M542 230 H962"/>
-              <path d="M542 275 H747"/><path d="M542 325 H1162"/><path d="M542 375 H1322"/>
-              <path d="M542 425 H962"/>
-            </g>
-            <g class="svg-small">
-              <text x="155" y="143">① POST /parking-queries</text>
-              <text x="365" y="183">② 驗證、token 防重送、建立查詢</text>
-              <text x="600" y="223">③ 查詢 token／保存短期狀態</text>
-              <text x="585" y="268">④ 附近目錄、source mapping、published snapshot</text>
-              <text x="820" y="318">⑤ origin 有值時估 ETA；無值 → NOT_REQUESTED</text>
-              <text x="850" y="368">⑥ 以路外輸入檢查模型資格與時距</text>
-              <text x="775" y="418">⑦ 保存 query response／TTL</text>
-            </g>
-            <path d="M542 462 H322" fill="none" stroke="#74848a" stroke-width="2.5" marker-end="url(#seq-arrow)"/>
-            <path d="M322 500 H110" fill="none" stroke="#74848a" stroke-width="2.5" marker-end="url(#seq-arrow)"/>
-            <text x="346" y="455" class="svg-small">⑧ 回傳 202 Accepted＋query DTO</text>
-            <text x="125" y="493" class="svg-small">⑨ 顯示觀測／ETA／預測狀態</text>
-            <rect x="205" y="538" width="980" height="46" rx="12" fill="#edf5fb" stroke="#bfd4e4"/>
-            <text x="225" y="567" class="svg-small">獨立刷新支線：POST /{queryId}/refresh → SourceRefreshCoordinationService → 來源 adapter → 候選快照完整性檢查 → MySQL 原子發布；失敗留存原因與舊快照狀態。</text>
-          </svg>
-          <div class="diagram-caption"><span>順序依 <code>ParkingQueryService.createNewQuery()</code> 與 <code>ParkingQueryController</code> 核對。</span><span>查詢狀態存 Redis；官方歷史快照與來源觀測留在 MySQL。</span></div>
-        </div>
-        <div class="grid-2 mt-18">
-          <article class="card card-pad">
-            <h3 class="card-label">API 端點</h3>
-            <div class="api-route"><span class="method">POST</span><code>/api/v1/parking-queries</code><span>202 建立短期查詢</span></div>
-            <div class="api-route"><span class="method">GET</span><code>/api/v1/parking-queries/{queryId}</code><span>讀取查詢結果</span></div>
-            <div class="api-route"><span class="method">GET</span><code>/api/v1/parking-queries/{queryId}/map-data</code><span>地圖資料</span></div>
-            <div class="api-route"><span class="method">GET</span><code>/api/v1/parking-queries/{queryId}/map-data/viewport</code><span>依地圖視窗分頁，最多 500 筆</span></div>
-            <div class="api-route"><span class="method">POST</span><code>/api/v1/parking-queries/{queryId}/refresh?trigger=MANUAL_REFRESH</code><span>受控刷新，202</span></div>
-          </article>
-          <article class="card card-pad">
-            <h3 class="card-label">建立查詢請求</h3>
-            <pre><code>{
-  "requestToken": "client-generated-idempotency-token",
-  "origin": null,
-  "destination": {
-    "label": "新莊體育館",
-    "latitude": 25.040,
-    "longitude": 121.450
+<!-- 演講備忘：每页一条，id 必须与 section[data-slide-id] 一致。见 references/presenter-mode.md -->
+<script>
+const SPEAKER_NOTES = [
+  {
+    id: 'cover', title: '讓資料可追溯，讓查詢有邊界',
+    section: '後端工程案例',
+    purpose: '界定產品範圍，讓面試官先理解後端要保護的資料語意。',
+    talk: ['目前產品基線是新莊 MVP，不宣稱全臺即時覆蓋。','核心工作是把官方來源、已發布快照與短期查詢狀態分清楚。','畫面是程式碼重繪，街區為示意；它用來交代查詢語境。'],
+    transition: '先看一次查詢如何拆分成三種彼此獨立的結果。'
   },
-  "departure": { "type": "NOW", "departureAt": null }
-}</code></pre>
-            <p class="small muted mt-18 mb-0">座標是 API 欄位示例，不是這份作品集使用的地圖點位。正式回應由 <code>ParkingQueryResponse</code> 定義，分開回傳 <code>query</code>、<code>eta</code>、<code>roadside</code>、<code>offStreet</code>、<code>predictions</code> 與來源刷新狀態。</p>
-          </article>
-        </div>
-        <p class="note mt-18">資料不足時不會虛構機率：沒有 origin → ETA <code>NOT_REQUESTED</code>；沒有新鮮且完整觀測 → prediction probability 為 <code>null</code>，並附上拒絕原因。常見錯誤為 400 請求格式錯誤、422 範圍／出發時間不支援、404 查詢不存在、410 查詢已過期、503 Redis state store 暫時不可用。</p>
-      </div>
-    </section>
+  {
+    id: 'query-flow', title: '一次查詢，三種資料責任',
+    section: '後端流程',
+    purpose: '說明查詢回應的責任邊界與資料不足時的行為。',
+    talk: ['建立查詢讀附近目錄和已發布快照。','ETA 需要 origin；官方觀測不等於 ETA 或模型機率。','來源過期或模型資格不足時保留狀態，不轉成零或虛構機率。'],
+    transition: '再把這些責任對應到後端元件與儲存。'
+  },
+  {
+    id: 'backend-architecture', title: '線上查詢與來源刷新，各走自己的路徑',
+    section: '後端架構',
+    purpose: '呈現核心模組、資料庫／快取責任與離線訓練邊界。',
+    talk: ['Controller 負責 HTTP 契約；Service 協調查詢與護欄；Adapter 隔離官方來源格式。','MySQL 保存可追溯目錄、mapping、快照和觀測；Redis 只存短生命週期狀態。','parking-data-collector 是離線素材來源，不參與使用者即時查詢或主系統刷新。'],
+    transition: '接著用單一 API 請求驗證呼叫先後與可選 origin 分支。'
+  },
+  {
+    id: 'query-sequence', title: '查詢先讀已發布資料',
+    section: 'API 時序',
+    purpose: '說明查詢路徑如何避免讀取時順帶刷新來源。',
+    talk: ['建立端點驗證 requestToken 與查詢輸入，再讀附近目錄及 active snapshot。','有 origin 才請求 Routes；沒有起點回 NOT_REQUESTED，但附近查詢仍可完成。','短期 query state 寫入 Redis，建立查詢回 202；官方刷新是另一支端點。'],
+    transition: '因為讀取和刷新分離，下一頁看來源資料何時能成為 active snapshot。'
+  },
+  {
+    id: 'source-refresh', title: '來源品質閘門保護已發布快照',
+    section: '資料品質',
+    purpose: '用流程與一組有日期、有範圍的數字說明來源盤點。',
+    talk: ['刷新是明確操作，由 source gate 協調，再由 NTPC adapter 做完整分頁與欄位映射。','資料通過 ID、座標、資格和完整性檢查後才發布候選快照；失敗時保留舊版本。','2026-10-26 新莊官方目錄稽核讀取 33 頁、2,151 列；1,880 筆 eligible mapping 已存在且逐筆核對，異常 ID／重複／座標為零。這是目錄盤點，不是即時空位或全臺覆蓋。'],
+    transition: '最後把這些流程收斂成三個後端取捨和目前技術棧。'
+  },
+  {
+    id: 'backend-takeaways', title: '讓每個回應都說得清楚',
+    section: '總結',
+    purpose: '以可追溯、可降級、可審查收束，並明確標示目前範圍。',
+    talk: ['MySQL 保存來源事實與發布快照；Redis 保存可失效的短期狀態。','模型機率是受護欄控制的實驗估計；不取代官方觀測。','目前是新莊 MVP；全臺 TDX 即時來源尚未整合。'],
+    transition: '結束簡報；若要追溯實作，可依 repo 的 API、adapter、migration 與 current-state 文件核對。'
+  }
+];
+window.__SPEAKER_NOTES__ = SPEAKER_NOTES;
+</script>
 
-    <section class="section" id="ml">
-      <div class="wrap">
-        <div class="section-heading">
+<script>
+/* =============== WebGL 双背景 ===============
+   深色页：Holographic Dispersion（全息色散 · 钛金暗流）—— 彩虹微扰、鼠标径向涟漪
+   浅色页：Spiral Vortex（旋转涡流 · 银色珍珠）—— domain-warp 流动、无中心
+   修改风格请参考 references/webgl-backgrounds.md
+*/
+const VS = `attribute vec2 position;void main(){gl_Position=vec4(position,0.0,1.0);}`;
 
-          <div><h2>線上快照服務查詢；離線資料只做訓練、回測與產物實驗</h2><p>parking-data-collector 是獨立離線收集器，不服務使用者、不刷新主系統資料，也不定義主系統查詢時間。未來只有經審查的模型產物可建立受控的離線到線上推論關係。</p></div>
-        </div>
-        <div class="diagram-frame">
-          <svg viewBox="0 0 1420 560" role="img" aria-labelledby="ml-title ml-desc">
-            <title id="ml-title">線上資料與離線模型雙泳道</title>
-            <desc id="ml-desc">上方線上泳道由新北官方資料開始，經擷取、正規化、品質檢查、候選完整快照與發布，最後供使用者查詢。下方離線泳道使用私有歷史樣本、標籤、時間切分、baseline 和評估；只有版本化的小型實驗 JSON 會被線上實驗服務載入，collector CSV/ZIP 不會在使用者查詢時讀取。</desc>
-            <defs><marker id="ml-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#08784f"/></marker><marker id="ml-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#2868a0"/></marker></defs>
-            <rect width="1420" height="560" fill="#fffefa"/>
-            <rect x="28" y="36" width="1364" height="205" rx="18" fill="#f6faf5" stroke="#c7d9cb" stroke-width="2"/>
-            <text x="52" y="70" class="svg-node-title">線上主系統：官方觀測快照 → 查詢回應</text>
-            <g fill="#e8f2e8" stroke="#b7d4be" stroke-width="1.5">
-              <rect x="52" y="98" width="180" height="94" rx="13"/><rect x="273" y="98" width="180" height="94" rx="13"/>
-              <rect x="494" y="98" width="180" height="94" rx="13"/><rect x="715" y="98" width="180" height="94" rx="13"/>
-              <rect x="936" y="98" width="180" height="94" rx="13"/><rect x="1157" y="98" width="205" height="94" rx="13"/>
-            </g>
-            <g class="svg-label" text-anchor="middle">
-              <text x="142" y="132">新北市官方來源</text><text x="142" y="157">refresh 觸發</text>
-              <text x="363" y="132">來源 Adapter</text><text x="363" y="157">讀取／解析原值</text>
-              <text x="584" y="132">正規化與資格</text><text x="584" y="157">品質／完整性檢查</text>
-              <text x="805" y="132">候選完整快照</text><text x="805" y="157">失敗不發布半份</text>
-              <text x="1026" y="132">MySQL PUBLISHED</text><text x="1026" y="157">來源時間可追溯</text>
-              <text x="1259" y="132">附近查詢與地圖 API</text><text x="1259" y="157">讀已發布快照</text>
-            </g>
-            <g stroke="#08784f" stroke-width="2.8" fill="none" marker-end="url(#ml-green)">
-              <path d="M232 145 H263"/><path d="M453 145 H484"/><path d="M674 145 H705"/><path d="M895 145 H926"/><path d="M1116 145 H1147"/>
-            </g>
+const FS_DARK = `precision highp float;
+uniform vec2 u_resolution;uniform float u_time;uniform vec2 u_mouse;
+vec3 palette(float t,vec3 a,vec3 b,vec3 c,vec3 d){return a+b*cos(6.28318*(c*t+d));}
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_resolution.xy;
+  vec2 p=uv*2.0-1.0;p.x*=u_resolution.x/u_resolution.y;
+  vec2 m=u_mouse*2.0-1.0;m.x*=u_resolution.x/u_resolution.y;
+  float md=length(p-m);
+  float mr=sin(md*15.0-u_time*4.0)*exp(-md*3.0);p+=mr*0.08;
+  vec2 p0=p;
+  for(float i=1.0;i<4.0;i++){
+    p.x+=0.1/i*sin(i*3.0*p.y+u_time*0.4)+0.05;
+    p.y+=0.1/i*cos(i*2.0*p.x+u_time*0.3)-0.05;
+  }
+  float r=length(p);float ang=atan(p.y,p.x);
+  vec3 a=vec3(0.12,0.12,0.13);
+  vec3 b=vec3(0.03,0.04,0.05);
+  vec3 c=vec3(1.0,1.0,1.0);
+  vec3 d=vec3(0.1,0.2,0.4);
+  vec3 col=palette(r*1.5+p0.x*0.5+u_time*0.1,a,b,c,d);
+  float disp=sin(r*25.0-u_time*1.5+ang*2.0)*0.5+0.5;
+  col+=vec3(disp*0.015,disp*0.01,disp*0.02);
+  float hi=pow(sin(p.x*4.0+p.y*3.0+u_time)*0.5+0.5,8.0);
+  col+=hi*0.08;
+  vec3 base=vec3(0.05,0.05,0.06);
+  col=mix(base,col,0.85);
+  gl_FragColor=vec4(col,1.0);
+}`;
 
-            <rect x="28" y="270" width="1364" height="252" rx="18" fill="#f4f8fb" stroke="#c8d9e6" stroke-width="2"/>
-            <text x="52" y="304" class="svg-node-title">離線 ML 實驗：collector 歷史素材 → aggregate 證據 → 版本化產物</text>
-            <g fill="#edf5fb" stroke="#bfd4e4" stroke-width="1.5">
-              <rect x="50" y="337" width="175" height="105" rx="13"/><rect x="254" y="337" width="175" height="105" rx="13"/>
-              <rect x="458" y="337" width="175" height="105" rx="13"/><rect x="662" y="337" width="175" height="105" rx="13"/>
-              <rect x="866" y="337" width="175" height="105" rx="13"/><rect x="1070" y="337" width="280" height="105" rx="13"/>
-            </g>
-            <g class="svg-label" text-anchor="middle">
-              <text x="137" y="369">私有歷史資料</text><text x="137" y="393">31 ZIP／忽略目錄</text><text x="137" y="418">非線上 query source</text>
-              <text x="341" y="369">品質盤點</text><text x="341" y="393">schema／缺漏／重複</text>
-              <text x="545" y="369">訓練標籤</text><text x="545" y="393">as-of／arrival 配對</text>
-              <text x="749" y="369">時間切分與 baseline</text><text x="749" y="393">train／validation／test</text>
-              <text x="953" y="369">評估與准入</text><text x="953" y="393">Brier／校準／錯誤成本</text>
-              <text x="1210" y="369">參數型 artifact JSON</text><text x="1210" y="393">EXPERIMENT_ONLY</text><text x="1210" y="418">S3-020 尚未通過</text>
-            </g>
-            <g stroke="#2868a0" stroke-width="2.6" fill="none" marker-end="url(#ml-blue)">
-              <path d="M225 388 H244"/><path d="M429 388 H448"/><path d="M633 388 H652"/><path d="M837 388 H856"/><path d="M1041 388 H1060"/>
-            </g>
-            <path d="M1350 424 H1370 V500 H1215 V450" fill="none" stroke="#2868a0" stroke-width="2.5" stroke-dasharray="8 7" marker-end="url(#ml-blue)"/>
-            <text x="1092" y="485" class="svg-small">artifact is loaded by inference code;</text><text x="1092" y="503" class="svg-small">private rows are not loaded online</text>
-            <path d="M1025 241 V260 H1380 V197" fill="none" stroke="#74848a" stroke-width="2" stroke-dasharray="6 7"/>
-            <text x="1088" y="255" class="svg-small">只在實驗設定與線上護欄通過時讀參數</text>
-          </svg>
-          <div class="diagram-caption"><span class="key"><i class="key-line"></i>官方資料線上流程</span><span class="key"><i class="key-line dashed"></i>離線產物邊界</span><span>下載／刷新額度要依各官方平台實際方案與限制確認；此圖不代表免費無上限。</span></div>
-        </div>
-        <div class="grid-2 mt-18">
-          <article class="card card-pad">
-            <p class="split-label"><i class="lane-dot"></i>線上資料與主系統推論</p>
-            <ul class="small muted">
-              <li>來源為新北市官方路邊／路外資料；目前以新莊 MVP 為範圍。TDX 全臺即時整合尚未完成。</li>
-              <li>來源 mapping、品質／資格與完整性檢查後才發布快照；快照保留 source observed time 與 system fetched time。</li>
-              <li>離線目前具備路外參數型實驗 artifact；API 可能在明確開啟實驗設定且所有護欄通過時回傳 <code>EXPERIMENTAL</code>。</li>
-              <li>路邊預測仍是 <code>INSUFFICIENT_DATA</code>／null probability；S3-020 尚未完成准入。</li>
-            </ul>
-          </article>
-          <article class="card card-pad">
-            <p class="split-label"><i class="lane-dot blue"></i>訓練資料與實驗限制</p>
-            <ul class="small muted">
-              <li>31 個私有 daily ZIP 中有路邊 2,522,054 列、路外 192,850 列；資料不提交 Git，也不包含在 API 回應。</li>
-              <li>80/10/10 時間切分使用 25／3／3 個日期；test 僅三天，日期不是全新 holdout，泛化證據有限。</li>
-              <li>路外 30／60 分鐘 calibrated persistence Brier 為 0.0115／0.0163；比較用固定 persistence 為 0.0130／0.0178。這是探索性回測，不等同正式模型准入。</li>
-              <li>線上護欄：確認汽車資格、快照不超過 15 分鐘、狀態／剩餘位一致、ETA 已就緒，目標時距為 30／60 分鐘各 ±15 分鐘。</li>
-            </ul>
-          </article>
-        </div>
-        <p class="note warning mt-18">同一概念「資料收集」有不同用途：主系統官方來源刷新以產品查詢的 refresh API／來源 gate 控制；<code>parking-data-collector</code> 只提供離線歷史訓練素材。不得把 collector CSV、排程或時間戳稱為即時車位契約。</p>
-      </div>
-    </section>
+const FS_LIGHT = `precision highp float;
+uniform vec2 u_resolution;uniform float u_time;uniform vec2 u_mouse;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float noise(vec2 p){
+  vec2 i=floor(p),f=fract(p);
+  float a=hash(i),b=hash(i+vec2(1,0));
+  float c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
+  vec2 u=f*f*(3.0-2.0*f);
+  return mix(a,b,u.x)+(c-a)*u.y*(1.0-u.x)+(d-b)*u.x*u.y;
+}
+float fbm(vec2 p){
+  float v=0.0,a=0.5;
+  mat2 m=mat2(0.80,0.60,-0.60,0.80);
+  for(int i=0;i<5;i++){v+=a*noise(p);p=m*p*2.02;a*=0.5;}
+  return v;
+}
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_resolution.xy;
+  vec2 p=uv;p.x*=u_resolution.x/u_resolution.y;
+  vec2 m=u_mouse;m.x*=u_resolution.x/u_resolution.y;
+  vec2 md=p-m;float dl=length(md);
+  p+=normalize(md+vec2(0.0001))*exp(-dl*5.0)*0.03;
+  vec2 q=vec2(fbm(p*1.8+u_time*0.07),fbm(p*1.8+vec2(5.2,1.3)+u_time*0.06));
+  vec2 r=vec2(fbm(p*2.0+q*1.3+vec2(1.7,9.2)+u_time*0.05),
+              fbm(p*2.0+q*1.3+vec2(8.3,2.8)+u_time*0.04));
+  float f=fbm(p*2.2+r*1.5);
+  vec3 silverDark=vec3(0.86,0.85,0.84);
+  vec3 paper=vec3(0.955,0.945,0.925);
+  vec3 col=mix(silverDark,paper,f);
+  float ph=r.x*2.2+u_time*0.35;
+  col+=vec3(0.78,0.62,0.92)*sin(ph)*0.055;
+  col+=vec3(0.55,0.72,0.95)*sin(ph*0.8+2.0)*0.05;
+  float hl=smoothstep(0.48,0.92,f);
+  col+=hl*0.06;
+  gl_FragColor=vec4(col,1.0);
+}`;
 
-    <section class="section alt" id="collaboration">
-      <div class="wrap">
-        <div class="section-heading">
+const mouse={x:0.5,y:0.5};
+addEventListener('mousemove',e=>{mouse.x=e.clientX/innerWidth;mouse.y=e.clientY/innerHeight});
 
-          <div><h2>AI 輔助工程工作流，重要決策仍由人負責</h2><p>這是單人 Scrum 的開發協作方式。工具輔助閱讀、實作與審查；目前沒有多 Agent 自動協作、自動部署或自動合併的產品承諾。</p></div>
-        </div>
-        <div class="diagram-frame">
-          <svg viewBox="0 0 1420 510" role="img" aria-labelledby="agent-title agent-desc">
-            <title id="agent-title">人類、GPT、Codex 與 GitHub 的協作流程</title>
-            <desc id="agent-desc">人類定義需求與驗收並決定高風險操作和合併。GPT 協助拆解需求並依精確 commit SHA 做獨立審查。Codex 閱讀程式碼、實作、補測和修正。開發者在本機執行測試、建置與必要 UI 驗收，再推送分支並建立 PR；人類審查後決定 merge。此輪分支供 review，不建立 PR，也不執行 Actions。</desc>
-            <defs><marker id="agent-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#08784f"/></marker><marker id="agent-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#2868a0"/></marker></defs>
-            <rect width="1420" height="510" fill="#fffefa"/>
-            <g stroke-width="2">
-              <rect x="40" y="68" width="250" height="170" rx="18" fill="#f1f7f1" stroke="#b7d4be"/>
-              <rect x="375" y="68" width="250" height="170" rx="18" fill="#edf5fb" stroke="#bfd4e4"/>
-              <rect x="710" y="68" width="250" height="170" rx="18" fill="#f6f3ed" stroke="#d8d0c1"/>
-              <rect x="1045" y="68" width="330" height="170" rx="18" fill="#f8faf7" stroke="#c9d4cd"/>
-            </g>
-            <g class="svg-node-title" text-anchor="middle">
-              <text x="165" y="108">人類／產品負責人</text><text x="500" y="108">GPT</text><text x="835" y="108">Codex</text><text x="1210" y="108">本機與 GitHub</text>
-            </g>
-            <g class="svg-node-copy" text-anchor="middle">
-              <text x="165" y="143">定義需求、驗收與優先順序</text><text x="165" y="170">控制高風險操作／合併決定</text><text x="165" y="203">負責產品選擇</text>
-              <text x="500" y="143">閱讀 repo 與任務脈絡</text><text x="500" y="170">拆解、提示與精確 SHA 審查</text><text x="500" y="203">提出 findings 與解釋</text>
-              <text x="835" y="143">閱讀程式碼、實作與補測</text><text x="835" y="170">依 review finding 修正</text><text x="835" y="203">管理本機分支／交付</text>
-              <text x="1210" y="143">本機測試／build／UI 驗收</text><text x="1210" y="170">GitHub branch、commit、PR</text><text x="1210" y="203">人類 review 後才 merge</text>
-            </g>
-            <path d="M290 150 H365" stroke="#08784f" stroke-width="3" fill="none" marker-end="url(#agent-arrow)"/>
-            <path d="M625 150 H700" stroke="#08784f" stroke-width="3" fill="none" marker-end="url(#agent-arrow)"/>
-            <path d="M960 150 H1035" stroke="#08784f" stroke-width="3" fill="none" marker-end="url(#agent-arrow)"/>
-            <path d="M1175 245 V316 H835 V250" stroke="#2868a0" stroke-width="2.5" fill="none" stroke-dasharray="9 7" marker-end="url(#agent-blue)"/>
-            <text x="915" y="306" class="svg-small">review findings → 修正 → 再驗證</text>
-            <rect x="78" y="352" width="1264" height="86" rx="16" fill="#f4f6f2" stroke="#c9d4cd" stroke-width="2"/>
-            <text x="107" y="389" class="svg-node-title">實際交付循環</text>
-            <text x="107" y="416" class="svg-node-copy">需求 → 任務拆解 → 實作 → 本機驗證 → 獨立 Review → 修正迴圈 → PR → 人工審查 → Merge → 同步與清理</text>
-            <text x="78" y="475" class="svg-small">本次只推送 review/interview-kit-html 分支供檢視：未建立 PR、未 Merge、未呼叫 workflow dispatch。GitHub Actions 目前因用量限制暫停，沒有宣稱 CI 通過。</text>
-          </svg>
-          <div class="diagram-caption"><span>GPT 審查以明確 commit SHA 為範圍，不能把尚未推送或不同分支的程式當成已檢查。</span><span>人類決定是否採納 finding、建立 PR 與合併。</span></div>
-        </div>
-        <div class="grid-3 mt-18">
-          <article class="card card-pad"><h3>使用者掌握產品優先順序</h3><p class="small muted mb-0">AI 協助列出選項、成本與驗收證據；功能範圍、資料政策與是否合併由使用者決定。</p></article>
-          <article class="card card-pad"><h3>Codex 在隔離分支工作</h3><p class="small muted mb-0">先查 repo 現況，再沿用既有模組；更新當前狀態記錄並把測試結果與限制分開。</p></article>
-          <article class="card card-pad"><h3>把 finding 綁定到 SHA</h3><p class="small muted mb-0">審查基準需精確到 commit；finding 修正後再以新 SHA 檢視。此分支待 GPT 獨立審查，不預設審查結果。</p></article>
-        </div>
-      </div>
-    </section>
+function bootGL(canvasId, fsSrc){
+  const canvas=document.getElementById(canvasId);
+  const gl=canvas.getContext('webgl',{alpha:false,antialias:true});
+  if(!gl) return ()=>false;
+  const mk=(t,s)=>{const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);return sh};
+  const prog=gl.createProgram();
+  gl.attachShader(prog,mk(gl.VERTEX_SHADER,VS));
+  gl.attachShader(prog,mk(gl.FRAGMENT_SHADER,fsSrc));
+  gl.linkProgram(prog);gl.useProgram(prog);
+  const buf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+  const pos=gl.getAttribLocation(prog,'position');
+  gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
+  const lRes=gl.getUniformLocation(prog,'u_resolution');
+  const lT=gl.getUniformLocation(prog,'u_time');
+  const lM=gl.getUniformLocation(prog,'u_mouse');
+  const resize=()=>{
+    const d=Math.min(window.devicePixelRatio||1,2);
+    canvas.width=innerWidth*d;canvas.height=innerHeight*d;
+    gl.viewport(0,0,canvas.width,canvas.height);
+  };
+  addEventListener('resize',resize);resize();
+  return (tSec)=>{
+    gl.uniform2f(lRes,canvas.width,canvas.height);
+    gl.uniform1f(lT,tSec);
+    gl.uniform2f(lM,mouse.x,1-mouse.y);
+    gl.drawArrays(gl.TRIANGLES,0,6);
+    return true;
+  };
+}
+let drawDark=null, drawLight=null, glRAF=0, glT0=Date.now();
+function startGL(){
+  if(window.__lowPowerMode || glRAF) return;
+  if(!drawDark) drawDark=bootGL('bg-dark',FS_DARK);
+  if(!drawLight) drawLight=bootGL('bg-light',FS_LIGHT);
+  glT0=Date.now();
+  function loop(){
+    if(window.__lowPowerMode){glRAF=0;return;}
+    const t=(Date.now()-glT0)/1000;
+    drawDark(t);drawLight(t);
+    glRAF=requestAnimationFrame(loop);
+  }
+  glRAF=requestAnimationFrame(loop);
+}
+function stopGL(){
+  if(glRAF) cancelAnimationFrame(glRAF);
+  glRAF=0;
+}
+startGL();
+addEventListener('ppt-low-power-change', e=>{e.detail.on ? stopGL() : startGL();});
 
-    <section class="section" id="cases">
-      <div class="wrap">
-        <div class="section-heading">
+// =============== 导航（翻页 / 圆点 / 键盘 / 滚轮 / 触屏） ===============
+const deck=document.getElementById('deck');
+const slides=deck.querySelectorAll('.slide');
+const nav=document.getElementById('nav');
+let idx=0,total=slides.length,lock=false;
 
-          <div><h2>以可追溯證據說明問題與修正</h2><p>以下案例各自保留範圍與未解限制；數字是對應日期的本機稽核或測試結果，不代表未來資料狀態。</p></div>
-        </div>
-        <div class="grid-3">
-          <article class="case">
-            <h3>分頁上限讓新莊路邊資料只讀到一部分</h3>
-            <p class="case-context">工程實例 · 官方來源完整性</p>
-            <dl>
-              <div><dt>問題與證據</dt><dd>來源單頁最多回 1,000 列。完整遍歷 33 頁讀到 2,151 列，顯示不能只依單頁回應判定目錄完整。</dd></div>
-              <div><dt>根因與修正</dt><dd>將 collector／稽核流程改為持續讀取，直到空頁並檢查 traversal complete、source ID、座標與重複。</dd></div>
-              <div><dt>驗證</dt><dd>1,880 列符合一般汽車格規則、164 列資格未知、107 列排除；缺 ID、重複 ID、無效座標均為 0；已存在 mapping 逐筆核對 1,880 筆。</dd></div>
-              <div><dt>剩餘風險</dt><dd>官方目錄可能更新；完整映射只代表該次來源快照與本次規則，座標未經實地測量，不代表即時空位。</dd></div>
-            </dl>
-            <p class="small"><a href="../docs/current-state.md">來源：current-state.md，2026-10-26 稽核</a></p>
-          </article>
-          <article class="case">
-            <h3>看似很高的分數，不等於可以發布預測</h3>
-            <p class="case-context">工程實例 · ML 資料治理</p>
-            <dl>
-              <div><dt>問題與證據</dt><dd>31 天 collector 素材的有效標籤、正例率與資料狀態不均；只看 accuracy 會掩蓋不平衡與低覆蓋。</dd></div>
-              <div><dt>根因與修正</dt><dd>使用時間順序切分，as-of 與 arrival 留在同一 split；分別呈現 train、validation、test、Brier、log loss、覆蓋與拒絕原因。</dd></div>
-              <div><dt>驗證</dt><dd>25／3／3 日期切分；離線產出路外 30／60 分鐘參數型實驗 artifact，test Brier 0.0115／0.0163。</dd></div>
-              <div><dt>剩餘風險</dt><dd>Test 僅三天且是已分析時段；資料單一區域與約 30 分鐘收集間隔限制泛化。S3-020 未通過，不能說成正式模型。</dd></div>
-            </dl>
-            <p class="small"><a href="../docs/s3-008-baseline-experiment.md">來源：baseline 實驗文件</a>、<a href="../docs/current-state.md">目前狀態</a></p>
-          </article>
-          <article class="case">
-            <h3>沒有起點時仍能查附近設施，但不製作 ETA</h3>
-            <p class="case-context">工程實例 · 使用者查詢語意</p>
-            <dl>
-              <div><dt>問題與決策</dt><dd>預設出發地會讓畫面看起來已有路線依據；使用者移除預設起點後，必須讓查詢與 ETA 狀態分離。</dd></div>
-              <div><dt>修正</dt><dd>origin 初始為空。使用者可先查附近停車；無 origin 時回 <code>NOT_REQUESTED</code>、略過 Routes，不顯示估計抵達時刻。</dd></div>
-              <div><dt>驗證</dt><dd>2026-10-26 程式碼與文件差異已核對；當次沒有重跑測試套件、production build 或瀏覽器操作。</dd></div>
-              <div><dt>剩餘風險</dt><dd>真實 Places 候選、裝置定位與 Routes 行為仍待瀏覽器驗收；此作品集不冒充該驗收證據。</dd></div>
-            </dl>
-            <p class="small"><a href="../docs/current-state.md">來源：current-state.md，2026-10-26</a></p>
-          </article>
-        </div>
-      </div>
-    </section>
+// 关键：矫正 deck 宽度为 total * 100vw，否则翻页会错位
+deck.style.width=(total*100)+'vw';
 
-    <section class="section alt" id="evidence">
-      <div class="wrap">
-        <div class="section-heading">
+slides.forEach((s,i)=>{
+  const b=document.createElement('button');
+  b.className='dot';b.dataset.i=i;b.setAttribute('aria-label','Page '+(i+1));
+  b.onclick=()=>go(i);
+  nav.appendChild(b);
+});
 
-          <div><h2>把「已完成」、「實驗中」和「待驗收」說清楚</h2><p>下表的驗證屬於指定歷史工作；這次 HTML 作品集另行做自己的語意、連結、瀏覽器版面與列印檢查，不會沿用成產品測試通過。</p></div>
-        </div>
-        <div class="state-columns">
-          <article class="state-column"><h3><i class="state-dot"></i>已具備基礎</h3><ul>
-            <li>新莊 catalog／source mapping、官方路邊與路外 refresh adapter、品質檢查與快照發布。</li>
-            <li>query create/read、地圖 marker／viewport、ETA 區塊、資料不足降級與 API error contract。</li>
-            <li>路外實驗推論有顯式設定、模型版本及 15 分鐘快照護欄；不在 query 時讀 collector 或訓練模型。</li>
-          </ul></article>
-          <article class="state-column"><h3><i class="state-dot amber"></i>部分完成／實驗中</h3><ul>
-            <li>新莊 MVP 的 catalog 和即時來源流程不等於全臺 TDX 即時覆蓋。</li>
-            <li>路外 30／60 分鐘只以實驗標籤呈現；資料少或 ETA 不足時回 null。</li>
-            <li>本機 Compose 服務曾健康啟動；本機健康狀態不是正式環境 SLA。</li>
-          </ul></article>
-          <article class="state-column"><h3><i class="state-dot gray"></i>待補與待驗收</h3><ul>
-            <li>完整 catalog／mapping 治理、更多地區與日期、官方來源端到端成本／時效量測。</li>
-            <li>新的前瞻 holdout、near-full／假陽性指標及 S3-020 模型准入審查。</li>
-            <li>真實 Places／裝置定位／Routes、桌面與手機產品端人工驗收。</li>
-            <li>GitHub Actions 目前因用量限制暫停；此交付不跑 CI workflow。</li>
-          </ul></article>
-        </div>
-        <div class="card card-pad mt-18">
-          <h3 class="card-label">既有驗證證據（不是本次 HTML 的測試結果）</h3>
-          <div class="table-scroll">
-            <table class="evidence-table">
-              <thead><tr><th>日期與範圍</th><th>證據</th><th>可以支持的結論</th><th>限制</th></tr></thead>
-              <tbody>
-                <tr><td>2026-10-26<br>本機 Compose</td><td>API、Web、MySQL、Redis health check 均 healthy；經 Web 同源 <code>/api/health</code> 回 HTTP 200。</td><td>該次本機服務組合可啟動並通過 health endpoint。</td><td>不是正式環境驗收；健康檢查不代表外部 Google／官方來源成功或 CI 通過。</td></tr>
-                <tr><td>2026-10-25<br>前端地圖 API 工作</td><td><code>npm test</code> 7 組、<code>npm run build</code> 通過。</td><td>該次提交的前端契約、流程與 build 有通過紀錄。</td><td>10/26 移除預設起點後沒有重跑；不能當成本次作品集的驗證。</td></tr>
-                <tr><td>2026-10-25<br>後端地圖 API 工作</td><td>完整 Maven suite：113 tests、0 failures、0 errors、0 skipped。</td><td>對應程式版本的自動化測試通過。</td><td>後續 10/26 有程式變更；不是目前 HEAD 或此 HTML 的新結果。</td></tr>
-                <tr><td>2026-10-26<br>NTPC 路邊稽核</td><td>33 頁／2,151 列；1,880 confirmed eligible；來源 ID／重複／座標錯誤 0。</td><td>該次新莊來源 traversal 與 reviewed mapping 對帳完整。</td><td>不是當下可用空位數，也不是全臺目錄。</td></tr>
-                <tr><td>2026-10-25 至 26<br>離線 ML</td><td>31 個 private ZIP；train／validation／test 25／3／3 日期；測試只有 3 天。</td><td>可重現的固定時距實驗與版本化實驗參數產物。</td><td>舊日期、單一區域、來源採集間隔等限制未解；S3-020 不通過。</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="small muted mt-18 mb-0">詳細紀錄見 <a href="../docs/current-state.md">docs/current-state.md</a>、<a href="../docs/sprint-3-entry-criteria.md">Sprint 3 進入條件</a> 與 <a href="../docs/s3-008-baseline-experiment.md">S3-008 baseline 報告</a>。本作品集自包含離線呈現；日期標示是記錄日期，不是資料有效期限。</p>
-        </div>
-        <p class="note warning mt-18">首頁介面使用靜態重繪，不載入真實 Google 地圖，不執行 API 呼叫。圖上的道路、區塊與標記是示意；62 表示符合篩選的官方觀測筆數，並非 62 個空位。系統取得時間也不能取代來源觀測時間。</p>
-      </div>
-    </section>
+function go(n,opts={}){
+  if(lock&&!opts.force)return;
+  idx=Math.max(0,Math.min(total-1,n));
+  window.__currentSlideIndex = idx;
+  deck.style.transform=`translateX(${-idx*100}vw)`;
+  nav.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+  /* 主题切换：优先读 data-theme，其次从 class（light/dark）推断 */
+  const el=slides[idx];
+  const th=el.dataset.theme || (el.classList.contains('light')?'light':(el.classList.contains('dark')?'dark':'dark'));
+  document.body.classList.toggle('light-bg',th==='light');
+  /* 动效：翻页过渡中段触发目前頁的入场动画（由 motion-boot 注册） */
+  if(window.__playSlide) setTimeout(()=>window.__playSlide(idx), 450);
+  window.__pptPresenter?.onSlideChange(idx);
+  if(!opts.force){lock=true;setTimeout(()=>lock=false,700);}
+}
 
-    <section class="section" id="appendix">
-      <div class="wrap">
-        <div class="section-heading">
+/* =============== ESC 索引视图 =============== */
+let overviewOn=false;
+const ov=document.createElement('div');
+ov.id='overview';
+ov.style.cssText='position:fixed;inset:0;z-index:100;background:rgba(var(--ink-rgb),.92);backdrop-filter:blur(12px);display:none;overflow-y:auto;padding:4vh 4vw';
+document.body.appendChild(ov);
 
-          <div><h2>可展開的資料模型、技術取捨、驗證與詞彙</h2><p>以下內容對照實際 migration、API DTO 和目前狀態文件；讀者可依需要深入，不影響主要敘事。</p></div>
-        </div>
-        <details>
-          <summary>資料庫 ERD：六張核心表的責任與外鍵</summary>
-          <div class="details-content">
-            <div class="diagram-frame">
-              <svg viewBox="0 0 1260 590" role="img" aria-labelledby="erd-title erd-desc">
-                <title id="erd-title">主系統核心資料表 ERD</title>
-                <desc id="erd-desc">parking_place 與 source_mapping、availability_observation 有一對多關係。ingestion_run 可關聯多個 availability_snapshot。每個 snapshot 有多個 observation。source_state 的 active_snapshot_id 可指向目前快照。所有關係依 V1 migration 外鍵呈現。</desc>
-                <defs><marker id="erd-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#74848a"/></marker></defs>
-                <rect width="1260" height="590" fill="#fffefa"/>
-                <g stroke="#b9c9c0" stroke-width="2">
-                  <rect x="55" y="64" width="270" height="160" rx="14" fill="#f1f7f1"/>
-                  <rect x="390" y="64" width="300" height="160" rx="14" fill="#f7f8f4"/>
-                  <rect x="785" y="64" width="300" height="160" rx="14" fill="#edf5fb"/>
-                  <rect x="55" y="330" width="270" height="160" rx="14" fill="#f7f8f4"/>
-                  <rect x="390" y="330" width="300" height="160" rx="14" fill="#fff5e4"/>
-                  <rect x="785" y="330" width="300" height="160" rx="14" fill="#f7f8f4"/>
-                </g>
-                <g class="svg-node-title">
-                  <text x="78" y="101">parking_place</text><text x="413" y="101">source_mapping</text><text x="808" y="101">availability_observation</text>
-                  <text x="78" y="367">ingestion_run</text><text x="413" y="367">availability_snapshot</text><text x="808" y="367">source_state</text>
-                </g>
-                <g class="svg-small">
-                  <text x="78" y="132">PK id · place_type · display_name</text><text x="78" y="156">lat/lng · car_eligible_status</text><text x="78" y="180">active_status · service_area</text>
-                  <text x="413" y="132">PK id · source_system / dataset</text><text x="413" y="156">source_place_id · parking_place_id</text><text x="413" y="180">mapping_status / valid_from / to</text>
-                  <text x="808" y="132">PK id · snapshot_id · place_id</text><text x="808" y="156">raw status + normalized status</text><text x="808" y="180">available / total · observed/fetched</text>
-                  <text x="78" y="398">PK id · source / dataset</text><text x="78" y="422">trigger · run_status · counts</text><text x="78" y="446">started / finished · quality summary</text>
-                  <text x="413" y="398">PK id · status / quality</text><text x="413" y="422">source_observed_at · system_fetched_at</text><text x="413" y="446">published_at · ingestion_run_id</text>
-                  <text x="808" y="398">PK id · source / dataset</text><text x="808" y="422">active_snapshot_id · refresh status</text><text x="808" y="446">cooldown / last success / failure</text>
-                </g>
-                <g fill="none" stroke="#74848a" stroke-width="2.5" marker-end="url(#erd-arrow)">
-                  <path d="M325 140 H380"/><path d="M325 190 H755 V170 H775"/>
-                  <path d="M690 145 H775"/><path d="M325 410 H370 V430 H380"/>
-                  <path d="M690 410 H765 V440 H775"/>
-                </g>
-                <g class="svg-small">
-                  <text x="332" y="128">1 : N</text><text x="550" y="184">1 : N</text><text x="697" y="132">1 : N</text>
-                  <text x="334" y="399">1 : N</text><text x="696" y="426">active snapshot FK</text>
-                </g>
-              </svg>
-              <div class="diagram-caption"><span>外鍵依 <code>backend/src/main/resources/db/migration/V1__create_core_parking_schema.sql</code>。</span><span>Migration 另有 V2–V4 演進；圖只摘要核心表與關係。</span></div>
-            </div>
-          </div>
-        </details>
-        <details>
-          <summary>技術取捨：快照、短期狀態、外部呼叫與實驗模型</summary>
-          <div class="details-content">
-            <div class="grid-2">
-              <div><h3>MySQL 保存可追溯來源資料</h3><p class="small muted">目錄、來源 mapping、ingestion run、availability snapshot、availability observation 與 source state 使用不同資料表。完整資料品質檢查後發布，避免部分下載變成最新快照。</p></div>
-              <div><h3>Redis 保存短生命週期狀態</h3><p class="small muted">短期 queryId 與刷新鎖適合有 TTL 的狀態；Redis 過期不會讓 MySQL 中的來源觀測變新。Redis 失效時，查詢狀態可失效並提示重查。</p></div>
-              <div><h3>外部 API 呼叫明確分支</h3><p class="small muted">Routes 只有在 origin 存在時才估 ETA；新建查詢不自動刷新政府來源。這讓上游用量、冷卻、失敗與使用者動作可區分。</p></div>
-              <div><h3>模型產物受版本與資料護欄</h3><p class="small muted">小型參數 JSON 有 schema／feature／source 設定 hash，但仍標記 <code>EXPERIMENT_ONLY</code>。低樣本、過期資料、資格不確定、ETA 不足一律拒絕輸出機率。</p></div>
-            </div>
-          </div>
-        </details>
-        <details>
-          <summary>API、錯誤狀態與分頁界限</summary>
-          <div class="details-content">
-            <ul class="small muted">
-              <li>建立：<code>POST /api/v1/parking-queries</code>；<code>requestToken</code> 必填，<code>destination</code> 和 <code>departure</code> 必填，<code>origin</code> 可省略。</li>
-              <li>查詢：<code>GET /api/v1/parking-queries/{queryId}</code>；map data 與 viewport 有各自端點。</li>
-              <li>Viewport：<code>south/west/north/east</code> 範圍、offset、limit；預設 300、最大 500。</li>
-              <li>刷新：<code>POST /api/v1/parking-queries/{queryId}/refresh</code>；只接受 <code>MANUAL_REFRESH</code> 或 <code>VISIBLE_AUTO_REFRESH</code>。</li>
-              <li>錯誤契約由 <code>ApiExceptionHandler</code> 統一：400、422、404、410、503；回傳 error code、message、details、retryable 與 serverTime。</li>
-            </ul>
-          </div>
-        </details>
-        <details>
-          <summary>本作品集的驗證紀錄與可重現檢查</summary>
-          <div class="details-content">
-            <ul class="small muted">
-              <li>HTML 結構、內部 anchor、SVG title/desc 與引用、外部資源依賴、瀏覽器桌面／窄螢幕、列印樣式及 Console 會在交付前另行檢查。</li>
-              <li>Impeccable 元件審查：五項均選擇 Code is fine；頁面使用程式碼繪製，不打包生成圖像素材。</li>
-              <li>此 HTML 不連後端、不載外部字型／CDN、不含密鑰。主要內容即使離線也可讀取。</li>
-              <li>產品測試與 HTML 靜態作品集驗證是不同範圍，不會把歷史 Maven／npm 結果說成這次 HTML 的通過。</li>
-            </ul>
-          </div>
-        </details>
-        <details>
-          <summary>技術名詞小字典</summary>
-          <div class="details-content">
-            <dl class="glossary">
-              <div><dt>REST API（表現層狀態轉移介面）</dt><dd>以前端與後端可協作的 HTTP 資源和方法交換資料。</dd></div>
-              <div><dt>ETA（Estimated Time of Arrival，預計抵達時間）</dt><dd>由出發地、目的地及路線服務估算；未設定起點就不請求。</dd></div>
-              <div><dt>Snapshot（快照）</dt><dd>一次來源擷取經完整性與品質檢查後發布的資料版本。</dd></div>
-              <div><dt>Source mapping（來源對應）</dt><dd>把外部來源 ID 對到系統內停車位置，並保留來源與核對狀態。</dd></div>
-              <div><dt>Baseline（基準模型）</dt><dd>簡單且可解釋的比較方法，用於衡量較複雜模型是否有改善。</dd></div>
-              <div><dt>Brier score（布萊爾分數）</dt><dd>衡量機率預測與實際二元結果的平方誤差，越低通常越好；需搭配樣本與校準判讀。</dd></div>
-              <div><dt>Holdout（保留測試集）</dt><dd>未參與訓練或調參的資料；只有幾天的舊日期不能代表新的前瞻 holdout。</dd></div>
-              <div><dt>Graceful degradation（漸進降級）</dt><dd>某個上游或資料條件失效時，保留可用資訊並清楚標示缺口，而不是假裝成功。</dd></div>
-            </dl>
-          </div>
-        </details>
-        <details>
-          <summary>資料來源與工程文件</summary>
-          <div class="details-content">
-            <ul class="source-list">
-              <li><a href="../README.md">Repository README</a></li>
-              <li><a href="../docs/current-state.md">目前狀態與驗證證據</a></li>
-              <li><a href="../docs/requirements.md">產品需求與驗收條件</a></li>
-              <li><a href="../docs/decisions.md">已決策事項</a></li>
-              <li><a href="../docs/sprint-3-entry-criteria.md">Sprint 3 進入條件</a></li>
-              <li><a href="../docs/s3-008-baseline-experiment.md">S3-008 離線 baseline 報告</a></li>
-              <li><a href="../docs/prediction-inference-contract.md">模型推論契約</a></li>
-              <li><a href="../docs/ml-canonical-schema.md">訓練 canonical schema</a></li>
-              <li><a href="../backend/src/main/java/parking/forecast/controller/ParkingQueryController.java">ParkingQueryController.java</a></li>
-              <li><a href="../backend/src/main/java/parking/forecast/service/ParkingQueryService.java">ParkingQueryService.java</a></li>
-              <li><a href="../backend/src/main/resources/db/migration/V1__create_core_parking_schema.sql">V1 核心 schema migration</a></li>
-              <li><a href="../frontend/src/App.vue">前端產品畫面 App.vue</a></li>
-            </ul>
-            <p class="small muted mt-18">程式碼基底為本次 review 分支的 <code>origin/main</code> 起點 <code>2fd9feffc910c9ba6a9058e4fcd5557952cc5bc2</code>；此作品集和驗證差異以遠端 review 分支上的實際檔案為準。</p>
-          </div>
-        </details>
-      </div>
-    </section>
-  </main>
+function buildOverview(){
+  ov.innerHTML='';
+  const grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:2vh 1.6vw;max-width:90vw;margin:0 auto';
+  slides.forEach((s,i)=>{
+    const card=document.createElement('div');
+    card.style.cssText='cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid '+(i===idx?'rgba(var(--paper-rgb),.8)':'rgba(var(--paper-rgb),.15)')+';transition:border-color .2s';
+    card.onmouseenter=()=>card.style.borderColor='rgba(var(--paper-rgb),.6)';
+    card.onmouseleave=()=>card.style.borderColor=i===idx?'rgba(var(--paper-rgb),.8)':'rgba(var(--paper-rgb),.15)';
+    const wrap=document.createElement('div');
+    wrap.style.cssText='width:100%;aspect-ratio:16/9;overflow:hidden;position:relative;pointer-events:none;background:'+(s.classList.contains('light')?'var(--paper)':'var(--ink)');
+    const clone=s.cloneNode(true);
+    clone.style.cssText='width:100vw;height:100vh;transform:scale('+(1/4.5)+');transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none';
+    wrap.appendChild(clone);
+    const label=document.createElement('div');
+    label.style.cssText='padding:6px 10px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper);opacity:.7';
+    label.textContent=window.__pptPresenter?.slideLabel(i) || ((i+1)+' / '+total);
+    card.appendChild(wrap);
+    card.appendChild(label);
+    card.onclick=()=>{toggleOverview();go(i)};
+    grid.appendChild(card);
+  });
+  ov.appendChild(grid);
+}
 
-  <footer class="footer">
-    <div class="wrap footer-row">
-      <span>全臺停車位抵達預測 · 工程面試作品集 · 繁體中文</span>
-      <span>資料不全就明確說明；預測是估計，不是車位保證。</span>
-      <a href="#top">回到頁首</a>
-    </div>
-  </footer>
+function toggleOverview(){
+  overviewOn=!overviewOn;
+  if(overviewOn){buildOverview();ov.style.display='block';}
+  else{ov.style.display='none';}
+}
+
+/* =============== 講者模式 / 觀眾螢幕同步 =============== */
+window.__pptPresenter=(()=>{
+  const query=new URLSearchParams(location.search);
+  const requestedMode=query.get('mode')||'deck';
+  const originalTitle=document.title;
+  const notes=()=>Array.isArray(window.__SPEAKER_NOTES__)?window.__SPEAKER_NOTES__:[];
+  const slideId=i=>slides[i]?.dataset.slideId||`slide-${String(i+1).padStart(2,'0')}`;
+  const storageKey=name=>`guizang-ppt-${name}:${location.pathname}`;
+  let mode='deck',session=query.get('session')||Math.random().toString(36).slice(2),audienceWindow=null;
+  let channel=null,transportReady=false,popupBlocked=false,audienceOpenedAt=0,lastAckAt=0,lastAckIndex=-1,lastAckSeq=-1,seq=0,lastPingAt=0;
+  let renderedNoteId='',saveTimer=0,noteSize=Number(localStorage.getItem('guizang-ppt-note-size')||17),presenterFrameObserver=null;
+  let elapsed=0,timerRunning=false,timerStartedAt=0,timedSlideIndex=idx,slideTimerStartedAt=0,slideElapsed=Array(total).fill(0);
+  let rehearsalActive=false,presenterOverviewOn=false,lowPowerBeforePresenter=window.__lowPowerMode;
+  let layoutMode=localStorage.getItem(storageKey('layout'))||'balanced';
+  let autoEnabled=localStorage.getItem(storageKey('auto-enabled'))==='1';
+  let autoGlobalSeconds=Math.max(0,Number(localStorage.getItem(storageKey('auto-seconds'))||0));
+  let autoDeadline=0,autoRemainingMs=0;
+  let screenMode='normal',audienceFrozen=false;
+  let annotationTool='none',annotationPointerDown=false,annotationStart=null,draftCircle=null,circles=[],audienceCircles=[];
+  let laserPoint=null,audienceLaser=null,laserHideAt=0,audienceLaserHideAt=0,lastLaserSent=0;
+  const seenNonces=[],seenNonceSet=new Set();
+  const syncKey=()=>`guizang-ppt-sync:${location.pathname}:${session}`;
+  const channelName=()=>`guizang-ppt:${location.pathname}:${session}`;
+
+  function noteAt(i){
+    const id=slideId(i);
+    return notes().find(n=>n.id===id)||{id,title:slides[i]?.dataset.title||`第 ${i+1} 页`,purpose:'—',talk:[],transition:''};
+  }
+  function slideLabel(i){return `${i+1} / ${total} · ${noteAt(i).title||slideId(i)}`;}
+  function escapeHTML(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+  function valueLines(value){
+    if(Array.isArray(value))return value.filter(Boolean).map(x=>`• ${x}`).join('\n');
+    return value?String(value):'';
+  }
+  function generatedNote(n){
+    const parts=[];
+    if(Array.isArray(n.talk)&&n.talk.length)parts.push(`【讲述要点】\n${valueLines(n.talk)}`);
+    if(n.transition)parts.push(`【转场】\n${n.transition}`);
+    const optional=[['舞台提示',n.cue],['互动',n.interaction],['表达提示',n.delivery],['翻页时机',n.advance],['备用方案',n.fallback],['读音提醒',n.pronunciation]];
+    optional.forEach(([label,value])=>{const text=valueLines(value);if(text)parts.push(`【${label}】\n${text}`);});
+    return parts.join('\n\n')||'—';
+  }
+  function noteStorageKey(id){return `guizang-ppt-note:${location.pathname}:${id}`;}
+  function loadNoteValue(id,i,n){
+    const saved=localStorage.getItem(noteStorageKey(id));
+    if(saved!==null)return saved;
+    const prefix=window.__PPT_LEGACY_NOTE_KEY__;
+    if(prefix){
+      const legacy=localStorage.getItem(`${prefix}:${i}`);
+      if(legacy!==null){localStorage.setItem(noteStorageKey(id),legacy);return legacy;}
+    }
+    return generatedNote(n);
+  }
+  function frameUrl(targetMode,i){
+    const url=new URL(location.href);url.hash='';
+    url.searchParams.set('mode',targetMode);url.searchParams.set('session',session);url.searchParams.set('slide',String(i+1));
+    return url.href;
+  }
+  function postPreviewGoto(frame,i){
+    try{frame.contentWindow?.postMessage({__guizangPptSync:1,session,role:'presenter',type:'preview-goto',index:i},'*');}catch(e){}
+  }
+  function updatePreviewFrame(frame,i){
+    frame.dataset.slide=String(i);
+    if(!frame.dataset.previewBound){frame.dataset.previewBound='1';frame.addEventListener('load',()=>postPreviewGoto(frame,Number(frame.dataset.slide)));}
+    if(!frame.getAttribute('src'))frame.src=frameUrl('preview',i);else postPreviewGoto(frame,i);
+  }
+  function plannedMsAt(i){
+    const minutes=Number(noteAt(i).minutes);
+    return Number.isFinite(minutes)&&minutes>0?minutes*60000:null;
+  }
+  function totalPlannedMs(){
+    const values=Array.from({length:total},(_,i)=>plannedMsAt(i));
+    return values.length&&values.every(Number.isFinite)?values.reduce((sum,x)=>sum+x,0):null;
+  }
+  function sectionInfo(i){
+    const name=String(noteAt(i).section||'').trim();
+    if(!name)return null;
+    let first=i,last=i;
+    while(first>0&&String(noteAt(first-1).section||'').trim()===name)first--;
+    while(last<total-1&&String(noteAt(last+1).section||'').trim()===name)last++;
+    const targets=[];for(let x=first;x<=last;x++)targets.push(plannedMsAt(x));
+    const planned=targets.every(Number.isFinite)?targets.reduce((sum,x)=>sum+x,0):null;
+    const used=slideElapsed.slice(first,last+1).reduce((sum,x)=>sum+x,0)+(timerRunning&&timedSlideIndex>=first&&timedSlideIndex<=last?Date.now()-slideTimerStartedAt:0);
+    return{name,position:i-first+1,count:last-first+1,planned,used};
+  }
+  function durationText(ms){
+    const value=Math.max(0,Math.round(Number(ms)||0)),seconds=Math.floor(value/1000);
+    const hours=Math.floor(seconds/3600),minutes=Math.floor((seconds%3600)/60),secs=seconds%60;
+    return hours?`${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(secs).padStart(2,'0')}`:`${String(minutes).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  }
+  function signedDuration(ms){return `${ms>=0?'+':'−'}${durationText(Math.abs(ms))}`;}
+  function clockTime(timestamp){return new Date(timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+
+  function fitFrame(frame){
+    const viewport=frame?.closest('.ppt-frame-viewport');
+    if(!viewport)return;
+    const availableWidth=viewport.clientWidth,availableHeight=viewport.clientHeight;
+    if(!availableWidth||!availableHeight)return;
+    const width=Math.min(availableWidth,availableHeight*(16/9)),height=width*(9/16);
+    frame.style.width=`${width}px`;frame.style.height=`${height}px`;
+    if(frame.id==='ppt-current-frame')sizeInk(document.getElementById('ppt-presenter-ink'),width,height);
+  }
+  function fitPresenterFrames(){
+    fitFrame(document.getElementById('ppt-current-frame'));
+    fitFrame(document.getElementById('ppt-next-frame'));
+  }
+  function sizeInk(canvas,width,height){
+    if(!canvas||!width||!height)return;
+    canvas.style.width=`${width}px`;canvas.style.height=`${height}px`;
+    const dpr=Math.min(devicePixelRatio||1,2),pixelWidth=Math.round(width*dpr),pixelHeight=Math.round(height*dpr);
+    if(canvas.width!==pixelWidth||canvas.height!==pixelHeight){canvas.width=pixelWidth;canvas.height=pixelHeight;}
+  }
+  function drawEllipse(ctx,circle,width,height,alpha=1){
+    const x1=circle.x1*width,y1=circle.y1*height,x2=circle.x2*width,y2=circle.y2*height;
+    ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle='#ff4f59';ctx.lineWidth=Math.max(3,width*.004);ctx.lineCap='round';
+    ctx.beginPath();ctx.ellipse((x1+x2)/2,(y1+y2)/2,Math.abs(x2-x1)/2,Math.abs(y2-y1)/2,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+  }
+  function drawInk(canvas,list,laser,draft){
+    if(!canvas)return;const width=canvas.clientWidth,height=canvas.clientHeight;if(!width||!height)return;
+    sizeInk(canvas,width,height);const dpr=canvas.width/width,ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);
+    (list||[]).forEach(circle=>drawEllipse(ctx,circle,width,height));
+    if(draft)drawEllipse(ctx,draft,width,height,.72);
+    if(laser){
+      const x=laser.x*width,y=laser.y*height,r=Math.max(6,width*.007);
+      const glow=ctx.createRadialGradient(x,y,0,x,y,r*2.8);glow.addColorStop(0,'rgba(255,255,255,.98)');glow.addColorStop(.2,'rgba(255,64,72,.98)');glow.addColorStop(1,'rgba(255,64,72,0)');
+      ctx.fillStyle=glow;ctx.beginPath();ctx.arc(x,y,r*2.8,0,Math.PI*2);ctx.fill();
+    }
+  }
+  function renderInks(){
+    const now=Date.now();if(now>laserHideAt)laserPoint=null;if(now>audienceLaserHideAt)audienceLaser=null;
+    drawInk(document.getElementById('ppt-presenter-ink'),circles,laserPoint,draftCircle);
+    drawInk(document.getElementById('ppt-audience-ink'),audienceCircles,audienceLaser,null);
+  }
+  function setAnnotationTool(tool){
+    annotationTool=annotationTool===tool?'none':tool;annotationPointerDown=false;draftCircle=null;
+    const canvas=document.getElementById('ppt-presenter-ink');canvas?.classList.toggle('is-active',annotationTool!=='none');
+    document.querySelectorAll('[data-ppt-tool]').forEach(button=>button.classList.toggle('is-active',button.dataset.pptTool===annotationTool));
+    renderInks();
+  }
+  function annotationPoint(event){
+    const canvas=event.currentTarget,rect=canvas.getBoundingClientRect();
+    return{x:Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),y:Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height))};
+  }
+  function onAnnotationPointerDown(event){
+    if(annotationTool!=='circle')return;event.preventDefault();annotationPointerDown=true;annotationStart=annotationPoint(event);draftCircle={x1:annotationStart.x,y1:annotationStart.y,x2:annotationStart.x,y2:annotationStart.y};event.currentTarget.setPointerCapture?.(event.pointerId);renderInks();
+  }
+  function onAnnotationPointerMove(event){
+    if(annotationTool==='laser'){
+      const point=annotationPoint(event);laserPoint=point;laserHideAt=Date.now()+650;
+      if(Date.now()-lastLaserSent>32){lastLaserSent=Date.now();emit({type:'laser',index:idx,point},{persist:false});}renderInks();return;
+    }
+    if(annotationTool==='circle'&&annotationPointerDown&&draftCircle){const point=annotationPoint(event);draftCircle.x2=point.x;draftCircle.y2=point.y;renderInks();}
+  }
+  function onAnnotationPointerUp(event){
+    if(annotationTool!=='circle'||!annotationPointerDown||!draftCircle)return;event.preventDefault();annotationPointerDown=false;
+    const circle={...draftCircle};draftCircle=null;
+    if(Math.abs(circle.x2-circle.x1)>.012&&Math.abs(circle.y2-circle.y1)>.012){circles.push(circle);emit({type:'circle',index:idx,circle});}
+    renderInks();
+  }
+  function onAnnotationPointerLeave(){
+    if(annotationTool==='laser'){laserPoint=null;emit({type:'laser',index:idx,point:null},{persist:false});renderInks();}
+  }
+  function clearAnnotations(broadcast=true){circles=[];draftCircle=null;laserPoint=null;if(broadcast)emit({type:'clear',index:idx});renderInks();}
+
+  function buildPresenterOverview(){
+    const grid=document.getElementById('ppt-presenter-overview-grid');if(!grid)return;grid.innerHTML='';
+    slides.forEach((slide,i)=>{
+      const n=noteAt(i),button=document.createElement('button');button.type='button';button.className=`ppt-overview-page${i===idx?' is-current':''}`;
+      button.innerHTML=`<span class="ppt-overview-page-no">${String(i+1).padStart(2,'0')} / ${String(total).padStart(2,'0')}</span><span class="ppt-overview-page-title">${escapeHTML(n.title||slideId(i))}</span><span class="ppt-overview-page-meta"><span>${escapeHTML(n.section||'未分组')}</span><span>${Math.round(((i+1)/total)*100)}%</span></span>`;
+      button.onclick=()=>{togglePresenterOverview(false);go(i,{force:true});};grid.appendChild(button);
+    });
+    requestAnimationFrame(()=>grid.querySelector('.is-current')?.scrollIntoView({block:'nearest',inline:'nearest'}));
+  }
+  function togglePresenterOverview(force){
+    presenterOverviewOn=typeof force==='boolean'?force:!presenterOverviewOn;
+    if(presenterOverviewOn&&annotationTool!=='none')setAnnotationTool('none');
+    const stack=document.querySelector('.ppt-preview-stack'),overview=document.getElementById('ppt-presenter-overview');
+    stack?.classList.toggle('is-overview',presenterOverviewOn);if(overview)overview.hidden=!presenterOverviewOn;
+    const button=document.getElementById('ppt-grid');if(button){button.classList.toggle('is-active',presenterOverviewOn);button.setAttribute('aria-pressed',String(presenterOverviewOn));}
+    if(presenterOverviewOn)buildPresenterOverview();else requestAnimationFrame(fitPresenterFrames);renderAutoState();
+  }
+
+  function mountShell(){
+    if(document.getElementById('ppt-presenter'))return;
+    document.body.insertAdjacentHTML('beforeend',`<div id="ppt-presenter" data-layout="${layoutMode}" aria-label="講者視圖">
+      <div class="ppt-presenter-top"><div><div class="ppt-presenter-brand">講者視圖</div><div class="ppt-presenter-meta"><span id="ppt-plan"></span><span id="ppt-section" hidden></span></div></div><div class="ppt-presenter-meta"><span id="ppt-sync" class="ppt-sync" data-state="disconnected" title="表示觀眾頁面的軟體同步狀態，不代表 HDMI 等實體線材狀態">觀眾螢幕 · 未連線</span><button id="ppt-auto-toggle" class="ppt-ui-btn ppt-auto-state" type="button">自動翻頁 · 關閉</button><button id="ppt-preflight" class="ppt-ui-btn" type="button">檢查</button><button id="ppt-settings" class="ppt-ui-btn" type="button">設定</button><button id="ppt-reopen" class="ppt-ui-btn" type="button">重新開啟觀眾螢幕</button><button id="ppt-exit" class="ppt-ui-btn" type="button">退出</button></div></div>
+      <div class="ppt-presenter-main"><div class="ppt-preview-stack"><div class="ppt-stage-card"><div class="ppt-stage-label"><span>目前頁</span><span class="ppt-annotation-tools"><button id="ppt-grid" class="ppt-ui-btn ppt-grid-btn" type="button" aria-pressed="false" title="投影片總覽（Esc）"><span class="ppt-grid-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span>總覽</button><button class="ppt-ui-btn" data-ppt-tool="laser" type="button" title="雷射筆（L）">激光</button><button class="ppt-ui-btn" data-ppt-tool="circle" type="button" title="圈選（C）">圈選</button><button id="ppt-ink-clear" class="ppt-ui-btn ppt-clear-btn" type="button" title="清除標記（X）">清除</button></span><span id="ppt-current-label"></span></div><div class="ppt-frame-viewport"><iframe id="ppt-current-frame" class="ppt-frame" title="目前頁預覽"></iframe><canvas id="ppt-presenter-ink" class="ppt-annotation-layer" aria-label="演講標註层"></canvas></div></div><div class="ppt-stage-card" id="ppt-next-card"><div class="ppt-stage-label"><span>下一頁</span><span id="ppt-next-label"></span></div><div class="ppt-frame-viewport"><iframe id="ppt-next-frame" class="ppt-frame ppt-next-frame" title="下一頁預覽"></iframe></div></div><div id="ppt-presenter-overview" class="ppt-presenter-overview" hidden><div class="ppt-overview-head"><strong>選擇投影片</strong><button id="ppt-overview-close" class="ppt-ui-btn" type="button">返回預覽</button></div><div id="ppt-presenter-overview-grid" class="ppt-overview-grid"></div></div></div>
+      <div class="ppt-notes-card"><div class="ppt-notes-head"><div class="ppt-notes-label">標題</div><div id="ppt-notes-title" class="ppt-notes-title"></div><div class="ppt-purpose-block"><div class="ppt-notes-label">本頁目的</div><div id="ppt-notes-purpose" class="ppt-purpose-copy"></div></div><div class="ppt-notes-draft-head"><div><div class="ppt-notes-label">草稿（備忘）</div><div id="ppt-note-meta" class="ppt-note-meta"></div></div><span class="ppt-notes-tools"><span id="ppt-saved" class="ppt-saved">已儲存</span><button id="ppt-note-smaller" class="ppt-ui-btn" type="button" title="縮小備忘字級">A−</button><button id="ppt-note-larger" class="ppt-ui-btn" type="button" title="放大備忘字級">A+</button></span></div></div><textarea id="ppt-note-editor" class="ppt-note-editor" spellcheck="false" aria-label="本頁演講備忘"></textarea></div></div>
+      <div class="ppt-presenter-bottom"><div class="ppt-time-dashboard"><div class="ppt-time-stat"><span class="ppt-time-label">已進行</span><strong id="ppt-clock" class="ppt-time-value">00:00</strong><span class="ppt-time-hint">總時長</span></div><div class="ppt-time-stat"><span class="ppt-time-label">本頁</span><strong id="ppt-slide-clock" class="ppt-time-value">00:00</strong><span id="ppt-slide-plan" class="ppt-time-hint">計畫 —</span></div><div id="ppt-slide-status-box" class="ppt-time-stat"><span id="ppt-slide-status-label" class="ppt-time-label">計畫</span><strong id="ppt-slide-status" class="ppt-time-value">—</strong><span id="ppt-slide-status-hint" class="ppt-time-hint">未設定</span></div></div><div class="ppt-control-stack"><div class="ppt-controls"><button id="ppt-first" class="ppt-ui-btn" type="button">首頁</button><button id="ppt-prev" class="ppt-ui-btn" type="button">上一頁</button><button id="ppt-next" class="ppt-ui-btn" type="button">下一頁</button><button id="ppt-last" class="ppt-ui-btn" type="button">末頁</button></div><div class="ppt-session-actions"><button id="ppt-timer-toggle" class="ppt-ui-btn" type="button">开始计时</button><button id="ppt-timer-reset" class="ppt-ui-btn" type="button">重置计时</button><button id="ppt-rehearsal" class="ppt-ui-btn" type="button">排練</button></div></div><div class="ppt-page-state"><strong id="ppt-page-count"></strong><span id="ppt-page-percent"></span></div></div>
+      <div id="ppt-dialog" class="ppt-dialog" hidden><div class="ppt-dialog-panel" role="dialog" aria-modal="true"><div class="ppt-dialog-head"><div id="ppt-dialog-title" class="ppt-dialog-title"></div><button id="ppt-dialog-close" class="ppt-ui-btn" type="button">關閉</button></div><div id="ppt-dialog-body" class="ppt-dialog-body"></div></div></div>
+    </div>`);
+    const timerLocale = new Map([['开始计时','開始計時'],['重置计时','重設計時'],['继续计时','繼續計時']]);
+    const timerToggle = document.getElementById('ppt-timer-toggle');
+    const timerReset = document.getElementById('ppt-timer-reset');
+    if(timerToggle)timerToggle.textContent=timerLocale.get(timerToggle.textContent)||timerToggle.textContent;
+    if(timerReset)timerReset.textContent=timerLocale.get(timerReset.textContent)||timerReset.textContent;
+    document.getElementById('ppt-reopen').onclick=reopenAudience;
+    document.getElementById('ppt-exit').onclick=exitPresenter;
+    document.getElementById('ppt-preflight').onclick=openPreflight;
+    document.getElementById('ppt-settings').onclick=openSettings;
+    document.getElementById('ppt-first').onclick=()=>go(0,{force:true});
+    document.getElementById('ppt-prev').onclick=()=>go(idx-1,{force:true});
+    document.getElementById('ppt-grid').onclick=()=>togglePresenterOverview();
+    document.getElementById('ppt-overview-close').onclick=()=>togglePresenterOverview(false);
+    document.getElementById('ppt-next').onclick=()=>go(idx+1,{force:true});
+    document.getElementById('ppt-last').onclick=()=>go(idx===total-1?0:total-1,{force:true});
+    document.getElementById('ppt-timer-toggle').onclick=toggleTimer;
+    document.getElementById('ppt-timer-reset').onclick=resetTimer;
+    document.getElementById('ppt-rehearsal').onclick=toggleRehearsal;
+    document.getElementById('ppt-auto-toggle').onclick=toggleAutoAdvance;
+    document.getElementById('ppt-note-smaller').onclick=()=>setNoteSize(noteSize-1);
+    document.getElementById('ppt-note-larger').onclick=()=>setNoteSize(noteSize+1);
+    document.getElementById('ppt-note-editor').addEventListener('input',saveNote);
+    document.querySelectorAll('[data-ppt-tool]').forEach(button=>button.onclick=()=>setAnnotationTool(button.dataset.pptTool));
+    document.getElementById('ppt-ink-clear').onclick=()=>clearAnnotations(true);
+    const ink=document.getElementById('ppt-presenter-ink');
+    ink.addEventListener('pointerdown',onAnnotationPointerDown);ink.addEventListener('pointermove',onAnnotationPointerMove);ink.addEventListener('pointerup',onAnnotationPointerUp);ink.addEventListener('pointercancel',onAnnotationPointerUp);ink.addEventListener('pointerleave',onAnnotationPointerLeave);
+    document.getElementById('ppt-dialog-close').onclick=closeDialog;
+    document.getElementById('ppt-dialog').onclick=event=>{if(event.target.id==='ppt-dialog')closeDialog();};
+    if('ResizeObserver'in window){presenterFrameObserver=new ResizeObserver(()=>requestAnimationFrame(fitPresenterFrames));presenterFrameObserver.observe(document.querySelector('.ppt-preview-stack'));}
+    else addEventListener('resize',fitPresenterFrames);
+    setNoteSize(noteSize,false);applyLayout(layoutMode,false);requestAnimationFrame(fitPresenterFrames);
+  }
+  function updateShell(){
+    if(mode!=='presenter')return;mountShell();
+    const n=noteAt(idx),next=Math.min(idx+1,total-1),id=slideId(idx),editor=document.getElementById('ppt-note-editor');
+    const currentFrame=document.getElementById('ppt-current-frame'),nextFrame=document.getElementById('ppt-next-frame');
+    if(currentFrame.dataset.slide!==String(idx))updatePreviewFrame(currentFrame,idx);
+    if(nextFrame.dataset.slide!==String(next))updatePreviewFrame(nextFrame,next);
+    document.getElementById('ppt-next-card').classList.toggle('is-end',idx===total-1);
+    document.getElementById('ppt-current-label').textContent=`${idx+1} / ${total}`;
+    document.getElementById('ppt-next-label').textContent=idx===total-1?'已到末頁':`${next+1} / ${total}`;
+    document.getElementById('ppt-notes-title').textContent=n.title||`第 ${idx+1} 頁`;
+    document.getElementById('ppt-notes-purpose').textContent=n.purpose||'—';
+    const target=plannedMsAt(idx);document.getElementById('ppt-note-meta').textContent=`建議 ${target?(target/60000).toFixed(1):'—'} 分鐘 · ${id}`;
+    document.getElementById('ppt-page-count').textContent=`第 ${idx+1} / ${total} 页`;
+    document.getElementById('ppt-page-percent').textContent=`${Math.round(((idx+1)/total)*100)}%`;
+    document.getElementById('ppt-first').disabled=idx===0;document.getElementById('ppt-prev').disabled=idx===0;document.getElementById('ppt-next').disabled=idx===total-1;
+    document.getElementById('ppt-last').textContent=idx===total-1?'重新开始':'末頁';
+    if(renderedNoteId!==id){renderedNoteId=id;editor.value=loadNoteValue(id,idx,n);editor.scrollTop=0;document.getElementById('ppt-saved').textContent='已儲存';}
+    if(presenterOverviewOn)buildPresenterOverview();requestAnimationFrame(fitPresenterFrames);renderTimer();updateSyncStatus();
+  }
+  function saveNote(){
+    const saved=document.getElementById('ppt-saved');saved.textContent='儲存中…';saved.classList.remove('ppt-saved');clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>{localStorage.setItem(noteStorageKey(renderedNoteId),document.getElementById('ppt-note-editor').value);saved.textContent='已儲存';saved.classList.add('ppt-saved');},300);
+  }
+  function setNoteSize(value,persist=true){noteSize=Math.max(14,Math.min(26,value));document.documentElement.style.setProperty('--ppt-note-size',`${noteSize}px`);if(persist)localStorage.setItem('guizang-ppt-note-size',String(noteSize));}
+  function currentElapsed(){return elapsed+(timerRunning?Date.now()-timerStartedAt:0);}
+  function currentSlideElapsed(i=idx){return slideElapsed[i]+(timerRunning&&timedSlideIndex===i?Date.now()-slideTimerStartedAt:0);}
+  function commitRunningTime(now=Date.now()){
+    if(!timerRunning)return;elapsed+=now-timerStartedAt;slideElapsed[timedSlideIndex]+=now-slideTimerStartedAt;timerStartedAt=now;slideTimerStartedAt=now;
+  }
+  function rollSlideTimer(nextIndex){if(timerRunning)commitRunningTime();timedSlideIndex=nextIndex;slideTimerStartedAt=Date.now();}
+  function renderTimer(){
+    const totalUsed=currentElapsed(),pageUsed=currentSlideElapsed(),target=plannedMsAt(idx),clock=document.getElementById('ppt-clock');
+    if(clock)clock.textContent=durationText(totalUsed);
+    const slideClock=document.getElementById('ppt-slide-clock'),slidePlan=document.getElementById('ppt-slide-plan'),statusBox=document.getElementById('ppt-slide-status-box'),statusLabel=document.getElementById('ppt-slide-status-label'),statusValue=document.getElementById('ppt-slide-status'),statusHint=document.getElementById('ppt-slide-status-hint');
+    if(slideClock)slideClock.textContent=durationText(pageUsed);if(slidePlan)slidePlan.textContent=target?`計畫 ${durationText(target)}`:'計畫 —';
+    if(statusBox&&statusLabel&&statusValue&&statusHint){
+      const over=Boolean(target&&pageUsed>target),remaining=Boolean(target&&!over);statusBox.classList.toggle('is-over',over);statusBox.classList.toggle('is-remaining',remaining);
+      statusLabel.textContent=over?'超時':(remaining?'剩餘':'計畫');statusValue.textContent=target?durationText(Math.abs(target-pageUsed)):'—';statusHint.textContent=over?'已超出本頁計畫':(remaining?'距本頁計畫':'未設定');
+    }
+    const totalPlan=totalPlannedMs(),plan=document.getElementById('ppt-plan');
+    if(plan)plan.textContent=totalPlan?`計畫 ${Number(totalPlan/60000).toFixed(1)} 分鐘 · 预计 ${clockTime(Date.now()+Math.max(0,totalPlan-totalUsed))}`:'計畫 —';
+    const section=sectionInfo(idx),sectionEl=document.getElementById('ppt-section');
+    if(sectionEl){sectionEl.hidden=!section;sectionEl.textContent=section?`${section.name} · ${section.position}/${section.count}${section.planned?` · 剩餘 ${durationText(Math.max(0,section.planned-section.used))}`:''}`:'';}
+    const timerButton=document.getElementById('ppt-timer-toggle');if(timerButton)timerButton.textContent=timerRunning?'暫停計時':(totalUsed?'繼續計時':'開始計時');
+    const rehearsalButton=document.getElementById('ppt-rehearsal');if(rehearsalButton){rehearsalButton.textContent=rehearsalActive?'结束排練':'排練';rehearsalButton.classList.toggle('ppt-rehearsal-on',rehearsalActive);}
+    renderAutoState();
+  }
+  function toggleTimer(){const now=Date.now();if(timerRunning){commitRunningTime(now);timerRunning=false;}else{timerStartedAt=now;slideTimerStartedAt=now;timedSlideIndex=idx;timerRunning=true;}renderTimer();}
+  function resetTimer(){
+    elapsed=0;slideElapsed=Array(total).fill(0);timedSlideIndex=idx;
+    if(timerRunning){timerStartedAt=Date.now();slideTimerStartedAt=timerStartedAt;}else{timerStartedAt=0;slideTimerStartedAt=0;}
+    renderTimer();
+  }
+  function rehearsalHistory(){try{return JSON.parse(localStorage.getItem(storageKey('rehearsals'))||'[]');}catch(e){return[];}}
+  function toggleRehearsal(){
+    if(rehearsalActive){finishRehearsal(true);return;}
+    rehearsalActive=true;if(timerRunning){commitRunningTime();timerRunning=false;}resetTimer();toggleTimer();renderTimer();
+  }
+  function finishRehearsal(showSummary){
+    if(!rehearsalActive)return;if(timerRunning){commitRunningTime();timerRunning=false;}
+    const result={endedAt:Date.now(),totalMs:elapsed,slides:slideElapsed.map((ms,i)=>({index:i,id:slideId(i),title:noteAt(i).title||slideId(i),ms,targetMs:plannedMsAt(i)}))};
+    const history=rehearsalHistory();history.unshift(result);try{localStorage.setItem(storageKey('rehearsals'),JSON.stringify(history.slice(0,5)));}catch(e){}
+    rehearsalActive=false;renderTimer();if(showSummary)openRehearsalSummary(result,history.slice(0,5));
+  }
+  function openRehearsalSummary(result,history){
+    const rows=result.slides.filter(item=>item.ms>0).map(item=>`<tr><td>${item.index+1}</td><td>${escapeHTML(item.title)}</td><td>${durationText(item.ms)}</td><td>${item.targetMs?signedDuration(item.ms-item.targetMs):'—'}</td></tr>`).join('');
+    const recent=history.map(item=>`<div class="ppt-dialog-row"><span>${new Date(item.endedAt).toLocaleString()}</span><strong>${durationText(item.totalMs)}</strong></div>`).join('');
+    openDialog('排練记录',`<div class="ppt-dialog-section"><div class="ppt-dialog-row"><span>本次總時長</span><strong>${durationText(result.totalMs)}</strong></div><table class="ppt-summary"><thead><tr><th>#</th><th>頁面</th><th>實際</th><th>與計畫相比</th></tr></thead><tbody>${rows||'<tr><td colspan="4">沒有記錄到投影片時間</td></tr>'}</tbody></table></div><div class="ppt-dialog-section"><h3>最近排練</h3>${recent}</div>`);
+  }
+
+  function autoDurationMs(i=idx){const explicit=Number(noteAt(i).autoAdvanceSeconds);const seconds=Number.isFinite(explicit)&&explicit>0?explicit:autoGlobalSeconds;return seconds>0?seconds*1000:null;}
+  function armAutoAdvance(){autoDeadline=0;autoRemainingMs=autoDurationMs()||0;}
+  function autoBlockedReason(){
+    if(presenterOverviewOn||overviewOn)return'投影片總覽中';if(annotationTool!=='none')return'標註中';if(screenMode!=='normal')return'觀眾螢幕已暫停';if(document.hidden)return'視窗不可見';
+    const dialog=document.getElementById('ppt-dialog');if(dialog&&!dialog.hidden)return'設定中';
+    if(audienceOpenedAt&&syncState()!=='synced')return'等待觀眾螢幕同步';return'';
+  }
+  function updateAutoAdvance(){
+    if(!autoEnabled)return;
+    const duration=autoDurationMs();if(!duration||idx===total-1)return;
+    const blocked=autoBlockedReason(),now=Date.now();
+    if(blocked){if(autoDeadline){autoRemainingMs=Math.max(0,autoDeadline-now);autoDeadline=0;}return;}
+    if(!autoDeadline)autoDeadline=now+(autoRemainingMs||duration);
+    autoRemainingMs=Math.max(0,autoDeadline-now);
+    if(now>=autoDeadline){autoDeadline=0;autoRemainingMs=0;go(idx+1,{force:true});}
+  }
+  function renderAutoState(){
+    const button=document.getElementById('ppt-auto-toggle');if(!button)return;
+    const duration=autoDurationMs(),blocked=autoEnabled?autoBlockedReason():'';
+    button.classList.toggle('is-on',autoEnabled&&!blocked);button.classList.toggle('is-paused',autoEnabled&&Boolean(blocked));
+    if(!autoEnabled)button.textContent='自動翻頁 · 關閉';
+    else if(!duration)button.textContent='自動翻頁 · 等待时长';
+    else if(idx===total-1)button.textContent='自動翻頁 · 已結束';
+    else if(blocked)button.textContent=`自動翻頁 · ${blocked}`;
+    else button.textContent=`自動翻頁 · ${durationText(autoRemainingMs||duration)}`;
+  }
+  function toggleAutoAdvance(){
+    if(!autoEnabled&&!autoDurationMs()){openSettings();return;}
+    autoEnabled=!autoEnabled;localStorage.setItem(storageKey('auto-enabled'),autoEnabled?'1':'0');armAutoAdvance();renderAutoState();
+  }
+
+  function openDialog(title,html){
+    const dialog=document.getElementById('ppt-dialog');if(!dialog)return;
+    document.getElementById('ppt-dialog-title').textContent=title;document.getElementById('ppt-dialog-body').innerHTML=html;dialog.hidden=false;renderAutoState();
+  }
+  function closeDialog(){const dialog=document.getElementById('ppt-dialog');if(dialog)dialog.hidden=true;renderAutoState();}
+  function applyLayout(value,persist=true){
+    layoutMode=['balanced','slides','notes'].includes(value)?value:'balanced';
+    document.getElementById('ppt-presenter')?.setAttribute('data-layout',layoutMode);
+    if(persist)localStorage.setItem(storageKey('layout'),layoutMode);requestAnimationFrame(fitPresenterFrames);
+  }
+  function applyAudienceScreen(value){
+    const cover=document.getElementById('ppt-audience-cover');if(!cover)return;
+    cover.classList.remove('is-ended');cover.textContent='';
+    if(value==='black'||value==='white'){cover.style.display='block';cover.style.background=value;}else cover.style.display='none';
+  }
+  function showAudienceEnded(){
+    const cover=document.getElementById('ppt-audience-cover');if(cover){cover.style.display='';cover.style.background='';cover.textContent='簡報已結束';cover.classList.add('is-ended');}
+    setTimeout(()=>{try{window.close();}catch(e){}},120);
+  }
+  function setScreenMode(value){
+    const next=['normal','black','white','frozen'].includes(value)?value:'normal',wasFrozen=audienceFrozen;
+    screenMode=next;audienceFrozen=next==='frozen';emit({type:'screen',mode:next});
+    if(wasFrozen&&!audienceFrozen)sendGoto(true);updateSyncStatus();armAutoAdvance();renderAutoState();
+  }
+  function openSettings(){
+    openDialog('簡報設定',`<div class="ppt-settings-card"><label class="ppt-switch-row" for="ppt-auto-enabled-setting"><span><strong>自動翻頁</strong><br><span class="ppt-muted">需要時手動開啟，預設關閉</span></span><input id="ppt-auto-enabled-setting" type="checkbox" ${autoEnabled?'checked':''}><span class="ppt-switch" aria-hidden="true"></span></label><div class="ppt-field"><label for="ppt-auto-seconds-setting">全域間隔</label><div class="ppt-stepper"><button id="ppt-auto-minus" type="button" aria-label="減少一秒">−</button><input id="ppt-auto-seconds-setting" type="number" min="1" step="1" value="${autoGlobalSeconds||''}" placeholder="—"><span class="ppt-stepper-unit">秒</span><button id="ppt-auto-plus" type="button" aria-label="增加一秒">+</button></div></div><button id="ppt-settings-save" class="ppt-ui-btn ppt-settings-save" type="button">儲存自動翻頁</button><p class="ppt-settings-copy">單頁 autoAdvanceSeconds 優先於全域間隔；minutes 僅供講述計畫。</p></div><div class="ppt-settings-card"><h3>講者版面配置</h3><p class="ppt-settings-copy">依螢幕寬度調整頁面與備忘的比例</p><div class="ppt-segmented"><button class="ppt-ui-btn" data-layout-choice="balanced" type="button">均衡</button><button class="ppt-ui-btn" data-layout-choice="slides" type="button">投影片優先</button><button class="ppt-ui-btn" data-layout-choice="notes" type="button">備忘優先</button></div></div><div class="ppt-settings-card"><h3>觀眾螢幕</h3><p class="ppt-settings-copy">暫時遮蔽或凍結觀眾螢幕</p><div class="ppt-segmented screen"><button class="ppt-ui-btn" data-screen-choice="normal" type="button">正常</button><button class="ppt-ui-btn" data-screen-choice="black" type="button">黑屏 B</button><button class="ppt-ui-btn" data-screen-choice="white" type="button">白屏 W</button><button class="ppt-ui-btn" data-screen-choice="frozen" type="button">凍結 F</button></div></div><div class="ppt-dialog-section"><button id="ppt-open-shortcuts" class="ppt-ui-btn" type="button">查看快速鍵</button></div>`);
+    document.querySelectorAll('[data-layout-choice]').forEach(button=>{button.classList.toggle('ppt-primary',button.dataset.layoutChoice===layoutMode);button.onclick=()=>{applyLayout(button.dataset.layoutChoice);openSettings();};});
+    document.querySelectorAll('[data-screen-choice]').forEach(button=>{button.classList.toggle('ppt-primary',button.dataset.screenChoice===screenMode);button.onclick=()=>{setScreenMode(button.dataset.screenChoice);openSettings();};});
+    const secondsInput=document.getElementById('ppt-auto-seconds-setting'),stepSeconds=delta=>{const current=Math.max(0,Number(secondsInput.value||0));secondsInput.value=String(Math.max(1,current+delta));};
+    document.getElementById('ppt-auto-minus').onclick=()=>stepSeconds(-1);document.getElementById('ppt-auto-plus').onclick=()=>stepSeconds(1);
+    document.getElementById('ppt-settings-save').onclick=()=>{autoEnabled=document.getElementById('ppt-auto-enabled-setting').checked;autoGlobalSeconds=Math.max(0,Number(secondsInput.value||0));localStorage.setItem(storageKey('auto-enabled'),autoEnabled?'1':'0');localStorage.setItem(storageKey('auto-seconds'),String(autoGlobalSeconds));armAutoAdvance();closeDialog();};
+    document.getElementById('ppt-open-shortcuts').onclick=openShortcuts;
+  }
+  function openShortcuts(){
+    const items=[['← / →','上一頁 / 下一頁'],['Home / End','首頁 / 末頁'],['Esc','投影片總覽；標註工具激活时先退出工具'],['L','雷射筆'],['C','圈選'],['X','清除標記'],['B / W','觀眾螢幕黑屏 / 白屏'],['F','凍結 / 恢復觀眾螢幕'],['A','開啟 / 關閉自動翻頁'],['R','开始 / 结束排練'],['?','快速鍵說明']];
+    openDialog('快速鍵',`<div class="ppt-shortcuts">${items.map(([key,label])=>`<kbd>${key}</kbd><span>${label}</span>`).join('')}</div>`);
+  }
+  function preflightChecks(){
+    const images=[...document.images],videos=[...document.querySelectorAll('video')],frame=document.getElementById('ppt-current-frame'),rect=frame?.getBoundingClientRect();
+    return[
+      {label:'觀眾螢幕连接',ok:['synced','frozen'].includes(syncState()),detail:`目前状态：${document.getElementById('ppt-sync')?.textContent||'未連線'}`},
+      {label:'彈窗權限',ok:!popupBlocked,detail:popupBlocked?'瀏覽器封鎖觀眾視窗':'未偵測到彈窗攔截'},
+      {label:'全螢幕狀態',ok:Boolean(document.fullscreenElement),warn:true,detail:document.fullscreenElement?'已進入全螢幕':'尚未全螢幕，可在演講前進入'},
+      {label:'字体加载',ok:!document.fonts||document.fonts.status==='loaded',detail:document.fonts?`状态：${document.fonts.status}`:'浏览器不提供字体状态'},
+      {label:'图片资源',ok:images.every(image=>image.complete&&image.naturalWidth>0),detail:`${images.filter(image=>image.complete&&image.naturalWidth>0).length} / ${images.length} 已加载`},
+      {label:'视频资源',ok:videos.every(video=>video.readyState>=2),detail:videos.length?`${videos.filter(video=>video.readyState>=2).length} / ${videos.length} 可播放`:'没有视频'},
+      {label:'目前頁 16:9',ok:Boolean(rect&&Math.abs(rect.width/rect.height-16/9)<.003),detail:rect?`${Math.round(rect.width)} × ${Math.round(rect.height)}`:'尚未渲染'}
+    ];
+  }
+  function openPreflight(){
+    const checks=preflightChecks(),html=checks.map(item=>`<div class="ppt-dialog-row"><div class="ppt-check ${item.ok?'is-ok':(item.warn?'is-warn':'')}"><span class="ppt-check-dot"></span><span><strong>${item.label}</strong><br><span class="ppt-muted">${item.detail}</span></span></div><strong>${item.ok?'正常':(item.warn?'建議':'异常')}</strong></div>`).join('');
+    openDialog('演前檢查',`<div class="ppt-dialog-section">${html}</div><div class="ppt-dialog-section"><button id="ppt-preflight-refresh" class="ppt-ui-btn" type="button">重新檢查</button> <button id="ppt-enter-fullscreen" class="ppt-ui-btn" type="button">進入全螢幕</button></div><p class="ppt-muted">此處只能檢查瀏覽器與觀眾頁面的軟體狀態，無法確認 HDMI、轉接器或投影機線材是否實際連線。</p>`);
+    document.getElementById('ppt-preflight-refresh').onclick=openPreflight;
+    document.getElementById('ppt-enter-fullscreen').onclick=async()=>{try{await document.documentElement.requestFullscreen();}catch(e){}openPreflight();};
+  }
+
+  function initTransport(){
+    if(transportReady)return;transportReady=true;
+    if('BroadcastChannel'in window){try{channel=new BroadcastChannel(channelName());channel.onmessage=e=>receive(e.data);}catch(e){}}
+    addEventListener('message',e=>receive(e.data));
+    addEventListener('storage',e=>{if(e.key===syncKey()&&e.newValue){try{receive(JSON.parse(e.newValue));}catch(err){}}});
+  }
+  function emit(payload,{persist=true}={}){
+    const message={__guizangPptSync:1,session,role:mode,...payload,at:Date.now(),nonce:Math.random().toString(36).slice(2)};
+    try{channel?.postMessage(message);}catch(e){}
+    if(persist)try{localStorage.setItem(syncKey(),JSON.stringify(message));}catch(e){}
+    try{if(mode==='presenter'&&audienceWindow&&!audienceWindow.closed)audienceWindow.postMessage(message,'*');}catch(e){}
+    try{if(mode==='audience'&&window.opener&&!window.opener.closed)window.opener.postMessage(message,'*');}catch(e){}
+  }
+  function receive(message){
+    if(!message||message.__guizangPptSync!==1||message.session!==session||message.role===mode)return;
+    if(message.nonce){if(seenNonceSet.has(message.nonce))return;seenNonceSet.add(message.nonce);seenNonces.push(message.nonce);if(seenNonces.length>256)seenNonceSet.delete(seenNonces.shift());}
+    if(mode==='presenter'){
+      if(message.type==='ready'){popupBlocked=false;sendGoto(true);}
+      if(message.type==='ack'){lastAckAt=Date.now();lastAckIndex=Number(message.index);lastAckSeq=Number(message.seq);updateSyncStatus();}
+      return;
+    }
+    if(mode!=='audience')return;
+    if(message.type==='bye'){showAudienceEnded();return;}
+    if(message.type==='screen'){applyAudienceScreen(message.mode);return;}
+    if(message.type==='laser'&&Number(message.index)===idx){audienceLaser=message.point||null;audienceLaserHideAt=Date.now()+650;renderInks();return;}
+    if(message.type==='circle'&&Number(message.index)===idx&&message.circle){audienceCircles.push(message.circle);renderInks();return;}
+    if(message.type==='clear'&&Number(message.index)===idx){audienceCircles=[];renderInks();return;}
+    if(message.type==='goto'||message.type==='ping'){
+      if(message.type==='goto'){audienceCircles=Array.isArray(message.circles)?message.circles:[];applyAudienceScreen(message.screenMode);go(Number(message.index),{force:true});}
+      emit({type:'ack',index:idx,seq:Number(message.seq)});
+    }
+  }
+  function receivePreview(message){
+    if(!message||message.__guizangPptSync!==1||message.session!==session||message.role!=='presenter'||message.type!=='preview-goto')return;
+    go(Number(message.index),{force:true});
+  }
+  function sendGoto(force=false){
+    if(mode!=='presenter'||audienceFrozen)return;if(force||lastAckIndex!==idx)seq++;
+    emit({type:'goto',index:idx,seq,screenMode,circles});updateSyncStatus();
+  }
+  function syncState(){
+    if(popupBlocked)return'blocked';if(audienceWindow&&audienceWindow.closed)return'disconnected';if(audienceFrozen)return'frozen';
+    if(!lastAckAt)return audienceOpenedAt&&Date.now()-audienceOpenedAt<2600?'connecting':'disconnected';
+    if(Date.now()-lastAckAt>2600)return'disconnected';if(lastAckIndex!==idx||lastAckSeq<seq)return'unsynced';return'synced';
+  }
+  function updateSyncStatus(){
+    const el=document.getElementById('ppt-sync');if(!el)return;const state=syncState();
+    const labels={blocked:'彈出視窗遭封鎖',disconnected:'未連線',connecting:'連線中',unsynced:'未同步',frozen:'已凍結',synced:`已同步 · 第 ${idx+1} 頁`};
+    el.dataset.state=state;el.textContent=`觀眾螢幕 · ${labels[state]}`;
+  }
+  function reopenAudience(){
+    initTransport();popupBlocked=false;audienceOpenedAt=Date.now();lastAckAt=0;lastAckIndex=-1;lastAckSeq=-1;
+    if(audienceFrozen){audienceFrozen=false;screenMode='normal';}
+    audienceWindow=window.open(frameUrl('audience',idx),`guizang-ppt-audience-${session}`,'popup=yes,width=1440,height=900');
+    if(!audienceWindow)popupBlocked=true;updateSyncStatus();
+  }
+  function enterPresenter(openAudience=true){
+    if(mode==='presenter')return;if(overviewOn)toggleOverview();lowPowerBeforePresenter=window.__lowPowerMode;mode='presenter';initTransport();mountShell();
+    document.body.classList.remove('ppt-audience','ppt-preview');document.body.classList.add('ppt-presenter');document.title=`講者視圖 · ${originalTitle}`;
+    window.__setLowPowerMode?.(true,{persist:false});updateShell();armAutoAdvance();if(openAudience)reopenAudience();
+  }
+  function exitPresenter(){
+    if(rehearsalActive)finishRehearsal(false);else if(timerRunning){commitRunningTime();timerRunning=false;}togglePresenterOverview(false);emit({type:'bye'});audienceWindow=null;audienceOpenedAt=0;lastAckAt=0;lastAckIndex=-1;lastAckSeq=-1;mode='deck';document.body.classList.remove('ppt-presenter');document.title=originalTitle;window.__setLowPowerMode?.(lowPowerBeforePresenter,{persist:false});
+  }
+  function initAudience(){
+    mode='audience';document.body.classList.add('ppt-audience');document.title=`觀眾螢幕 · ${originalTitle}`;
+    document.body.insertAdjacentHTML('beforeend','<canvas id="ppt-audience-ink" aria-hidden="true"></canvas><div id="ppt-audience-cover" aria-hidden="true"></div>');
+    const resize=()=>{sizeInk(document.getElementById('ppt-audience-ink'),innerWidth,innerHeight);renderInks();};addEventListener('resize',resize);resize();
+    initTransport();emit({type:'ready',index:idx});
+  }
+  function initPreview(){mode='preview';document.body.classList.add('ppt-preview');window.__setLowPowerMode?.(true,{persist:false});addEventListener('message',e=>{if(e.source===parent)receivePreview(e.data);});}
+  function onSlideChange(nextIndex){
+    if(mode!=='presenter')return;rollSlideTimer(nextIndex);circles=[];draftCircle=null;laserPoint=null;annotationPointerDown=false;armAutoAdvance();updateShell();sendGoto();
+  }
+  function handleKey(e){
+    const editable=e.target?.matches?.('input,textarea,[contenteditable="true"]');
+    if(editable){if(e.key==='Escape')e.target.blur();return true;}
+    if(mode==='audience'||mode==='preview'){e.preventDefault();return true;}
+    if(mode==='deck'&&e.key?.toLowerCase()==='p'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();enterPresenter(true);return true;}
+    if(mode!=='presenter')return false;
+    const key=e.key?.toLowerCase();
+    const dialog=document.getElementById('ppt-dialog');
+    if(!dialog?.hidden){if(e.key==='Escape'){e.preventDefault();closeDialog();}return true;}
+    if(e.key==='?'||key==='/'){e.preventDefault();openShortcuts();return true;}
+    if(e.key==='Escape'){e.preventDefault();if(annotationTool!=='none')setAnnotationTool('none');else togglePresenterOverview();return true;}
+    if(presenterOverviewOn)return true;
+    if(key==='l'){e.preventDefault();setAnnotationTool('laser');return true;}
+    if(key==='c'){e.preventDefault();setAnnotationTool('circle');return true;}
+    if(key==='x'){e.preventDefault();clearAnnotations(true);return true;}
+    if(key==='b'){e.preventDefault();setScreenMode(screenMode==='black'?'normal':'black');return true;}
+    if(key==='w'){e.preventDefault();setScreenMode(screenMode==='white'?'normal':'white');return true;}
+    if(key==='f'){e.preventDefault();setScreenMode(audienceFrozen?'normal':'frozen');return true;}
+    if(key==='a'){e.preventDefault();toggleAutoAdvance();return true;}
+    if(key==='r'){e.preventDefault();toggleRehearsal();return true;}
+    if(['ArrowRight','PageDown',' ','ArrowDown'].includes(e.key)){e.preventDefault();go(idx+1,{force:true});return true;}
+    if(['ArrowLeft','PageUp','ArrowUp'].includes(e.key)){e.preventDefault();go(idx-1,{force:true});return true;}
+    if(e.key==='Home'){e.preventDefault();go(0,{force:true});return true;}
+    if(e.key==='End'){e.preventDefault();go(total-1,{force:true});return true;}
+    return false;
+  }
+  function initMode(){
+    document.getElementById('ppt-low-power-btn')?.addEventListener('click',()=>window.__setLowPowerMode(!window.__lowPowerMode));
+    document.getElementById('ppt-overview-btn')?.addEventListener('click',toggleOverview);
+    document.getElementById('ppt-presenter-btn')?.addEventListener('click',()=>enterPresenter(true));
+    if(requestedMode==='audience')initAudience();else if(requestedMode==='preview')initPreview();else if(requestedMode==='presenter')enterPresenter(false);
+  }
+  setInterval(()=>{
+    renderTimer();renderInks();updateAutoAdvance();
+    if(mode==='presenter'&&Date.now()-lastPingAt>900){lastPingAt=Date.now();if(audienceWindow?.closed)updateSyncStatus();emit({type:'ping',index:idx,seq});updateSyncStatus();}
+  },250);
+  return{initMode,onSlideChange,handleKey,slideLabel,enterPresenter,reopenAudience,toggleOverview:togglePresenterOverview,debugState:()=>({mode,idx,session,syncState:syncState(),timerRunning,rehearsalActive,presenterOverviewOn,autoEnabled,autoGlobalSeconds,autoRemainingMs,screenMode,annotationTool,circles:[...circles],audienceCircles:[...audienceCircles],layoutMode})};
+})();
+/* =============== /講者模式 / 觀眾螢幕同步 =============== */
+
+addEventListener('keydown',e=>{
+  if(window.__pptPresenter?.handleKey(e))return;
+  if(e.key==='Escape'){e.preventDefault();toggleOverview();return;}
+  if(e.key && e.key.toLowerCase()==='b' && !e.metaKey && !e.ctrlKey && !e.altKey){
+    e.preventDefault();
+    window.__setLowPowerMode(!window.__lowPowerMode);
+    return;
+  }
+  if(overviewOn)return;
+  if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '||e.key==='ArrowDown'){
+    if(window.__pipeAdvance && window.__pipeAdvance()) return;
+    go(idx+1);
+    return;
+  }
+  if(e.key==='ArrowLeft'||e.key==='PageUp'||e.key==='ArrowUp')go(idx-1);
+  if(e.key==='Home')go(0);
+  if(e.key==='End')go(total-1);
+});
+
+let wheelTO=null,wheelAcc=0;
+addEventListener('wheel',e=>{
+  wheelAcc+=e.deltaY+e.deltaX;
+  if(Math.abs(wheelAcc)>50){
+    if(wheelAcc>0 && window.__pipeAdvance && window.__pipeAdvance()){
+      wheelAcc=0;
+    }else{
+      go(idx+(wheelAcc>0?1:-1));wheelAcc=0;
+    }
+  }
+  clearTimeout(wheelTO);wheelTO=setTimeout(()=>wheelAcc=0,150);
+},{passive:true});
+
+let tx=0,ty=0;
+addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+addEventListener('touchend',e=>{
+  const dx=(e.changedTouches[0].clientX-tx);
+  const dy=(e.changedTouches[0].clientY-ty);
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)){
+    if(dx<0 && window.__pipeAdvance && window.__pipeAdvance()) return;
+    go(idx+(dx<0?1:-1));
+  }
+},{passive:true});
+
+/* ?slide=N 直达（1-based），与 Swiss 模板行为一致 */
+const initialSlideParam = new URLSearchParams(location.search).get('slide');
+const initialSlide = initialSlideParam ? Number(initialSlideParam) - 1 : 0;
+go(Number.isFinite(initialSlide) ? initialSlide : 0);
+window.__pptPresenter?.initMode();
+</script>
+
+
 </body>
 </html>
