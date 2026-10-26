@@ -10,7 +10,7 @@
 | 頁序 / ID | 類別 | 觀眾可見內容 | 講者備忘與轉場 |
 |---|---|---|---|
 | 01 / cover | 主簡報 | 專案定位：「讓資料可追溯，讓查詢有邊界」；新莊 MVP | 先界定產品範圍與資料語意；轉到三條系統路徑。 |
-| 02 / system-architecture | 主簡報 | 單張分層 SVG：線上查詢、官方來源刷新、離線 ML；MySQL／Redis 分工、外部呼叫與圖例 | 解釋正常查詢讀 PUBLISHED；刷新由獨立 endpoint 觸發；collector 不在即時路徑。 |
+| 02 / system-architecture | 主簡報 | 主畫面呈現三條路徑；右上「完整架構圖」可展開可捲動的九層 SVG，涵蓋使用端、前後端、資料層、外部呼叫、離線 ML 與基礎設施 | 主畫面保持精簡；追問時才展開細圖，說明 PUBLISHED、獨立 refresh endpoint、MySQL／Redis 分工及實驗性推論。 |
 | 03 / query-sequence | 主簡報 | POST 時序、requestToken 冪等、origin/Routes 分支、Places 選用呼叫、Redis TTL 與 HTTP 202 | 強調 save state 後才回 202；目前方法先同步完成 create，202 不證明有背景佇列。 |
 | 04 / source-refresh | 主簡報 | 分頁、正規化、資格／mapping／品質檢查、候選、發布；新莊目錄稽核數字 | 1,880 是符合資格與座標規則的來源列，不是 mapping 完成數；刷新失敗保留舊快照。 |
 | 05 / backend-takeaways | 主簡報 | 技術棧、儲存分工、降級原則、MVP 範圍與未完成能力 | 收束後結束主線；依追問選 A 或 B。 |

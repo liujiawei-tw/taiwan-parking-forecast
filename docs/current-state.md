@@ -2,6 +2,13 @@
 
 更新日期：2026-10-26。
 
+## 2026-10-26 將完整架構圖整合進面試簡報
+
+- **使用方式**：第 2 頁維持三條路徑的精簡總覽，新增「完整架構圖」按鈕，按需開啟可捲動的全層級 SVG；主投影片總數仍為五頁，兩張備用頁不變。嵌入 SVG 取自使用者提供的 parking-architecture-overview.html，不依賴 PNG、外部檔案或遠端資源。
+- **實作對齊**：把圖中 GlobalExceptionHandler 更正為 ApiExceptionHandler，將來源刷新標成 ParkingQueryController 的獨立 /refresh 端點；分開標示 MySQL source_state／cooldown 與 Redis 刷新短鎖。全圖只作詳細參考，封面和主線仍標示新莊 MVP；路外模型維持 EXPERIMENT_ONLY。
+- **範圍與驗證**：沒有新增簡報頁或修改產品程式。Presenter validator 確認 7 頁／7 組備忘、0 錯誤／警告；4 個 inline JavaScript 區塊通過 Node 語法解析，6 個主頁 SVG 與嵌入式架構 SVG 通過 XML 解析，靜態 HTML 參照與資源檢查及 git diff --check 通過。瀏覽器目視驗收仍受本工作階段的安全限制，未以 file://、本機伺服器或其他瀏覽器路徑繞過。
+
+
 ## 2026-10-26 後端面試簡報：五頁主線與兩頁備用
 
 - **交付配置**：面試主簡報為 cover、全系統架構、查詢時序、官方來源刷新／品質治理、工程取捨，共五頁；備用頁 A 為 AI Agent 人工監督工作流，備用頁 B 為 ML 訓練、回測與模型准入。七頁各有穩定 slide ID 與對應講者備忘，備用頁只在相關追問時開啟。
@@ -10,7 +17,7 @@
 - **來源稽核數字**：保留 2026-10-26 新莊路邊目錄盤點：33 頁、2,151 列、1,880 符合一般汽車格資格與座標規則、164 資格未知、107 不符範圍；來源 ID 缺漏、重複 ID、無效座標各 0。明確記錄 1,880 是合格來源列，不是 mapping 完成數；目錄盤點不代表即時空位或全臺覆蓋。
 - **備用頁證據與限制**：AI 流程以人工定範圍／驗收、GPT 協助釐清與 review、Codex 讀 repo 實作、本機測試、同一 HEAD 的 diff／證據審查、PR review、人工決定 merge 表達；箭頭代表工作交接，非自動 agent 串接。GitHub Actions 因用量限制暫停是依使用者本次提供的狀態，本次未啟用、修改或觸發 workflow。ML 備用頁依 ml-training reader、label、dataset split、baseline／calibrated experiment、artifact exporter 與 Java 實驗推論服務核對；已分析的三日 test 非新 holdout，S3-020 正式准入未通過，不能宣稱正式模型準確度。
 - **設計與範圍**：使用 guizang-ppt-skill 的穩定 ID、提詞卡備忘、橫向翻頁與 Presenter validator 流程；沿用產品暖米白／深綠／無襯線方向，以 HTML／SVG 向量繪製，未使用外部 CDN、字型、圖片或執行時網路資源。未使用 Impeccable。只修改 interview-kit/ 與本進度紀錄，未修改停車系統應用程式碼。
-- **靜態驗證**：Guizang Presenter validator：7 slides、7 notes、0 errors／0 warnings。HTML parser：7 個 slide ID 無重複、無失效片段／ARIA 參照、無缺漏本機資源、無外部資源及 HTML 標籤錯誤。Node vm.Script 解析 3 個 inline JavaScript 區塊；XML parser 解析 6 個 inline SVG；git diff --check 無 whitespace error（Git 只提示 Windows CRLF 轉換）。未執行產品測試或 GitHub Actions。
+- **靜態驗證**：Guizang Presenter validator：7 slides、7 notes、0 errors／0 warnings。HTML parser：7 個 slide ID 無重複、無失效片段／ARIA 參照、無缺漏本機資源、無外部網路資源及 HTML 標籤錯誤。Node vm.Script 解析 4 個 inline JavaScript 區塊；XML parser 解析 6 個主頁 SVG 與 1 個嵌入式架構 SVG；git diff --check 無 whitespace error（Git 只提示 Windows CRLF 轉換）。未執行產品測試或 GitHub Actions。
 - **未完成項目**：瀏覽器安全政策禁止本工作階段讀取 file://，並禁止改用伺服器或其他瀏覽器介面繞過；因此未做實際 16:9 投影、字體折行、窄螢幕、鍵盤翻頁、講者模式與觀眾螢幕同步的目視驗收。上述靜態檢查不等同畫面驗收。
 
 ## 2026-10-26 後端工程師面試 HTML 簡報
