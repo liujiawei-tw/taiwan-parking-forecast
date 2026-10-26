@@ -2,13 +2,6 @@
 
 更新日期：2026-10-26。
 
-## 2026-10-26 另建獨立一頁式架構簡報
-
-- **交付物**：新增 interview-kit/architecture-one-page.html，採用使用者提供架構 HTML 的單頁可捲動 SVG、A3 橫向列印及 SVG 下載方式；PNG 作視覺參照，未複製為外部素材。原七頁面試簡報仍獨立保留。
-- **實作對齊**：更新控制器標示為同一 ParkingQueryController 的獨立刷新端點、例外處理器為 ApiExceptionHandler、Places service 為實際類別名；將 API 區塊標示為查詢／刷新契約草案，未宣稱已有 OpenAPI／Swagger UI。MySQL source_state 冷卻與 Redis 刷新短鎖分開標示。
-- **工程審查**：獨立單頁 HTML 有 11 個唯一 HTML ID、1 張 SVG／9 個唯一圖內 ID，內部引用均解析且無外部／遺失資源；Node 語法檢查解析 1 段 inline JavaScript。原七頁簡報維持 7 頁／7 組備忘、Presenter validator 0 錯誤／警告；其 4 段 inline JavaScript、6 張主頁 SVG 與嵌入架構 SVG 均通過靜態解析。git diff --check 通過。未執行產品測試；瀏覽器目視驗收受既有工作階段安全限制，未以 file://、伺服器或其他瀏覽器路徑繞過。
-
-
 ## 2026-10-26 將完整架構圖整合進面試簡報
 
 - **使用方式**：第 2 頁維持三條路徑的精簡總覽，新增「完整架構圖」按鈕，按需開啟可捲動的全層級 SVG；主投影片總數仍為五頁，兩張備用頁不變。嵌入 SVG 取自使用者提供的 parking-architecture-overview.html，不依賴 PNG、外部檔案或遠端資源。
