@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record CreateParkingQueryRequest(
         @NotBlank String requestToken,
-        @Valid @NotNull LocationInput origin,
+        @Valid LocationInput origin,
         @Valid @NotNull LocationInput destination,
         @Valid @NotNull DepartureInput departure) {
 

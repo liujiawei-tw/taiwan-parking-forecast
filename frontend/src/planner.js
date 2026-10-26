@@ -1,15 +1,6 @@
 export const AUTO_REFRESH_SOURCE_STATUSES = new Set(['STALE', 'NO_REALTIME_SNAPSHOT'])
 export const PLACEHOLDER_GOOGLE_MAPS_KEY = 'replace-with-local-browser-key'
 
-// Taipei MRT O18 station address is listed by Taipei City DORTS; map point is
-// the OpenStreetMap public-transport station node 3812564402.
-export const DEFAULT_ORIGIN = Object.freeze({
-  label: '捷運新莊站（O18）',
-  address: '新北市新莊區中正路138號',
-  latitude: 25.03633,
-  longitude: 121.45336,
-})
-
 export function roadsideCountLabel(status, count) {
   if (!status) return '路邊尚未查詢'
   if (status !== 'READY') return '路邊目前有位：未知'
@@ -89,7 +80,7 @@ export function buildParkingQueryPayload({
 
   return {
     requestToken: requestToken.trim(),
-    origin: normalizeLocation(origin, '起點'),
+    origin: origin == null ? null : normalizeLocation(origin, '起點'),
     destination: normalizeLocation(destination, '目的地'),
     departure: buildDeparture(departureType, scheduledDepartureLocal),
   }

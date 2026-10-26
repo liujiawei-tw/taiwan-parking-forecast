@@ -56,7 +56,7 @@ Compose 會要求 PARKING_DB_PASSWORD 與 MYSQL_ROOT_PASSWORD 非空；沒有提
 
 - PARKING_DB_PASSWORD：API 與 MySQL 應用帳號共用的資料庫密碼。
 - MYSQL_ROOT_PASSWORD：MySQL root 初始化密碼。
-- VITE_GOOGLE_MAPS_BROWSER_API_KEY：只作 Web image build argument，會出現在可下載的前端 bundle。只用受限 browser key，限制正式網域 referrer 與實際使用的 Google API。留空時 Places 搜尋顯示不可用；已驗證的預設起點與目的地仍可送出查詢，畫面不提供座標輸入。
+- VITE_GOOGLE_MAPS_BROWSER_API_KEY：只作 Web image build argument，會出現在可下載的前端 bundle。只用受限 browser key，限制正式網域 referrer 與實際使用的 Google API。留空時 Places 搜尋顯示不可用；起點沒有預設座標，使用者可明確使用瀏覽器「我的位置」，畫面不提供座標輸入。
 - GOOGLE_ROUTES_SERVER_API_KEY：只注入 API runtime，不傳給 Web build。
 - GOOGLE_ROUTES_EXTERNAL_CALLS_ENABLED：預設 false。確認 Google 額度、預算與 server key 限制後才可手動設 true；停用或無有效 key 時 ETA 應明確顯示失敗／不可估算，機率仍維持 null 與 INSUFFICIENT_DATA。
 - WEB_HTTP_PORT：Web loopback HTTP port，預設 18088。
@@ -195,4 +195,4 @@ Catalog smoke 會在每次建立查詢間隔至少 13 秒，以符合 Nginx 每�
 
 這兩支 smoke 需要審查後的目錄 mapping 及已發布 snapshot；全新空資料庫尚無這些前置資料時，snapshot 斷言會失敗。應將其報告為「來源資料前置條件未滿足」，不要混同 Web／API／MySQL／Redis health 或同源代理失敗。不得為了通過 smoke 而沿用未盤點的舊 Demo named volume。
 
-以 `.env.example` 建置的本次隔離 image 未配置 Google browser key，可驗證預設位置、查詢 API、Places 不可用提示與手機無水平溢出；本機既有 key 尚未確認為受限測試 key，真實 Places 候選及選取未執行，待取得受限測試 key 後在可連線瀏覽器人工驗收。遠端 DNS／TLS、主機反向代理、正式 key 限制、真 ETA、官方來源連線、備份還原演練及實際版本回退都不能只靠 Compose build 宣稱通過。
+以 `.env.example` 建置的隔離 image 當時未配置 Google browser key，可驗證預設位置、查詢 API、Places 不可用提示與手機無水平溢出；本機既有 key 尚未確認為受限測試 key，真實 Places 候選及選取未執行。2026-10-26 起點預設已依新決策移除，因此上述預設位置驗證是舊版本證據，不能代表未選起點時的新行為；新行為尚未以隔離 image 或瀏覽器驗收。遠端 DNS／TLS、主機反向代理、正式 key 限制、真 ETA、官方來源連線、備份還原演練及實際版本回退都不能只靠 Compose build 宣稱通過。

@@ -8,7 +8,6 @@ import {
   buildParkingQueryPayload,
   buildAutoRefreshAttemptKey,
   buildRequestToken,
-  DEFAULT_ORIGIN,
   hasUsableGoogleMapsKey,
   locationErrorMessage,
   roadsideCountLabel,
@@ -35,12 +34,6 @@ function queryResult({
 assert.equal(hasUsableGoogleMapsKey(''), false)
 assert.equal(hasUsableGoogleMapsKey('replace-with-local-browser-key'), false)
 assert.equal(hasUsableGoogleMapsKey('browser-key-for-local-test'), true)
-assert.deepEqual(DEFAULT_ORIGIN, {
-  label: '捷運新莊站（O18）',
-  address: '新北市新莊區中正路138號',
-  latitude: 25.03633,
-  longitude: 121.45336,
-})
 assert.equal(locationErrorMessage({ code: 1 }), '定位權限未開啟，請改用地點搜尋選擇起點。')
 assert.equal(locationErrorMessage({ code: 3 }), '定位逾時，請改用地點搜尋選擇起點。')
 assert.equal(locationErrorMessage({ code: 99 }), '無法取得目前位置，請改用地點搜尋選擇起點。')

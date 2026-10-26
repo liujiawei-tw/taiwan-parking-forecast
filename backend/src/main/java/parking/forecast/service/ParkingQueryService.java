@@ -214,11 +214,13 @@ public class ParkingQueryService {
         OffsetDateTime departureAt = scheduledDeparture
                 ? OffsetDateTime.parse(request.departure().departureAt())
                 : now;
-        EtaResult eta = googleEtaService.estimate(
-                request.origin(),
-                request.destination(),
-                departureAt,
-                scheduledDeparture);
+        EtaResult eta = request.origin() == null
+                ? GoogleEtaService.notRequested()
+                : googleEtaService.estimate(
+                        request.origin(),
+                        request.destination(),
+                        departureAt,
+                        scheduledDeparture);
         String queryId = UUID.randomUUID().toString();
         NearbyParkingSearchResult nearby = nearbyParkingSearchService.findNearby(new NearbyParkingSearchRequest(
                 MVP_SERVICE_AREA,
@@ -798,7 +800,9 @@ public class ParkingQueryService {
 
     private void validateRequest(CreateParkingQueryRequest request, OffsetDateTime now) {
         validateRequestToken(request.requestToken());
-        validateLocation(request.origin(), "origin");
+        if (request.origin() != null) {
+            validateLocation(request.origin(), "origin");
+        }
         validateLocation(request.destination(), "destination");
         validateSupportedDestination(request.destination());
         validateDeparture(request.departure(), now);

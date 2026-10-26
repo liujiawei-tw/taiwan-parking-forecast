@@ -14,7 +14,7 @@ Sprint 3 可以開始處理抵達時預測，但只能在資料、標籤、基�
 
 - 後端已有停車目錄、來源 mapping、候選／已發布快照、觀測歷史、來源狀態與 ingestion run 量測摘要。
 - 使用者查詢已透過 Redis 保存短期 query state，`GET` 只讀既有狀態，車位刷新不重算 Google ETA。
-- 前端已有 Google Maps／Places 載入路徑與地圖優先結果頁；出發地及目的地分別使用 Places 搜尋，出發地預設 O18 並保留目前位置。無 browser key 時明確提示搜尋不可用、仍可用已核實預設地點，沒有手動座標 fallback；詳見 `current-state.md`。
+- 前端已有 Google Maps／Places 載入路徑與地圖優先結果頁；出發地及目的地分別使用 Places 搜尋，起點初始未選擇並保留「我的位置」。無 browser key 時明確提示 Places 搜尋不可用，沒有預設座標或手動座標 fallback；未選起點時仍可查詢附近停車，但 ETA 為 `NOT_REQUESTED`，詳見 `current-state.md`。
 - 新北市官方 Open Data 已有低頻單輪與 5 輪下載段量測：路邊 5 輪皆 30,941 rows／11,270,904 bytes，HTTP 延遲 p50 5,279 ms、p95 8,575 ms；路外 5 輪皆 1,405 rows，bytes p50/p95 50,592，HTTP 延遲 p50 358 ms、p95 667 ms。
 - S2-020 小樣本 mapping 在多輪量測後仍可被找到：路邊 7/7、路外 3/3。
 

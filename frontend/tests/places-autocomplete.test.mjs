@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { DEFAULT_ORIGIN, locationErrorMessage } from '../src/planner.js'
+import { locationErrorMessage } from '../src/planner.js'
 import {
   createOriginUpdateCoordinator,
   createPlaceSelectionHandler,
@@ -39,7 +39,7 @@ assert.deepEqual(readPlaceCoordinates({ lat: () => 25.04, lng: () => 121.45 }), 
 assert.equal(readPlaceCoordinates(null), null)
 assert.equal(readPlaceCoordinates({ lat: () => null, lng: () => 121.45 }), null)
 
-let origin = { ...DEFAULT_ORIGIN }
+let origin = null
 let destination = { label: '新莊體育館', latitude: 25.036, longitude: 121.4505 }
 const originErrors = []
 const destinationErrors = []

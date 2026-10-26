@@ -9,7 +9,6 @@ import {
   buildParkingQueryPayload,
   buildRequestToken,
   buildDeparture,
-  DEFAULT_ORIGIN,
   hasUsableGoogleMapsKey,
   locationErrorMessage,
   roadsideCountLabel,
@@ -75,7 +74,7 @@ const originAutocompleteHost = ref(null)
 const destinationAutocompleteHost = ref(null)
 const selectedDestination = ref({ ...defaultDestination })
 const googlePlacesByQueryId = ref({})
-const origin = ref({ ...DEFAULT_ORIGIN })
+const origin = ref(null)
 const queryResult = ref(null)
 const loading = ref(false)
 const locating = ref(false)
@@ -175,6 +174,7 @@ const refreshInProgress = computed(() => Boolean(
 const autoRefreshEligibleSources = computed(() => getAutoRefreshDecision().sources)
 const etaMessage = computed(() => {
   const eta = queryResult.value?.eta
+  if (!origin.value) return '尚未設定出發地；附近停車資訊仍可查詢，設定後才會估算預計抵達時間。'
   if (!eta) return '送出查詢後由後端 Google Routes 估算'
   if (eta.status === 'READY' && new Date(eta.estimatedArrivalAt).getTime() < Date.now()) {
     return '原預計抵達時間已過，請更新出發時間或重新選取目的地。'
@@ -451,12 +451,18 @@ const selectedOffStreetPredictionLead = computed(() => {
   return match ? Number(match[1]) : null
 })
 const selectedEtaArrivalLabel = computed(() => {
+  if (!origin.value) return queryResult.value ? '需設定出發地' : '尚未規劃'
   if (queryResult.value?.eta?.status === 'READY') {
     return formatDateTime(queryResult.value.eta.estimatedArrivalAt)
   }
   return queryResult.value ? '尚未估算' : '尚未規劃'
 })
 const selectedEtaDescription = computed(() => {
+  if (!origin.value) {
+    return queryResult.value
+      ? etaMessage.value
+      : '可先選擇目的地查詢附近停車；設定出發地後才會估算抵達時間。'
+  }
   if (!queryResult.value) return '選取目的地後估算行車時間。'
   if (queryResult.value.eta?.status === 'READY') return '依本次行程的 Google Routes 結果。'
   return etaMessage.value
@@ -615,9 +621,11 @@ function scheduleAutomaticParkingQuery({ force = false } = {}) {
   if (automaticPlanningTimer) window.clearTimeout(automaticPlanningTimer)
   pendingPlanningInputKey = inputKey
   errorMessage.value = ''
-  planningMessage.value = force
-    ? '目的地已選取，正在準備附近停車查詢。'
-    : '行程條件已更新，正在重新規劃附近停車資訊。'
+  planningMessage.value = !origin.value
+    ? '正在查詢目的地附近停車資訊；出發地未設定，抵達時間暫不估算。'
+    : force
+      ? '目的地已選取，正在準備附近停車查詢。'
+      : '行程條件已更新，正在重新規劃附近停車資訊。'
   automaticPlanningTimer = window.setTimeout(() => {
     automaticPlanningTimer = undefined
     if (pendingPlanningInputKey !== inputKey
@@ -638,7 +646,7 @@ function scheduleAutomaticParkingQuery({ force = false } = {}) {
 
 async function createParkingQuery() {
   const submittedDestination = { ...selectedDestination.value }
-  const submittedOrigin = { ...origin.value }
+  const submittedOrigin = origin.value ? { ...origin.value } : null
   const submittedPlanningInputs = currentPlanningInputs.value
   const submittedInputKey = JSON.stringify(submittedPlanningInputs)
   const planningRequestId = ++planningRequestSequence
@@ -1786,7 +1794,7 @@ function logAcceptanceEvent(type, message, details = {}) {
             <div v-if="hasGoogleMapsKey" ref="originAutocompleteHost" class="autocomplete-host origin-autocomplete"></div>
             <p v-else class="places-help" role="status">請設定 Google Maps browser key 後使用地點搜尋。</p>
             <p v-if="originPlaceError" class="places-error" role="alert">{{ originPlaceError }}</p>
-            <span class="origin-current-label">目前出發地：{{ origin.label }}</span>
+            <span class="origin-current-label">目前出發地：{{ origin?.label || '尚未選擇' }}</span>
           </div>
           <div class="field-group departure-field">
             <label>出發時間</label>

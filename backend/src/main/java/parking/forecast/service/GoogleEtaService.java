@@ -21,6 +21,16 @@ public class GoogleEtaService {
         this.googleRoutesClient = googleRoutesClient;
     }
 
+    public static EtaResult notRequested() {
+        return new EtaResult(
+                "NOT_REQUESTED",
+                PROVIDER,
+                null,
+                null,
+                null,
+                "Origin is not set; Google Routes ETA was not requested.");
+    }
+
     public EtaResult estimate(
             LocationInput origin,
             LocationInput destination,
