@@ -575,211 +575,400 @@
       </div>
     </div>
   </div>
-  <div class="foot"><div>後端設計案例 · 新北市新莊 MVP</div><div>01 / 06</div></div>
+  <div class="foot"><div>後端設計案例 · 新北市新莊 MVP</div><div>01 / 07</div></div>
 </section>
 
-<section class="slide light" data-slide-id="query-flow">
-  <div class="chrome"><div>查詢工作流 · QUERY FLOW</div><div>02 / 06</div></div>
-  <div class="frame" style="padding-top:3vh">
-    <div class="kicker">輸入一次，回應分層</div>
-    <h2 class="h-xl" style="font-size:4.4vw">一次查詢，三種資料責任</h2>
-    <svg class="flow-svg" viewBox="0 0 1600 610" role="img" aria-label="停車查詢工作流">
-      <defs><marker id="q-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#08784f"/></marker></defs>
-      <g fill="#fffefa" stroke="#dce3dc" stroke-width="2">
-        <rect x="45" y="170" width="290" height="200" rx="24"/><rect x="425" y="170" width="320" height="200" rx="24"/>
-        <rect x="835" y="170" width="320" height="200" rx="24"/>
-        <rect x="1240" y="55" width="315" height="135" rx="22"/><rect x="1240" y="230" width="315" height="135" rx="22"/><rect x="1240" y="405" width="315" height="135" rx="22"/>
+<section class="slide dark" data-slide-id="system-architecture">
+  <div class="chrome"><div>全系統架構 · SYSTEM MAP</div><div>02 / 07</div></div>
+  <div class="frame" style="padding-top:1.5vh">
+    <div class="kicker">一張圖看懂三條路徑</div>
+    <h2 class="h-xl" style="font-size:3.5vw">線上查詢、官方刷新、離線實驗，各有邊界</h2>
+    <svg class="flow-svg" viewBox="0 0 1600 640" role="img" aria-label="新莊停車預測系統全系統架構，分線上查詢、官方資料刷新及離線模型實驗三條路徑">
+      <title>全系統架構：線上查詢、官方資料刷新、離線模型實驗</title>
+      <desc>Vue 經 Spring Boot 查詢已發布資料；獨立 refresh endpoint 經來源協調、正規化和品質檢查後發布 MySQL 快照；離線 collector 訓練出的實驗產物供受護欄的路外實驗推論使用。</desc>
+      <defs>
+        <marker id="sys-query-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#08784f"/></marker>
+        <marker id="sys-ext-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#4e789d"/></marker>
+        <marker id="sys-refresh-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#c58a32"/></marker>
+        <marker id="sys-ml-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#79649b"/></marker>
+      </defs>
+      <rect x="12" y="12" width="1576" height="222" rx="18" fill="#fffefa" stroke="#d7e1d8" stroke-width="2"/>
+      <rect x="12" y="242" width="1576" height="230" rx="18" fill="#fbf3e5" stroke="#e7d6b6" stroke-width="2"/>
+      <rect x="12" y="480" width="1576" height="148" rx="18" fill="#f2eef7" stroke="#d9cfe7" stroke-width="2"/>
+
+      <g font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif" fill="#20394e">
+        <text x="30" y="39" font-size="19" font-weight="850" fill="#07533e">01 線上查詢｜讀取目錄與已發布快照</text>
+        <text x="950" y="39" font-size="16" font-weight="650">綠實線 查詢　藍虛線 選用外部服務　橙實線 官方刷新　紫虛線 離線實驗</text>
+        <text x="30" y="269" font-size="19" font-weight="850" fill="#805000">02 官方來源刷新｜獨立 refresh endpoint</text>
+        <text x="920" y="269" font-size="16" font-weight="650" fill="#805000">候選不合格或刷新失敗：拒絕發布，保留舊快照</text>
+        <text x="30" y="507" font-size="19" font-weight="850" fill="#5d477d">03 離線模型實驗｜不提供即時來源、不控制刷新頻率</text>
+        <text x="1115" y="507" font-size="16" font-weight="800" fill="#704f2a">EXPERIMENT_ONLY · NOT PRODUCTION VALIDATED</text>
       </g>
-      <g fill="none" stroke="#08784f" stroke-width="5" marker-end="url(#q-arrow)">
-        <path d="M335 270 H410"/><path d="M745 270 H820"/><path d="M1155 220 H1208 V122 H1225"/><path d="M1155 270 H1225"/><path d="M1155 320 H1208 V472 H1225"/>
+
+      <!-- Online query path -->
+      <g fill="#fffefa" stroke="#b9d1c2" stroke-width="2">
+        <rect x="30" y="72" width="145" height="82" rx="13"/>
+        <rect x="200" y="72" width="205" height="82" rx="13"/>
+        <rect x="430" y="72" width="220" height="82" rx="13"/>
+        <rect x="675" y="72" width="310" height="82" rx="13"/>
+        <rect x="1010" y="72" width="255" height="82" rx="13"/>
+        <rect x="1290" y="72" width="275" height="82" rx="13"/>
       </g>
-      <g fill="#07533e" font-size="27" font-weight="800">
-        <text x="82" y="230">查詢請求</text><text x="82" y="280">目的地</text><text x="82" y="324">出發地可選</text>
-        <text x="463" y="230">ParkingQueryService</text><text x="463" y="280">查附近目錄</text><text x="463" y="324">讀已發布快照</text>
-        <text x="883" y="230">資料判斷</text><text x="883" y="280">來源新鮮度</text><text x="883" y="324">ETA／預測護欄</text>
+      <g fill="none" stroke="#08784f" stroke-width="3.2" marker-end="url(#sys-query-arrow)">
+        <path d="M175 112 H194"/><path d="M405 112 H424"/><path d="M650 112 H669"/><path d="M985 112 H1004"/>
+        <path d="M540 72 V57 H1427 V72"/>
       </g>
-      <g fill="#20394e" font-size="23" font-weight="800">
-        <text x="1270" y="107">官方觀測</text><text x="1270" y="151" font-size="18" font-weight="500">來源狀態與時間</text>
-        <text x="1270" y="282">ETA</text><text x="1270" y="326" font-size="18" font-weight="500">有 origin 才呼叫 Routes</text>
-        <text x="1270" y="457">抵達預測</text><text x="1270" y="501" font-size="18" font-weight="500">條件不足回 null</text>
+      <g text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
+        <g fill="#07533e" font-size="18" font-weight="850">
+          <text x="102" y="104">Vue</text><text x="102" y="130" font-size="16" font-weight="600">使用者介面</text>
+          <text x="302" y="101">ParkingQuery</text><text x="302" y="126">Controller</text><text x="302" y="145" font-size="15" font-weight="600">POST /parking-queries</text>
+          <text x="540" y="101">ParkingQueryService</text><text x="540" y="127" font-size="17">requestToken 冪等檢查</text><text x="540" y="146" font-size="15" font-weight="600">組合回應 · 儲存狀態</text>
+          <text x="830" y="99" font-size="16">NearbyParkingSearchService</text><text x="830" y="122" font-size="17">PublishedAvailabilitySnapshotService</text><text x="830" y="144" font-size="15" font-weight="600">查附近目錄 + 已發布觀測</text>
+          <text x="1137" y="101">MySQL</text><text x="1137" y="124" font-size="17">目錄 · source mapping</text><text x="1137" y="144" font-size="16">source state · PUBLISHED</text>
+          <text x="1427" y="101">Redis</text><text x="1427" y="124" font-size="17">ParkingQueryStateStore · TTL</text><text x="1427" y="144" font-size="16">refresh lock</text>
+        </g>
       </g>
-      <text x="45" y="585" fill="#536982" font-size="18">官方觀測 ≠ ETA ≠ 模型估計</text>
+      <g fill="#f3f7fb" stroke="#7da0bf" stroke-width="1.6" stroke-dasharray="6 5">
+        <rect x="430" y="174" width="420" height="38" rx="12"/>
+        <rect x="875" y="174" width="475" height="38" rx="12"/>
+      </g>
+      <g fill="none" stroke="#4e789d" stroke-width="2.2" stroke-dasharray="6 5" marker-end="url(#sys-ext-arrow)">
+        <path d="M475 154 V169"/><path d="M610 154 V162 H1110 V169"/>
+      </g>
+      <g text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif" fill="#315a7c" font-size="16" font-weight="750">
+        <text x="640" y="199">origin 有值 → GoogleEtaService → Google Routes</text>
+        <text x="1112" y="199">GoogleParkingPlaceSearchService → Google Places（選用）</text>
+      </g>
+      <text x="30" y="222" fill="#536982" font-size="15">一般建立查詢只讀資料；官方刷新由另一個 endpoint 明確觸發。</text>
+
+      <!-- Source refresh path, numbered snake for readability -->
+      <g fill="#fffefa" stroke="#d8bd8e" stroke-width="2">
+        <rect x="30" y="291" width="200" height="70" rx="12"/>
+        <rect x="260" y="291" width="250" height="70" rx="12"/>
+        <rect x="540" y="291" width="260" height="70" rx="12"/>
+        <rect x="830" y="291" width="240" height="70" rx="12"/>
+        <rect x="1100" y="291" width="450" height="70" rx="12"/>
+        <rect x="1290" y="391" width="260" height="64" rx="12"/>
+        <rect x="990" y="391" width="270" height="64" rx="12"/>
+        <rect x="700" y="391" width="250" height="64" rx="12"/>
+        <rect x="410" y="391" width="250" height="64" rx="12"/>
+        <rect x="60" y="391" width="300" height="64" rx="12"/>
+      </g>
+      <g fill="none" stroke="#c58a32" stroke-width="3" marker-end="url(#sys-refresh-arrow)">
+        <path d="M230 326 H253"/><path d="M510 326 H533"/><path d="M800 326 H823"/><path d="M1070 326 H1093"/>
+        <path d="M1325 361 V381 H1420 V384"/>
+        <path d="M1290 423 H1268"/><path d="M990 423 H958"/><path d="M700 423 H668"/><path d="M410 423 H368"/>
+      </g>
+      <g fill="#805000" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif" font-size="17" font-weight="800">
+        <text x="48" y="319">1　Refresh API</text><text x="48" y="344" font-size="14" font-weight="600">/{queryId}/refresh</text>
+        <text x="278" y="310">2　SourceRefresh</text><text x="278" y="330">CoordinationService</text><text x="278" y="351" font-size="16">Redis lock · MySQL cooldown</text>
+        <text x="558" y="319">3　NtpcRealtimeSource</text><text x="558" y="342">RefreshService</text>
+        <text x="848" y="319">4　NtpcOpenDataClient</text><text x="848" y="342">官方 API 分頁</text>
+        <text x="1118" y="319">5　新北市官方即時來源</text><text x="1118" y="342" font-size="15" font-weight="600">完整讀取後才進入正規化</text>
+        <text x="1310" y="417">6　NtpcAvailabilityNormalizer</text><text x="1310" y="440" font-size="14">狀態與欄位正規化</text>
+        <text x="1010" y="417">7　品質 + source mapping</text><text x="1010" y="440" font-size="16">ID · 座標 · 資格 · 完整性</text>
+        <text x="720" y="417">8　候選快照</text><text x="720" y="440" font-size="16">尚未供查詢讀取</text>
+        <text x="430" y="417">9　AvailabilitySnapshot</text><text x="430" y="440">PublishingService</text>
+        <text x="80" y="417">10　MySQL · PUBLISHED</text><text x="80" y="440" font-size="16">可供線上查詢讀取</text>
+      </g>
+
+      <!-- Offline ML path -->
+      <g fill="#e9e2f1" stroke="#a999c0" stroke-width="2">
+        <rect x="30" y="528" width="240" height="70" rx="12"/>
+        <rect x="294" y="528" width="240" height="70" rx="12"/>
+        <rect x="558" y="528" width="240" height="70" rx="12"/>
+        <rect x="822" y="528" width="240" height="70" rx="12"/>
+        <rect x="1086" y="528" width="220" height="70" rx="12"/>
+        <rect x="1330" y="528" width="235" height="70" rx="12"/>
+      </g>
+      <g fill="none" stroke="#79649b" stroke-width="2.6" stroke-dasharray="8 6" marker-end="url(#sys-ml-arrow)">
+        <path d="M270 563 H286"/><path d="M534 563 H550"/><path d="M798 563 H814"/><path d="M1062 563 H1078"/><path d="M1306 563 H1322"/>
+        <path d="M1447 528 H1580 V222 H540 V157"/>
+      </g>
+      <g text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif" fill="#5d477d" font-weight="800">
+        <text x="150" y="557" font-size="16">parking-data-collector</text><text x="150" y="580" font-size="16" font-weight="600">離線歷史素材</text>
+        <text x="414" y="557" font-size="16">品質治理 + labels</text><text x="414" y="580" font-size="16" font-weight="600">缺漏與拒絕原因保留</text>
+        <text x="678" y="557" font-size="16">時間切分 + baseline</text><text x="678" y="580" font-size="16" font-weight="600">train / validation / test</text>
+        <text x="942" y="557" font-size="16">離線回測</text><text x="942" y="580" font-size="16" font-weight="600">不代表正式准入</text>
+        <text x="1196" y="557" font-size="16">版本化 JSON</text><text x="1196" y="580" font-size="16" font-weight="700">EXPERIMENT_ONLY</text>
+        <text x="1447" y="552" font-size="16">ExperimentalOffStreet</text><text x="1447" y="574" font-size="16">PredictionService</text><text x="1447" y="591" font-size="15" font-weight="700">NOT PRODUCTION VALIDATED</text>
+      </g>
     </svg>
+    <div class="meta" style="margin-top:.4vh">JAVA 21 · SPRING BOOT 4.1.1 · VUE 3 · MYSQL 8.4 · REDIS 8 · DOCKER COMPOSE</div>
   </div>
-  <div class="foot"><div>缺少資料時，保留原因，不補造數值</div><div>FLOW</div></div>
-</section>
-
-<section class="slide dark" data-slide-id="backend-architecture">
-  <div class="chrome"><div>後端架構 · COMPONENT UML</div><div>03 / 06</div></div>
-  <div class="frame" style="padding-top:2vh">
-    <div class="kicker">責任分離</div>
-    <h2 class="h-xl" style="font-size:4.2vw">線上查詢與來源刷新，各走自己的路徑</h2>
-    <svg class="flow-svg" viewBox="0 0 1680 600" role="img" aria-label="停車預測後端元件架構 UML">
-  <defs>
-    <marker id="arch-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#8bbfa7"/></marker>
-    <marker id="arch-blue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#9bb9d3"/></marker>
-  </defs>
-  <g fill="#fffefa" stroke="#cfd9d0" stroke-width="2">
-    <rect x="35" y="65" width="220" height="125" rx="18"/>
-    <rect x="300" y="65" width="285" height="125" rx="18"/>
-    <rect x="630" y="65" width="340" height="125" rx="18"/>
-    <rect x="1015" y="65" width="300" height="125" rx="18"/>
-    <rect x="1360" y="65" width="290" height="125" rx="18"/>
-    <rect x="35" y="270" width="220" height="105" rx="18"/>
-    <rect x="300" y="270" width="285" height="105" rx="18"/>
-    <rect x="630" y="270" width="340" height="105" rx="18"/>
-    <rect x="1015" y="270" width="300" height="105" rx="18"/>
-    <rect x="1360" y="270" width="290" height="105" rx="18"/>
-    <rect x="300" y="465" width="285" height="105" rx="18"/>
-    <rect x="630" y="465" width="340" height="105" rx="18"/>
-    <rect x="1015" y="465" width="300" height="105" rx="18"/>
-    <rect x="1360" y="465" width="290" height="105" rx="18"/>
-  </g>
-  <g fill="#07533e" font-size="22" font-weight="800">
-    <text x="90" y="120">Vue client</text>
-    <text x="324" y="115">ParkingQuery</text><text x="352" y="148">Controller</text>
-    <text x="662" y="115">ParkingQueryService</text><text x="672" y="148">查詢／推論護欄</text>
-    <text x="1088" y="110">MySQL 8.4 + Redis 8</text><text x="1070" y="148">來源快照 + 短期 state</text>
-    <text x="1420" y="110">Google APIs</text><text x="1390" y="148">Routes · Places（選用）</text>
-    <text x="75" y="325">Refresh API</text>
-    <text x="326" y="310">Source gate</text><text x="335" y="344">Redis 協調／冷卻</text>
-    <text x="648" y="310">NTPC Adapter</text><text x="650" y="344">分頁／映射／品質</text>
-    <text x="1052" y="310">官方 NTPC</text><text x="1053" y="344">即時來源</text>
-    <text x="1395" y="310">候選快照</text><text x="1390" y="344">完整後才發布</text>
-    <text x="327" y="505">parking-data-collector</text><text x="332" y="540">離線歷史素材</text>
-    <text x="685" y="505">訓練／回測</text><text x="690" y="540">版本化產物</text>
-    <text x="1033" y="505">Model artifact</text><text x="1034" y="540">EXPERIMENT_ONLY</text>
-    <text x="1380" y="500">ExperimentalOffStreet</text><text x="1400" y="535">PredictionService</text>
-  </g>
-  <g fill="#536982" font-size="17">
-    <text x="1032" y="170">Catalog · Snapshot</text><text x="1032" y="187">Query state · TTL</text>
-    <text x="1368" y="570">只提供受控實驗推論</text>
-    <text x="35" y="425">線上查詢</text><text x="35" y="585">離線模型</text>
-  </g>
-  <g fill="none" stroke="#8bbfa7" stroke-width="4" marker-end="url(#arch-arrow)">
-    <path d="M255 128 H290"/><path d="M585 128 H620"/><path d="M970 112 H1010"/>
-    <path d="M970 88 V35 H1345 V128 H1358"/>
-    <path d="M255 322 H290"/><path d="M585 322 H620"/><path d="M970 322 H1005"/><path d="M1315 322 H1350"/>
-    <path d="M1505 270 V225 H1165 V190"/>
-  </g>
-  <g fill="none" stroke="#9bb9d3" stroke-width="3" stroke-dasharray="10 9" marker-end="url(#arch-blue)">
-    <path d="M585 517 H620"/><path d="M970 517 H1005"/><path d="M1315 517 H1350"/>
-    <path d="M1505 460 V425 H1660 V35 H800 V55"/>
-  </g>
-  <text x="1045" y="35" fill="#b7c9d8" font-size="17">僅在啟用且護欄通過時</text>
-</svg>
-    <div class="meta" style="margin-top:1vh">JAVA 21 · SPRING BOOT 4.1.1 · SPRING MVC · JPA / FLYWAY · MYSQL 8.4 · REDIS 8</div>
-  </div>
-  <div class="foot"><div>MySQL 保存來源資料 · Redis 保存短生命週期狀態</div><div>UML</div></div>
+  <div class="foot"><div>MySQL 持久資料 · Redis 短期狀態與刷新鎖 · 模型維持實驗狀態</div><div>ARCHITECTURE</div></div>
 </section>
 
 <section class="slide light" data-slide-id="query-sequence">
-  <div class="chrome"><div>查詢時序 · UML SEQUENCE</div><div>04 / 06</div></div>
+  <div class="chrome"><div>查詢時序 · UML SEQUENCE</div><div>03 / 07</div></div>
   <div class="frame" style="padding-top:2vh">
-    <div class="kicker">API → application service → storage</div>
-    <h2 class="h-xl" style="font-size:4.2vw">查詢先讀已發布資料，不在讀取時刷新來源</h2>
-    <svg class="flow-svg" viewBox="0 0 1680 640" role="img" aria-label="建立停車查詢的 UML 時序圖">
-  <defs>
-    <marker id="seq-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#08784f"/></marker>
-    <marker id="seq-return" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#536982"/></marker>
-  </defs>
-  <g fill="#fffefa" stroke="#dce3dc" stroke-width="2">
-    <rect x="35" y="40" width="210" height="74" rx="14"/>
-    <rect x="300" y="40" width="255" height="74" rx="14"/>
-    <rect x="610" y="40" width="285" height="74" rx="14"/>
-    <rect x="950" y="40" width="230" height="74" rx="14"/>
-    <rect x="1235" y="40" width="220" height="74" rx="14"/>
-    <rect x="1500" y="40" width="145" height="74" rx="14"/>
-  </g>
-  <g fill="#07533e" font-size="20" font-weight="800">
-    <text x="90" y="86">前端</text><text x="328" y="86">Controller</text>
-    <text x="652" y="86">QueryService</text><text x="1018" y="86">MySQL</text>
-    <text x="1260" y="86">Routes</text><text x="1525" y="86">Redis</text>
-  </g>
-  <g stroke="#b8c8bd" stroke-width="2" stroke-dasharray="8 8">
-    <line x1="140" y1="115" x2="140" y2="585"/><line x1="428" y1="115" x2="428" y2="585"/>
-    <line x1="752" y1="115" x2="752" y2="585"/><line x1="1065" y1="115" x2="1065" y2="585"/>
-    <line x1="1345" y1="115" x2="1345" y2="585"/><line x1="1572" y1="115" x2="1572" y2="585"/>
-  </g>
-  <g fill="none" stroke="#08784f" stroke-width="3" marker-end="url(#seq-arrow)">
-    <path d="M140 160 H416"/><path d="M428 215 H740"/><path d="M752 270 H1053"/>
-    <path d="M752 370 H1333"/><path d="M752 460 H1560"/>
-  </g>
-  <g fill="#20394e" font-size="18" font-weight="650">
-    <text x="205" y="150">POST /parking-queries</text>
-    <text x="500" y="205">validate requestToken</text>
-    <text x="825" y="260">讀目錄 + 已發布快照</text>
-    <text x="1090" y="359">[origin 有值] 算 ETA</text>
-    <text x="870" y="450">儲存 query state · TTL</text>
-  </g>
-  <rect x="630" y="320" width="760" height="116" rx="14" fill="#e8f2e8" stroke="#b8d5c7" stroke-width="2"/>
-  <text x="660" y="348" fill="#07533e" font-size="17" font-weight="800">alt · 出發地可選</text>
-  <text x="660" y="414" fill="#536982" font-size="17">[origin 無值] ETA = NOT_REQUESTED；不呼叫 Routes</text>
-  <g fill="none" stroke="#536982" stroke-width="2.5" stroke-dasharray="8 7" marker-end="url(#seq-return)">
-    <path d="M1572 500 V535 H428"/><path d="M428 565 H140"/>
-  </g>
-  <text x="1150" y="526" fill="#536982" font-size="17">儲存成功</text>
-  <text x="184" y="555" fill="#536982" font-size="17">回應 202 Accepted</text>
-  <text x="35" y="612" fill="#536982" font-size="17">官方來源刷新使用獨立 refresh API 與 source gate。</text>
-</svg>
+    <div class="kicker">POST /api/v1/parking-queries · 查詢生命週期</div>
+    <h2 class="h-xl" style="font-size:3.9vw">先做冪等檢查，再查資料並保存狀態</h2>
+    <svg class="flow-svg" viewBox="0 0 1680 590" role="img" aria-label="停車查詢 API 的 UML 時序圖，含 requestToken 冪等、ETA 條件分支、Places 選用呼叫、Redis 狀態儲存及 202 回應">
+      <title>停車查詢 API 時序</title>
+      <desc>Controller 驗證後由 ParkingQueryService 查 Redis requestToken；命中取回既有查詢，未命中才建立。新查詢依 origin 決定是否呼叫 Routes，讀 MySQL 目錄和已發布快照，選用 Places，存 Redis 後回 202。</desc>
+      <defs>
+        <marker id="seq-call" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#08784f"/></marker>
+        <marker id="seq-external" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#4e789d"/></marker>
+        <marker id="seq-return" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#536982"/></marker>
+      </defs>
+      <g fill="#fffefa" stroke="#cfd9d0" stroke-width="2">
+        <rect x="20" y="32" width="160" height="64" rx="12"/>
+        <rect x="220" y="32" width="240" height="64" rx="12"/>
+        <rect x="490" y="32" width="220" height="64" rx="12"/>
+        <rect x="755" y="32" width="190" height="64" rx="12"/>
+        <rect x="985" y="32" width="190" height="64" rx="12"/>
+        <rect x="1210" y="32" width="195" height="64" rx="12"/>
+        <rect x="1435" y="32" width="225" height="64" rx="12"/>
+      </g>
+      <g text-anchor="middle" fill="#07533e" font-size="16" font-weight="800" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
+        <text x="100" y="70">Vue 前端</text>
+        <text x="340" y="70">ParkingQueryController</text>
+        <text x="600" y="70">ParkingQueryService</text>
+        <text x="850" y="70">Redis</text>
+        <text x="1080" y="70">MySQL</text>
+        <text x="1307" y="70">Google Routes</text>
+        <text x="1547" y="70">Google Places</text>
+      </g>
+      <g stroke="#b8c8bd" stroke-width="1.8" stroke-dasharray="7 7">
+        <line x1="100" y1="98" x2="100" y2="555"/><line x1="340" y1="98" x2="340" y2="555"/>
+        <line x1="600" y1="98" x2="600" y2="555"/><line x1="850" y1="98" x2="850" y2="555"/>
+        <line x1="1080" y1="98" x2="1080" y2="555"/><line x1="1307" y1="98" x2="1307" y2="555"/>
+        <line x1="1547" y1="98" x2="1547" y2="555"/>
+      </g>
+      <g fill="none" stroke="#08784f" stroke-width="2.6" marker-end="url(#seq-call)">
+        <path d="M100 125 H330"/><path d="M340 164 H590"/><path d="M600 202 H840"/>
+      </g>
+      <g fill="#20394e" font-size="17" font-weight="700" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
+        <text x="147" y="118">POST /api/v1/parking-queries</text>
+        <text x="388" y="157">@Valid + request validation</text>
+        <text x="670" y="195">findQueryIdByRequestToken</text>
+      </g>
+      <path d="M850 221 H610" fill="none" stroke="#536982" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#seq-return)"/>
+      <text x="675" y="217" fill="#536982" font-size="16" font-weight="700">existing query id / empty</text>
+
+      <rect x="485" y="234" width="1170" height="54" rx="12" fill="#edf4ee" stroke="#b9d1c2" stroke-width="1.8"/>
+      <text x="508" y="256" fill="#07533e" font-size="17" font-weight="850">alt · requestToken</text>
+      <text x="508" y="277" fill="#315a43" font-size="16" font-weight="650">命中：取回既有查詢，不重做外部呼叫　｜　未命中：才建立新查詢</text>
+
+      <g fill="none" stroke="#4e789d" stroke-width="2.4" stroke-dasharray="7 6" marker-end="url(#seq-external)">
+        <path d="M600 320 H1295"/><path d="M600 425 H1535"/>
+      </g>
+      <g fill="#315a7c" font-size="16" font-weight="700" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
+        <text x="715" y="313">[origin 有值] GoogleEtaService → Routes</text>
+        <text x="615" y="351">無 origin：NOT_REQUESTED；略過 Routes</text>
+        <text x="865" y="419">Places 依服務設定選用</text>
+        <text x="1320" y="447">結果可能為空或不可用</text>
+      </g>
+      <path d="M1307 343 H610" fill="none" stroke="#536982" stroke-width="2" stroke-dasharray="7 6" marker-end="url(#seq-return)"/>
+      <text x="1080" y="339" fill="#536982" font-size="15">ETA ready / failed</text>
+      <path d="M1547 460 H610" fill="none" stroke="#536982" stroke-width="2" stroke-dasharray="7 6" marker-end="url(#seq-return)"/>
+
+      <g fill="none" stroke="#08784f" stroke-width="2.6" marker-end="url(#seq-call)">
+        <path d="M600 390 H1070"/><path d="M600 493 H840"/>
+      </g>
+      <g fill="#20394e" font-size="16" font-weight="700" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
+        <text x="690" y="383">附近目錄 + PUBLISHED snapshot</text>
+        <text x="655" y="486">save query state + TTL</text>
+      </g>
+      <path d="M600 522 H340" fill="none" stroke="#536982" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#seq-return)"/>
+      <path d="M340 550 H100" fill="none" stroke="#536982" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#seq-return)"/>
+      <text x="160" y="544" fill="#536982" font-size="17" font-weight="800">HTTP 202 Accepted</text>
+      <text x="770" y="555" fill="#536982" font-size="16">刷新走獨立 endpoint；此 POST 不觸發官方來源刷新。</text>
+    </svg>
   </div>
-  <div class="foot"><div>沒有出發地，仍可查附近資料；不製作虛構 ETA</div><div>SEQUENCE</div></div>
+  <div class="foot"><div>HTTP 202 是回應契約；不等於這段程式已移入背景佇列</div><div>SEQUENCE</div></div>
 </section>
 
 <section class="slide dark" data-slide-id="source-refresh">
-  <div class="chrome"><div>來源刷新 · DATA PIPELINE</div><div>05 / 06</div></div>
+  <div class="chrome"><div>官方來源刷新 · PUBLISH GATE</div><div>04 / 07</div></div>
   <div class="frame" style="padding-top:2vh">
-    <div class="kicker">先完整收齊，再發布</div>
-    <h2 class="h-xl" style="font-size:4.2vw">來源品質閘門保護目前已發布快照</h2>
-    <svg class="flow-svg" viewBox="0 0 1680 430" role="img" aria-label="官方來源刷新與品質驗證流程">
-      <defs><marker id="pipe-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#8bbfa7"/></marker></defs>
-      <g fill="#fffefa" stroke="#d1ded3" stroke-width="2">
-        <rect x="25" y="110" width="220" height="140" rx="18"/><rect x="275" y="110" width="245" height="140" rx="18"/>
-        <rect x="550" y="110" width="230" height="140" rx="18"/><rect x="810" y="110" width="250" height="140" rx="18"/>
-        <rect x="1090" y="110" width="240" height="140" rx="18"/><rect x="1360" y="110" width="270" height="140" rx="18"/>
+    <div class="kicker">從來源分頁到可查詢快照</div>
+    <h2 class="h-xl" style="font-size:3.8vw">只有完整、通過檢查的候選資料才會發布</h2>
+    <svg class="flow-svg" viewBox="0 0 1680 390" role="img" aria-label="官方停車來源刷新、正規化、mapping、品質檢查及快照發布流程">
+      <title>官方來源刷新與發布閘門</title>
+      <desc>受協調服務鎖定和冷卻控制後讀取官方分頁，正規化、檢查資格並使用既有 source mapping，再以候選快照提交發布。失敗時舊快照保留。</desc>
+      <defs>
+        <marker id="source-pipe" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#8bbfa7"/></marker>
+        <marker id="source-fail" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#dcae55"/></marker>
+      </defs>
+      <text x="30" y="34" fill="#c8d5cd" font-size="18" font-weight="750">POST /api/v1/parking-queries/{queryId}/refresh · Redis lock + MySQL cooldown</text>
+      <g fill="#fffefa" stroke="#cfd9d0" stroke-width="2">
+        <rect x="25" y="67" width="245" height="112" rx="15"/>
+        <rect x="300" y="67" width="245" height="112" rx="15"/>
+        <rect x="575" y="67" width="245" height="112" rx="15"/>
+        <rect x="850" y="67" width="245" height="112" rx="15"/>
+        <rect x="1125" y="67" width="245" height="112" rx="15"/>
+        <rect x="1400" y="67" width="245" height="112" rx="15"/>
       </g>
-      <g fill="none" stroke="#8bbfa7" stroke-width="4" marker-end="url(#pipe-arrow)">
-        <path d="M245 180 H265"/><path d="M520 180 H540"/><path d="M780 180 H800"/><path d="M1060 180 H1080"/><path d="M1330 180 H1350"/>
+      <g fill="none" stroke="#8bbfa7" stroke-width="3.4" marker-end="url(#source-pipe)">
+        <path d="M270 122 H292"/><path d="M545 122 H567"/><path d="M820 122 H842"/><path d="M1095 122 H1117"/><path d="M1370 122 H1392"/>
       </g>
-      <g fill="#07533e" font-size="23" font-weight="800">
-        <text x="68" y="165">Refresh API</text><text x="312" y="165">Source gate</text><text x="580" y="165">NTPC 分頁</text>
-        <text x="838" y="165">Mapping + QA</text><text x="1122" y="165">Candidate</text><text x="1400" y="165">Publish</text>
+      <g text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
+        <g fill="#07533e" font-size="20" font-weight="850">
+          <text x="147" y="105">官方分頁</text><text x="422" y="99">NtpcAvailability</text><text x="422" y="122">Normalizer</text>
+          <text x="697" y="99">資格 + mapping</text><text x="697" y="122">資料品質檢查</text>
+          <text x="972" y="99">候選快照</text><text x="972" y="122">完整性 gate</text>
+          <text x="1247" y="99">AvailabilitySnapshot</text><text x="1247" y="122">PublishingService</text>
+          <text x="1522" y="105">MySQL · PUBLISHED</text>
+        </g>
+        <g fill="#536982" font-size="15" font-weight="600">
+          <text x="147" y="148">讀至空頁才算完整</text>
+          <text x="422" y="148">保留來源狀態語意</text>
+          <text x="697" y="148">使用已核對來源對應</text>
+          <text x="972" y="148">尚未供查詢讀取</text>
+          <text x="1247" y="148">交易式發布</text>
+          <text x="1522" y="148">線上查詢讀取</text>
+        </g>
       </g>
-      <g fill="#536982" font-size="18">
-        <text x="54" y="207">明確觸發</text><text x="306" y="207">協調／冷卻</text><text x="582" y="207">讀到空頁</text>
-        <text x="833" y="207">ID · 座標 · 資格</text><text x="1110" y="207">完整快照</text><text x="1385" y="207">切換 active</text>
+      <path d="M972 181 V220 H780" fill="none" stroke="#dcae55" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#source-fail)"/>
+      <rect x="410" y="202" width="370" height="58" rx="13" fill="#fff4dd" stroke="#dcae55" stroke-width="2"/>
+      <text x="446" y="238" fill="#805000" font-size="20" font-weight="800">拒絕候選／刷新失敗 → 保留舊快照</text>
+      <rect x="25" y="281" width="1630" height="77" rx="14" fill="#f5f3ee" stroke="#ddd7cb" stroke-width="1.5"/>
+      <text x="46" y="307" fill="#536982" font-size="16" font-weight="850">目錄稽核 · 2026-10-26 新莊路邊資料</text>
+      <g text-anchor="middle" fill="#20394e" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
+        <text x="420" y="334" font-size="22" font-weight="900">33 頁</text>
+        <text x="680" y="334" font-size="22" font-weight="900">2,151 列</text>
+        <text x="940" y="334" font-size="22" font-weight="900">1,880 合格列</text>
+        <text x="1200" y="334" font-size="22" font-weight="900">164 資格未知</text>
+        <text x="1470" y="334" font-size="22" font-weight="900">107 不符資格</text>
       </g>
-      <path d="M1210 254 V316 H951" fill="none" stroke="#dcae55" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#pipe-arrow)"/>
-      <rect x="638" y="290" width="315" height="72" rx="14" fill="#fff4dd" stroke="#dcae55" stroke-width="2"/>
-      <text x="676" y="335" fill="#805000" font-size="20" font-weight="750">失敗：保留舊快照</text>
-      <text x="25" y="405" fill="#c8d5cd" font-size="17">離線 collector 不服務使用者，也不控制主系統刷新頻率。</text>
+      <text x="46" y="350" fill="#536982" font-size="16">107 不符合一般汽車格範圍；來源 ID 缺漏、重複 ID、無效座標各 0。1,880 是合格來源列，不是 mapping 完成數。</text>
     </svg>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1.2vw;margin-top:.4vh">
-      <div style="border-top:1px solid rgba(255,255,255,.36);padding-top:1vh"><strong style="font-size:2.5vw">33</strong><span class="body-zh"> 頁官方資料</span></div>
-      <div style="border-top:1px solid rgba(255,255,255,.36);padding-top:1vh"><strong style="font-size:2.5vw">2,151</strong><span class="body-zh"> 筆來源列</span></div>
-      <div style="border-top:1px solid rgba(255,255,255,.36);padding-top:1vh"><strong style="font-size:2.5vw">1,880</strong><span class="body-zh"> 筆 mapping 已核對</span></div>
-      <div style="border-top:1px solid rgba(255,255,255,.36);padding-top:1vh"><strong style="font-size:2.5vw">0</strong><span class="body-zh"> ID／重複／座標錯誤</span></div>
+    <div style="display:flex;justify-content:space-between;gap:1.5vw;align-items:center;margin-top:.4vh">
+      <span class="tag">目錄資格是靜態範圍</span>
+      <span class="tag">PUBLISHED 是來源觀測</span>
+      <span class="tag">模型估計另走實驗路徑</span>
     </div>
   </div>
-  <div class="foot"><div>新莊路邊目錄盤點 · 2026-10-26 · 不代表即時空位或全臺覆蓋</div><div>PIPELINE</div></div>
+  <div class="foot"><div>目錄盤點不代表即時空位，也不代表全臺覆蓋</div><div>DATA GOVERNANCE</div></div>
 </section>
 
 <section class="slide hero light" data-slide-id="backend-takeaways">
-  <div class="chrome"><div>後端設計取捨 · TAKEAWAYS</div><div>06 / 06</div></div>
-  <div class="frame" style="padding-top:4vh">
+  <div class="chrome"><div>工程取捨 · MAIN DECK</div><div>05 / 07</div></div>
+  <div class="frame" style="padding-top:3vh">
     <div class="kicker">可追溯 · 可降級 · 可審查</div>
-    <h2 class="h-xl" style="font-size:5vw">讓每個回應都說得清楚</h2>
-    <div class="grid-3" style="margin-top:4vh;gap:2vw">
-      <div class="brand-card" style="padding:2vw"><div class="kicker">PERSIST</div><h3 class="h-md">MySQL</h3><p class="body-zh">目錄、mapping、快照與來源觀測</p></div>
-      <div class="brand-card" style="padding:2vw"><div class="kicker">EPHEMERAL</div><h3 class="h-md">Redis</h3><p class="body-zh">短期 query state 與刷新協調</p></div>
-      <div class="brand-card" style="padding:2vw"><div class="kicker">GUARDRAIL</div><h3 class="h-md">資料不足 → null</h3><p class="body-zh">模型只在條件通過時回傳實驗性估計</p></div>
+    <h2 class="h-xl" style="font-size:4.6vw">讓每個回應都說得清楚</h2>
+    <div class="grid-3" style="margin-top:2.5vh;gap:1.5vw">
+      <div class="brand-card" style="padding:1.6vw"><div class="kicker">PERSIST</div><h3 class="h-md">MySQL 8.4</h3><p class="body-zh">目錄、mapping、來源狀態、觀測與已發布快照</p></div>
+      <div class="brand-card" style="padding:1.6vw"><div class="kicker">SHORT LIVED</div><h3 class="h-md">Redis 8</h3><p class="body-zh">query state TTL 與來源刷新鎖</p></div>
+      <div class="brand-card" style="padding:1.6vw"><div class="kicker">DEGRADE</div><h3 class="h-md">保留狀態，不補值</h3><p class="body-zh">來源過期或條件不足時明確降級；實驗預測可拒絕輸出</p></div>
     </div>
-    <div class="meta" style="margin-top:4vh">JAVA 21 · SPRING BOOT 4.1.1 · MYSQL 8.4 · REDIS 8 · DOCKER COMPOSE</div>
-    <div class="tag" style="align-self:flex-start;margin-top:2vh">目前範圍：新莊 MVP · 全臺 TDX 即時來源尚未整合</div>
+    <div class="meta" style="margin-top:2.5vh">VUE 3 · VITE · JAVA 21 · SPRING BOOT 4.1.1 · SPRING MVC · JPA / FLYWAY · DOCKER COMPOSE</div>
+    <div class="tag" style="align-self:flex-start;margin-top:1.4vh">目前範圍：新莊 MVP · 全臺 TDX 即時來源尚未整合 · 路外模型未通過正式准入</div>
   </div>
-  <div class="foot"><div>官方觀測與模型估計，始終分開呈現</div><div>END</div></div>
+  <div class="foot"><div>主簡報結束；備用頁僅在對應追問時使用</div><div>MAIN END</div></div>
 </section>
 
+<section class="slide light" data-slide-id="ai-agent-backup">
+  <div class="chrome"><div>備用頁 A · AI AGENT 輔助開發流程</div><div>06 / 07</div></div>
+  <div class="frame" style="padding-top:3vh">
+    <div class="kicker">只在 AI 協作流程相關追問時開啟</div>
+    <h2 class="h-xl" style="font-size:4vw">AI 加速工作，人保留驗收與決策</h2>
+    <svg class="flow-svg" viewBox="0 0 1600 390" role="img" aria-label="需求、GPT、Codex、本機驗證、精確 HEAD 檢查、PR 審查到人工決定合併的 AI 協作流程">
+      <title>AI Agent 輔助開發流程</title>
+      <desc>人工定義需求與驗收，GPT 協助釐清及獨立 review，Codex 讀取 repo 並實作，本機執行測試和設定驗證，同一精確 HEAD 對應 diff 和證據，經 PR 審查後由人類決定是否合併。</desc>
+      <defs><marker id="ai-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#08784f"/></marker></defs>
+      <g fill="#fffefa" stroke="#d7e1d8" stroke-width="2">
+        <rect x="20" y="78" width="195" height="132" rx="16"/>
+        <rect x="245" y="78" width="195" height="132" rx="16"/>
+        <rect x="470" y="78" width="195" height="132" rx="16"/>
+        <rect x="695" y="78" width="195" height="132" rx="16"/>
+        <rect x="920" y="78" width="195" height="132" rx="16"/>
+        <rect x="1145" y="78" width="195" height="132" rx="16"/>
+        <rect x="1370" y="78" width="210" height="132" rx="16"/>
+      </g>
+      <g fill="none" stroke="#08784f" stroke-width="3" marker-end="url(#ai-arrow)">
+        <path d="M215 144 H237"/><path d="M440 144 H462"/><path d="M665 144 H687"/><path d="M890 144 H912"/><path d="M1115 144 H1137"/><path d="M1340 144 H1362"/>
+      </g>
+      <g fill="#07533e" text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
+        <g font-size="15" font-weight="850">
+          <text x="117" y="105">01 · HUMAN</text><text x="342" y="105">02 · GPT</text><text x="567" y="105">03 · CODEX</text>
+          <text x="792" y="105">04 · LOCAL</text><text x="1017" y="105">05 · REVIEW</text><text x="1242" y="105">06 · PR</text><text x="1475" y="105">07 · HUMAN</text>
+        </g>
+        <g font-size="17" font-weight="850">
+          <text x="117" y="140">需求 + 驗收</text><text x="342" y="140">釐清 / 拆解</text><text x="567" y="140">讀 repo / 實作</text>
+          <text x="792" y="140">測試 / 設定驗證</text><text x="1017" y="140">Diff + HEAD + 證據</text><text x="1242" y="140">人工審查</text><text x="1475" y="140">決定是否 Merge</text>
+        </g>
+        <g fill="#536982" font-size="14" font-weight="650">
+          <text x="117" y="174">Sponsor 定範圍</text><text x="342" y="174">另做 code review</text><text x="567" y="174">依 ticket 改程式</text>
+          <text x="792" y="174">不以 Review 代測試</text><text x="1017" y="174">同一精確提交</text><text x="1242" y="174">範圍外變更另評估</text><text x="1475" y="174">合併由人負責</text>
+        </g>
+      </g>
+      <rect x="25" y="248" width="1550" height="78" rx="15" fill="#fff4dd" stroke="#e0c78e" stroke-width="2"/>
+      <text x="54" y="280" fill="#805000" font-size="17" font-weight="850">GitHub Actions 因用量限制暫停</text>
+      <text x="54" y="307" fill="#805000" font-size="16" font-weight="650">因此依任務使用本機測試與設定驗證；GPT Review 不等於測試，AI 不會自行批准合併。</text>
+    </svg>
+  </div>
+  <div class="foot"><div>人定範圍 · 箭頭代表工作交接，非自動串接 · 人驗收並決定合併</div><div>BACKUP A</div></div>
+</section>
+
+<section class="slide dark" data-slide-id="ml-admission-backup">
+  <div class="chrome"><div>備用頁 B · ML 訓練、回測與模型准入</div><div>07 / 07</div></div>
+  <div class="frame" style="padding-top:2.2vh">
+    <div class="kicker">只在資料或預測模型追問時開啟</div>
+    <h2 class="h-xl" style="font-size:3.9vw">離線實驗已接通；正式模型准入尚未通過</h2>
+    <svg class="flow-svg" viewBox="0 0 1600 430" role="img" aria-label="停車資料 collector、資料治理、時間序列切分、baseline 與候選模型回測、版本化產物、實驗推論服務及未通過的正式模型准入">
+      <title>ML 訓練、回測與模型准入</title>
+      <desc>離線 collector 資料經品質及標籤治理、時間切分和 baseline 比較後產生版本化實驗產物，供有輸入護欄的 ExperimentalOffStreetPredictionService 使用；正式 production gate 未通過。</desc>
+      <defs>
+        <marker id="ml-flow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#9f8ab9"/></marker>
+      </defs>
+      <g fill="#fffefa" stroke="#bcaed0" stroke-width="2">
+        <rect x="25" y="62" width="205" height="102" rx="15"/>
+        <rect x="250" y="62" width="205" height="102" rx="15"/>
+        <rect x="475" y="62" width="205" height="102" rx="15"/>
+        <rect x="700" y="62" width="205" height="102" rx="15"/>
+        <rect x="925" y="62" width="205" height="102" rx="15"/>
+        <rect x="1150" y="62" width="250" height="102" rx="15"/>
+        <rect x="1420" y="62" width="155" height="102" rx="15"/>
+      </g>
+      <g fill="none" stroke="#79649b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#ml-flow)">
+        <path d="M230 112 H242"/><path d="M455 112 H467"/><path d="M680 112 H692"/><path d="M905 112 H917"/><path d="M1130 112 H1142"/><path d="M1400 112 H1412"/>
+      </g>
+      <g text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif" fill="#5d477d">
+        <g font-size="18" font-weight="850">
+          <text x="127" y="94">parking-data-collector</text>
+          <text x="352" y="94">資料品質治理</text>
+          <text x="577" y="94">特徵 + 標籤</text>
+          <text x="802" y="94">時間序列切分</text>
+          <text x="1027" y="94">Baseline / 候選</text>
+          <text x="1275" y="91">離線回測 →</text><text x="1275" y="114">版本化 artifact</text>
+          <text x="1497" y="87" font-size="14">受護欄的</text><text x="1497" y="108" font-size="14">Experimental</text><text x="1497" y="129" font-size="14">PredictionService</text>
+        </g>
+        <g fill="#536982" font-size="14" font-weight="650">
+          <text x="127" y="130">歷史素材 · 不在查詢路徑</text>
+          <text x="352" y="130">schema / status / rejection</text>
+          <text x="577" y="130">as-of ≠ arrival</text>
+          <text x="802" y="130">train / validation / test</text>
+          <text x="1027" y="130">persistence / logistic</text>
+          <text x="1275" y="145">EXPERIMENT_ONLY</text>
+        </g>
+      </g>
+      <rect x="40" y="208" width="970" height="92" rx="14" fill="#f1edf7" stroke="#c6b9d6" stroke-width="1.5"/>
+      <text x="64" y="238" fill="#5d477d" font-size="18" font-weight="850">已實作的離線證據鏈</text>
+      <text x="64" y="266" fill="#536982" font-size="16">品質與標籤 dry-run · chronological split · Persistence / Calibrated Persistence / Logistic 比較 · 離線回測</text>
+      <text x="64" y="287" fill="#536982" font-size="15">現有 test 只有已分析的 3 天，不是新 holdout；不得由此宣稱正式準確度。</text>
+
+      <rect x="1040" y="208" width="520" height="92" rx="14" fill="#fff1ed" stroke="#cf8e7d" stroke-width="2"/>
+      <text x="1064" y="238" fill="#934c3c" font-size="17" font-weight="900">正式模型准入：NOT PASSED</text>
+      <text x="1064" y="265" fill="#7b5148" font-size="16" font-weight="700">NOT PRODUCTION VALIDATED</text>
+      <text x="1064" y="287" fill="#7b5148" font-size="14">仍需新日期、ETA-aware 與既定風險門檻證據</text>
+
+      <g fill="#fffefa" stroke="#d8d1df" stroke-width="1.5">
+        <rect x="40" y="328" width="475" height="64" rx="12"/>
+        <rect x="562" y="328" width="475" height="64" rx="12"/>
+        <rect x="1084" y="328" width="476" height="64" rx="12"/>
+      </g>
+      <g fill="#20394e" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
+        <text x="60" y="354" font-size="16" font-weight="850">資料來源</text><text x="60" y="378" font-size="15">collector 歷史 ZIP；不是即時 API 或主系統刷新資料</text>
+        <text x="582" y="354" font-size="16" font-weight="850">時間因果</text><text x="582" y="378" font-size="15">特徵只取 as-of；arrival label 不跨 split 回流</text>
+        <text x="1104" y="354" font-size="16" font-weight="850">線上護欄</text><text x="1104" y="378" font-size="15">新鮮度 · confirmed 車種資格 · 支援時距 · enabled</text>
+      </g>
+    </svg>
+  </div>
+  <div class="foot"><div>實驗產物可受控展示；正式准入與生產驗證仍待新證據</div><div>BACKUP B</div></div>
+</section>
 </div>
 
 <div id="nav"></div>
@@ -790,44 +979,93 @@ const SPEAKER_NOTES = [
   {
     id: 'cover', title: '讓資料可追溯，讓查詢有邊界',
     section: '後端工程案例',
-    purpose: '界定產品範圍，讓面試官先理解後端要保護的資料語意。',
-    talk: ['目前產品基線是新莊 MVP，不宣稱全臺即時覆蓋。','核心工作是把官方來源、已發布快照與短期查詢狀態分清楚。','畫面是程式碼重繪，街區為示意；它用來交代查詢語境。'],
-    transition: '先看一次查詢如何拆分成三種彼此獨立的結果。'
+    purpose: '界定作品範圍，先說明後端要保護的資料語意。',
+    talk: [
+      '這是新莊 MVP 的後端工程案例，不是全臺成熟產品。',
+      '核心是讓官方觀測、ETA、模型估計與無資料保持不同狀態。',
+      '用明確資料邊界和降級規則，避免回應看起來完整卻不可解釋。'
+    ],
+    transition: '先看一次查詢、一次官方刷新和一條離線實驗如何各自運作。'
   },
   {
-    id: 'query-flow', title: '一次查詢，三種資料責任',
-    section: '後端流程',
-    purpose: '說明查詢回應的責任邊界與資料不足時的行為。',
-    talk: ['建立查詢讀附近目錄和已發布快照。','ETA 需要 origin；官方觀測不等於 ETA 或模型機率。','來源過期或模型資格不足時保留狀態，不轉成零或虛構機率。'],
-    transition: '再把這些責任對應到後端元件與儲存。'
-  },
-  {
-    id: 'backend-architecture', title: '線上查詢與來源刷新，各走自己的路徑',
+    id: 'system-architecture', title: '線上查詢、官方刷新、離線實驗，各有邊界',
     section: '後端架構',
-    purpose: '呈現核心模組、資料庫／快取責任與離線訓練邊界。',
-    talk: ['Controller 負責 HTTP 契約；Service 協調查詢與護欄；Adapter 隔離官方來源格式。','MySQL 保存可追溯目錄、mapping、快照和觀測；Redis 只存短生命週期狀態。','parking-data-collector 是離線素材來源，不參與使用者即時查詢或主系統刷新。'],
-    transition: '接著用單一 API 請求驗證呼叫先後與可選 origin 分支。'
+    purpose: '用一張圖交代三條資料路徑及儲存責任。',
+    talk: [
+      '綠色主線由 Vue 進入 ParkingQueryController 和 ParkingQueryService，讀附近目錄與最新 PUBLISHED 觀測。',
+      '藍色外部呼叫有條件：有 origin 才由 GoogleEtaService 呼叫 Routes；Places 依服務設定選用。',
+      '橙色刷新由獨立 refresh endpoint 進入協調服務；檢查完整候選後才發布至 MySQL。',
+      'MySQL 保存目錄、source mapping、來源狀態、觀測與快照；Redis 保存短期 query state 和刷新鎖。',
+      '紫色 collector 路徑是離線訓練素材；實驗服務仍標示 EXPERIMENT_ONLY。'
+    ],
+    transition: '下一頁只放大 API 的先後順序，並檢查 requestToken、ETA 和回應時點。'
   },
   {
-    id: 'query-sequence', title: '查詢先讀已發布資料',
-    section: 'API 時序',
-    purpose: '說明查詢路徑如何避免讀取時順帶刷新來源。',
-    talk: ['建立端點驗證 requestToken 與查詢輸入，再讀附近目錄及 active snapshot。','有 origin 才請求 Routes；沒有起點回 NOT_REQUESTED，但附近查詢仍可完成。','短期 query state 寫入 Redis，建立查詢回 202；官方刷新是另一支端點。'],
-    transition: '因為讀取和刷新分離，下一頁看來源資料何時能成為 active snapshot。'
+    id: 'query-sequence', title: '先做冪等檢查，再查資料並保存狀態',
+    section: '查詢生命週期',
+    purpose: '說明 API 的真實順序和條件分支，避免把回應碼誤解為背景佇列。',
+    talk: [
+      'Controller 使用 @Valid，ParkingQueryService 再檢查 requestToken、座標和支援範圍。',
+      'requestToken 已存在時直接取回原查詢，不重做 ETA、附近搜尋或外部服務。',
+      '新查詢有 origin 才呼叫 Routes；沒有 origin 時 ETA 為 NOT_REQUESTED。',
+      '再查 MySQL 目錄與已發布觀測，依服務設定執行 Places，最後將 query state 寫入 Redis TTL。',
+      '服務方法完成後 Controller 才回 HTTP 202；這個 202 是目前契約，不表示已改成背景工作。'
+    ],
+    transition: '查詢讀已發布快照；接著說明快照如何通過品質閘門。'
   },
   {
-    id: 'source-refresh', title: '來源品質閘門保護已發布快照',
-    section: '資料品質',
-    purpose: '用流程與一組有日期、有範圍的數字說明來源盤點。',
-    talk: ['刷新是明確操作，由 source gate 協調，再由 NTPC adapter 做完整分頁與欄位映射。','資料通過 ID、座標、資格和完整性檢查後才發布候選快照；失敗時保留舊版本。','2026-10-26 新莊官方目錄稽核讀取 33 頁、2,151 列；1,880 筆 eligible mapping 已存在且逐筆核對，異常 ID／重複／座標為零。這是目錄盤點，不是即時空位或全臺覆蓋。'],
-    transition: '最後把這些流程收斂成三個後端取捨和目前技術棧。'
+    id: 'source-refresh', title: '只有完整、通過檢查的候選資料才會發布',
+    section: '來源與資料治理',
+    purpose: '把目錄盤點、即時來源觀測與已發布快照分開。',
+    talk: [
+      '刷新由 /api/v1/parking-queries/{queryId}/refresh 明確觸發，先受 cooldown 和 lock 控制。',
+      'NtpcRealtimeSourceRefreshService 透過 NtpcOpenDataClient 讀取分頁，再由 normalizer 和 source mapping 建立候選快照。',
+      '完整 traversal 與品質檢查通過後，AvailabilitySnapshotPublishingService 才交易式發布；失敗不取代舊有效快照。',
+      '2026-10-26 盤點的 1,880 是符合一般汽車格資格與座標規則的來源列，不是 mapping 完成數。',
+      '33 頁、2,151 列描述的是新莊目錄盤點，不是即時空位數，也不是全臺覆蓋。'
+    ],
+    transition: '最後用資料責任、技術棧和目前限制收束主線。'
   },
   {
     id: 'backend-takeaways', title: '讓每個回應都說得清楚',
-    section: '總結',
-    purpose: '以可追溯、可降級、可審查收束，並明確標示目前範圍。',
-    talk: ['MySQL 保存來源事實與發布快照；Redis 保存可失效的短期狀態。','模型機率是受護欄控制的實驗估計；不取代官方觀測。','目前是新莊 MVP；全臺 TDX 即時來源尚未整合。'],
-    transition: '結束簡報；若要追溯實作，可依 repo 的 API、adapter、migration 與 current-state 文件核對。'
+    section: '主簡報收尾',
+    purpose: '收束面試官應記住的架構取捨與現況。',
+    talk: [
+      'MySQL 負責可追溯的持久資料；Redis 負責短生命週期狀態與刷新鎖。',
+      '查詢和官方來源刷新分開；資料過期、外部失敗或輸入不足時明確降級。',
+      'ETA 取決於起點與 Google Routes；模型估計仍受新鮮度、資格及支援時距限制。',
+      '目前是新莊 MVP；全臺 TDX 即時來源尚未整合，路外模型未通過正式准入與生產驗證。'
+    ],
+    transition: '主線到此結束；只有遇到相關追問時才切到備用頁 A 或 B。',
+    cue: '不要自動接著播放備用頁，先聽面試官的問題。'
+  },
+  {
+    id: 'ai-agent-backup', title: 'AI 加速工作，人保留驗收與決策',
+    section: '備用頁 A',
+    purpose: '需要解釋 AI 輔助開發責任分工時才使用。',
+    talk: [
+      '由人先定義 Issue 範圍、驗收標準和人工檢查點。',
+      '依 docs/development-workflow.md 的 human-in-the-loop 原則：GPT 協助需求釐清、任務拆解及獨立 code review；Codex 讀 repo 並按範圍實作。',
+      '本機測試和設定驗證才提供行為證據，GPT Review 不能代替測試。',
+      '提交前核對 Git Diff、精確 HEAD 和同一 HEAD 的測試證據；超出票券的變更另行評估。',
+      'GitHub Actions 目前因用量限制暫停；最終是否 Merge 由人決定。'
+    ],
+    transition: '回答完 AI 協作問題後，回到主線收尾，不必再播放備用頁 B。',
+    cue: '僅在面試官詢問 AI 協作、測試責任或合併決策時開啟；箭頭只表示人工工作交接，不代表自動 agent 串接；本次簡報沒有建立 PR 或執行 Actions。'
+  },
+  {
+    id: 'ml-admission-backup', title: '離線實驗已接通；正式模型准入尚未通過',
+    section: '備用頁 B',
+    purpose: '需要說明訓練資料、時間切分、baseline 或正式准入時才使用。',
+    talk: [
+      'parking-data-collector ZIP 是離線素材；collector_reader.py 與 generate_label_dry_run.py 做讀取和標籤 dry-run，不是主系統即時 API。',
+      'dataset_split.py 依時間切分；特徵只讀 as-of，arrival label 不跨 split 回流，來源狀態與拒絕原因保留。',
+      'run_baseline_experiment.py 與 run_801010_experiment.py 比較 persistence、calibrated persistence、Logistic；validation 選擇，既有 test 只作離線評估。',
+      '已分析的 test 日期只有三天，不是新 holdout；目前不把分數解讀成正式泛化證據。',
+      'export_experimental_offstreet_model.py 輸出版本化 JSON；Java ExperimentalOffStreetPredictionService 設有輸入護欄。S3-020 未通過，產物仍是 EXPERIMENT_ONLY。'
+    ],
+    transition: '說明目前可重現的離線證據與尚缺的准入證據後，回到面試主線。',
+    cue: '僅在面試官追問模型資料、避免洩漏或正式准入時開啟；明確使用 EXPERIMENT_ONLY 與 NOT PRODUCTION VALIDATED。'
   }
 ];
 window.__SPEAKER_NOTES__ = SPEAKER_NOTES;

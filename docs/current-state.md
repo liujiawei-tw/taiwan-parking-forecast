@@ -2,6 +2,17 @@
 
 更新日期：2026-10-26。
 
+## 2026-10-26 後端面試簡報：五頁主線與兩頁備用
+
+- **交付配置**：面試主簡報為 cover、全系統架構、查詢時序、官方來源刷新／品質治理、工程取捨，共五頁；備用頁 A 為 AI Agent 人工監督工作流，備用頁 B 為 ML 訓練、回測與模型准入。七頁各有穩定 slide ID 與對應講者備忘，備用頁只在相關追問時開啟。
+- **架構圖三條路徑**：線上 POST /api/v1/parking-queries 由 Vue、ParkingQueryController、ParkingQueryService 讀附近目錄與 MySQL 已發布觀測；有 origin 才呼叫 GoogleEtaService／Routes，Places 依設定選用；query state TTL 由 ParkingQueryStateStore／Redis 保存。官方刷新走獨立 /{queryId}/refresh endpoint，經 SourceRefreshCoordinationService、NtpcRealtimeSourceRefreshService、NTPC client、normalizer、品質／mapping 與候選快照，再由 publishing service 發布；Redis 提供刷新 lock，MySQL 保存 source state／cooldown 與已發布快照。失敗候選不取代舊快照。collector → 離線資料品質／訓練／回測 → 版本化 artifact → ExperimentalOffStreetPredictionService 以紫色虛線表示，並標示 EXPERIMENT_ONLY、NOT PRODUCTION VALIDATED。
+- **查詢時序查核**：依 ParkingQueryController、ParkingQueryService.create() 及 RedisParkingQueryStateStore 核對 requestToken 冪等查詢、origin／Routes 分支、MySQL 附近搜尋、Places 呼叫與 Redis 狀態儲存順序。create() 先完成服務內查詢與狀態保存，Controller 隨後回 HTTP 202；簡報備忘明確提醒此回應碼不代表背景佇列。一般 create 不呼叫來源刷新，刷新由另一個 API 進入。
+- **來源稽核數字**：保留 2026-10-26 新莊路邊目錄盤點：33 頁、2,151 列、1,880 符合一般汽車格資格與座標規則、164 資格未知、107 不符範圍；來源 ID 缺漏、重複 ID、無效座標各 0。明確記錄 1,880 是合格來源列，不是 mapping 完成數；目錄盤點不代表即時空位或全臺覆蓋。
+- **備用頁證據與限制**：AI 流程以人工定範圍／驗收、GPT 協助釐清與 review、Codex 讀 repo 實作、本機測試、同一 HEAD 的 diff／證據審查、PR review、人工決定 merge 表達；箭頭代表工作交接，非自動 agent 串接。GitHub Actions 因用量限制暫停是依使用者本次提供的狀態，本次未啟用、修改或觸發 workflow。ML 備用頁依 ml-training reader、label、dataset split、baseline／calibrated experiment、artifact exporter 與 Java 實驗推論服務核對；已分析的三日 test 非新 holdout，S3-020 正式准入未通過，不能宣稱正式模型準確度。
+- **設計與範圍**：使用 guizang-ppt-skill 的穩定 ID、提詞卡備忘、橫向翻頁與 Presenter validator 流程；沿用產品暖米白／深綠／無襯線方向，以 HTML／SVG 向量繪製，未使用外部 CDN、字型、圖片或執行時網路資源。未使用 Impeccable。只修改 interview-kit/ 與本進度紀錄，未修改停車系統應用程式碼。
+- **靜態驗證**：Guizang Presenter validator：7 slides、7 notes、0 errors／0 warnings。HTML parser：7 個 slide ID 無重複、無失效片段／ARIA 參照、無缺漏本機資源、無外部資源及 HTML 標籤錯誤。Node vm.Script 解析 3 個 inline JavaScript 區塊；XML parser 解析 6 個 inline SVG；git diff --check 無 whitespace error（Git 只提示 Windows CRLF 轉換）。未執行產品測試或 GitHub Actions。
+- **未完成項目**：瀏覽器安全政策禁止本工作階段讀取 file://，並禁止改用伺服器或其他瀏覽器介面繞過；因此未做實際 16:9 投影、字體折行、窄螢幕、鍵盤翻頁、講者模式與觀眾螢幕同步的目視驗收。上述靜態檢查不等同畫面驗收。
+
 ## 2026-10-26 後端工程師面試 HTML 簡報
 
 - **定位**：以後端工程師面試為受眾，將原本長頁作品集改為六頁橫向簡報。觀眾頁聚焦查詢責任、Controller／Service／Adapter 邊界、MySQL／Redis 分工、API 時序與官方來源品質流程；不放長篇 JSON、模型分數、AI 工具清單或技術詞典。
