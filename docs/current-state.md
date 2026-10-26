@@ -2,6 +2,15 @@
 
 更新日期：2026-10-26。
 
+## 2026-10-26 後端面試簡報重構為兩頁
+
+- **頁面結構**：第一頁重畫整體架構，涵蓋使用端、Spring Boot API、MySQL／Redis、外部服務、官方來源刷新、離線模型實驗、GitHub Repository、Docker Compose 與本機 health check；第二頁以三條泳道說明查詢、資料刷新及離線訓練流程。
+- **技術標示**：主要元件採單檔內嵌 SVG 圖示，包含 Vue、Vite、Spring Boot、MySQL、Redis、Python、GitHub 與 Docker；明列 Java 21、JavaScript、Python、SQL。簡報沿用前端暖米白、深綠和無襯線視覺。
+- **範圍邊界**：簡報只呈現新莊 MVP；全臺 TDX 即時來源尚未整合。collector 僅產生離線訓練素材，路外模型維持 EXPERIMENT_ONLY，並明確區分官方觀測、模型估計與無資料。簡報投影片未出現 Sprint 3 字樣。
+- **驗證**：Presenter validator 通過 2 頁／2 組備忘、0 錯誤／警告；Node 語法解析 3 個 inline script；20 個 SVG symbol 均可被本地 use 參照，未使用外部資源；git diff --check 通過。未執行產品測試。受本工作階段既有瀏覽器安全限制，未進行 file URL／本機伺服器視覺驗收，靜態檢查不代表投影尺寸目視驗收完成。
+- **範圍**：只修改 interview-kit 簡報與說明文件，未改動前後端產品程式、資料或模型。
+
+
 ## 2026-10-26 將完整架構圖整合進面試簡報
 
 - **使用方式**：第 2 頁維持三條路徑的精簡總覽，新增「完整架構圖」按鈕，按需開啟可捲動的全層級 SVG；主投影片總數仍為五頁，兩張備用頁不變。嵌入 SVG 取自使用者提供的 parking-architecture-overview.html，不依賴 PNG、外部檔案或遠端資源。

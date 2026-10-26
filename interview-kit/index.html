@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>停車位抵達預測｜後端工程師面試簡報</title>
+<title>停車位抵達預測｜後端面試簡報</title>
 <style>
   :root{
     /* ============ 主题色(默认:🖋 墨水经典) ============
@@ -511,9 +511,132 @@
   .brand-card h3{color:#07533e}
   .brand-pill{display:inline-flex;align-items:center;padding:.45em .75em;border:1px solid #e2ddd2;border-radius:999px;background:#fffefa;color:#20394e;font:700 14px/1.2 Inter,"Noto Sans TC","Microsoft JhengHei",sans-serif}
   @media(max-width:900px){.flow-svg{max-height:56vh}}
+  .project-slide{padding:4.2vh 5vw 8.2vh;gap:1.15vh;font-family:var(--sans-zh);isolation:isolate}
+  .project-slide .project-chrome{display:flex;justify-content:space-between;align-items:center;font:700 clamp(11px,.74vw,14px)/1.2 var(--mono);letter-spacing:.14em;opacity:.66}
+  .project-header{display:flex;align-items:end;justify-content:space-between;gap:2vw;flex:0 0 auto;padding-bottom:.5vh}
+  .project-kicker{font:700 clamp(11px,.74vw,14px)/1.2 var(--mono);letter-spacing:.17em;color:#08784f;margin-bottom:.65vh}
+  .project-header h1{font:800 clamp(28px,3vw,52px)/1.08 var(--sans-zh);letter-spacing:-.035em;color:var(--ink)}
+  .project-header p{margin-top:.8vh;font-size:clamp(14px,1vw,18px);font-weight:500;line-height:1.4;color:#536982}
+  .scope-chip{flex:0 0 auto;border:1px solid #08784f55;border-radius:999px;padding:9px 15px;background:#08784f0e;color:#07533e;font-size:clamp(13px,.88vw,16px);font-weight:750;letter-spacing:.03em}
+  .icon-sprite{position:absolute;width:0;height:0;overflow:hidden}
+  .arch-icon,.brand-icon{display:block;width:clamp(24px,2vw,36px);height:clamp(24px,2vw,36px);flex:0 0 auto}
+  .brand-icon{width:clamp(26px,2.15vw,40px);height:clamp(26px,2.15vw,40px)}
+  .brand-spring{width:clamp(32px,2.45vw,44px);height:clamp(32px,2.45vw,44px)}
+  .brand-mysql,.brand-redis,.brand-github,.brand-docker{width:clamp(30px,2.3vw,42px);height:clamp(30px,2.3vw,42px)}
+  .architecture-content{display:grid;grid-template-rows:minmax(18vh,1.55fr) minmax(9vh,.76fr) minmax(9vh,.76fr) minmax(8.5vh,.72fr) auto;gap:1vh;flex:1;min-height:0}
+  .arch-main{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:.65vh;min-height:0}
+  .arch-section-cap{display:flex;align-items:center;gap:8px;font:750 clamp(12px,.82vw,15px)/1.2 var(--sans-zh);letter-spacing:.04em;color:#07533e}
+  .tone-dot{width:9px;height:9px;display:inline-block;border-radius:50%;background:#08784f}
+  .arch-main-grid{display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1.12fr) 28px minmax(0,1.5fr);align-items:stretch;gap:.35vw;min-height:0}
+  .arch-node{min-width:0;padding:1.15vh .9vw;border:1px solid #dcd8cd;border-radius:13px;background:#fffefa;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+  .arch-node-kicker{font:700 clamp(10px,.65vw,12px)/1.2 var(--mono);letter-spacing:.12em;color:#536982;opacity:.8;margin-bottom:.8vh}
+  .arch-node-title{display:flex;align-items:center;gap:9px;min-width:0}
+  .arch-node h2{font-size:clamp(17px,1.24vw,23px);font-weight:800;line-height:1.18;letter-spacing:-.02em;color:#20394e}
+  .arch-node p{margin-top:.55vh;font-size:clamp(13px,.88vw,16px);font-weight:550;line-height:1.35;color:#536982}
+  .arch-arrow{display:grid;place-items:center;color:#08784f;font-size:clamp(22px,1.7vw,30px);font-weight:600}
+  .arch-arrow-conditional{color:#3c6f9e}
+  .brand-pair{display:flex;gap:1.2vw;align-items:center;margin-top:1.1vh}
+  .brand-item{display:inline-flex;align-items:center;gap:6px;color:#20394e;font-size:clamp(13px,.88vw,16px);font-weight:750}
+  .brand-item .brand-icon{width:clamp(22px,1.55vw,29px);height:clamp(22px,1.55vw,29px)}
+  .arch-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:1.1vh}
+  .arch-tags span{border-radius:999px;background:#edf4ed;color:#07533e;padding:5px 9px;font-size:clamp(11px,.72vw,13px);font-weight:700}
+  .data-brands{display:grid;grid-template-columns:1fr 1fr;gap:.7vw;margin-top:.35vh}
+  .data-brand{display:flex;align-items:center;gap:8px;min-width:0}
+  .data-brand div{min-width:0}
+  .data-brand strong,.external-item strong{display:block;font-size:clamp(13px,.9vw,17px);font-weight:800;color:#20394e;line-height:1.2}
+  .data-brand small,.external-item small{display:block;margin-top:4px;font-size:clamp(11px,.72vw,13px);font-weight:550;line-height:1.3;color:#536982}
+  .external-item{display:flex;align-items:center;gap:9px;padding:.3vh 0}
+  .external-item+.external-item{border-top:1px solid #e2ddd2;margin-top:.35vh;padding-top:.6vh}
+  .arch-main-note{display:flex;align-items:center;justify-content:space-between;gap:1vw;font-size:clamp(12px,.78vw,14px);font-weight:650;color:#536982;text-align:left}.arch-ext-callouts{display:flex;align-items:center;gap:1vw}.arch-ext-item{display:flex;align-items:center;gap:5px;white-space:nowrap}.arch-ext-item strong{font-size:clamp(12px,.78vw,14px);color:#20394e}.arch-ext-item small{font-size:clamp(11px,.68vw,13px);font-weight:550;color:#536982}.arch-ext-item .arch-icon{width:clamp(20px,1.45vw,27px);height:clamp(20px,1.45vw,27px)}
+  .arch-compact-lane{display:grid;grid-template-columns:minmax(165px,1.05fr) minmax(0,5fr);align-items:center;gap:1.1vw;padding:.8vh 1vw;border-radius:13px;min-height:0}
+  .lane-refresh{background:#fff8ef;border:1px solid #efd8bf;color:#7f4617}
+  .lane-ml{background:#f8f3fc;border:1px solid #ddceec;color:#5f3984}
+  .lane-heading{display:flex;align-items:center;gap:9px;min-width:0}
+  .lane-heading strong{display:block;font-size:clamp(14px,1vw,18px);font-weight:800;line-height:1.2}
+  .lane-heading small{display:block;margin-top:4px;font-size:clamp(11px,.72vw,13px);font-weight:600;opacity:.78}
+  .lane-steps{display:flex;align-items:center;justify-content:space-between;gap:.35vw;min-width:0}
+  .lane-step{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;flex:1;background:#fffefa;border:1px solid #eadfd2;border-radius:9px;padding:.55vh .65vw;color:#20394e;font-size:clamp(12px,.78vw,15px);font-weight:700;line-height:1.25}
+  .lane-step .arch-icon,.lane-step .brand-icon{width:clamp(20px,1.45vw,27px);height:clamp(20px,1.45vw,27px)}
+  .lane-step span{min-width:0}
+  .lane-arrow{flex:0 0 auto;color:#bd651c;font-size:clamp(17px,1.25vw,23px);font-weight:800}
+  .lane-ml .lane-arrow{color:#7041a0}
+  .lane-experiment{border-color:#c8aee0;background:#f3eafa;color:#4d2b71}
+  .lane-experiment b{font:800 clamp(9px,.62vw,12px)/1.2 var(--mono);letter-spacing:.06em;color:#7041a0}
+  .delivery-strip{display:grid;grid-template-columns:minmax(165px,1.05fr) minmax(0,5fr);align-items:center;gap:1.1vw;padding:.7vh 1vw;border:1px solid #dcd8cd;border-radius:13px;background:#fffefa}
+  .delivery-heading{font-size:clamp(14px,1vw,18px);font-weight:850;color:#20394e}
+  .delivery-flow{display:grid;grid-template-columns:1.1fr auto 1.2fr auto 2.4fr;align-items:center;gap:.7vw}
+  .delivery-item{display:flex;align-items:center;gap:8px;min-width:0}
+  .delivery-item strong{display:block;color:#20394e;font-size:clamp(13px,.9vw,17px);font-weight:800;line-height:1.2}
+  .delivery-item small,.runtime-group small{display:block;margin-top:3px;color:#536982;font-size:clamp(11px,.68vw,13px);font-weight:600;line-height:1.2}
+  .delivery-arrow{color:#3c6f9e;font-size:21px;font-weight:800}
+  .runtime-group{min-width:0}
+  .runtime-services{display:flex;align-items:center;justify-content:space-between;gap:.6vw}
+  .runtime-services span{display:flex;align-items:center;gap:5px;color:#20394e;font-size:clamp(12px,.78vw,15px);font-weight:800}
+  .runtime-services .arch-icon,.runtime-services .brand-icon{width:clamp(18px,1.35vw,25px);height:clamp(18px,1.35vw,25px)}
+  .language-row{display:flex;align-items:center;gap:.65vw;min-height:30px;color:#20394e}
+  .language-row strong{font-size:clamp(12px,.78vw,15px);font-weight:850;margin-right:.25vw}
+  .language-row>span{border-radius:999px;background:#edf0e7;padding:5px 11px;font:750 clamp(12px,.76vw,14px)/1.1 var(--mono);color:#07533e}
+  .language-row small{margin-left:auto;color:#536982;font-size:clamp(11px,.7vw,13px);font-weight:550}
+  .project-foot{display:flex;justify-content:space-between;align-items:center;flex:0 0 auto;font:650 clamp(10px,.66vw,12px)/1.2 var(--mono);letter-spacing:.1em;color:currentColor;opacity:.56}
+  .workflow-content{display:grid;grid-template-rows:repeat(3,minmax(0,1fr)) auto auto;gap:1.2vh;flex:1;min-height:0}
+  .process-lane{display:grid;grid-template-columns:minmax(185px,1.05fr) minmax(0,5fr);gap:1.2vw;align-items:center;min-height:0;padding:1.1vh 1.1vw;border-radius:14px;background:#fffefa;color:#20394e;border-left:5px solid #08784f}
+  .process-refresh{border-left-color:#bd651c}.process-ml{border-left-color:#7041a0}
+  .process-intro{min-width:0}
+  .process-no{display:block;font:750 clamp(11px,.68vw,13px)/1 var(--mono);letter-spacing:.12em;opacity:.62;margin-bottom:.45vh}
+  .process-title-row{display:flex;align-items:center;gap:8px}
+  .process-title-row h2{font-size:clamp(17px,1.18vw,22px);font-weight:850;line-height:1.2;color:#20394e}
+  .process-title-row .arch-icon,.process-title-row .brand-icon{width:clamp(23px,1.65vw,30px);height:clamp(23px,1.65vw,30px)}
+  .process-intro p{margin-top:.5vh;color:#536982;font-size:clamp(12px,.78vw,15px);font-weight:600;line-height:1.25}
+  .process-body{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:.65vh;min-width:0;min-height:0}
+  .process-sequence{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1.15fr) 22px minmax(0,1.15fr) 22px minmax(0,1.12fr) 22px minmax(0,1fr);align-items:center;gap:.35vw;min-width:0}
+  .process-step{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;min-height:6.5vh;padding:.55vh .55vw;border:1px solid #e2ddd2;border-radius:10px;background:#fffefa;text-align:center;color:#20394e}
+  .process-step .arch-icon,.process-step .brand-icon{width:clamp(20px,1.48vw,28px);height:clamp(20px,1.48vw,28px)}
+  .process-step strong{font-size:clamp(12px,.82vw,15px);font-weight:750;line-height:1.25}
+  .process-arrow{display:grid;place-items:center;color:#08784f;font-size:clamp(17px,1.22vw,22px);font-weight:800}
+  .process-refresh .process-arrow{color:#bd651c}.process-ml .process-arrow{color:#7041a0}
+  .process-note{color:#536982;font-size:clamp(11px,.72vw,13px);font-weight:700;line-height:1.25}
+  .process-ml .process-note{color:#7041a0}.process-experiment{border-color:#c8aee0;background:#f5eefb}
+  .boundary-row{display:grid;grid-template-columns:1fr 1fr 2.1fr;gap:.8vw}
+  .boundary-row>div{display:flex;align-items:center;gap:8px;min-width:0;padding:.75vh .9vw;border:1px solid #ffffff2e;border-radius:11px;background:#ffffff12;color:#fffefa}
+  .boundary-row strong{display:block;font-size:clamp(13px,.86vw,16px);font-weight:850;line-height:1.25}
+  .boundary-row small{display:block;margin-top:3px;font-size:clamp(11px,.7vw,13px);font-weight:550;line-height:1.25;opacity:.76}
+  .boundary-row .boundary-emphasis{background:#ffffff1c;border-color:#ffffff48}
+  .mvp-scope-line{text-align:right;color:#f5f1e8;font-size:clamp(12px,.76vw,14px);font-weight:700;letter-spacing:.02em;opacity:.78}
+  .mvp-scope-line span{padding:0 .4em;color:#94cead}
+  .icon-maps{width:clamp(26px,1.9vw,35px);height:clamp(26px,1.9vw,35px)}
+  @media(max-width:1100px){.project-slide{padding-inline:3.6vw}.arch-main-grid{grid-template-columns:minmax(0,1fr) 16px minmax(0,1.05fr) 16px minmax(0,1.2fr)}.arch-node{padding-inline:.7vw}.arch-compact-lane,.delivery-strip{grid-template-columns:minmax(130px,.9fr) minmax(0,5fr)}.process-lane{grid-template-columns:minmax(150px,.95fr) minmax(0,5fr)}.process-sequence{grid-template-columns:minmax(0,1fr) 16px minmax(0,1.1fr) 16px minmax(0,1.1fr) 16px minmax(0,1.1fr) 16px minmax(0,1fr);gap:.2vw}.process-step{gap:4px;padding-inline:.3vw}}
+  @media(max-height:760px){.project-slide{padding-top:3.2vh;padding-bottom:7vh;gap:.8vh}.architecture-content{grid-template-rows:minmax(17vh,1.45fr) minmax(8vh,.72fr) minmax(8vh,.72fr) minmax(7.5vh,.68fr) auto;gap:.75vh}.workflow-content{gap:.85vh}.process-lane{padding:.7vh .8vw}.process-step{min-height:5.5vh}}
+  @media(max-width:760px){.project-slide{padding:3vh 4vw 8vh;overflow:auto}.project-header{align-items:flex-start}.project-header h1{font-size:clamp(26px,7vw,38px)}.scope-chip{padding:7px 10px}.architecture-content{display:flex;flex-direction:column;gap:10px}.arch-main-grid{grid-template-columns:1fr;gap:7px}.arch-arrow{height:18px;transform:rotate(90deg)}.arch-node{min-height:115px;padding:12px}.arch-compact-lane,.delivery-strip{grid-template-columns:1fr;gap:8px;padding:10px}.lane-steps{flex-wrap:wrap;justify-content:flex-start}.lane-step{flex:1 1 35%;min-height:45px}.delivery-flow{grid-template-columns:1fr;gap:8px}.delivery-arrow{transform:rotate(90deg);justify-self:center}.runtime-services{flex-wrap:wrap;justify-content:flex-start}.language-row{flex-wrap:wrap}.language-row small{width:100%;margin-left:0}.workflow-content{display:flex;flex-direction:column}.process-lane{grid-template-columns:1fr;gap:8px;padding:12px}.process-sequence{display:flex;flex-wrap:wrap;gap:6px}.process-step{min-height:44px;flex:1 1 26%}.process-arrow{font-size:18px}.boundary-row{grid-template-columns:1fr}.project-foot{margin-top:6px}}
+
+
+  .workflow-slide .project-header h1{color:#fffefa}.workflow-slide .project-header p{color:#f5f1e8;opacity:.82}.workflow-slide .project-kicker{color:#94cead}
 </style>
 </head>
 <body>
+<svg class="icon-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="icon-browser" viewBox="0 0 48 48"><rect x="5" y="8" width="38" height="27" rx="3" fill="none" stroke="#08784f" stroke-width="3"/><path d="M5 15h38M18 41h12M24 35v6" fill="none" stroke="#20394e" stroke-width="3" stroke-linecap="round"/><circle cx="10" cy="11.5" r="1" fill="#d55446"/><circle cx="14" cy="11.5" r="1" fill="#c59a18"/></symbol>
+  <symbol id="brand-vue" viewBox="0 0 48 48"><path fill="#42b883" d="M2 8h11l11 18L35 8h11L24 44z"/><path fill="#35495e" d="M13 8h9l2 4 2-4h9L24 26z"/></symbol>
+  <symbol id="brand-vite" viewBox="0 0 48 48"><path fill="#646cff" d="M4 8 24 43 45 8 24 13z"/><path fill="#ffd62e" d="m27 5-11 22h8l-2 14 14-24h-9l4-12z"/></symbol>
+  <symbol id="brand-spring" viewBox="0 0 48 48"><path fill="#66a843" d="M39 6C25 5 11 12 8 25 5 37 14 43 23 39 35 34 41 22 39 6Z"/><path d="M10 39c7-10 15-18 26-25" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="brand-mysql" viewBox="0 0 48 48"><path fill="#00758f" d="M6 29c5-8 13-12 22-12 4 0 8 1 12 3-3 1-5 3-6 5l8 4-11 1c-4 7-12 10-21 7l-4 5-2-6c-3-1-5-3-6-5l8-2Z"/><path fill="#00758f" d="m9 29-5-6 9 1-2 6zm26-8c3-6 6-8 10-8-2 4-3 7-7 9z"/><path d="M30 20c-2 4-2 7-1 11" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><circle cx="33" cy="21" r="1" fill="#fff"/></symbol>
+  <symbol id="brand-redis" viewBox="0 0 48 48"><path fill="#d82c20" d="m5 12 19-8 19 8-19 8z"/><path fill="#b82017" d="m5 12 19 8v9L5 21z"/><path fill="#ef4438" d="m43 12-19 8v9l19-8z"/><path fill="#d82c20" d="m5 25 19 8 19-8v9l-19 9-19-9z"/><path fill="#b82017" d="m5 25 19 8v10l-19-9z"/><path fill="#ef4438" d="m43 25-19 8v10l19-9z"/></symbol>
+  <symbol id="icon-city" viewBox="0 0 48 48"><path d="M5 41h38M9 18h30M7 16l17-9 17 9M12 20v17m8-17v17m8-17v17m8-17v17" fill="none" stroke="#bd651c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-maps" viewBox="0 0 48 48"><path d="M24 43s15-15 15-26a15 15 0 1 0-30 0c0 11 15 26 15 26Z" fill="#4285f4"/><circle cx="24" cy="17" r="5" fill="#fff"/></symbol>
+  <symbol id="icon-routes" viewBox="0 0 48 48"><path d="M9 39V12c0-3 2-5 5-5h20M39 9v27c0 3-2 5-5 5H14" fill="none" stroke="#3c6f9e" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 4"/><circle cx="9" cy="39" r="5" fill="#08784f"/><circle cx="39" cy="9" r="5" fill="#d55446"/></symbol>
+  <symbol id="icon-adapter" viewBox="0 0 48 48"><rect x="5" y="12" width="13" height="24" rx="2" fill="none" stroke="#bd651c" stroke-width="3"/><rect x="30" y="12" width="13" height="24" rx="2" fill="none" stroke="#bd651c" stroke-width="3"/><path d="M18 19h12m-4-4 4 4-4 4M30 29H18m4-4-4 4 4 4" fill="none" stroke="#20394e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-check" viewBox="0 0 48 48"><path d="M24 5 41 12v12c0 10-7 16-17 20C14 40 7 34 7 24V12z" fill="none" stroke="#08784f" stroke-width="3"/><path d="m15 24 6 6 13-14" fill="none" stroke="#08784f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-collector" viewBox="0 0 48 48"><ellipse cx="24" cy="10" rx="15" ry="6" fill="#3c6f9e"/><path d="M9 10v26c0 3 7 6 15 6s15-3 15-6V10M9 19c0 3 7 6 15 6s15-3 15-6M9 28c0 3 7 6 15 6s15-3 15-6" fill="none" stroke="#3c6f9e" stroke-width="3"/></symbol>
+  <symbol id="icon-artifact" viewBox="0 0 48 48"><path d="M9 5h21l9 9v29H9z" fill="none" stroke="#7041a0" stroke-width="3" stroke-linejoin="round"/><path d="M29 5v10h10M16 24h16M16 31h16M16 38h10" fill="none" stroke="#7041a0" stroke-width="3" stroke-linecap="round"/></symbol>
+  <symbol id="icon-api" viewBox="0 0 48 48"><path d="M10 6h28v36H10z" fill="none" stroke="#08784f" stroke-width="3"/><path d="m19 18-6 6 6 6m10-12 6 6-6 6m-2-14-5 16" fill="none" stroke="#20394e" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-key" viewBox="0 0 48 48"><circle cx="17" cy="21" r="10" fill="none" stroke="#3c6f9e" stroke-width="3"/><path d="m25 27 15 15m-7-7 5-5m-10 0 5-5" fill="none" stroke="#3c6f9e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-response" viewBox="0 0 48 48"><path d="M7 9h34v25H23l-9 8v-8H7z" fill="none" stroke="#08784f" stroke-width="3" stroke-linejoin="round"/><path d="m16 22 5 5 11-11" fill="none" stroke="#08784f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-shield" viewBox="0 0 48 48"><path d="M24 5 41 12v12c0 10-7 16-17 20C14 40 7 34 7 24V12z" fill="none" stroke="#f4f0e7" stroke-width="3"/><path d="m15 24 6 6 13-14" fill="none" stroke="#94cead" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="brand-python" viewBox="0 0 48 48"><path fill="#3776ab" d="M24 4c-11 0-13 4-13 10v7h17v3H8C3 24 2 30 4 36c2 6 8 7 14 6l2-5h-5v-3h17c6 0 10-4 10-10V14C42 7 36 4 24 4Z"/><path fill="#ffd343" d="M24 44c11 0 13-4 13-10v-7H20v-3h20c5 0 6-6 4-12-2-6-8-7-14-6l-2 5h5v3H16C10 14 6 18 6 25v10c0 7 6 9 18 9Z"/></symbol>
+  <symbol id="brand-github" viewBox="0 0 48 48"><path fill="#24292f" d="M24 3C12.4 3 3 12.4 3 24c0 9.2 5.9 17 14.1 19.8 1 .2 1.4-.4 1.4-1v-3.8c-5.7 1.2-6.9-2.4-6.9-2.4-.9-2.3-2.2-2.9-2.2-2.9-1.9-1.3.1-1.3.1-1.3 2.1.2 3.3 2.2 3.3 2.2 1.8 3.2 4.8 2.3 5.9 1.8.2-1.3.7-2.3 1.3-2.8-4.6-.5-9.4-2.3-9.4-10.2 0-2.2.8-4 2.2-5.5-.2-.5-1-2.6.2-5.4 0 0 1.8-.6 5.8 2.1 1.7-.5 3.5-.8 5.3-.8s3.6.3 5.3.8c4-2.7 5.8-2.1 5.8-2.1 1.2 2.8.4 4.9.2 5.4 1.4 1.5 2.2 3.3 2.2 5.5 0 7.9-4.8 9.7-9.4 10.2.7.6 1.4 1.7 1.4 3.5v5.7c0 .6.4 1.2 1.4 1C39.1 41 45 33.2 45 24 45 12.4 35.6 3 24 3Z"/></symbol>
+  <symbol id="brand-docker" viewBox="0 0 48 48"><path fill="#2496ed" d="M5 21h6v5H5zm8 0h6v5h-6zm8 0h6v5h-6zm-8-7h6v5h-6zm8 0h6v5h-6zm8 7h6v5h-6zm-8-14h6v5h-6zm8 14h6v5h-6zm-16 7h25c3 0 5-1 7-4 2 10-5 18-17 18H17C9 42 4 36 4 29z"/></symbol>
+</svg>
+
+
 <script>
   (function(){
     const KEY = 'guizang-ppt-low-power';
@@ -557,431 +680,105 @@
      页面组件参考 references/components.md
      ============================================================ -->
 
-<section class="slide hero dark" data-slide-id="cover">
-  <div class="chrome"><div class="left"><span>TAIWAN PARKING FORECAST</span><span class="sep"></span><span>BACKEND CASE</span></div><div class="right"><span>新莊 MVP</span></div></div>
-  <div class="frame split" style="gap:4vw;align-items:center">
-    <div style="display:flex;flex-direction:column;gap:2.2vh">
-      <div class="kicker">後端工程師面試作品</div>
-      <h1 class="h-hero" style="font-size:6.2vw;line-height:1.08">讓資料可追溯<br>讓查詢有邊界</h1>
-      <p class="lead" style="max-width:48vw">以官方快照與明確降級規則，支撐附近停車查詢。</p>
-      <div class="meta">JAVA 21 · SPRING BOOT · MYSQL · REDIS</div>
-    </div>
-    <div class="brand-card" style="padding:2.2vw;max-width:44vw">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.3vh">
-        <strong style="font-size:1.5vw">新莊體育館附近</strong>
-        <span class="brand-pill">500 m</span>
+<section class="slide light project-slide architecture-slide" data-slide-id="system-architecture" data-title="整體系統架構">
+  <div class="project-chrome"><span>BACKEND CASE STUDY · XINZHUANG MVP</span><span>01 / 02</span></div>
+  <header class="project-header"><div><div class="project-kicker">SYSTEM ARCHITECTURE</div><h1>整體架構與技術棧</h1><p>查詢讀取已發布資料；官方刷新與離線模型各自走獨立路徑。</p></div><span class="scope-chip">新莊 MVP</span></header>
+  <div class="architecture-content">
+    <section class="arch-main" aria-label="線上查詢架構">
+      <div class="arch-section-cap"><span class="tone-dot"></span>線上查詢 · 同步 API</div>
+      <div class="arch-main-grid">
+        <article class="arch-node"><div class="arch-node-kicker">01 · CLIENT</div><div class="arch-node-title"><svg class="arch-icon"><use href="#icon-browser"/></svg><h2>使用端</h2></div><p>地點搜尋、地圖與停車結果</p><div class="brand-pair"><span class="brand-item"><svg class="brand-icon"><use href="#brand-vue"/></svg><span>Vue 3</span></span><span class="brand-item"><svg class="brand-icon"><use href="#brand-vite"/></svg><span>Vite</span></span></div></article>
+        <span class="arch-arrow" aria-hidden="true">→</span>
+        <article class="arch-node"><div class="arch-node-kicker">02 · API / DOMAIN</div><div class="arch-node-title"><svg class="brand-icon brand-spring"><use href="#brand-spring"/></svg><h2>Spring Boot REST</h2></div><p>Java 21 · Controller → Service → Adapter</p><div class="arch-tags"><span>驗證</span><span>查詢協調</span><span>來源正規化</span></div></article>
+        <span class="arch-arrow" aria-hidden="true">→</span>
+        <article class="arch-node arch-data-node"><div class="arch-node-kicker">03 · DATA</div><div class="data-brands">
+          <div class="data-brand"><svg class="brand-icon brand-mysql"><use href="#brand-mysql"/></svg><div><strong>MySQL 8.4</strong><small>目錄 · 來源狀態 · 已發布快照</small></div></div>
+          <div class="data-brand"><svg class="brand-icon brand-redis"><use href="#brand-redis"/></svg><div><strong>Redis 8</strong><small>短期查詢狀態 · 刷新鎖</small></div></div>
+        </div></article>
       </div>
-      <svg class="flow-svg" viewBox="0 0 720 290" role="img" aria-label="示意街區與停車場標記">
-        <rect width="720" height="290" rx="12" fill="#edf1e9"/>
-        <path d="M-20 220 L740 95 M110 -20 L400 320 M520 -20 L260 320 M-20 70 L740 240" fill="none" stroke="#fffefa" stroke-width="24"/>
-        <path d="M-20 220 L740 95 M110 -20 L400 320 M520 -20 L260 320 M-20 70 L740 240" fill="none" stroke="#e2ddd2" stroke-width="2"/>
-        <circle cx="360" cy="150" r="17" fill="#07533e" stroke="#fffefa" stroke-width="7"/>
-        <circle cx="182" cy="98" r="10" fill="#3c6f9e" stroke="#fffefa" stroke-width="5"/>
-        <circle cx="525" cy="205" r="10" fill="#3c6f9e" stroke="#fffefa" stroke-width="5"/>
-        <text x="380" y="155" fill="#20394e" font-size="18" font-weight="700">目的地</text>
-        <text x="22" y="270" fill="#536982" font-size="15">街區與標記為介面示意</text>
-      </svg>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:1.2vh">
-        <div style="padding:10px;border-radius:12px;background:#f7f3e9"><small>官方觀測</small><div style="font-weight:800">快照狀態</div></div>
-        <div style="padding:10px;border-radius:12px;background:#f7f3e9"><small>ETA</small><div style="font:700 13px var(--mono)">NOT_REQUESTED</div></div>
-        <div style="padding:10px;border-radius:12px;background:#f7f3e9"><small>預測</small><div style="font-weight:800">受護欄控制</div></div>
+      <div class="arch-main-note">
+        <div class="arch-ext-callouts">
+          <span class="arch-ext-item"><svg class="arch-icon icon-maps"><use href="#icon-maps"/></svg><strong>Maps / Places</strong><small>前端</small></span>
+          <span class="arch-ext-item"><svg class="arch-icon"><use href="#icon-routes"/></svg><strong>Routes ETA</strong><small>API：有起點時選用</small></span>
+        </div>
+        <span>MySQL 保存已發布資料；Redis 保存短期狀態。</span>
       </div>
+    </section>
+    <section class="arch-compact-lane lane-refresh" aria-label="官方來源刷新流程">
+      <div class="lane-heading"><svg class="arch-icon"><use href="#icon-city"/></svg><div><strong>官方來源刷新</strong><small>獨立受控路徑</small></div></div>
+      <div class="lane-steps">
+        <div class="lane-step"><svg class="arch-icon"><use href="#icon-city"/></svg><span>新北市官方 API</span></div><span class="lane-arrow">→</span>
+        <div class="lane-step"><svg class="arch-icon"><use href="#icon-adapter"/></svg><span>Adapter 正規化</span></div><span class="lane-arrow">→</span>
+        <div class="lane-step"><svg class="arch-icon"><use href="#icon-check"/></svg><span>資格 · mapping · 品質檢查</span></div><span class="lane-arrow">→</span>
+        <div class="lane-step"><svg class="brand-icon brand-mysql"><use href="#brand-mysql"/></svg><span>MySQL 發布快照</span></div>
+      </div>
+    </section>
+    <section class="arch-compact-lane lane-ml" aria-label="離線模型訓練與實驗流程">
+      <div class="lane-heading"><svg class="brand-icon brand-python"><use href="#brand-python"/></svg><div><strong>離線模型實驗</strong><small>不控制即時刷新</small></div></div>
+      <div class="lane-steps">
+        <div class="lane-step"><svg class="arch-icon"><use href="#icon-collector"/></svg><span>parking-data-collector</span></div><span class="lane-arrow">→</span>
+        <div class="lane-step"><svg class="brand-icon brand-python"><use href="#brand-python"/></svg><span>資料治理 · 訓練 · 回測</span></div><span class="lane-arrow">→</span>
+        <div class="lane-step"><svg class="arch-icon"><use href="#icon-artifact"/></svg><span>版本化模型產物</span></div><span class="lane-arrow">⇢</span>
+        <div class="lane-step lane-experiment"><svg class="brand-icon brand-spring"><use href="#brand-spring"/></svg><span>路外實驗推論<br><b>EXPERIMENT_ONLY</b></span></div>
+      </div>
+    </section>
+    <section class="delivery-strip" aria-label="基礎設施與交付">
+      <div class="delivery-heading">基礎設施與交付</div>
+      <div class="delivery-flow">
+        <div class="delivery-item"><svg class="brand-icon brand-github"><use href="#brand-github"/></svg><div><strong>GitHub Repository</strong><small>程式碼版本管理</small></div></div><span class="delivery-arrow">→</span>
+        <div class="delivery-item"><svg class="brand-icon brand-docker"><use href="#brand-docker"/></svg><div><strong>Docker Compose</strong><small>容器化啟動與服務編排</small></div></div><span class="delivery-arrow">→</span>
+        <div class="runtime-group"><div class="runtime-services"><span><svg class="arch-icon"><use href="#icon-browser"/></svg>Web</span><span><svg class="brand-icon brand-spring"><use href="#brand-spring"/></svg>API</span><span><svg class="brand-icon brand-mysql"><use href="#brand-mysql"/></svg>MySQL</span><span><svg class="brand-icon brand-redis"><use href="#brand-redis"/></svg>Redis</span></div><small>本機服務 health check</small></div>
+      </div>
+    </section>
+    <div class="language-row" aria-label="開發語言"><strong>開發語言</strong><span>Java 21</span><span>JavaScript</span><span>Python</span><span>SQL</span><small>線上 API · 前端 · 離線訓練 · 資料查詢</small></div>
+  </div>
+  <div class="project-foot"><span>TAIWAN PARKING FORECAST · BACKEND</span><span>架構圖依目前 MVP 實作範圍整理</span></div>
+</section>
+
+<section class="slide dark project-slide workflow-slide" data-slide-id="backend-flows" data-title="後端資料流程與邊界">
+  <div class="project-chrome"><span>BACKEND FLOWS · DATA BOUNDARIES</span><span>02 / 02</span></div>
+  <header class="project-header"><div><div class="project-kicker">THREE SEPARATE PATHS</div><h1>三條流程，三種資料責任</h1><p>說清楚資料從哪裡來、現在代表什麼，再提供查詢或估計。</p></div><span class="scope-chip">新莊 MVP</span></header>
+  <div class="workflow-content">
+    <article class="process-lane process-query">
+      <div class="process-intro"><span class="process-no">01</span><div class="process-title-row"><svg class="arch-icon"><use href="#icon-browser"/></svg><h2>使用者查詢</h2></div><p>即時讀取已發布資料</p></div>
+      <div class="process-body"><div class="process-sequence">
+        <div class="process-step"><svg class="arch-icon"><use href="#icon-api"/></svg><strong>REST API</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="arch-icon"><use href="#icon-key"/></svg><strong>requestToken<br>冪等檢查</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="brand-icon brand-mysql"><use href="#brand-mysql"/></svg><strong>MySQL<br>PUBLISHED</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="brand-icon brand-redis"><use href="#brand-redis"/></svg><strong>Redis<br>TTL 狀態</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="arch-icon"><use href="#icon-response"/></svg><strong>查詢回應</strong></div>
+      </div><div class="process-note">Routes ETA：有起點才呼叫 · Places：依設定選用</div></div>
+    </article>
+    <article class="process-lane process-refresh">
+      <div class="process-intro"><span class="process-no">02</span><div class="process-title-row"><svg class="arch-icon"><use href="#icon-city"/></svg><h2>官方資料刷新</h2></div><p>獨立端點 · 共用協調</p></div>
+      <div class="process-body"><div class="process-sequence">
+        <div class="process-step"><svg class="arch-icon"><use href="#icon-api"/></svg><strong>Refresh<br>Endpoint</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="brand-icon brand-redis"><use href="#brand-redis"/></svg><strong>Redis 短鎖<br>+ MySQL 冷卻</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="arch-icon"><use href="#icon-city"/></svg><strong>官方來源<br>分頁擷取</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="arch-icon"><use href="#icon-check"/></svg><strong>Mapping<br>品質閘門</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="brand-icon brand-mysql"><use href="#brand-mysql"/></svg><strong>完整快照<br>交易發布</strong></div>
+      </div><div class="process-note">候選不合格或刷新失敗 → 保留既有已發布快照</div></div>
+    </article>
+    <article class="process-lane process-ml">
+      <div class="process-intro"><span class="process-no">03</span><div class="process-title-row"><svg class="brand-icon brand-python"><use href="#brand-python"/></svg><h2>離線模型實驗</h2></div><p>歷史訓練資料 · 非即時來源</p></div>
+      <div class="process-body"><div class="process-sequence">
+        <div class="process-step"><svg class="arch-icon"><use href="#icon-collector"/></svg><strong>Collector</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="arch-icon"><use href="#icon-check"/></svg><strong>品質與<br>訓練標籤</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="brand-icon brand-python"><use href="#brand-python"/></svg><strong>時間切分<br>Baseline</strong></div><span class="process-arrow">→</span>
+        <div class="process-step"><svg class="arch-icon"><use href="#icon-artifact"/></svg><strong>版本化<br>Artifact</strong></div><span class="process-arrow">⇢</span>
+        <div class="process-step process-experiment"><svg class="brand-icon brand-spring"><use href="#brand-spring"/></svg><strong>實驗性<br>路外推論</strong></div>
+      </div><div class="process-note">EXPERIMENT_ONLY · NOT PRODUCTION VALIDATED · 不是官方即時空位</div></div>
+    </article>
+    <div class="boundary-row">
+      <div><svg class="brand-icon brand-mysql"><use href="#brand-mysql"/></svg><span><strong>MySQL</strong><small>持久資料與發布狀態</small></span></div>
+      <div><svg class="brand-icon brand-redis"><use href="#brand-redis"/></svg><span><strong>Redis</strong><small>短期狀態與協調</small></span></div>
+      <div class="boundary-emphasis"><svg class="arch-icon"><use href="#icon-shield"/></svg><span><strong>來源觀測 ≠ 模型估計 ≠ 無資料</strong><small>狀態分開呈現，不用估計值冒充官方車位</small></span></div>
     </div>
+    <div class="mvp-scope-line">目前即時服務範圍：新莊 MVP <span>·</span> TDX 全臺即時來源尚未整合</div>
   </div>
-  <div class="foot"><div>後端設計案例 · 新北市新莊 MVP</div><div>01 / 07</div></div>
+  <div class="project-foot"><span>ENGINEERING BOUNDARIES</span><span>END OF PRESENTATION</span></div>
 </section>
 
-<section class="slide dark" data-slide-id="system-architecture">
-  <div class="chrome"><div>全系統架構 · SYSTEM MAP</div><div class="right"><button class="architecture-detail-trigger" type="button" data-open-architecture-detail aria-haspopup="dialog" aria-controls="architecture-detail-dialog">完整架構圖</button><span>02 / 07</span></div></div>
-  <div class="frame" style="padding-top:1.5vh">
-    <div class="kicker">一張圖看懂三條路徑</div>
-    <h2 class="h-xl" style="font-size:3.5vw">線上查詢、官方刷新、離線實驗，各有邊界</h2>
-    <svg class="flow-svg" viewBox="0 0 1600 640" role="img" aria-label="新莊停車預測系統全系統架構，分線上查詢、官方資料刷新及離線模型實驗三條路徑">
-      <title>全系統架構：線上查詢、官方資料刷新、離線模型實驗</title>
-      <desc>Vue 經 Spring Boot 查詢已發布資料；獨立 refresh endpoint 經來源協調、正規化和品質檢查後發布 MySQL 快照；離線 collector 訓練出的實驗產物供受護欄的路外實驗推論使用。</desc>
-      <defs>
-        <marker id="sys-query-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#08784f"/></marker>
-        <marker id="sys-ext-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#4e789d"/></marker>
-        <marker id="sys-refresh-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#c58a32"/></marker>
-        <marker id="sys-ml-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#79649b"/></marker>
-      </defs>
-      <rect x="12" y="12" width="1576" height="222" rx="18" fill="#fffefa" stroke="#d7e1d8" stroke-width="2"/>
-      <rect x="12" y="242" width="1576" height="230" rx="18" fill="#fbf3e5" stroke="#e7d6b6" stroke-width="2"/>
-      <rect x="12" y="480" width="1576" height="148" rx="18" fill="#f2eef7" stroke="#d9cfe7" stroke-width="2"/>
-
-      <g font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif" fill="#20394e">
-        <text x="30" y="39" font-size="19" font-weight="850" fill="#07533e">01 線上查詢｜讀取目錄與已發布快照</text>
-        <text x="950" y="39" font-size="16" font-weight="650">綠實線 查詢　藍虛線 選用外部服務　橙實線 官方刷新　紫虛線 離線實驗</text>
-        <text x="30" y="269" font-size="19" font-weight="850" fill="#805000">02 官方來源刷新｜獨立 refresh endpoint</text>
-        <text x="920" y="269" font-size="16" font-weight="650" fill="#805000">候選不合格或刷新失敗：拒絕發布，保留舊快照</text>
-        <text x="30" y="507" font-size="19" font-weight="850" fill="#5d477d">03 離線模型實驗｜不提供即時來源、不控制刷新頻率</text>
-        <text x="1115" y="507" font-size="16" font-weight="800" fill="#704f2a">EXPERIMENT_ONLY · NOT PRODUCTION VALIDATED</text>
-      </g>
-
-      <!-- Online query path -->
-      <g fill="#fffefa" stroke="#b9d1c2" stroke-width="2">
-        <rect x="30" y="72" width="145" height="82" rx="13"/>
-        <rect x="200" y="72" width="205" height="82" rx="13"/>
-        <rect x="430" y="72" width="220" height="82" rx="13"/>
-        <rect x="675" y="72" width="310" height="82" rx="13"/>
-        <rect x="1010" y="72" width="255" height="82" rx="13"/>
-        <rect x="1290" y="72" width="275" height="82" rx="13"/>
-      </g>
-      <g fill="none" stroke="#08784f" stroke-width="3.2" marker-end="url(#sys-query-arrow)">
-        <path d="M175 112 H194"/><path d="M405 112 H424"/><path d="M650 112 H669"/><path d="M985 112 H1004"/>
-        <path d="M540 72 V57 H1427 V72"/>
-      </g>
-      <g text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
-        <g fill="#07533e" font-size="18" font-weight="850">
-          <text x="102" y="104">Vue</text><text x="102" y="130" font-size="16" font-weight="600">使用者介面</text>
-          <text x="302" y="101">ParkingQuery</text><text x="302" y="126">Controller</text><text x="302" y="145" font-size="15" font-weight="600">POST /parking-queries</text>
-          <text x="540" y="101">ParkingQueryService</text><text x="540" y="127" font-size="17">requestToken 冪等檢查</text><text x="540" y="146" font-size="15" font-weight="600">組合回應 · 儲存狀態</text>
-          <text x="830" y="99" font-size="16">NearbyParkingSearchService</text><text x="830" y="122" font-size="17">PublishedAvailabilitySnapshotService</text><text x="830" y="144" font-size="15" font-weight="600">查附近目錄 + 已發布觀測</text>
-          <text x="1137" y="101">MySQL</text><text x="1137" y="124" font-size="17">目錄 · source mapping</text><text x="1137" y="144" font-size="16">source state · PUBLISHED</text>
-          <text x="1427" y="101">Redis</text><text x="1427" y="124" font-size="17">ParkingQueryStateStore · TTL</text><text x="1427" y="144" font-size="16">refresh lock</text>
-        </g>
-      </g>
-      <g fill="#f3f7fb" stroke="#7da0bf" stroke-width="1.6" stroke-dasharray="6 5">
-        <rect x="430" y="174" width="420" height="38" rx="12"/>
-        <rect x="875" y="174" width="475" height="38" rx="12"/>
-      </g>
-      <g fill="none" stroke="#4e789d" stroke-width="2.2" stroke-dasharray="6 5" marker-end="url(#sys-ext-arrow)">
-        <path d="M475 154 V169"/><path d="M610 154 V162 H1110 V169"/>
-      </g>
-      <g text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif" fill="#315a7c" font-size="16" font-weight="750">
-        <text x="640" y="199">origin 有值 → GoogleEtaService → Google Routes</text>
-        <text x="1112" y="199">GoogleParkingPlaceSearchService → Google Places（選用）</text>
-      </g>
-      <text x="30" y="222" fill="#536982" font-size="15">一般建立查詢只讀資料；官方刷新由另一個 endpoint 明確觸發。</text>
-
-      <!-- Source refresh path, numbered snake for readability -->
-      <g fill="#fffefa" stroke="#d8bd8e" stroke-width="2">
-        <rect x="30" y="291" width="200" height="70" rx="12"/>
-        <rect x="260" y="291" width="250" height="70" rx="12"/>
-        <rect x="540" y="291" width="260" height="70" rx="12"/>
-        <rect x="830" y="291" width="240" height="70" rx="12"/>
-        <rect x="1100" y="291" width="450" height="70" rx="12"/>
-        <rect x="1290" y="391" width="260" height="64" rx="12"/>
-        <rect x="990" y="391" width="270" height="64" rx="12"/>
-        <rect x="700" y="391" width="250" height="64" rx="12"/>
-        <rect x="410" y="391" width="250" height="64" rx="12"/>
-        <rect x="60" y="391" width="300" height="64" rx="12"/>
-      </g>
-      <g fill="none" stroke="#c58a32" stroke-width="3" marker-end="url(#sys-refresh-arrow)">
-        <path d="M230 326 H253"/><path d="M510 326 H533"/><path d="M800 326 H823"/><path d="M1070 326 H1093"/>
-        <path d="M1325 361 V381 H1420 V384"/>
-        <path d="M1290 423 H1268"/><path d="M990 423 H958"/><path d="M700 423 H668"/><path d="M410 423 H368"/>
-      </g>
-      <g fill="#805000" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif" font-size="17" font-weight="800">
-        <text x="48" y="319">1　Refresh API</text><text x="48" y="344" font-size="14" font-weight="600">/{queryId}/refresh</text>
-        <text x="278" y="310">2　SourceRefresh</text><text x="278" y="330">CoordinationService</text><text x="278" y="351" font-size="16">Redis lock · MySQL cooldown</text>
-        <text x="558" y="319">3　NtpcRealtimeSource</text><text x="558" y="342">RefreshService</text>
-        <text x="848" y="319">4　NtpcOpenDataClient</text><text x="848" y="342">官方 API 分頁</text>
-        <text x="1118" y="319">5　新北市官方即時來源</text><text x="1118" y="342" font-size="15" font-weight="600">完整讀取後才進入正規化</text>
-        <text x="1310" y="417">6　NtpcAvailabilityNormalizer</text><text x="1310" y="440" font-size="14">狀態與欄位正規化</text>
-        <text x="1010" y="417">7　品質 + source mapping</text><text x="1010" y="440" font-size="16">ID · 座標 · 資格 · 完整性</text>
-        <text x="720" y="417">8　候選快照</text><text x="720" y="440" font-size="16">尚未供查詢讀取</text>
-        <text x="430" y="417">9　AvailabilitySnapshot</text><text x="430" y="440">PublishingService</text>
-        <text x="80" y="417">10　MySQL · PUBLISHED</text><text x="80" y="440" font-size="16">可供線上查詢讀取</text>
-      </g>
-
-      <!-- Offline ML path -->
-      <g fill="#e9e2f1" stroke="#a999c0" stroke-width="2">
-        <rect x="30" y="528" width="240" height="70" rx="12"/>
-        <rect x="294" y="528" width="240" height="70" rx="12"/>
-        <rect x="558" y="528" width="240" height="70" rx="12"/>
-        <rect x="822" y="528" width="240" height="70" rx="12"/>
-        <rect x="1086" y="528" width="220" height="70" rx="12"/>
-        <rect x="1330" y="528" width="235" height="70" rx="12"/>
-      </g>
-      <g fill="none" stroke="#79649b" stroke-width="2.6" stroke-dasharray="8 6" marker-end="url(#sys-ml-arrow)">
-        <path d="M270 563 H286"/><path d="M534 563 H550"/><path d="M798 563 H814"/><path d="M1062 563 H1078"/><path d="M1306 563 H1322"/>
-        <path d="M1447 528 H1580 V222 H540 V157"/>
-      </g>
-      <g text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif" fill="#5d477d" font-weight="800">
-        <text x="150" y="557" font-size="16">parking-data-collector</text><text x="150" y="580" font-size="16" font-weight="600">離線歷史素材</text>
-        <text x="414" y="557" font-size="16">品質治理 + labels</text><text x="414" y="580" font-size="16" font-weight="600">缺漏與拒絕原因保留</text>
-        <text x="678" y="557" font-size="16">時間切分 + baseline</text><text x="678" y="580" font-size="16" font-weight="600">train / validation / test</text>
-        <text x="942" y="557" font-size="16">離線回測</text><text x="942" y="580" font-size="16" font-weight="600">不代表正式准入</text>
-        <text x="1196" y="557" font-size="16">版本化 JSON</text><text x="1196" y="580" font-size="16" font-weight="700">EXPERIMENT_ONLY</text>
-        <text x="1447" y="552" font-size="16">ExperimentalOffStreet</text><text x="1447" y="574" font-size="16">PredictionService</text><text x="1447" y="591" font-size="15" font-weight="700">NOT PRODUCTION VALIDATED</text>
-      </g>
-    </svg>
-    <div class="meta" style="margin-top:.4vh">JAVA 21 · SPRING BOOT 4.1.1 · VUE 3 · MYSQL 8.4 · REDIS 8 · DOCKER COMPOSE</div>
-  </div>
-  <div class="foot"><div>MySQL 持久資料 · Redis 短期狀態與刷新鎖 · 模型維持實驗狀態</div><div>ARCHITECTURE</div></div>
-</section>
-
-<section class="slide light" data-slide-id="query-sequence">
-  <div class="chrome"><div>查詢時序 · UML SEQUENCE</div><div>03 / 07</div></div>
-  <div class="frame" style="padding-top:2vh">
-    <div class="kicker">POST /api/v1/parking-queries · 查詢生命週期</div>
-    <h2 class="h-xl" style="font-size:3.9vw">先做冪等檢查，再查資料並保存狀態</h2>
-    <svg class="flow-svg" viewBox="0 0 1680 590" role="img" aria-label="停車查詢 API 的 UML 時序圖，含 requestToken 冪等、ETA 條件分支、Places 選用呼叫、Redis 狀態儲存及 202 回應">
-      <title>停車查詢 API 時序</title>
-      <desc>Controller 驗證後由 ParkingQueryService 查 Redis requestToken；命中取回既有查詢，未命中才建立。新查詢依 origin 決定是否呼叫 Routes，讀 MySQL 目錄和已發布快照，選用 Places，存 Redis 後回 202。</desc>
-      <defs>
-        <marker id="seq-call" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#08784f"/></marker>
-        <marker id="seq-external" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#4e789d"/></marker>
-        <marker id="seq-return" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#536982"/></marker>
-      </defs>
-      <g fill="#fffefa" stroke="#cfd9d0" stroke-width="2">
-        <rect x="20" y="32" width="160" height="64" rx="12"/>
-        <rect x="220" y="32" width="240" height="64" rx="12"/>
-        <rect x="490" y="32" width="220" height="64" rx="12"/>
-        <rect x="755" y="32" width="190" height="64" rx="12"/>
-        <rect x="985" y="32" width="190" height="64" rx="12"/>
-        <rect x="1210" y="32" width="195" height="64" rx="12"/>
-        <rect x="1435" y="32" width="225" height="64" rx="12"/>
-      </g>
-      <g text-anchor="middle" fill="#07533e" font-size="16" font-weight="800" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
-        <text x="100" y="70">Vue 前端</text>
-        <text x="340" y="70">ParkingQueryController</text>
-        <text x="600" y="70">ParkingQueryService</text>
-        <text x="850" y="70">Redis</text>
-        <text x="1080" y="70">MySQL</text>
-        <text x="1307" y="70">Google Routes</text>
-        <text x="1547" y="70">Google Places</text>
-      </g>
-      <g stroke="#b8c8bd" stroke-width="1.8" stroke-dasharray="7 7">
-        <line x1="100" y1="98" x2="100" y2="555"/><line x1="340" y1="98" x2="340" y2="555"/>
-        <line x1="600" y1="98" x2="600" y2="555"/><line x1="850" y1="98" x2="850" y2="555"/>
-        <line x1="1080" y1="98" x2="1080" y2="555"/><line x1="1307" y1="98" x2="1307" y2="555"/>
-        <line x1="1547" y1="98" x2="1547" y2="555"/>
-      </g>
-      <g fill="none" stroke="#08784f" stroke-width="2.6" marker-end="url(#seq-call)">
-        <path d="M100 125 H330"/><path d="M340 164 H590"/><path d="M600 202 H840"/>
-      </g>
-      <g fill="#20394e" font-size="17" font-weight="700" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
-        <text x="147" y="118">POST /api/v1/parking-queries</text>
-        <text x="388" y="157">@Valid + request validation</text>
-        <text x="670" y="195">findQueryIdByRequestToken</text>
-      </g>
-      <path d="M850 221 H610" fill="none" stroke="#536982" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#seq-return)"/>
-      <text x="675" y="217" fill="#536982" font-size="16" font-weight="700">existing query id / empty</text>
-
-      <rect x="485" y="234" width="1170" height="54" rx="12" fill="#edf4ee" stroke="#b9d1c2" stroke-width="1.8"/>
-      <text x="508" y="256" fill="#07533e" font-size="17" font-weight="850">alt · requestToken</text>
-      <text x="508" y="277" fill="#315a43" font-size="16" font-weight="650">命中：取回既有查詢，不重做外部呼叫　｜　未命中：才建立新查詢</text>
-
-      <g fill="none" stroke="#4e789d" stroke-width="2.4" stroke-dasharray="7 6" marker-end="url(#seq-external)">
-        <path d="M600 320 H1295"/><path d="M600 425 H1535"/>
-      </g>
-      <g fill="#315a7c" font-size="16" font-weight="700" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
-        <text x="715" y="313">[origin 有值] GoogleEtaService → Routes</text>
-        <text x="615" y="351">無 origin：NOT_REQUESTED；略過 Routes</text>
-        <text x="865" y="419">Places 依服務設定選用</text>
-        <text x="1320" y="447">結果可能為空或不可用</text>
-      </g>
-      <path d="M1307 343 H610" fill="none" stroke="#536982" stroke-width="2" stroke-dasharray="7 6" marker-end="url(#seq-return)"/>
-      <text x="1080" y="339" fill="#536982" font-size="15">ETA ready / failed</text>
-      <path d="M1547 460 H610" fill="none" stroke="#536982" stroke-width="2" stroke-dasharray="7 6" marker-end="url(#seq-return)"/>
-
-      <g fill="none" stroke="#08784f" stroke-width="2.6" marker-end="url(#seq-call)">
-        <path d="M600 390 H1070"/><path d="M600 493 H840"/>
-      </g>
-      <g fill="#20394e" font-size="16" font-weight="700" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
-        <text x="690" y="383">附近目錄 + PUBLISHED snapshot</text>
-        <text x="655" y="486">save query state + TTL</text>
-      </g>
-      <path d="M600 522 H340" fill="none" stroke="#536982" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#seq-return)"/>
-      <path d="M340 550 H100" fill="none" stroke="#536982" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#seq-return)"/>
-      <text x="160" y="544" fill="#536982" font-size="17" font-weight="800">HTTP 202 Accepted</text>
-      <text x="770" y="555" fill="#536982" font-size="16">刷新走獨立 endpoint；此 POST 不觸發官方來源刷新。</text>
-    </svg>
-  </div>
-  <div class="foot"><div>HTTP 202 是回應契約；不等於這段程式已移入背景佇列</div><div>SEQUENCE</div></div>
-</section>
-
-<section class="slide dark" data-slide-id="source-refresh">
-  <div class="chrome"><div>官方來源刷新 · PUBLISH GATE</div><div>04 / 07</div></div>
-  <div class="frame" style="padding-top:2vh">
-    <div class="kicker">從來源分頁到可查詢快照</div>
-    <h2 class="h-xl" style="font-size:3.8vw">只有完整、通過檢查的候選資料才會發布</h2>
-    <svg class="flow-svg" viewBox="0 0 1680 390" role="img" aria-label="官方停車來源刷新、正規化、mapping、品質檢查及快照發布流程">
-      <title>官方來源刷新與發布閘門</title>
-      <desc>受協調服務鎖定和冷卻控制後讀取官方分頁，正規化、檢查資格並使用既有 source mapping，再以候選快照提交發布。失敗時舊快照保留。</desc>
-      <defs>
-        <marker id="source-pipe" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#8bbfa7"/></marker>
-        <marker id="source-fail" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#dcae55"/></marker>
-      </defs>
-      <text x="30" y="34" fill="#c8d5cd" font-size="18" font-weight="750">POST /api/v1/parking-queries/{queryId}/refresh · Redis lock + MySQL cooldown</text>
-      <g fill="#fffefa" stroke="#cfd9d0" stroke-width="2">
-        <rect x="25" y="67" width="245" height="112" rx="15"/>
-        <rect x="300" y="67" width="245" height="112" rx="15"/>
-        <rect x="575" y="67" width="245" height="112" rx="15"/>
-        <rect x="850" y="67" width="245" height="112" rx="15"/>
-        <rect x="1125" y="67" width="245" height="112" rx="15"/>
-        <rect x="1400" y="67" width="245" height="112" rx="15"/>
-      </g>
-      <g fill="none" stroke="#8bbfa7" stroke-width="3.4" marker-end="url(#source-pipe)">
-        <path d="M270 122 H292"/><path d="M545 122 H567"/><path d="M820 122 H842"/><path d="M1095 122 H1117"/><path d="M1370 122 H1392"/>
-      </g>
-      <g text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
-        <g fill="#07533e" font-size="20" font-weight="850">
-          <text x="147" y="105">官方分頁</text><text x="422" y="99">NtpcAvailability</text><text x="422" y="122">Normalizer</text>
-          <text x="697" y="99">資格 + mapping</text><text x="697" y="122">資料品質檢查</text>
-          <text x="972" y="99">候選快照</text><text x="972" y="122">完整性 gate</text>
-          <text x="1247" y="99">AvailabilitySnapshot</text><text x="1247" y="122">PublishingService</text>
-          <text x="1522" y="105">MySQL · PUBLISHED</text>
-        </g>
-        <g fill="#536982" font-size="15" font-weight="600">
-          <text x="147" y="148">讀至空頁才算完整</text>
-          <text x="422" y="148">保留來源狀態語意</text>
-          <text x="697" y="148">使用已核對來源對應</text>
-          <text x="972" y="148">尚未供查詢讀取</text>
-          <text x="1247" y="148">交易式發布</text>
-          <text x="1522" y="148">線上查詢讀取</text>
-        </g>
-      </g>
-      <path d="M972 181 V220 H780" fill="none" stroke="#dcae55" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#source-fail)"/>
-      <rect x="410" y="202" width="370" height="58" rx="13" fill="#fff4dd" stroke="#dcae55" stroke-width="2"/>
-      <text x="446" y="238" fill="#805000" font-size="20" font-weight="800">拒絕候選／刷新失敗 → 保留舊快照</text>
-      <rect x="25" y="281" width="1630" height="77" rx="14" fill="#f5f3ee" stroke="#ddd7cb" stroke-width="1.5"/>
-      <text x="46" y="307" fill="#536982" font-size="16" font-weight="850">目錄稽核 · 2026-10-26 新莊路邊資料</text>
-      <g text-anchor="middle" fill="#20394e" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
-        <text x="420" y="334" font-size="22" font-weight="900">33 頁</text>
-        <text x="680" y="334" font-size="22" font-weight="900">2,151 列</text>
-        <text x="940" y="334" font-size="22" font-weight="900">1,880 合格列</text>
-        <text x="1200" y="334" font-size="22" font-weight="900">164 資格未知</text>
-        <text x="1470" y="334" font-size="22" font-weight="900">107 不符資格</text>
-      </g>
-      <text x="46" y="350" fill="#536982" font-size="16">107 不符合一般汽車格範圍；來源 ID 缺漏、重複 ID、無效座標各 0。1,880 是合格來源列，不是 mapping 完成數。</text>
-    </svg>
-    <div style="display:flex;justify-content:space-between;gap:1.5vw;align-items:center;margin-top:.4vh">
-      <span class="tag">目錄資格是靜態範圍</span>
-      <span class="tag">PUBLISHED 是來源觀測</span>
-      <span class="tag">模型估計另走實驗路徑</span>
-    </div>
-  </div>
-  <div class="foot"><div>目錄盤點不代表即時空位，也不代表全臺覆蓋</div><div>DATA GOVERNANCE</div></div>
-</section>
-
-<section class="slide hero light" data-slide-id="backend-takeaways">
-  <div class="chrome"><div>工程取捨 · MAIN DECK</div><div>05 / 07</div></div>
-  <div class="frame" style="padding-top:3vh">
-    <div class="kicker">可追溯 · 可降級 · 可審查</div>
-    <h2 class="h-xl" style="font-size:4.6vw">讓每個回應都說得清楚</h2>
-    <div class="grid-3" style="margin-top:2.5vh;gap:1.5vw">
-      <div class="brand-card" style="padding:1.6vw"><div class="kicker">PERSIST</div><h3 class="h-md">MySQL 8.4</h3><p class="body-zh">目錄、mapping、來源狀態、觀測與已發布快照</p></div>
-      <div class="brand-card" style="padding:1.6vw"><div class="kicker">SHORT LIVED</div><h3 class="h-md">Redis 8</h3><p class="body-zh">query state TTL 與來源刷新鎖</p></div>
-      <div class="brand-card" style="padding:1.6vw"><div class="kicker">DEGRADE</div><h3 class="h-md">保留狀態，不補值</h3><p class="body-zh">來源過期或條件不足時明確降級；實驗預測可拒絕輸出</p></div>
-    </div>
-    <div class="meta" style="margin-top:2.5vh">VUE 3 · VITE · JAVA 21 · SPRING BOOT 4.1.1 · SPRING MVC · JPA / FLYWAY · DOCKER COMPOSE</div>
-    <div class="tag" style="align-self:flex-start;margin-top:1.4vh">目前範圍：新莊 MVP · 全臺 TDX 即時來源尚未整合 · 路外模型未通過正式准入</div>
-  </div>
-  <div class="foot"><div>主簡報結束；備用頁僅在對應追問時使用</div><div>MAIN END</div></div>
-</section>
-
-<section class="slide light" data-slide-id="ai-agent-backup">
-  <div class="chrome"><div>備用頁 A · AI AGENT 輔助開發流程</div><div>06 / 07</div></div>
-  <div class="frame" style="padding-top:3vh">
-    <div class="kicker">只在 AI 協作流程相關追問時開啟</div>
-    <h2 class="h-xl" style="font-size:4vw">AI 加速工作，人保留驗收與決策</h2>
-    <svg class="flow-svg" viewBox="0 0 1600 390" role="img" aria-label="需求、GPT、Codex、本機驗證、精確 HEAD 檢查、PR 審查到人工決定合併的 AI 協作流程">
-      <title>AI Agent 輔助開發流程</title>
-      <desc>人工定義需求與驗收，GPT 協助釐清及獨立 review，Codex 讀取 repo 並實作，本機執行測試和設定驗證，同一精確 HEAD 對應 diff 和證據，經 PR 審查後由人類決定是否合併。</desc>
-      <defs><marker id="ai-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#08784f"/></marker></defs>
-      <g fill="#fffefa" stroke="#d7e1d8" stroke-width="2">
-        <rect x="20" y="78" width="195" height="132" rx="16"/>
-        <rect x="245" y="78" width="195" height="132" rx="16"/>
-        <rect x="470" y="78" width="195" height="132" rx="16"/>
-        <rect x="695" y="78" width="195" height="132" rx="16"/>
-        <rect x="920" y="78" width="195" height="132" rx="16"/>
-        <rect x="1145" y="78" width="195" height="132" rx="16"/>
-        <rect x="1370" y="78" width="210" height="132" rx="16"/>
-      </g>
-      <g fill="none" stroke="#08784f" stroke-width="3" marker-end="url(#ai-arrow)">
-        <path d="M215 144 H237"/><path d="M440 144 H462"/><path d="M665 144 H687"/><path d="M890 144 H912"/><path d="M1115 144 H1137"/><path d="M1340 144 H1362"/>
-      </g>
-      <g fill="#07533e" text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
-        <g font-size="15" font-weight="850">
-          <text x="117" y="105">01 · HUMAN</text><text x="342" y="105">02 · GPT</text><text x="567" y="105">03 · CODEX</text>
-          <text x="792" y="105">04 · LOCAL</text><text x="1017" y="105">05 · REVIEW</text><text x="1242" y="105">06 · PR</text><text x="1475" y="105">07 · HUMAN</text>
-        </g>
-        <g font-size="17" font-weight="850">
-          <text x="117" y="140">需求 + 驗收</text><text x="342" y="140">釐清 / 拆解</text><text x="567" y="140">讀 repo / 實作</text>
-          <text x="792" y="140">測試 / 設定驗證</text><text x="1017" y="140">Diff + HEAD + 證據</text><text x="1242" y="140">人工審查</text><text x="1475" y="140">決定是否 Merge</text>
-        </g>
-        <g fill="#536982" font-size="14" font-weight="650">
-          <text x="117" y="174">Sponsor 定範圍</text><text x="342" y="174">另做 code review</text><text x="567" y="174">依 ticket 改程式</text>
-          <text x="792" y="174">不以 Review 代測試</text><text x="1017" y="174">同一精確提交</text><text x="1242" y="174">範圍外變更另評估</text><text x="1475" y="174">合併由人負責</text>
-        </g>
-      </g>
-      <rect x="25" y="248" width="1550" height="78" rx="15" fill="#fff4dd" stroke="#e0c78e" stroke-width="2"/>
-      <text x="54" y="280" fill="#805000" font-size="17" font-weight="850">GitHub Actions 因用量限制暫停</text>
-      <text x="54" y="307" fill="#805000" font-size="16" font-weight="650">因此依任務使用本機測試與設定驗證；GPT Review 不等於測試，AI 不會自行批准合併。</text>
-    </svg>
-  </div>
-  <div class="foot"><div>人定範圍 · 箭頭代表工作交接，非自動串接 · 人驗收並決定合併</div><div>BACKUP A</div></div>
-</section>
-
-<section class="slide dark" data-slide-id="ml-admission-backup">
-  <div class="chrome"><div>備用頁 B · ML 訓練、回測與模型准入</div><div>07 / 07</div></div>
-  <div class="frame" style="padding-top:2.2vh">
-    <div class="kicker">只在資料或預測模型追問時開啟</div>
-    <h2 class="h-xl" style="font-size:3.9vw">離線實驗已接通；正式模型准入尚未通過</h2>
-    <svg class="flow-svg" viewBox="0 0 1600 430" role="img" aria-label="停車資料 collector、資料治理、時間序列切分、baseline 與候選模型回測、版本化產物、實驗推論服務及未通過的正式模型准入">
-      <title>ML 訓練、回測與模型准入</title>
-      <desc>離線 collector 資料經品質及標籤治理、時間切分和 baseline 比較後產生版本化實驗產物，供有輸入護欄的 ExperimentalOffStreetPredictionService 使用；正式 production gate 未通過。</desc>
-      <defs>
-        <marker id="ml-flow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0 L12 6 L0 12 Z" fill="#9f8ab9"/></marker>
-      </defs>
-      <g fill="#fffefa" stroke="#bcaed0" stroke-width="2">
-        <rect x="25" y="62" width="205" height="102" rx="15"/>
-        <rect x="250" y="62" width="205" height="102" rx="15"/>
-        <rect x="475" y="62" width="205" height="102" rx="15"/>
-        <rect x="700" y="62" width="205" height="102" rx="15"/>
-        <rect x="925" y="62" width="205" height="102" rx="15"/>
-        <rect x="1150" y="62" width="250" height="102" rx="15"/>
-        <rect x="1420" y="62" width="155" height="102" rx="15"/>
-      </g>
-      <g fill="none" stroke="#79649b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#ml-flow)">
-        <path d="M230 112 H242"/><path d="M455 112 H467"/><path d="M680 112 H692"/><path d="M905 112 H917"/><path d="M1130 112 H1142"/><path d="M1400 112 H1412"/>
-      </g>
-      <g text-anchor="middle" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif" fill="#5d477d">
-        <g font-size="18" font-weight="850">
-          <text x="127" y="94">parking-data-collector</text>
-          <text x="352" y="94">資料品質治理</text>
-          <text x="577" y="94">特徵 + 標籤</text>
-          <text x="802" y="94">時間序列切分</text>
-          <text x="1027" y="94">Baseline / 候選</text>
-          <text x="1275" y="91">離線回測 →</text><text x="1275" y="114">版本化 artifact</text>
-          <text x="1497" y="87" font-size="14">受護欄的</text><text x="1497" y="108" font-size="14">Experimental</text><text x="1497" y="129" font-size="14">PredictionService</text>
-        </g>
-        <g fill="#536982" font-size="14" font-weight="650">
-          <text x="127" y="130">歷史素材 · 不在查詢路徑</text>
-          <text x="352" y="130">schema / status / rejection</text>
-          <text x="577" y="130">as-of ≠ arrival</text>
-          <text x="802" y="130">train / validation / test</text>
-          <text x="1027" y="130">persistence / logistic</text>
-          <text x="1275" y="145">EXPERIMENT_ONLY</text>
-        </g>
-      </g>
-      <rect x="40" y="208" width="970" height="92" rx="14" fill="#f1edf7" stroke="#c6b9d6" stroke-width="1.5"/>
-      <text x="64" y="238" fill="#5d477d" font-size="18" font-weight="850">已實作的離線證據鏈</text>
-      <text x="64" y="266" fill="#536982" font-size="16">品質與標籤 dry-run · chronological split · Persistence / Calibrated Persistence / Logistic 比較 · 離線回測</text>
-      <text x="64" y="287" fill="#536982" font-size="15">現有 test 只有已分析的 3 天，不是新 holdout；不得由此宣稱正式準確度。</text>
-
-      <rect x="1040" y="208" width="520" height="92" rx="14" fill="#fff1ed" stroke="#cf8e7d" stroke-width="2"/>
-      <text x="1064" y="238" fill="#934c3c" font-size="17" font-weight="900">正式模型准入：NOT PASSED</text>
-      <text x="1064" y="265" fill="#7b5148" font-size="16" font-weight="700">NOT PRODUCTION VALIDATED</text>
-      <text x="1064" y="287" fill="#7b5148" font-size="14">仍需新日期、ETA-aware 與既定風險門檻證據</text>
-
-      <g fill="#fffefa" stroke="#d8d1df" stroke-width="1.5">
-        <rect x="40" y="328" width="475" height="64" rx="12"/>
-        <rect x="562" y="328" width="475" height="64" rx="12"/>
-        <rect x="1084" y="328" width="476" height="64" rx="12"/>
-      </g>
-      <g fill="#20394e" font-family="Inter,'Noto Sans TC','Microsoft JhengHei',sans-serif">
-        <text x="60" y="354" font-size="16" font-weight="850">資料來源</text><text x="60" y="378" font-size="15">collector 歷史 ZIP；不是即時 API 或主系統刷新資料</text>
-        <text x="582" y="354" font-size="16" font-weight="850">時間因果</text><text x="582" y="378" font-size="15">特徵只取 as-of；arrival label 不跨 split 回流</text>
-        <text x="1104" y="354" font-size="16" font-weight="850">線上護欄</text><text x="1104" y="378" font-size="15">新鮮度 · confirmed 車種資格 · 支援時距 · enabled</text>
-      </g>
-    </svg>
-  </div>
-  <div class="foot"><div>實驗產物可受控展示；正式准入與生產驗證仍待新證據</div><div>BACKUP B</div></div>
-</section>
 </div>
 
 <div id="nav"></div>
@@ -990,98 +787,32 @@
 <script>
 const SPEAKER_NOTES = [
   {
-    id: 'cover', title: '讓資料可追溯，讓查詢有邊界',
-    section: '後端工程案例',
-    purpose: '界定作品範圍，先說明後端要保護的資料語意。',
-    talk: [
-      '這是新莊 MVP 的後端工程案例，不是全臺成熟產品。',
-      '核心是讓官方觀測、ETA、模型估計與無資料保持不同狀態。',
-      '用明確資料邊界和降級規則，避免回應看起來完整卻不可解釋。'
-    ],
-    transition: '先看一次查詢、一次官方刷新和一條離線實驗如何各自運作。'
-  },
-  {
-    id: 'system-architecture', title: '線上查詢、官方刷新、離線實驗，各有邊界',
+    id: 'system-architecture',
+    title: '整體架構與技術棧',
     section: '後端架構',
-    purpose: '用一張圖交代三條資料路徑及儲存責任。',
+    purpose: '用一張架構圖說明線上查詢、官方來源刷新、離線訓練和交付環境的責任邊界。',
     talk: [
-      '綠色主線由 Vue 進入 ParkingQueryController 和 ParkingQueryService，讀附近目錄與最新 PUBLISHED 觀測。',
-      '藍色外部呼叫有條件：有 origin 才由 GoogleEtaService 呼叫 Routes；Places 依服務設定選用。',
-      '橙色刷新由獨立 refresh endpoint 進入協調服務；檢查完整候選後才發布至 MySQL。',
-      'MySQL 保存目錄、source mapping、來源狀態、觀測與快照；Redis 保存短期 query state 和刷新鎖。',
-      '紫色 collector 路徑是離線訓練素材；實驗服務仍標示 EXPERIMENT_ONLY；若追問全圖，點右上「完整架構圖」。'
+      '目前服務範圍是新莊 MVP；圖示標出使用中的前端、Spring Boot、MySQL、Redis、GitHub 與 Docker Compose。',
+      '線上查詢讀 MySQL 已發布快照，Redis 只保存短期查詢狀態與刷新協調資訊。',
+      '官方來源刷新走獨立路徑；collector 只產生離線訓練素材，路外預測仍標示為實驗性。'
     ],
-    transition: '下一頁只放大 API 的先後順序，並檢查 requestToken、ETA 和回應時點。'
+    transition: '第二頁把三條路徑展開成可說明的流程和資料邊界。'
   },
   {
-    id: 'query-sequence', title: '先做冪等檢查，再查資料並保存狀態',
-    section: '查詢生命週期',
-    purpose: '說明 API 的真實順序和條件分支，避免把回應碼誤解為背景佇列。',
+    id: 'backend-flows',
+    title: '三條流程，三種資料責任',
+    section: '資料流程',
+    purpose: '說明 API 查詢、官方資料發布和離線模型實驗彼此分開，避免把不同資料狀態混為一談。',
     talk: [
-      'Controller 使用 @Valid，ParkingQueryService 再檢查 requestToken、座標和支援範圍。',
-      'requestToken 已存在時直接取回原查詢，不重做 ETA、附近搜尋或外部服務。',
-      '新查詢有 origin 才呼叫 Routes；沒有 origin 時 ETA 為 NOT_REQUESTED。',
-      '再查 MySQL 目錄與已發布觀測，依服務設定執行 Places，最後將 query state 寫入 Redis TTL。',
-      '服務方法完成後 Controller 才回 HTTP 202；這個 202 是目前契約，不表示已改成背景工作。'
+      '查詢以 requestToken 做冪等檢查，依序讀取已發布快照並保存短期狀態；有起點才會請求 Routes ETA。',
+      '來源刷新經鎖定、冷卻、正規化和品質閘門；失敗時保留既有已發布快照。',
+      '離線資料經標籤、時間切分和 baseline 回測後產生版本化產物；實驗性估計不等於官方即時空位。'
     ],
-    transition: '查詢讀已發布快照；接著說明快照如何通過品質閘門。'
-  },
-  {
-    id: 'source-refresh', title: '只有完整、通過檢查的候選資料才會發布',
-    section: '來源與資料治理',
-    purpose: '把目錄盤點、即時來源觀測與已發布快照分開。',
-    talk: [
-      '刷新由 /api/v1/parking-queries/{queryId}/refresh 明確觸發，先受 cooldown 和 lock 控制。',
-      'NtpcRealtimeSourceRefreshService 透過 NtpcOpenDataClient 讀取分頁，再由 normalizer 和 source mapping 建立候選快照。',
-      '完整 traversal 與品質檢查通過後，AvailabilitySnapshotPublishingService 才交易式發布；失敗不取代舊有效快照。',
-      '2026-10-26 盤點的 1,880 是符合一般汽車格資格與座標規則的來源列，不是 mapping 完成數。',
-      '33 頁、2,151 列描述的是新莊目錄盤點，不是即時空位數，也不是全臺覆蓋。'
-    ],
-    transition: '最後用資料責任、技術棧和目前限制收束主線。'
-  },
-  {
-    id: 'backend-takeaways', title: '讓每個回應都說得清楚',
-    section: '主簡報收尾',
-    purpose: '收束面試官應記住的架構取捨與現況。',
-    talk: [
-      'MySQL 負責可追溯的持久資料；Redis 負責短生命週期狀態與刷新鎖。',
-      '查詢和官方來源刷新分開；資料過期、外部失敗或輸入不足時明確降級。',
-      'ETA 取決於起點與 Google Routes；模型估計仍受新鮮度、資格及支援時距限制。',
-      '目前是新莊 MVP；全臺 TDX 即時來源尚未整合，路外模型未通過正式准入與生產驗證。'
-    ],
-    transition: '主線到此結束；只有遇到相關追問時才切到備用頁 A 或 B。',
-    cue: '不要自動接著播放備用頁，先聽面試官的問題。'
-  },
-  {
-    id: 'ai-agent-backup', title: 'AI 加速工作，人保留驗收與決策',
-    section: '備用頁 A',
-    purpose: '需要解釋 AI 輔助開發責任分工時才使用。',
-    talk: [
-      '由人先定義 Issue 範圍、驗收標準和人工檢查點。',
-      '依 docs/development-workflow.md 的 human-in-the-loop 原則：GPT 協助需求釐清、任務拆解及獨立 code review；Codex 讀 repo 並按範圍實作。',
-      '本機測試和設定驗證才提供行為證據，GPT Review 不能代替測試。',
-      '提交前核對 Git Diff、精確 HEAD 和同一 HEAD 的測試證據；超出票券的變更另行評估。',
-      'GitHub Actions 目前因用量限制暫停；最終是否 Merge 由人決定。'
-    ],
-    transition: '回答完 AI 協作問題後，回到主線收尾，不必再播放備用頁 B。',
-    cue: '僅在面試官詢問 AI 協作、測試責任或合併決策時開啟；箭頭只表示人工工作交接，不代表自動 agent 串接；本次簡報沒有建立 PR 或執行 Actions。'
-  },
-  {
-    id: 'ml-admission-backup', title: '離線實驗已接通；正式模型准入尚未通過',
-    section: '備用頁 B',
-    purpose: '需要說明訓練資料、時間切分、baseline 或正式准入時才使用。',
-    talk: [
-      'parking-data-collector ZIP 是離線素材；collector_reader.py 與 generate_label_dry_run.py 做讀取和標籤 dry-run，不是主系統即時 API。',
-      'dataset_split.py 依時間切分；特徵只讀 as-of，arrival label 不跨 split 回流，來源狀態與拒絕原因保留。',
-      'run_baseline_experiment.py 與 run_801010_experiment.py 比較 persistence、calibrated persistence、Logistic；validation 選擇，既有 test 只作離線評估。',
-      '已分析的 test 日期只有三天，不是新 holdout；目前不把分數解讀成正式泛化證據。',
-      'export_experimental_offstreet_model.py 輸出版本化 JSON；Java ExperimentalOffStreetPredictionService 設有輸入護欄。S3-020 未通過，產物仍是 EXPERIMENT_ONLY。'
-    ],
-    transition: '說明目前可重現的離線證據與尚缺的准入證據後，回到面試主線。',
-    cue: '僅在面試官追問模型資料、避免洩漏或正式准入時開啟；明確使用 EXPERIMENT_ONLY 與 NOT PRODUCTION VALIDATED。'
+    transition: '架構說明結束，可依面試官關注點補充查詢流程或資料品質設計。'
   }
 ];
 window.__SPEAKER_NOTES__ = SPEAKER_NOTES;
+
 </script>
 
 <script>
@@ -1828,20 +1559,6 @@ window.__pptPresenter?.initMode();
 </script>
 
 
-<dialog id="architecture-detail-dialog" class="architecture-detail-dialog" aria-labelledby="architecture-detail-title"><div class="architecture-detail-shell"><header class="architecture-detail-head"><div><div class="architecture-detail-kicker">可選展開 · SYSTEM MAP</div><h2 id="architecture-detail-title">完整系統架構圖</h2><p>主線維持精簡；面試追問時再展開九層細節。圖可捲動，內含服務、資料層、外部呼叫與離線訓練。</p></div><button type="button" class="architecture-detail-close" data-close-architecture-detail aria-label="關閉完整系統架構圖">關閉</button></header><iframe class="architecture-detail-frame" title="全臺停車位預測系統完整架構 SVG，可捲動檢視" loading="lazy" referrerpolicy="no-referrer" sandbox="" src="data:text/html;base64,PCFkb2N0eXBlIGh0bWw+PGh0bWwgbGFuZz0iemgtSGFudCI+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiPjxtZXRhIG5hbWU9InZpZXdwb3J0IiBjb250ZW50PSJ3aWR0aD1kZXZpY2Utd2lkdGgsaW5pdGlhbC1zY2FsZT0xIj48c3R5bGU+Kntib3gtc2l6aW5nOmJvcmRlci1ib3h9aHRtbCxib2R5e21hcmdpbjowO3dpZHRoOjEwMCU7aGVpZ2h0OjEwMCU7YmFja2dyb3VuZDojZmZmO2NvbG9yOiMxMDJiNGU7Zm9udC1mYW1pbHk6SW50ZXIsIk5vdG8gU2FucyBUQyIsIk1pY3Jvc29mdCBKaGVuZ0hlaSIsc3lzdGVtLXVpLHNhbnMtc2VyaWZ9bWFpbnt3aWR0aDoxMDAlO2hlaWdodDoxMDAlO292ZXJmbG93OmF1dG87YmFja2dyb3VuZDojZmZmfXN2Z3tkaXNwbGF5OmJsb2NrO3dpZHRoOjEwMCU7aGVpZ2h0OmF1dG87bWluLXdpZHRoOjEwMDBweDtiYWNrZ3JvdW5kOiNmZmZ9QG1lZGlhKG1heC13aWR0aDo3MDBweCl7c3Zne21pbi13aWR0aDoxMDAwcHh9fTwvc3R5bGU+PC9oZWFkPjxib2R5PjxtYWluIHJvbGU9InJlZ2lvbiIgYXJpYS1sYWJlbD0i5Y+v5rC05bmz6IiH5Z6C55u05o2y5YuV55qE5a6M5pW057O757Wx5p625qeL5ZyWIj48c3ZnIGlkPSJhcmNoaXRlY3R1cmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDE2MDAgMTE3MCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsbGVkYnk9InN2Z1RpdGxlIHN2Z0Rlc2MiPgo8dGl0bGUgaWQ9InN2Z1RpdGxlIj7lhajoh7rlgZzou4rkvY3mirXpgZTpoJDmuKzmlbTpq5Tmnrbmp4vlnJY8L3RpdGxlPgo8ZGVzYyBpZD0ic3ZnRGVzYyI+5ZGI54++5L2/55So6ICF5p+l6Kmi44CB5YmN56uv44CB5b6M56uvIEFQSeOAgeafpeipouacjeWLmeOAgeWumOaWueS+hua6kOWIt+aWsOiIh+izh+aWmeWTgeizquOAgU15U1FMIOiIhyBSZWRpc+OAgeWklumDqOacjeWLmeOAgemboue3muapn+WZqOWtuOe/kuiok+e3tO+8jOS7peWPiuWfuuekjuioreaWveS6pOS7mOOAgui3r+WklumgkOa4rOebruWJjeS7jeeCuuWvpumpl+aAp+WKn+iDveOAgjwvZGVzYz4KPGRlZnM+CiAgPGZpbHRlciBpZD0ic2hhZG93IiB4PSItMTAlIiB5PSItMTAlIiB3aWR0aD0iMTIwJSIgaGVpZ2h0PSIxMzAlIj48ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iMiIgc3RkRGV2aWF0aW9uPSIyIiBmbG9vZC1jb2xvcj0iIzE4M2I2MCIgZmxvb2Qtb3BhY2l0eT0iLjA4Ii8+PC9maWx0ZXI+CiAgPG1hcmtlciBpZD0iYXJyQmx1ZSIgbWFya2VyV2lkdGg9IjgiIG1hcmtlckhlaWdodD0iOCIgcmVmWD0iNiIgcmVmWT0iMyIgb3JpZW50PSJhdXRvIj48cGF0aCBkPSJNMCwwIEw2LDMgTDAsNiBaIiBmaWxsPSIjMTY4NWQ4Ii8+PC9tYXJrZXI+CiAgPG1hcmtlciBpZD0iYXJyTmF2eSIgbWFya2VyV2lkdGg9IjgiIG1hcmtlckhlaWdodD0iOCIgcmVmWD0iNiIgcmVmWT0iMyIgb3JpZW50PSJhdXRvIj48cGF0aCBkPSJNMCwwIEw2LDMgTDAsNiBaIiBmaWxsPSIjMjQ1YjkxIi8+PC9tYXJrZXI+CiAgPG1hcmtlciBpZD0iYXJyT3JhbmdlIiBtYXJrZXJXaWR0aD0iOCIgbWFya2VySGVpZ2h0PSI4IiByZWZYPSI2IiByZWZZPSIzIiBvcmllbnQ9ImF1dG8iPjxwYXRoIGQ9Ik0wLDAgTDYsMyBMMCw2IFoiIGZpbGw9IiNlZjZhMzIiLz48L21hcmtlcj4KICA8bWFya2VyIGlkPSJhcnJQdXJwbGUiIG1hcmtlcldpZHRoPSI4IiBtYXJrZXJIZWlnaHQ9IjgiIHJlZlg9IjYiIHJlZlk9IjMiIG9yaWVudD0iYXV0byI+PHBhdGggZD0iTTAsMCBMNiwzIEwwLDYgWiIgZmlsbD0iIzhiNDhkNyIvPjwvbWFya2VyPgogIDxtYXJrZXIgaWQ9ImFyclNsYXRlIiBtYXJrZXJXaWR0aD0iOCIgbWFya2VySGVpZ2h0PSI4IiByZWZYPSI2IiByZWZZPSIzIiBvcmllbnQ9ImF1dG8iPjxwYXRoIGQ9Ik0wLDAgTDYsMyBMMCw2IFoiIGZpbGw9IiM3MTgwOTYiLz48L21hcmtlcj4KICA8c3R5bGU+CiAgICB0ZXh0IHsgZm9udC1mYW1pbHk6SW50ZXIsIk5vdG8gU2FucyBUQyIsIk1pY3Jvc29mdCBKaGVuZ0hlaSIsc2Fucy1zZXJpZjsgZmlsbDojMTczMjRmOyB9CiAgICAudGl0bGUgeyBmb250LXNpemU6MzRweDsgZm9udC13ZWlnaHQ6ODAwOyBsZXR0ZXItc3BhY2luZzouNXB4OyB9CiAgICAuc3VidGl0bGUgeyBmb250LXNpemU6MThweDsgZm9udC13ZWlnaHQ6NzAwOyBmaWxsOiMxOTRiODY7IH0KICAgIC5mbG93bGFiZWwgeyBmb250LXNpemU6MTRweDsgZm9udC13ZWlnaHQ6NzUwOyB9CiAgICAuZmxvd3N1YiB7IGZvbnQtc2l6ZToxMnB4OyBmaWxsOiM1MzY3N2Q7IH0KICAgIC5oZWFkIHsgZm9udC1zaXplOjE2cHg7IGZvbnQtd2VpZ2h0OjgwMDsgZmlsbDojZmZmOyB9CiAgICAuaGVhZHN1YiB7IGZvbnQtc2l6ZToxMnB4OyBmb250LXdlaWdodDo2MDA7IGZpbGw6I2ZmZjsgb3BhY2l0eTouOTU7IH0KICAgIC5ib3hoZWFkIHsgZm9udC1zaXplOjEzcHg7IGZvbnQtd2VpZ2h0OjgwMDsgfQogICAgLmJvZHkgeyBmb250LXNpemU6MTEuNXB4OyBmaWxsOiM0MjU2NmM7IH0KICAgIC50aW55IHsgZm9udC1zaXplOjEwLjVweDsgZmlsbDojNTI2NTc5OyB9CiAgICAuY2FyZCB7IGZpbGw6I2ZmZjsgc3Ryb2tlOiNkNGUwZWI7IHN0cm9rZS13aWR0aDoxLjE7IH0KICAgIC5zb2Z0IHsgZmlsbDojZjdmYmZmOyBzdHJva2U6I2Q1ZTdmODsgc3Ryb2tlLXdpZHRoOjE7IH0KICAgIC5zZXJ2aWNlIHsgZmlsbDojZmZmOyBzdHJva2U6I2Q3ZTZkYzsgc3Ryb2tlLXdpZHRoOjEuMTsgfQogICAgLmRiY2FyZCB7IGZpbGw6I2Y1ZmFmZjsgc3Ryb2tlOiNiOWQ4ZjU7IHN0cm9rZS13aWR0aDoxLjE7IH0KICAgIC5waWxsIHsgZm9udC1zaXplOjExcHg7IGZvbnQtd2VpZ2h0Ojc1MDsgfQogICAgLmNvbm5lY3RvciB7IGZpbGw6bm9uZTsgc3Ryb2tlLXdpZHRoOjIuMzsgfQogIDwvc3R5bGU+CjwvZGVmcz4KPCEtLSBIZWFkZXIgLS0+CjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIxNjAwIiBoZWlnaHQ9IjExNzAiIGZpbGw9IiNmZmYiLz4KPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMjggMTgpIj4KICA8cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNTgiIGhlaWdodD0iNTgiIHJ4PSIxNyIgZmlsbD0iI2RmZjFmZiIvPgogIDxwYXRoIGQ9Ik0xMyAzNiBMMTcgMjQgUTE4IDIwIDIzIDIwIEgzNiBRNDAgMjAgNDIgMjUgTDQ2IDM2IFY0NCBINDEgVjQwIEgxOCBWNDQgSDEzIFoiIGZpbGw9IiMxNzY4YjUiLz4KICA8Y2lyY2xlIGN4PSIyMSIgY3k9IjM0IiByPSIzIiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iMzgiIGN5PSIzNCIgcj0iMyIgZmlsbD0iI2ZmZiIvPgogIDx0ZXh0IHg9Ijc0IiB5PSIyOSIgY2xhc3M9InRpdGxlIj7lhajoh7rlgZzou4rkvY3mirXpgZTpoJDmuKzjgIDmlbTpq5Tmnrbmp4vlnJY8L3RleHQ+CiAgPHJlY3QgeD0iNzQiIHk9IjM5IiB3aWR0aD0iNDIwIiBoZWlnaHQ9IjI2IiByeD0iMTMiIGZpbGw9IiNlNGYzZmYiLz4KICA8dGV4dCB4PSIyODQiIHk9IjU3IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0ic3VidGl0bGUiPuaWsOiOiiBNVlDvvI/poJDmuKzliY3nva7oiIfoqJPnt7Tos4fmlpnmsrvnkIY8L3RleHQ+CjwvZz4KPCEtLSBGbG93IGxlZ2VuZCBhdCB0b3AgLS0+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDI4IDkyKSI+CiAgPGxpbmUgeDE9IjAiIHkxPSIxNSIgeDI9IjQ4IiB5Mj0iMTUiIHN0cm9rZT0iIzE2ODVkOCIgc3Ryb2tlLXdpZHRoPSIyLjUiIG1hcmtlci1lbmQ9InVybCgjYXJyQmx1ZSkiLz4KICA8dGV4dCB4PSI2MCIgeT0iMTIiIGNsYXNzPSJmbG93bGFiZWwiIGZpbGw9IiMxNjc4YmQiPuS9v+eUqOiAheafpeipouS4u+a1geeoizwvdGV4dD48dGV4dCB4PSI2MCIgeT0iMjgiIGNsYXNzPSJmbG93c3ViIj7mn6XoqaLlgZzou4rkvY3oiIcgRVRBIOizh+ioijwvdGV4dD4KICA8bGluZSB4MT0iMzE1IiB5MT0iMTUiIHgyPSIzNjMiIHkyPSIxNSIgc3Ryb2tlPSIjZWY2YTMyIiBzdHJva2Utd2lkdGg9IjIuNSIgbWFya2VyLWVuZD0idXJsKCNhcnJPcmFuZ2UpIi8+CiAgPHRleHQgeD0iMzc1IiB5PSIxMiIgY2xhc3M9ImZsb3dsYWJlbCIgZmlsbD0iI2M5NGUyMCI+5a6Y5pa55L6G5rqQ5Yi35paw5rWB56iLPC90ZXh0Pjx0ZXh0IHg9IjM3NSIgeT0iMjgiIGNsYXNzPSJmbG93c3ViIj7mm7TmlrDjgIHmqqLmn6XoiIfnmbzluIPos4fmlpk8L3RleHQ+CiAgPGxpbmUgeDE9IjY1MCIgeTE9IjE1IiB4Mj0iNjk4IiB5Mj0iMTUiIHN0cm9rZT0iIzhiNDhkNyIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1kYXNoYXJyYXk9IjcgNSIgbWFya2VyLWVuZD0idXJsKCNhcnJQdXJwbGUpIi8+CiAgPHRleHQgeD0iNzEwIiB5PSIxMiIgY2xhc3M9ImZsb3dsYWJlbCIgZmlsbD0iIzdhMzljMiI+6Zui57ea6KiT57e05rWB56iLPC90ZXh0Pjx0ZXh0IHg9IjcxMCIgeT0iMjgiIGNsYXNzPSJmbG93c3ViIj7mrbflj7Los4fmlpnoiIfmqKHlnovlr6bpqZc8L3RleHQ+CiAgPGxpbmUgeDE9IjkzMCIgeTE9IjE1IiB4Mj0iOTc4IiB5Mj0iMTUiIHN0cm9rZT0iIzcxODA5NiIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1kYXNoYXJyYXk9IjcgNSIgbWFya2VyLWVuZD0idXJsKCNhcnJTbGF0ZSkiLz4KICA8dGV4dCB4PSI5OTAiIHk9IjEyIiBjbGFzcz0iZmxvd2xhYmVsIiBmaWxsPSIjNWE2YTdiIj7lpJbpg6jmnI3li5nlkbzlj6s8L3RleHQ+PHRleHQgeD0iOTkwIiB5PSIyOCIgY2xhc3M9ImZsb3dzdWIiPuaUv+W6nOizh+aWme+8j0dvb2dsZSBBUEk8L3RleHQ+CjwvZz4KPCEtLSBMYXllciBwYW5lbHMgLS0+CjxnIGZpbHRlcj0idXJsKCNzaGFkb3cpIj4KICA8cmVjdCB4PSIxMiIgeT0iMTQyIiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjU1NSIgcng9IjEyIiBmaWxsPSIjZjdmYmZmIiBzdHJva2U9IiM2OWJkZjIiLz4KICA8cmVjdCB4PSIxODEiIHk9IjE0MiIgd2lkdGg9IjE3NiIgaGVpZ2h0PSI1NTUiIHJ4PSIxMiIgZmlsbD0iI2Y1ZmNmOCIgc3Ryb2tlPSIjNzJjOWE0Ii8+CiAgPHJlY3QgeD0iMzY2IiB5PSIxNDIiIHdpZHRoPSIxODgiIGhlaWdodD0iNTU1IiByeD0iMTIiIGZpbGw9IiNmNWZhZmYiIHN0cm9rZT0iIzcwYjRmMiIvPgogIDxyZWN0IHg9IjU2MyIgeT0iMTQyIiB3aWR0aD0iMjE4IiBoZWlnaHQ9IjU1NSIgcng9IjEyIiBmaWxsPSIjZjdmY2Y4IiBzdHJva2U9IiM4YWM5YTUiLz4KICA8cmVjdCB4PSI3OTAiIHk9IjE0MiIgd2lkdGg9IjIyMiIgaGVpZ2h0PSI1NTUiIHJ4PSIxMiIgZmlsbD0iI2ZmZjlmNSIgc3Ryb2tlPSIjZjVhMDc4Ii8+CiAgPHJlY3QgeD0iMTAyMSIgeT0iMTQyIiB3aWR0aD0iMjIwIiBoZWlnaHQ9IjU1NSIgcng9IjEyIiBmaWxsPSIjZjVmYWZmIiBzdHJva2U9IiM3ZGI4ZjMiLz4KICA8cmVjdCB4PSIxMjUwIiB5PSIxNDIiIHdpZHRoPSIzMzgiIGhlaWdodD0iNTU1IiByeD0iMTIiIGZpbGw9IiNmY2Y4ZmYiIHN0cm9rZT0iI2I4OWJlOSIvPgo8L2c+CjwhLS0gcGFuZWwgaGVhZGVycyAtLT4KPGc+CiAgPHBhdGggZD0iTTI0IDE0MiBIMTYwIFExNzIgMTQyIDE3MiAxNTQgVjE5NCBIMTIgVjE1NCBRMTIgMTQyIDI0IDE0MloiIGZpbGw9IiMwODdhYzciLz4KICA8cGF0aCBkPSJNMTkzIDE0MiBIMzQ1IFEzNTcgMTQyIDM1NyAxNTQgVjE5NCBIMTgxIFYxNTQgUTE4MSAxNDIgMTkzIDE0MloiIGZpbGw9IiMxNjhiNmEiLz4KICA8cGF0aCBkPSJNMzc4IDE0MiBINTQyIFE1NTQgMTQyIDU1NCAxNTQgVjE5NCBIMzY2IFYxNTQgUTM2NiAxNDIgMzc4IDE0MloiIGZpbGw9IiMxNzZiYzEiLz4KICA8cGF0aCBkPSJNNTc1IDE0MiBINzY5IFE3ODEgMTQyIDc4MSAxNTQgVjE5NCBINTYzIFYxNTQgUTU2MyAxNDIgNTc1IDE0MloiIGZpbGw9IiM0YTlhNTUiLz4KICA8cGF0aCBkPSJNODAyIDE0MiBIMTAwMCBRMTAxMiAxNDIgMTAxMiAxNTQgVjE5NCBINzkwIFYxNTQgUTc5MCAxNDIgODAyIDE0MloiIGZpbGw9IiNlZDZiMmUiLz4KICA8cGF0aCBkPSJNMTAzMyAxNDIgSDEyMjkgUTEyNDEgMTQyIDEyNDEgMTU0IFYxOTQgSDEwMjEgVjE1NCBRMTAyMSAxNDIgMTAzMyAxNDJaIiBmaWxsPSIjMjc3OWM4Ii8+CiAgPHBhdGggZD0iTTEyNjIgMTQyIEgxNTc2IFExNTg4IDE0MiAxNTg4IDE1NCBWMTk0IEgxMjUwIFYxNTQgUTEyNTAgMTQyIDEyNjIgMTQyWiIgZmlsbD0iIzc2NDJiYiIvPgogIDx0ZXh0IHg9IjkyIiB5PSIxNjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJoZWFkIj7ikaAg5L2/55So6ICF77yPQ2xpZW50PC90ZXh0Pjx0ZXh0IHg9IjkyIiB5PSIxODMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJoZWFkc3ViIj7kvb/nlKjnq688L3RleHQ+CiAgPHRleHQgeD0iMjY5IiB5PSIxNjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJoZWFkIj7ikaEgRnJvbnRlbmQgTGF5ZXI8L3RleHQ+PHRleHQgeD0iMjY5IiB5PSIxODMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJoZWFkc3ViIj7liY3nq6/lsaQ8L3RleHQ+CiAgPHRleHQgeD0iNDYwIiB5PSIxNjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJoZWFkIj7ikaIgQVBJIExheWVyPC90ZXh0Pjx0ZXh0IHg9IjQ2MCIgeT0iMTgzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iaGVhZHN1YiI+5b6M56uvIEFQSSDlsaQ8L3RleHQ+CiAgPHRleHQgeD0iNjcyIiB5PSIxNjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJoZWFkIj7ikaMgUXVlcnkgLyBEb21haW48L3RleHQ+PHRleHQgeD0iNjcyIiB5PSIxODMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJoZWFkc3ViIj7mn6XoqaLoiIfmpa3li5nmnI3li5nlsaQ8L3RleHQ+CiAgPHRleHQgeD0iOTAxIiB5PSIxNjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJoZWFkIj7ikaQgU291cmNlIFJlZnJlc2g8L3RleHQ+PHRleHQgeD0iOTAxIiB5PSIxODMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJoZWFkc3ViIj7lrpjmlrnkvobmupDliLfmlrDoiIfos4fmlpnlk4Hos6o8L3RleHQ+CiAgPHRleHQgeD0iMTEzMSIgeT0iMTY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iaGVhZCI+4pGlIERhdGEgTGF5ZXI8L3RleHQ+PHRleHQgeD0iMTEzMSIgeT0iMTgzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iaGVhZHN1YiI+6LOH5paZ5YSy5a2Y5bGkPC90ZXh0PgogIDx0ZXh0IHg9IjE0MTkiIHk9IjE2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImhlYWQiPuKRpiBFeHRlcm5hbCBTZXJ2aWNlczwvdGV4dD48dGV4dCB4PSIxNDE5IiB5PSIxODMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJoZWFkc3ViIj7lpJbpg6jmnI3li5k8L3RleHQ+CjwvZz4KPCEtLSBDbGllbnQgY2FyZHMgLS0+CjxnPgogIDxyZWN0IHg9IjI1IiB5PSIyMTEiIHdpZHRoPSIxMzQiIGhlaWdodD0iMTAyIiByeD0iOSIgY2xhc3M9ImNhcmQiLz48dGV4dCB4PSI5MiIgeT0iMjM5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI4Ij7ilqM8L3RleHQ+PHRleHQgeD0iOTIiIHk9IjI2MyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPldlYiBCcm93c2VyPC90ZXh0Pjx0ZXh0IHg9IjkyIiB5PSIyODEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7moYzpnaLngI/opr3lmag8L3RleHQ+PHRleHQgeD0iOTIiIHk9IjI5NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9InRpbnkiPuafpeipouiIh+aqouimlue1kOaenDwvdGV4dD4KICA8cmVjdCB4PSIyNSIgeT0iMzI1IiB3aWR0aD0iMTM0IiBoZWlnaHQ9IjEwMiIgcng9IjkiIGNsYXNzPSJjYXJkIi8+PHRleHQgeD0iOTIiIHk9IjM1NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyOCI+4pavPC90ZXh0Pjx0ZXh0IHg9IjkyIiB5PSIzNzgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIj5Nb2JpbGUgQnJvd3NlcjwvdGV4dD48dGV4dCB4PSI5MiIgeT0iMzk2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+5omL5qmf54CP6Ka95ZmoPC90ZXh0Pjx0ZXh0IHg9IjkyIiB5PSI0MTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJ0aW55Ij7pn7/mh4nlvI/mk43kvZw8L3RleHQ+CiAgPHJlY3QgeD0iMjUiIHk9IjQzOSIgd2lkdGg9IjEzNCIgaGVpZ2h0PSIxMDIiIHJ4PSI5IiBjbGFzcz0iY2FyZCIvPjx0ZXh0IHg9IjkyIiB5PSI0NzEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMjciPuKXjyDil48g4pePPC90ZXh0Pjx0ZXh0IHg9IjkyIiB5PSI0OTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIj7kvb/nlKjogIXvvI/pp5Xpp5s8L3RleHQ+PHRleHQgeD0iOTIiIHk9IjUxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuS4gOiIrOawkeecvjwvdGV4dD4KICA8cmVjdCB4PSIyNSIgeT0iNTU1IiB3aWR0aD0iMTM0IiBoZWlnaHQ9IjEyMSIgcng9IjkiIGZpbGw9IiNlNWYzZmYiIHN0cm9rZT0iI2MxZTJmYiIvPjx0ZXh0IHg9IjkyIiB5PSI1ODIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIj7kuLvopoHnm67nmoQ8L3RleHQ+PHRleHQgeD0iOTIiIHk9IjYwNiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuafpeipouebrueahOWcsOmZhOi/kTwvdGV4dD48dGV4dCB4PSI5MiIgeT0iNjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+5YGc6LuK6LOH6KiKPC90ZXh0Pjx0ZXh0IHg9IjkyIiB5PSI2NTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJ0aW55Ij7mn6XnnIvos4fmlpnmmYLplpPoiIfni4DmhYs8L3RleHQ+CjwvZz4KPCEtLSBGcm9udGVuZCBjYXJkcyAtLT4KPGc+CiAgPHJlY3QgeD0iMTk0IiB5PSIyMTEiIHdpZHRoPSIxNTAiIGhlaWdodD0iNTgiIHJ4PSI4IiBjbGFzcz0ic2VydmljZSIvPjx0ZXh0IHg9IjI2OSIgeT0iMjM1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+VnVlIDMgKyBWaXRlPC90ZXh0Pjx0ZXh0IHg9IjI2OSIgeT0iMjUzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+5YmN56uv5oeJ55SoPC90ZXh0PgogIDxyZWN0IHg9IjE5NCIgeT0iMjc4IiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjU4IiByeD0iOCIgY2xhc3M9InNlcnZpY2UiLz48dGV4dCB4PSIyNjkiIHk9IjMwMSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPuWcsOWcluS7i+mdojwvdGV4dD48dGV4dCB4PSIyNjkiIHk9IjMxOSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPkdvb2dsZSBNYXBzPC90ZXh0PgogIDxyZWN0IHg9IjE5NCIgeT0iMzQ1IiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjU4IiByeD0iOCIgY2xhc3M9InNlcnZpY2UiLz48dGV4dCB4PSIyNjkiIHk9IjM2OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPlBsYWNlcyDmkJzlsIs8L3RleHQ+PHRleHQgeD0iMjY5IiB5PSIzODYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7lnLDpu57oiIfnm67nmoTlnLA8L3RleHQ+CiAgPHJlY3QgeD0iMTk0IiB5PSI0MTIiIHdpZHRoPSIxNTAiIGhlaWdodD0iNTgiIHJ4PSI4IiBjbGFzcz0ic2VydmljZSIvPjx0ZXh0IHg9IjI2OSIgeT0iNDM1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+5p+l6Kmi57WQ5p6c6aCBPC90ZXh0Pjx0ZXh0IHg9IjI2OSIgeT0iNDUzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+5YGc6LuK6Kmz5oOF6IiH54uA5oWLPC90ZXh0PgogIDxyZWN0IHg9IjE5NCIgeT0iNDc5IiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjU4IiByeD0iOCIgY2xhc3M9InNlcnZpY2UiLz48dGV4dCB4PSIyNjkiIHk9IjUwMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPlJXRCDpn7/mh4nlvI/niYjpnaI8L3RleHQ+PHRleHQgeD0iMjY5IiB5PSI1MjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7moYzpnaLvvI/miYvmqZ88L3RleHQ+CiAgPHJlY3QgeD0iMTk0IiB5PSI1NTUiIHdpZHRoPSIxNTAiIGhlaWdodD0iMTIxIiByeD0iOCIgZmlsbD0iI2VhZjhlZiIgc3Ryb2tlPSIjYzZlOWQyIi8+PHRleHQgeD0iMjY5IiB5PSI1ODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIj7ku4vpnaLosqzku7s8L3RleHQ+PHRleHQgeD0iMjA3IiB5PSI2MDIiIGNsYXNzPSJib2R5Ij7inJMg5ZGI54++5bey55m85biD6LOH5paZPC90ZXh0Pjx0ZXh0IHg9IjIwNyIgeT0iNjIzIiBjbGFzcz0iYm9keSI+4pyTIOmhr+ekuuS+hua6kOiIh+aZgumWkzwvdGV4dD48dGV4dCB4PSIyMDciIHk9IjY0NCIgY2xhc3M9ImJvZHkiPuKckyDlj43mmKDmn6XoqaLni4DmhYs8L3RleHQ+CjwvZz4KPCEtLSBBUEkgY2FyZHMgLS0+CjxnPgogIDxyZWN0IHg9IjM3OSIgeT0iMjExIiB3aWR0aD0iMTYyIiBoZWlnaHQ9IjU4IiByeD0iOCIgY2xhc3M9InNvZnQiLz48dGV4dCB4PSI0NjAiIHk9IjIzNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPlNwcmluZyBCb290IFJFU1QgQVBJPC90ZXh0Pjx0ZXh0IHg9IjQ2MCIgeT0iMjUzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+SFRUUCDku4vpnaI8L3RleHQ+CiAgPHJlY3QgeD0iMzc5IiB5PSIyNzgiIHdpZHRoPSIxNjIiIGhlaWdodD0iNTgiIHJ4PSI4IiBjbGFzcz0ic29mdCIvPjx0ZXh0IHg9IjQ2MCIgeT0iMzAxIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+UGFya2luZ1F1ZXJ5Q29udHJvbGxlcjwvdGV4dD48dGV4dCB4PSI0NjAiIHk9IjMxOSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuafpeipoiBBUEk8L3RleHQ+CiAgPHJlY3QgeD0iMzc5IiB5PSIzNDUiIHdpZHRoPSIxNjIiIGhlaWdodD0iNTgiIHJ4PSI4IiBjbGFzcz0ic29mdCIvPjx0ZXh0IHg9IjQ2MCIgeT0iMzY4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCIgZm9udC1zaXplPSIxMiI+UE9TVCAve3F1ZXJ5SWR9L3JlZnJlc2g8L3RleHQ+PHRleHQgeD0iNDYwIiB5PSIzODYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7lkIzkuIAgQ29udHJvbGxlciDnmoTnjajnq4vliLfmlrDnq6/pu548L3RleHQ+CiAgPHJlY3QgeD0iMzc5IiB5PSI0MTIiIHdpZHRoPSIxNjIiIGhlaWdodD0iNTgiIHJ4PSI4IiBjbGFzcz0ic29mdCIvPjx0ZXh0IHg9IjQ2MCIgeT0iNDM1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+RFRP77yPVmFsaWRhdGlvbjwvdGV4dD48dGV4dCB4PSI0NjAiIHk9IjQ1MyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuiri+axgumpl+itiTwvdGV4dD4KICA8cmVjdCB4PSIzNzkiIHk9IjQ3OSIgd2lkdGg9IjE2MiIgaGVpZ2h0PSI1OCIgcng9IjgiIGNsYXNzPSJzb2Z0Ii8+PHRleHQgeD0iNDYwIiB5PSI1MDIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIj5BcGlFeGNlcHRpb25IYW5kbGVyPC90ZXh0Pjx0ZXh0IHg9IjQ2MCIgeT0iNTIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+5YWo5Z+f5L6L5aSW6JmV55CGPC90ZXh0PgogIDxyZWN0IHg9IjM3OSIgeT0iNTQ2IiB3aWR0aD0iMTYyIiBoZWlnaHQ9IjU4IiByeD0iOCIgY2xhc3M9InNvZnQiLz48dGV4dCB4PSI0NjAiIHk9IjU2OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPkFQSSDlpZHntITojYnmoYg8L3RleHQ+PHRleHQgeD0iNDYwIiB5PSI1ODciIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7mn6XoqaLoiIfliLfmlrDlpZHntIQ8L3RleHQ+CiAgPHJlY3QgeD0iMzc5IiB5PSI2MTMiIHdpZHRoPSIxNjIiIGhlaWdodD0iNjMiIHJ4PSI4IiBmaWxsPSIjZTdmM2ZmIiBzdHJva2U9IiNjN2UyZmIiLz48dGV4dCB4PSI0NjAiIHk9IjYzOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPkFQSSDosqzku7s8L3RleHQ+PHRleHQgeD0iNDYwIiB5PSI2NTciIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7pqZforYnjgIHot6/nlLHoiIflm57mh4k8L3RleHQ+CjwvZz4KPCEtLSBRdWVyeS9kb21haW4gY2FyZHMgLS0+CjxnPgogIDxyZWN0IHg9IjU3NiIgeT0iMjA3IiB3aWR0aD0iMTkyIiBoZWlnaHQ9IjUzIiByeD0iOCIgY2xhc3M9InNlcnZpY2UiLz48dGV4dCB4PSI2NzIiIHk9IjIyOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPlBhcmtpbmdRdWVyeVNlcnZpY2U8L3RleHQ+PHRleHQgeD0iNjcyIiB5PSIyNDUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7lgZzou4rmn6XoqaLljZToqr88L3RleHQ+CiAgPHJlY3QgeD0iNTc2IiB5PSIyNjciIHdpZHRoPSIxOTIiIGhlaWdodD0iNTMiIHJ4PSI4IiBjbGFzcz0ic2VydmljZSIvPjx0ZXh0IHg9IjY3MiIgeT0iMjg4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+TmVhcmJ5UGFya2luZ1NlYXJjaFNlcnZpY2U8L3RleHQ+PHRleHQgeD0iNjcyIiB5PSIzMDUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7pmYTov5HlgZzou4rloLTmkJzlsIs8L3RleHQ+CiAgPHJlY3QgeD0iNTc2IiB5PSIzMjciIHdpZHRoPSIxOTIiIGhlaWdodD0iNTMiIHJ4PSI4IiBjbGFzcz0ic2VydmljZSIvPjx0ZXh0IHg9IjY3MiIgeT0iMzQ4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+UHVibGlzaGVkIFNuYXBzaG90IFNlcnZpY2U8L3RleHQ+PHRleHQgeD0iNjcyIiB5PSIzNjUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7oroDlj5blt7LnmbzluIPop4DmuKzlv6vnhac8L3RleHQ+CiAgPHJlY3QgeD0iNTc2IiB5PSIzODciIHdpZHRoPSIxOTIiIGhlaWdodD0iNTMiIHJ4PSI4IiBjbGFzcz0ic2VydmljZSIvPjx0ZXh0IHg9IjY3MiIgeT0iNDA4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+R29vZ2xlRXRhU2VydmljZTwvdGV4dD48dGV4dCB4PSI2NzIiIHk9IjQyNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuaKtemBlOaZgumWkyBFVEE8L3RleHQ+CiAgPHJlY3QgeD0iNTc2IiB5PSI0NDciIHdpZHRoPSIxOTIiIGhlaWdodD0iNTMiIHJ4PSI4IiBjbGFzcz0ic2VydmljZSIvPjx0ZXh0IHg9IjY3MiIgeT0iNDYzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCIgZm9udC1zaXplPSIxMS41Ij5Hb29nbGVQYXJraW5nUGxhY2U8L3RleHQ+PHRleHQgeD0iNjcyIiB5PSI0NzciIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIiBmb250LXNpemU9IjExLjUiPlNlYXJjaFNlcnZpY2U8L3RleHQ+PHRleHQgeD0iNjcyIiB5PSI0OTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij5Hb29nbGUgUGxhY2VzIOaQnOWwizwvdGV4dD4KICA8cmVjdCB4PSI1NzYiIHk9IjUwNyIgd2lkdGg9IjE5MiIgaGVpZ2h0PSI2MiIgcng9IjgiIGZpbGw9IiNmN2YwZmYiIHN0cm9rZT0iI2RiYzZmNCIvPjx0ZXh0IHg9IjY3MiIgeT0iNTI5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+RXhwZXJpbWVudGFsT2ZmU3RyZWV0PC90ZXh0Pjx0ZXh0IHg9IjY3MiIgeT0iNTQ2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+UHJlZGljdGlvblNlcnZpY2U8L3RleHQ+PHRleHQgeD0iNjcyIiB5PSI1NjEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJ0aW55Ij7ot6/lpJblgZzou4rlr6bpqZfmgKfpoJDmuKw8L3RleHQ+CiAgPHJlY3QgeD0iNTc2IiB5PSI1NzYiIHdpZHRoPSIxOTIiIGhlaWdodD0iNTMiIHJ4PSI4IiBjbGFzcz0ic2VydmljZSIvPjx0ZXh0IHg9IjY3MiIgeT0iNTk3IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+UGFya2luZ1F1ZXJ5U3RhdGVTdG9yZTwvdGV4dD48dGV4dCB4PSI2NzIiIHk9IjYxNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuafpeipoueLgOaFi+WEsuWtmDwvdGV4dD4KICA8cmVjdCB4PSI1NzYiIHk9IjYzNiIgd2lkdGg9IjE5MiIgaGVpZ2h0PSI0MCIgcng9IjgiIGZpbGw9IiNlYWY4ZWYiIHN0cm9rZT0iI2M2ZTlkMiIvPjx0ZXh0IHg9IjY3MiIgeT0iNjUzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+6K6A5Y+W5b+r54Wn77yM5LiN562J5pa85Yi35paw5L6G5rqQPC90ZXh0Pjx0ZXh0IHg9IjY3MiIgeT0iNjY3IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0idGlueSI+5qih5Z6L5LuN5bGs5a+m6amX6ZqO5q61PC90ZXh0Pgo8L2c+CjwhLS0gUmVmcmVzaCBjYXJkcyAtLT4KPGc+CiAgPHJlY3QgeD0iODAzIiB5PSIyMDciIHdpZHRoPSIxOTYiIGhlaWdodD0iNTAiIHJ4PSI4IiBmaWxsPSIjZmZmIiBzdHJva2U9IiNmNWM0YTkiLz48dGV4dCB4PSI5MDEiIHk9IjIyNyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPlNvdXJjZVJlZnJlc2hDb29yZGluYXRpb248L3RleHQ+PHRleHQgeD0iOTAxIiB5PSIyNDQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7oroAgTXlTUUwg5Ya35Y275Lim5Y+W5b6XIFJlZGlzIGxvY2s8L3RleHQ+CiAgPHBhdGggZD0iTTkwMSAyNTcgVjI2NyIgY2xhc3M9ImNvbm5lY3RvciIgc3Ryb2tlPSIjZWY2YTMyIiBtYXJrZXItZW5kPSJ1cmwoI2Fyck9yYW5nZSkiLz4KICA8cmVjdCB4PSI4MDMiIHk9IjI3MCIgd2lkdGg9IjE5NiIgaGVpZ2h0PSI1MCIgcng9IjgiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI2Y1YzRhOSIvPjx0ZXh0IHg9IjkwMSIgeT0iMjkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+TnRwY1JlYWx0aW1lU291cmNlUmVmcmVzaDwvdGV4dD48dGV4dCB4PSI5MDEiIHk9IjMwNyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuWumOaWueWNs+aZguS+hua6kOWIt+aWsDwvdGV4dD4KICA8cGF0aCBkPSJNOTAxIDMyMCBWMzMwIiBjbGFzcz0iY29ubmVjdG9yIiBzdHJva2U9IiNlZjZhMzIiIG1hcmtlci1lbmQ9InVybCgjYXJyT3JhbmdlKSIvPgogIDxyZWN0IHg9IjgwMyIgeT0iMzMzIiB3aWR0aD0iMTk2IiBoZWlnaHQ9IjUwIiByeD0iOCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjZjVjNGE5Ii8+PHRleHQgeD0iOTAxIiB5PSIzNTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIj5OdHBjT3BlbkRhdGFDbGllbnQ8L3RleHQ+PHRleHQgeD0iOTAxIiB5PSIzNzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7lj5blvpflrpjmlrnliIbpoIHos4fmlpk8L3RleHQ+CiAgPHBhdGggZD0iTTkwMSAzODMgVjM5MyIgY2xhc3M9ImNvbm5lY3RvciIgc3Ryb2tlPSIjZWY2YTMyIiBtYXJrZXItZW5kPSJ1cmwoI2Fyck9yYW5nZSkiLz4KICA8cmVjdCB4PSI4MDMiIHk9IjM5NiIgd2lkdGg9IjE5NiIgaGVpZ2h0PSI1MCIgcng9IjgiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI2Y1YzRhOSIvPjx0ZXh0IHg9IjkwMSIgeT0iNDE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+TnRwY0F2YWlsYWJpbGl0eU5vcm1hbGl6ZXI8L3RleHQ+PHRleHQgeD0iOTAxIiB5PSI0MzMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7mraPopo/ljJboiIfmrITkvY3mlbTnkIY8L3RleHQ+CiAgPHBhdGggZD0iTTkwMSA0NDYgVjQ1NiIgY2xhc3M9ImNvbm5lY3RvciIgc3Ryb2tlPSIjZWY2YTMyIiBtYXJrZXItZW5kPSJ1cmwoI2Fyck9yYW5nZSkiLz4KICA8cmVjdCB4PSI4MDMiIHk9IjQ1OSIgd2lkdGg9IjE5NiIgaGVpZ2h0PSI1MCIgcng9IjgiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI2Y1YzRhOSIvPjx0ZXh0IHg9IjkwMSIgeT0iNDc5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+RWxpZ2liaWxpdHnvvI9NYXBwaW5nIOaqouafpTwvdGV4dD48dGV4dCB4PSI5MDEiIHk9IjQ5NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuizh+agvOOAgeitmOWIpeiIh+WTgeizquimj+WJhzwvdGV4dD4KICA8cGF0aCBkPSJNOTAxIDUwOSBWNTE5IiBjbGFzcz0iY29ubmVjdG9yIiBzdHJva2U9IiNlZjZhMzIiIG1hcmtlci1lbmQ9InVybCgjYXJyT3JhbmdlKSIvPgogIDxyZWN0IHg9IjgwMyIgeT0iNTIyIiB3aWR0aD0iMTk2IiBoZWlnaHQ9IjUwIiByeD0iOCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjZjVjNGE5Ii8+PHRleHQgeD0iOTAxIiB5PSI1NDIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIj5DYW5kaWRhdGUgU25hcHNob3Q8L3RleHQ+PHRleHQgeD0iOTAxIiB5PSI1NTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib2R5Ij7lgJnpgbjlv6vnhafvvIjlsJrmnKrnmbzluIPvvIk8L3RleHQ+CiAgPHBhdGggZD0iTTkwMSA1NzIgVjU4MiIgY2xhc3M9ImNvbm5lY3RvciIgc3Ryb2tlPSIjZWY2YTMyIiBtYXJrZXItZW5kPSJ1cmwoI2Fyck9yYW5nZSkiLz4KICA8cmVjdCB4PSI4MDMiIHk9IjU4NSIgd2lkdGg9IjE5NiIgaGVpZ2h0PSI1MCIgcng9IjgiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI2Y1YzRhOSIvPjx0ZXh0IHg9IjkwMSIgeT0iNjA1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+QXZhaWxhYmlsaXR5U25hcHNob3RQdWJsaXNoaW5nPC90ZXh0Pjx0ZXh0IHg9IjkwMSIgeT0iNjIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+5qqi5p+l5b6M55m85biD5b+r54WnPC90ZXh0PgogIDxyZWN0IHg9IjgwMyIgeT0iNjQ0IiB3aWR0aD0iMTk2IiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iI2ZmZjBlOCIgc3Ryb2tlPSIjZjZjNmFkIi8+PHRleHQgeD0iOTAxIiB5PSI2NjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJ0aW55IiBmaWxsPSIjYTc0NjIwIj7lpLHmlZfmmYLkv53nlZnoiIrnmoTmnInmlYjlv6vnhac8L3RleHQ+CjwvZz4KPCEtLSBEYXRhIGxheWVyIC0tPgo8Zz4KICA8cmVjdCB4PSIxMDM0IiB5PSIyMDciIHdpZHRoPSIxOTQiIGhlaWdodD0iMjUyIiByeD0iMTAiIGZpbGw9IiNlZGY3ZmYiIHN0cm9rZT0iI2E5ZDBmMiIvPgogIDx0ZXh0IHg9IjExMzEiIHk9IjIzMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiIGZpbGw9IiMxNDVjOWMiPkEuIE15U1FM77yI5oyB5LmF5YyW5YSy5a2Y77yJPC90ZXh0PgogIDxlbGxpcHNlIGN4PSIxMTMxIiBjeT0iMjU4IiByeD0iMzgiIHJ5PSIxMSIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjNDM4Y2M4IiBzdHJva2Utd2lkdGg9IjEuNSIvPjxwYXRoIGQ9Ik0xMDkzIDI1OCBWMjg0IEMxMDkzIDI5OSAxMTY5IDI5OSAxMTY5IDI4NCBWMjU4IiBmaWxsPSIjZmZmIiBzdHJva2U9IiM0MzhjYzgiIHN0cm9rZS13aWR0aD0iMS41Ii8+PGVsbGlwc2UgY3g9IjExMzEiIGN5PSIyODQiIHJ4PSIzOCIgcnk9IjExIiBmaWxsPSIjZTFmMGZmIiBzdHJva2U9IiM0MzhjYzgiIHN0cm9rZS13aWR0aD0iMS41Ii8+PHRleHQgeD0iMTEzMSIgeT0iMjc4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iODAwIiBmaWxsPSIjMTc2N2E3Ij5NeVNRTDwvdGV4dD4KICA8cmVjdCB4PSIxMDQ1IiB5PSIzMTAiIHdpZHRoPSIxNzIiIGhlaWdodD0iMzgiIHJ4PSI3IiBjbGFzcz0iZGJjYXJkIi8+PHRleHQgeD0iMTEzMSIgeT0iMzI2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+5YGc6LuK55uu6YyE77yPU291cmNlIE1hcHBpbmc8L3RleHQ+PHRleHQgeD0iMTEzMSIgeT0iMzQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0idGlueSI+5aC056uZ6K2Y5Yil6IiH5L6G5rqQ5bCN5oeJPC90ZXh0PgogIDxyZWN0IHg9IjEwNDUiIHk9IjM1NCIgd2lkdGg9IjE3MiIgaGVpZ2h0PSIzOCIgcng9IjciIGNsYXNzPSJkYmNhcmQiLz48dGV4dCB4PSIxMTMxIiB5PSIzNzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIj7op4DmuKzos4fmlpk8L3RleHQ+PHRleHQgeD0iMTEzMSIgeT0iMzg0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0idGlueSI+6KeA5ris6IiHIHNvdXJjZV9zdGF0Ze+8j2Nvb2xkb3duPC90ZXh0PgogIDxyZWN0IHg9IjEwNDUiIHk9IjM5OCIgd2lkdGg9IjE3MiIgaGVpZ2h0PSIzOCIgcng9IjciIGNsYXNzPSJkYmNhcmQiLz48dGV4dCB4PSIxMTMxIiB5PSI0MTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIj7lgJnpgbjvvI/lt7LnmbzluIPlv6vnhac8L3RleHQ+PHRleHQgeD0iMTEzMSIgeT0iNDI4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0idGlueSI+5YCZ6YG46IiH5q2j5byP55m85biD5YiG6ZaLPC90ZXh0PgogIDxyZWN0IHg9IjEwMzQiIHk9IjQ3MCIgd2lkdGg9IjE5NCIgaGVpZ2h0PSIyMDYiIHJ4PSIxMCIgZmlsbD0iI2ZmZjVmNSIgc3Ryb2tlPSIjZjFiNWI4Ii8+CiAgPHRleHQgeD0iMTEzMSIgeT0iNDkzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCIgZmlsbD0iI2FkMjkzNCI+Qi4gUmVkaXPvvIjlv6vlj5bvvI/nn63mnJ/ni4DmhYvvvIk8L3RleHQ+CiAgPHJlY3QgeD0iMTA0NSIgeT0iNTA3IiB3aWR0aD0iMTcyIiBoZWlnaHQ9IjU3IiByeD0iOCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjZjBjNWM3Ii8+PHRleHQgeD0iMTEzMSIgeT0iNTI5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+UXVlcnkgU3RhdGXvvIhUVEzvvIk8L3RleHQ+PHRleHQgeD0iMTEzMSIgeT0iNTQ3IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+5p+l6Kmi54uA5oWL6IiH5pyJ5pWI5pyf6ZmQPC90ZXh0PgogIDxyZWN0IHg9IjEwNDUiIHk9IjU3MiIgd2lkdGg9IjE3MiIgaGVpZ2h0PSI1NyIgcng9IjgiIGZpbGw9IiNmZmYiIHN0cm9rZT0iI2YwYzVjNyIvPjx0ZXh0IHg9IjExMzEiIHk9IjU5NCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPlJlZnJlc2ggQ29vcmRpbmF0aW9uPC90ZXh0Pjx0ZXh0IHg9IjExMzEiIHk9IjYxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuWIt+aWsOefremOlu+8iOWGt+WNu+eUsSBNeVNRTCDmjqfliLbvvIk8L3RleHQ+CiAgPHRleHQgeD0iMTEzMSIgeT0iNjUxIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0idGlueSI+5L6d5a+m6Zqb6Kit5a6a5L+d5a2Y55+t5pyf54uA5oWLPC90ZXh0Pgo8L2c+CjwhLS0gRXh0ZXJuYWwgc2VydmljZXMgLS0+CjxnPgogIDxyZWN0IHg9IjEyNjQiIHk9IjIwNyIgd2lkdGg9IjMxMCIgaGVpZ2h0PSIxNDIiIHJ4PSIxMCIgY2xhc3M9ImNhcmQiLz48dGV4dCB4PSIxNDE5IiB5PSIyMzMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMjIiPvCfj5s8L3RleHQ+PHRleHQgeD0iMTQxOSIgeT0iMjU2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+5paw5YyX5biC5a6Y5pa55YGc6LuK6LOH5paZPC90ZXh0Pjx0ZXh0IHg9IjE0MTkiIHk9IjI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuaWsOWMl+W4guaUv+W6nOmWi+aUvuizh+aWmTwvdGV4dD48dGV4dCB4PSIxMjgyIiB5PSIyOTkiIGNsYXNzPSJib2R5Ij7igKIg6Lev6YKK77yP6Lev5aSW5L6G5rqQ6LOH5paZPC90ZXh0Pjx0ZXh0IHg9IjEyODIiIHk9IjMxOSIgY2xhc3M9ImJvZHkiPuKAoiDnlLHnjajnq4vliLfmlrDmtYHnqIvmk7flj5Y8L3RleHQ+PHRleHQgeD0iMTI4MiIgeT0iMzM3IiBjbGFzcz0idGlueSI+5LiN5piv5q+P5qyh5L2/55So6ICF5p+l6Kmi6YO95Yi35pawPC90ZXh0PgogIDxyZWN0IHg9IjEyNjQiIHk9IjM2MyIgd2lkdGg9IjMxMCIgaGVpZ2h0PSIxMzAiIHJ4PSIxMCIgY2xhc3M9ImNhcmQiLz48dGV4dCB4PSIxMjg0IiB5PSIzOTAiIGZvbnQtc2l6ZT0iMjQiPvCfk408L3RleHQ+PHRleHQgeD0iMTQxOSIgeT0iMzg5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+R29vZ2xlIFJvdXRlcyBFVEE8L3RleHQ+PHRleHQgeD0iMTI4MiIgeT0iNDE2IiBjbGFzcz0iYm9keSI+4oCiIOi1t+m7nuWIsOebrueahOWcsOeahOihjOi7iuaZgumWkzwvdGV4dD48dGV4dCB4PSIxMjgyIiB5PSI0MzciIGNsYXNzPSJib2R5Ij7igKIg6Lev5rOB77yP6Lev5b6R6LOH6KiK77yI5L6dIEFQSe+8iTwvdGV4dD48dGV4dCB4PSIxMjgyIiB5PSI0NTgiIGNsYXNzPSJib2R5Ij7igKIg55Sx5p+l6Kmi5pyN5YuZ5oyJ5qKd5Lu25ZG85Y+rPC90ZXh0Pjx0ZXh0IHg9IjEyODIiIHk9IjQ3OCIgY2xhc3M9InRpbnkiPuWklumDqOacjeWLmee1kOaenOWPr+iDveWkseaVl+aIluS4jeWPr+eUqDwvdGV4dD4KICA8cmVjdCB4PSIxMjY0IiB5PSI1MDciIHdpZHRoPSIzMTAiIGhlaWdodD0iMTY5IiByeD0iMTAiIGNsYXNzPSJjYXJkIi8+PHRleHQgeD0iMTI4MyIgeT0iNTM2IiBmb250LXNpemU9IjI0Ij7wn5e6PC90ZXh0Pjx0ZXh0IHg9IjE0MTkiIHk9IjUzNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPkdvb2dsZSBNYXBz77yPUGxhY2VzPC90ZXh0Pjx0ZXh0IHg9IjEyODIiIHk9IjU2MiIgY2xhc3M9ImJvZHkiPuKAoiDlnLDlnJblkYjnj748L3RleHQ+PHRleHQgeD0iMTI4MiIgeT0iNTgzIiBjbGFzcz0iYm9keSI+4oCiIOWcsOm7nuaQnOWwi++8iFBsYWNlc++8iTwvdGV4dD48dGV4dCB4PSIxMjgyIiB5PSI2MDQiIGNsYXNzPSJib2R5Ij7igKIg5Zyw6bue6Kmz57Sw6LOH6KiKPC90ZXh0Pjx0ZXh0IHg9IjEyODIiIHk9IjYzMyIgY2xhc3M9InRpbnkiPuS+neWvpumam+WJjeerr+iIh+acjeWLmeioreWumuS9v+eUqDwvdGV4dD4KPC9nPgo8IS0tIE1haW4gYW5kIGV4dGVybmFsIGNvbm5lY3RvcnM6IGRpc3RpbmN0IHBhdGhzLCBubyBpbXBsaWNhdGlvbiB0aGF0IHVzZXIgcXVlcmllcyB0cmlnZ2VyIHJlZnJlc2ggLS0+CjxnPgogIDxwYXRoIGQ9Ik0xNTkgMzgwIEgxOTAiIGNsYXNzPSJjb25uZWN0b3IiIHN0cm9rZT0iIzE2ODVkOCIgbWFya2VyLWVuZD0idXJsKCNhcnJCbHVlKSIvPgogIDxwYXRoIGQ9Ik0zNDQgMzgwIEgzNzUiIGNsYXNzPSJjb25uZWN0b3IiIHN0cm9rZT0iIzE2ODVkOCIgbWFya2VyLWVuZD0idXJsKCNhcnJCbHVlKSIvPgogIDxwYXRoIGQ9Ik01NDEgMzgwIEg1NzAiIGNsYXNzPSJjb25uZWN0b3IiIHN0cm9rZT0iIzI0NWI5MSIgbWFya2VyLWVuZD0idXJsKCNhcnJOYXZ5KSIvPgogIDwhLS0gUXVlcnkgc2VydmljZSByZWFkcyB0aGUgcHVibGlzaGVkIE15U1FMIHNuYXBzaG90IHZpYSB0aGUgdG9wIG1hcmdpbiwgYnlwYXNzaW5nIHRoZSByZWZyZXNoIHBpcGVsaW5lIC0tPgogIDxwYXRoIGQ9Ik03NjggMjMzIEg3ODAgVjIwMSBIMTAyOCBWNDE3IEgxMDM0IiBjbGFzcz0iY29ubmVjdG9yIiBzdHJva2U9IiMyNDViOTEiIG1hcmtlci1lbmQ9InVybCgjYXJyTmF2eSkiLz4KICA8IS0tIFJlZnJlc2ggcHVibGlzaGVzIHRoZSBjaGVja2VkIHNuYXBzaG90IHRvIE15U1FMOyByb3V0ZSB0aHJvdWdoIHRoZSBuYXJyb3cgaW50ZXItcGFuZWwgZ3V0dGVyIC0tPgogIDxwYXRoIGQ9Ik05OTkgNjEwIEgxMDE2IFY0MTcgSDEwMzQiIGNsYXNzPSJjb25uZWN0b3IiIHN0cm9rZT0iI2VmNmEzMiIgbWFya2VyLWVuZD0idXJsKCNhcnJPcmFuZ2UpIi8+CiAgPCEtLSBHb3Zlcm5tZW50IGRhdGEgaXMgZmV0Y2hlZCBieSB0aGUgaW5kZXBlbmRlbnQgcmVmcmVzaCB3b3JrZmxvdywgcm91dGVkIGFib3ZlIHRoZSBwYW5lbHMgLS0+CiAgPHBhdGggZD0iTTE0MTkgMjA3IFYxMzIgSDEwMDUgVjIwNyIgY2xhc3M9ImNvbm5lY3RvciIgc3Ryb2tlPSIjZWY2YTMyIiBzdHJva2UtZGFzaGFycmF5PSI2IDQiIG1hcmtlci1lbmQ9InVybCgjYXJyT3JhbmdlKSIvPgo8L2c+CjwhLS0gT2ZmbGluZSBNTCBiYW5kIC0tPgo8Zz4KICA8cmVjdCB4PSIxMiIgeT0iNzE1IiB3aWR0aD0iMTAzMCIgaGVpZ2h0PSIyMDUiIHJ4PSIxMiIgZmlsbD0iI2ZiZjdmZiIgc3Ryb2tlPSIjYzdhN2VlIiBzdHJva2Utd2lkdGg9IjEuMyIvPgogIDxwYXRoIGQ9Ik0yNCA3MTUgSDEwMzAgUTEwNDIgNzE1IDEwNDIgNzI3IFY3NTIgSDEyIFY3MjcgUTEyIDcxNSAyNCA3MTVaIiBmaWxsPSIjNzc0MmJkIi8+CiAgPHRleHQgeD0iMzAiIHk9IjczOSIgY2xhc3M9ImhlYWQiPuKRpyBPZmZsaW5lIE1M77yPVHJhaW5pbmfjgIDpm6Lnt5rmqKHlnovoqJPnt7TvvIjot6/lpJblgZzou4rpoJDmuKzvvIk8L3RleHQ+CiAgPGc+CiAgICA8cmVjdCB4PSIyNyIgeT0iNzY1IiB3aWR0aD0iMTQ1IiBoZWlnaHQ9IjcyIiByeD0iOCIgY2xhc3M9ImNhcmQiLz48dGV4dCB4PSI5OSIgeT0iNzg5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+cGFya2luZy1kYXRhLWNvbGxlY3RvcjwvdGV4dD48dGV4dCB4PSI5OSIgeT0iODA4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+6Zui57ea6LOH5paZ5pS26ZuGPC90ZXh0Pjx0ZXh0IHg9Ijk5IiB5PSI4MjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJ0aW55Ij7mrbflj7LntKDmnZA8L3RleHQ+CiAgICA8cGF0aCBkPSJNMTcyIDgwMSBIMTkwIiBzdHJva2U9IiM4YjQ4ZDciIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWRhc2hhcnJheT0iNSA0IiBtYXJrZXItZW5kPSJ1cmwoI2FyclB1cnBsZSkiLz4KICAgIDxyZWN0IHg9IjE5MyIgeT0iNzY1IiB3aWR0aD0iMTQ1IiBoZWlnaHQ9IjcyIiByeD0iOCIgY2xhc3M9ImNhcmQiLz48dGV4dCB4PSIyNjUiIHk9Ijc4OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJveGhlYWQiPuatt+WPsuizh+aWme+8j+aomeexpDwvdGV4dD48dGV4dCB4PSIyNjUiIHk9IjgwOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPua4heeQhuiIh+aZgumWk+WIh+WIhjwvdGV4dD48dGV4dCB4PSIyNjUiIHk9IjgyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9InRpbnkiPuS+neWvpumam+iok+e3tOa1geeoizwvdGV4dD4KICAgIDxwYXRoIGQ9Ik0zMzggODAxIEgzNTYiIHN0cm9rZT0iIzhiNDhkNyIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtZGFzaGFycmF5PSI1IDQiIG1hcmtlci1lbmQ9InVybCgjYXJyUHVycGxlKSIvPgogICAgPHJlY3QgeD0iMzU5IiB5PSI3NjUiIHdpZHRoPSIxNDUiIGhlaWdodD0iNzIiIHJ4PSI4IiBjbGFzcz0iY2FyZCIvPjx0ZXh0IHg9IjQzMSIgeT0iNzg5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+54m55b616IiH6LOH5paZ5qqi5p+lPC90ZXh0Pjx0ZXh0IHg9IjQzMSIgeT0iODA4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+6KiT57e077yP6amX6K2J77yP5ris6KmmPC90ZXh0Pjx0ZXh0IHg9IjQzMSIgeT0iODI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0idGlueSI+6Ziy5q2i6LOH5paZ5rSp5ryPPC90ZXh0PgogICAgPHBhdGggZD0iTTUwNCA4MDEgSDUyMiIgc3Ryb2tlPSIjOGI0OGQ3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1kYXNoYXJyYXk9IjUgNCIgbWFya2VyLWVuZD0idXJsKCNhcnJQdXJwbGUpIi8+CiAgICA8cmVjdCB4PSI1MjUiIHk9Ijc2NSIgd2lkdGg9IjE0NSIgaGVpZ2h0PSI3MiIgcng9IjgiIGNsYXNzPSJjYXJkIi8+PHRleHQgeD0iNTk3IiB5PSI3ODkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJib3hoZWFkIj5CYXNlbGluZe+8j+Wbnua4rDwvdGV4dD48dGV4dCB4PSI1OTciIHk9IjgwOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImJvZHkiPuavlOi8g+WAmemBuOaooeWeizwvdGV4dD48dGV4dCB4PSI1OTciIHk9IjgyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9InRpbnkiPuipleS8sOe1kOaenOmcgOacieitieaTmjwvdGV4dD4KICAgIDxwYXRoIGQ9Ik02NzAgODAxIEg2ODgiIHN0cm9rZT0iIzhiNDhkNyIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtZGFzaGFycmF5PSI1IDQiIG1hcmtlci1lbmQ9InVybCgjYXJyUHVycGxlKSIvPgogICAgPHJlY3QgeD0iNjkxIiB5PSI3NjUiIHdpZHRoPSIxNDUiIGhlaWdodD0iNzIiIHJ4PSI4IiBjbGFzcz0iY2FyZCIvPjx0ZXh0IHg9Ijc2MyIgeT0iNzg5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+54mI5pys5YyW5qih5Z6L55Si54mpPC90ZXh0Pjx0ZXh0IHg9Ijc2MyIgeT0iODA4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm9keSI+5qqi5p+l55Si54mp6IiH54mI5pysPC90ZXh0Pjx0ZXh0IHg9Ijc2MyIgeT0iODI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0idGlueSI+5L6d5a+m6ZqbIGdhdGUg6amX6K2JPC90ZXh0PgogICAgPHBhdGggZD0iTTgzNiA4MDEgSDg1NCIgc3Ryb2tlPSIjOGI0OGQ3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1kYXNoYXJyYXk9IjUgNCIgbWFya2VyLWVuZD0idXJsKCNhcnJQdXJwbGUpIi8+CiAgICA8cmVjdCB4PSI4NTciIHk9Ijc2NSIgd2lkdGg9IjE2OSIgaGVpZ2h0PSI3MiIgcng9IjgiIGZpbGw9IiNmN2VkZmYiIHN0cm9rZT0iI2M4YThlYyIvPjx0ZXh0IHg9Ijk0MSIgeT0iNzg3IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+RXhwZXJpbWVudGFsT2ZmU3RyZWV0PC90ZXh0Pjx0ZXh0IHg9Ijk0MSIgeT0iODA0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iYm94aGVhZCI+UHJlZGljdGlvblNlcnZpY2U8L3RleHQ+PHRleHQgeD0iOTQxIiB5PSI4MjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJ0aW55Ij7lr6bpqZfmgKfmjqjoq5bmlbTlkIg8L3RleHQ+CiAgPC9nPgogIDxyZWN0IHg9IjI3IiB5PSI4NTAiIHdpZHRoPSI5OTkiIGhlaWdodD0iNTMiIHJ4PSI5IiBmaWxsPSIjZmZmMGYxIiBzdHJva2U9IiNmNGM0YzciLz4KICA8cmVjdCB4PSI0MyIgeT0iODYzIiB3aWR0aD0iMTU1IiBoZWlnaHQ9IjI3IiByeD0iNyIgZmlsbD0iI2ZmZTFlMyIgc3Ryb2tlPSIjZjNhOWFmIi8+PHRleHQgeD0iMTIwIiB5PSI4ODEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJwaWxsIiBmaWxsPSIjYTkyMzMxIj5FWFBFUklNRU5UX09OTFk8L3RleHQ+CiAgPHJlY3QgeD0iMjA3IiB5PSI4NjMiIHdpZHRoPSIxOTAiIGhlaWdodD0iMjciIHJ4PSI3IiBmaWxsPSIjZmZlMWUzIiBzdHJva2U9IiNmM2E5YWYiLz48dGV4dCB4PSIzMDIiIHk9Ijg4MSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9InBpbGwiIGZpbGw9IiNhOTIzMzEiPk5PVCBQUk9EVUNUSU9OIFZBTElEQVRFRDwvdGV4dD4KICA8dGV4dCB4PSI0MTQiIHk9Ijg3NCIgY2xhc3M9ImJvZHkiIGZpbGw9IiNhOTIzMzEiPui3r+WkluaooeWei+S7jeWxrOWvpumpl+majuaute+8m+WDheS+m+a4rOippuiIh+Wxleekuu+8jDwvdGV4dD48dGV4dCB4PSI0MTQiIHk9Ijg5MCIgY2xhc3M9ImJvZHkiIGZpbGw9IiNhOTIzMzEiPuWwmuacqumpl+itieeCuuato+W8j+eUn+eUoumgkOa4rOacjeWLmeOAgjwvdGV4dD4KPC9nPgo8IS0tIEluZnJhc3RydWN0dXJlIC0tPgo8Zz4KICA8cmVjdCB4PSIxMDUzIiB5PSI3MTUiIHdpZHRoPSI1MzUiIGhlaWdodD0iMjA1IiByeD0iMTIiIGZpbGw9IiNmN2Y5ZmMiIHN0cm9rZT0iI2I4YzRkMCIgc3Ryb2tlLXdpZHRoPSIxLjMiLz4KICA8cGF0aCBkPSJNMTA2NSA3MTUgSDE1NzYgUTE1ODggNzE1IDE1ODggNzI3IFY3NTIgSDEwNTMgVjcyNyBRMTA1MyA3MTUgMTA2NSA3MTVaIiBmaWxsPSIjNjY3Nzg5Ii8+CiAgPHRleHQgeD0iMTA3MiIgeT0iNzM5IiBjbGFzcz0iaGVhZCI+4pGoIEluZnJhc3RydWN0dXJl77yPRGVsaXZlcnnjgIDln7rnpI7oqK3mlr3oiIfkuqTku5g8L3RleHQ+CiAgPHJlY3QgeD0iMTA3MCIgeT0iNzY1IiB3aWR0aD0iNTAxIiBoZWlnaHQ9IjQzIiByeD0iOCIgY2xhc3M9ImNhcmQiLz48dGV4dCB4PSIxMDkwIiB5PSI3OTEiIGZvbnQtc2l6ZT0iMjEiPuKWozwvdGV4dD48dGV4dCB4PSIxMTIyIiB5PSI3ODMiIGNsYXNzPSJib3hoZWFkIj5Eb2NrZXIgQ29tcG9zZTwvdGV4dD48dGV4dCB4PSIxMTIyIiB5PSI3OTkiIGNsYXNzPSJib2R5Ij53ZWLvvI9hcGnvvI9teXNxbO+8j3JlZGlzIOWuueWZqOe3qOaOkjwvdGV4dD4KICA8cmVjdCB4PSIxMDcwIiB5PSI4MTQiIHdpZHRoPSI1MDEiIGhlaWdodD0iNDMiIHJ4PSI4IiBjbGFzcz0iY2FyZCIvPjx0ZXh0IHg9IjEwOTAiIHk9Ijg0MSIgZm9udC1zaXplPSIyMSI+4oyYPC90ZXh0Pjx0ZXh0IHg9IjExMjIiIHk9IjgzMiIgY2xhc3M9ImJveGhlYWQiPuacrOapn+mpl+itie+8j0hlYWx0aCBDaGVjazwvdGV4dD48dGV4dCB4PSIxMTIyIiB5PSI4NDgiIGNsYXNzPSJib2R5Ij7lrrnlmajllZ/li5XjgIHmnI3li5nlgaXlurfoiIflv4XopoHmuKzoqaY8L3RleHQ+CiAgPHJlY3QgeD0iMTA3MCIgeT0iODYzIiB3aWR0aD0iNTAxIiBoZWlnaHQ9IjQzIiByeD0iOCIgY2xhc3M9ImNhcmQiLz48dGV4dCB4PSIxMDkwIiB5PSI4OTAiIGZvbnQtc2l6ZT0iMjEiPuKXiTwvdGV4dD48dGV4dCB4PSIxMTIyIiB5PSI4ODEiIGNsYXNzPSJib3hoZWFkIj5HaXRIdWIgUmVwb3NpdG9yeTwvdGV4dD48dGV4dCB4PSIxMTIyIiB5PSI4OTciIGNsYXNzPSJib2R5Ij7ljp/lp4vnorznrqHnkIboiIfniYjmnKzmjqfliLY8L3RleHQ+CjwvZz4KPCEtLSBCb3R0b20gbGVnZW5kIGFuZCBoaWdobGlnaHRzIC0tPgo8Zz4KICA8cmVjdCB4PSIxMiIgeT0iOTMyIiB3aWR0aD0iNzQwIiBoZWlnaHQ9IjIyMCIgcng9IjEyIiBmaWxsPSIjZmZmIiBzdHJva2U9IiNjYmQ4ZTUiLz4KICA8dGV4dCB4PSIyOCIgeT0iOTU4IiBmb250LXNpemU9IjE3IiBmb250LXdlaWdodD0iODAwIj7lnJbkvovvvIhMZWdlbmTvvIk8L3RleHQ+CiAgPGxpbmUgeDE9IjMxIiB5MT0iOTg0IiB4Mj0iNzQiIHkyPSI5ODQiIHN0cm9rZT0iIzE2ODVkOCIgc3Ryb2tlLXdpZHRoPSIyLjUiIG1hcmtlci1lbmQ9InVybCgjYXJyQmx1ZSkiLz48dGV4dCB4PSI4NCIgeT0iOTg4IiBjbGFzcz0iYm9keSI+5ZCM5q2l6KuL5rGC5rWB56iLPC90ZXh0PgogIDxsaW5lIHgxPSIyMjAiIHkxPSI5ODQiIHgyPSIyNjMiIHkyPSI5ODQiIHN0cm9rZT0iIzcxODA5NiIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1kYXNoYXJyYXk9IjYgNCIgbWFya2VyLWVuZD0idXJsKCNhcnJTbGF0ZSkiLz48dGV4dCB4PSIyNzMiIHk9Ijk4OCIgY2xhc3M9ImJvZHkiPuWklumDqOacjeWLmeWRvOWPqzwvdGV4dD4KICA8bGluZSB4MT0iNDEzIiB5MT0iOTg0IiB4Mj0iNDU2IiB5Mj0iOTg0IiBzdHJva2U9IiNlZjZhMzIiIHN0cm9rZS13aWR0aD0iMi41IiBtYXJrZXItZW5kPSJ1cmwoI2Fyck9yYW5nZSkiLz48dGV4dCB4PSI0NjYiIHk9Ijk4OCIgY2xhc3M9ImJvZHkiPuWumOaWueizh+aWmeWIt+aWsDwvdGV4dD4KICA8bGluZSB4MT0iMzEiIHkxPSIxMDE3IiB4Mj0iNzQiIHkyPSIxMDE3IiBzdHJva2U9IiM4YjQ4ZDciIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtZGFzaGFycmF5PSI2IDQiIG1hcmtlci1lbmQ9InVybCgjYXJyUHVycGxlKSIvPjx0ZXh0IHg9Ijg0IiB5PSIxMDIxIiBjbGFzcz0iYm9keSI+6Zui57eaIE1M77yP5a+m6amX5rWB56iLPC90ZXh0PgogIDxyZWN0IHg9IjIyMCIgeT0iMTAwNiIgd2lkdGg9IjIzIiBoZWlnaHQ9IjIwIiByeD0iNSIgZmlsbD0iI2VkZjdmZiIgc3Ryb2tlPSIjYTlkMGYyIi8+PHRleHQgeD0iMjUzIiB5PSIxMDIxIiBjbGFzcz0iYm9keSI+5oyB5LmF5YyW6LOH5paZPC90ZXh0PgogIDxyZWN0IHg9IjM2NSIgeT0iMTAwNiIgd2lkdGg9IjIzIiBoZWlnaHQ9IjIwIiByeD0iNSIgZmlsbD0iI2ZmZjVmNSIgc3Ryb2tlPSIjZjFiNWI4Ii8+PHRleHQgeD0iMzk4IiB5PSIxMDIxIiBjbGFzcz0iYm9keSI+55+t5pyf54uA5oWL77yP5b+r5Y+WPC90ZXh0PgogIDxyZWN0IHg9IjMxIiB5PSIxMDQxIiB3aWR0aD0iNjkwIiBoZWlnaHQ9IjkxIiByeD0iOSIgZmlsbD0iI2Y2ZmFmZiIgc3Ryb2tlPSIjZTBlYWY1Ii8+CiAgPHRleHQgeD0iNDciIHk9IjEwNjUiIGNsYXNzPSJib3hoZWFkIj7plrHoroDmnrbmp4vlnJbmmYLoq4voqJjkvY88L3RleHQ+CiAgPHRleHQgeD0iNDciIHk9IjEwODciIGNsYXNzPSJib2R5Ij7igKIg57ea5LiK5p+l6Kmi6K6A5Y+W5bey55m85biD5b+r54Wn77yb5a6Y5pa55L6G5rqQ5Yi35paw5piv542o56uL5rWB56iL44CCPC90ZXh0PgogIDx0ZXh0IHg9IjQ3IiB5PSIxMTA3IiBjbGFzcz0iYm9keSI+4oCiIOWAmemBuOW/q+eFp+iIh+W3sueZvOW4g+W/q+eFp+WIhumWi++8jOmBv+WFjeacqumAmumBjuaqouafpeeahOizh+aWmeebtOaOpeWwjeWkluOAgjwvdGV4dD4KICA8dGV4dCB4PSI0NyIgeT0iMTEyNSIgY2xhc3M9ImJvZHkiPuKAoiDot6/lpJbmqKHlnovnm67liY3ngrrlr6bpqZfmgKflip/og73vvIzkuI3ku6PooajmraPlvI/nlJ/nlKLpoJDmuKzog73lipvjgII8L3RleHQ+CiAgPHJlY3QgeD0iNzY1IiB5PSI5MzIiIHdpZHRoPSI4MjMiIGhlaWdodD0iMjIwIiByeD0iMTIiIGZpbGw9IiNmOWZjZmYiIHN0cm9rZT0iIzhkYzRmNSIgc3Ryb2tlLXdpZHRoPSIxLjMiLz4KICA8dGV4dCB4PSI3ODciIHk9Ijk2MCIgZm9udC1zaXplPSIxOCIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0iIzE0NWRhMCI+57O757Wx6YeN6bue77yIU3lzdGVtIEhpZ2hsaWdodHPvvIk8L3RleHQ+CiAgPGcgZmlsbD0iIzE5ODc1NCI+PHRleHQgeD0iNzkwIiB5PSI5OTMiIGZvbnQtc2l6ZT0iMTkiIGZvbnQtd2VpZ2h0PSI5MDAiPuKckzwvdGV4dD48dGV4dCB4PSI3OTAiIHk9IjEwMjciIGZvbnQtc2l6ZT0iMTkiIGZvbnQtd2VpZ2h0PSI5MDAiPuKckzwvdGV4dD48dGV4dCB4PSI3OTAiIHk9IjEwNjEiIGZvbnQtc2l6ZT0iMTkiIGZvbnQtd2VpZ2h0PSI5MDAiPuKckzwvdGV4dD48dGV4dCB4PSIxMTkwIiB5PSI5OTMiIGZvbnQtc2l6ZT0iMTkiIGZvbnQtd2VpZ2h0PSI5MDAiPuKckzwvdGV4dD48dGV4dCB4PSIxMTkwIiB5PSIxMDI3IiBmb250LXNpemU9IjE5IiBmb250LXdlaWdodD0iOTAwIj7inJM8L3RleHQ+PHRleHQgeD0iMTE5MCIgeT0iMTA2MSIgZm9udC1zaXplPSIxOSIgZm9udC13ZWlnaHQ9IjkwMCI+4pyTPC90ZXh0PjwvZz4KICA8dGV4dCB4PSI4MTciIHk9Ijk5MyIgY2xhc3M9ImJvZHkiPuaWsOiOiiBNVlAg54K655uu5YmN5bGV56S656+E5ZyNPC90ZXh0PgogIDx0ZXh0IHg9IjgxNyIgeT0iMTAyNyIgY2xhc3M9ImJvZHkiPue3muS4iuafpeipouiIh+WumOaWueS+hua6kOWIt+aWsOWIhumbojwvdGV4dD4KICA8dGV4dCB4PSI4MTciIHk9IjEwNjEiIGNsYXNzPSJib2R5Ij7kvb/nlKjlt7LnmbzluIPlv6vnhafvvIzkuKbkv53nlZnos4fmlpnlk4Hos6rpgornlYw8L3RleHQ+CiAgPHRleHQgeD0iMTIxNyIgeT0iOTkzIiBjbGFzcz0iYm9keSI+TXlTUUwg6IiHIFJlZGlzIOiyrOS7u+WIhumWizwvdGV4dD4KICA8dGV4dCB4PSIxMjE3IiB5PSIxMDI3IiBjbGFzcz0iYm9keSI+RVRBIOS+neafpeipouaineS7tuWRvOWPq+WklumDqOacjeWLmTwvdGV4dD4KICA8dGV4dCB4PSIxMjE3IiB5PSIxMDYxIiBjbGFzcz0iYm9keSI+6Lev5aSW6aCQ5ris5LuN54K65a+m6amX5oCn5Yqf6IO9PC90ZXh0PgogIDxsaW5lIHgxPSI3ODciIHkxPSIxMDgwIiB4Mj0iMTU2NyIgeTI9IjEwODAiIHN0cm9rZT0iI2Q5ZTdmNCIvPgogIDx0ZXh0IHg9Ijc4NyIgeT0iMTEwNSIgY2xhc3M9InRpbnkiPuacrOWcluS+neebruWJjeWwiOahiOaetuani+iIh+W3suefpeacjeWLmeiyrOS7u+aVtOeQhu+8m+Wvpumam+iDveWKm+S7peeoi+W8j+eivOOAgeioreWumuiIh+mpl+itiee0gOmMhOeCuua6luOAgjwvdGV4dD4KICA8dGV4dCB4PSI3ODciIHk9IjExMjciIGNsYXNzPSJ0aW55Ij7kuI3ku6Pooajlhajoh7rmiYDmnInlgZzou4rloLTlnYflt7LmlbTlkIjljbPmmYLos4fmlpnvvIzkuZ/kuI3kv53orYnmirXpgZTmmYLkuIDlrprmnInou4rkvY3jgII8L3RleHQ+CjwvZz4KPC9zdmc+PC9tYWluPjwvYm9keT48L2h0bWw+"></iframe></div></dialog><script>
-(() => {
-  const dialog = document.getElementById("architecture-detail-dialog");
-  const opener = document.querySelector("[data-open-architecture-detail]");
-  const closer = document.querySelector("[data-close-architecture-detail]");
-  opener?.addEventListener("click", () => { dialog.showModal(); closer?.focus(); });
-  closer?.addEventListener("click", () => dialog.close());
-  dialog?.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
-  window.addEventListener("keydown", event => {
-    if (!dialog?.open) return;
-    if (event.key === "Escape") { event.preventDefault(); event.stopImmediatePropagation(); dialog.close(); return; }
-    if (["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown", "PageDown", "PageUp", "Home", "End", " "].includes(event.key)) event.stopImmediatePropagation();
-  }, true);
-})();
-</script>
+
 </body>
 </html>
