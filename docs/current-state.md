@@ -8,7 +8,7 @@
 - **內容與設計邊界**：使用者在 Impeccable 元件審查中核准五個首屏區域皆由程式碼繪製。首頁以 2026-10-26 產品狀態重繪，街廓與位置標記明確標為示意；62 是符合篩選的官方觀測筆數，不是空位數。作品集沿用 frontend/src/style.css 的暖米白、深綠、字型及資訊層級；沒有加入外部字型、CDN、圖片或 API 呼叫。
 - **靜態驗證**：Python HTML parser 檢查未發現未閉合／錯置標籤、重複 ID、缺少的片段或 ARIA 參照、本機文件連結失效、外部資源或外部腳本；六張 SVG 圖表均有標題與描述。Impeccable detector 的第二次掃描指出區段水平 inset 與 Inter 字型兩類 finding；之後已補區段左右留白。Inter 是沿用既有產品字型；最後的 inset 修改沒有再跑 detector，因此不宣稱最終掃描為 clean。
 - **瀏覽器限制**：瀏覽器安全政策拒絕本工作階段讀取 file:// 頁面，並明確禁止改用本機伺服器或其他瀏覽器介面繞過。故未取得桌面／手機截圖，也未完成實際鍵盤操作、列印預覽、Console 檢查或 Impeccable finish reviewer。元件審查核准僅確認繪製方式與素材計畫，不等於首屏畫面或完整作品集通過視覺審查。
-- **交付狀態**：本次以 review/interview-kit-html 為獨立審查分支，基底為 origin/main 的 2fd9feffc910c9ba6a9058e4fcd5557952cc5bc2。CI workflow 僅監聽 main、feature/**、sprint-**、codex/** 的 push 及對 main 的 pull request；本分支不符合觸發條件。本次不建立 PR、不 Merge、不使用 workflow dispatch。推送與本機／遠端 HEAD 核對另依交付結果報告。
+- **交付狀態**：已將作品集推送到獨立審查分支 review/interview-kit-html，基底為 origin/main 的 2fd9feffc910c9ba6a9058e4fcd5557952cc5bc2，且已核對本機與遠端 HEAD 相同。CI workflow 僅監聽 main、feature/**、sprint-** 的 push、codex/** 的 push 及對 main 的 pull request；本分支不符合觸發條件。本次不建立 PR、不 Merge、不使用 workflow dispatch。
 
 ## 2026-10-26 移除預設出發地
 
