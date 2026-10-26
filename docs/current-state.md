@@ -7,6 +7,11 @@
 - **設定變更**：Web 的 Compose loopback 發布埠與本機 `.env`／`.env.example` `WEB_HTTP_PORT` 預設改為 8080；README 與部署文件中的操作網址、反向代理目的地和 health check URL 已同步。Docker Web 使用主機 8080，Compose 內 API 仍使用內部 8080；Vite 開發伺服器仍是 5173。
 - **工程審查與限制**：`docker compose --env-file .env config --quiet` 與 `git diff --check` 均通過；解析後的 Compose 設定確認 Web 發布主機埠 8080，API 沒有發布主機埠。Docker CLI 無法連線 Docker Desktop 引擎，因此本次沒有重建或重啟容器；執行中的 Web 綁定是否更新尚未驗收。變更不影響資料庫或其他服務設定。
 
+## 2026-10-26 頁面 Favicon 與品牌圖示一致
+
+- **實作與根因**：將 `frontend/public/favicon.svg` 從 Vite 預設圖案改為頁首「找車位」左側的綠色地圖圖針與中心圓點。使用者在 `18088` 仍看到紫色閃電；瀏覽器直接開啟 SVG 證實執行中的 `web` 容器還提供舊版靜態檔。重建並重建該容器後，帶 cache-busting query 的 favicon 請求已顯示新圖針。`frontend/index.html` 加上版本參數，避免 Chrome 對相同 favicon URL 沿用舊快取。
+- **工程審查與限制**：本次重建範圍限於 Compose `web`，未碰 API、資料庫或 Redis；Vite production build 隨 Docker image build 完成，web health 為 healthy。重建後的直接 SVG 已由瀏覽器確認為綠色圖針；加入版本參數後，再以 HTTP 確認首頁引用 `/favicon.svg?v=20261026`、SVG 回應為綠色圖針。既有首頁分頁需重新載入才能採用新 URL；測試套件未執行。
+
 ## 2026-10-26 移除預設出發地
 
 - **決策與實作**：依使用者指示移除捷運新莊站 O18 預設起點。前端 `origin` 初始為空；使用者先選目的地時仍建立附近停車查詢，且明確回報 ETA `NOT_REQUESTED`，不呼叫 Routes、不顯示預計抵達時刻。之後選取 Places 候選或明確使用「我的位置」會讓舊查詢失效，並按新起點自動重查、估算 ETA。需求、決策、API 與 ETA 設計已同步。
