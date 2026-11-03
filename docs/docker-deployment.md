@@ -1,6 +1,6 @@
 # Docker Compose 部署
 
-更新日期：2026-10-26。狀態：唯一正式設定為根目錄的 docker-compose.yml；本機、作品展示與單機部署共用四個服務、網路隔離、同源 API 與 MySQL 持久化。沒有遠端主機與正式金鑰時，服務仍可按降級契約運行，但不代表 Routes ETA 或停車機率已驗收。
+更新日期：2026-10-29。狀態：使用者回報目前已部署至 Hetzner 主機；唯一正式設定為根目錄的 docker-compose.yml，本機與 Hetzner 部署共用四個服務、網路隔離、同源 API 與 MySQL 持久化。部署完成不代表 Routes ETA 或停車機率已完成驗收。
 
 ## 唯一 Compose 與網路
 

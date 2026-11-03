@@ -297,15 +297,16 @@
 <main>
   <header>
     <h1>台灣停車預測｜專案進度儀表板</h1>
-    <p class="lede">新莊區 MVP 目標：選擇目的地與出發時間，取得 Google Routes ETA，顯示目的地 500 公尺內已收錄的路邊與路外停車狀態；Sprint 3 正在補齊預測前置資料治理、標籤、baseline 與模型產物證據。</p>
+    <p class="lede">目前以新莊區作為主系統試點：查詢目的地 500 公尺內已審查的路邊與路外停車資料，分開呈現官方觀測與抵達時估計；全臺資料覆蓋是長期目標，目前處於 Sprint 3 預測前置與訓練資料治理。</p>
     <div class="meta">
-      <span class="pill doing">目前：Sprint 3 車位資料完整性／地圖 UI 改版</span>
-      <span class="pill">更新：2026-10-26</span>
-      <span class="pill done">Docker API health／Web build 與 RWD smoke 通過</span>
-      <span class="pill pending">Places 真實候選人工驗收：NOT RUN</span>
+      <span class="pill doing">目前：Sprint 3 預測前置與訓練資料治理</span>
+      <span class="pill">更新：2026-11-03</span>
+      <span class="pill pending">本輪未重新驗證遠端服務</span>
+      <span class="pill pending">Places 真實候選與完整瀏覽器流程仍待驗收</span>
       <span class="pill risk">路外預測：實驗性 30／60 分鐘 ±15 分鐘</span>
-      <span class="pill pending">roadside prediction：尚未上線</span>
+      <span class="pill pending">路邊預測：資料不足</span>
     </div>
+    <div class="notice"><strong>2026-11-03 本機 Repo 複核：</strong>主系統即時來源為新北市 Open Data；TDX 尚未接入，是全臺擴充方向。依 2026-10-27 同步紀錄，伺服器有 1,880 筆路邊格與 138 個路外場站，均為 <code>ACTIVE</code>／汽車資格 <code>CONFIRMED</code>／mapping <code>VERIFIED</code>；這是已審查子集，不代表完整新莊目錄。部署文件記錄使用者回報已部署至 Hetzner，Compose Web 僅綁主機 loopback <code>127.0.0.1:8080</code>；本輪未連線遠端驗證 DNS、HTTPS 或服務健康。查詢 UI 出發時間固定為「立即」，起點可選；Routes 外部呼叫預設關閉。路外模型僅為實驗，test 三日且已分析，S3-020 尚未通過。</div>
     <div class="notice"><strong>2026-10-26 路外實驗性預測時距已放寬並完成兩場站前端正向實測：</strong>支援快照後 30／60 分鐘，各自 ±15 分鐘；其他資格與新鮮度護欄不變。API／Web 映像已重建，完整 Compose 重啟後四服務 health check 均 healthy，Web 容器內同源 `/api/health` 回 HTTP 200。使用者在「中港平面停車場」前兩次舊容差查詢均回資料不足；第三次顯示 00:50 快照、目前已滿 0 位、Google ETA 01:14（約 24 分鐘 lead），前端收到 30 分鐘模型的 `EXPERIMENTAL` 10% 機率。後續在「中誠立體停車場」顯示 01:00 快照、目前 41 位、Google ETA 01:25（約 25 分鐘 lead），收到 30 分鐘模型的 `EXPERIMENTAL` 99% 機率。兩筆確認不同場站都能走通端到端推論與呈現；`OFF_STREET_FULL`／`OFF_STREET_AVAILABLE` 描述各自目前觀測狀態，不是拒絕碼。機率仍是離線 collector 歷史資料的實驗估計，不代表正式準確率或場站個別準確率，也不是官方即時空位。產物仍標記 `EXPERIMENT_ONLY`／`publishToOnlineSystem=false`，holdout 只有三日且已分析，S3-020 尚未通過。</div>
     <div class="notice"><strong>2026-10-26 起點與 ETA 流程調整：</strong>已移除 O18 預設起點。使用者只選目的地時仍建立附近停車查詢；後端接受空起點、不呼叫 Google Routes，回傳 `NOT_REQUESTED` 且抵達時間為空。前端顯示附近停車資訊與「需設定出發地」，不顯示預計抵達時刻；之後設定起點會使舊查詢失效並重新規劃。這輪未執行測試、production build 或瀏覽器驗收，尚無 runtime 證據。</div>
     <div class="notice"><strong>2026-10-25 桌面／手機 UI 驗收：</strong>本輪 Docker API、Web image 已重建；Spring Places service 的多建構子注入問題已修正，API health 通過。1440×900 桌面確認頂欄 60px、底導覽 48px，「更多」面板查詢按鈕可見；390×844 手機確認 CTA 位於底導覽上方，並修正搜尋框盒模型造成的水平溢位。目的地搜尋覆蓋標籤不存在。Google Places server key 未設定，未呼叫 Google／Routes／NTPC，也未建立停車查詢；地圖標記點擊與導航連結仍待有資料的端到端人工驗收。</div>
@@ -323,9 +324,9 @@
 
   <section class="dashboard" aria-label="關鍵狀態摘要">
     <article class="metric">
-      <span>後端測試</span>
-      <strong>112 tests OK</strong>
-      <p>後端 Maven 測試 112/112 通過；本次前端 7 組測試與 production build 通過，真實瀏覽器仍待驗收。</p>
+      <span>自動化測試紀錄</span>
+      <strong>2026-10-26</strong>
+      <p>該次紀錄為後端 Maven 112/112、前端 7 組測試與 production build 通過；本次 repo 複核未重跑測試或 build。</p>
     </article>
     <article class="metric">
       <span>目前 Sprint</span>
@@ -333,14 +334,14 @@
       <p>預測前置與模型訓練資料治理；Sprint 2 主系統基線已完成。</p>
     </article>
     <article class="metric">
-      <span>最新 merge</span>
-      <strong>PR #76</strong>
-      <p>S3-015 查詢與訓練半徑改為 500 公尺，已合併。</p>
+      <span>最近產品／架構紀錄</span>
+      <strong>2026-10-29</strong>
+      <p>最近一筆產品／架構紀錄；目錄與 mapping 最近一次同步紀錄為 2026-10-27。</p>
     </article>
     <article class="metric">
       <span>下一個瓶頸</span>
-      <strong>Eligibility</strong>
-      <p>S3-017 已量到 174 筆資格不明，需先審查規則再允許完整寫入。</p>
+      <strong>目錄覆蓋</strong>
+      <p>目前只有已審查子集；仍需治理資格分類、來源差異與完整新莊覆蓋。</p>
     </article>
   </section>
 
@@ -376,12 +377,12 @@
         <div class="progress-row">
           <div class="progress-label">前端 Maps／Places 結果頁</div>
           <div class="track"><div class="fill blue" style="width: 70%"></div></div>
-          <div class="progress-value">驗收候選</div>
+          <div class="progress-value">查詢流程已實作；真實 Places／跨端驗收待完成</div>
         </div>
         <div class="progress-row">
           <div class="progress-label">頁面可見時自動刷新</div>
           <div class="track"><div class="fill blue" style="width: 75%"></div></div>
-          <div class="progress-value">驗收候選</div>
+          <div class="progress-value">受控刷新已實作；完整瀏覽器驗收待完成</div>
         </div>
         <div class="progress-row">
           <div class="progress-label">預測基準與模型</div>
@@ -396,8 +397,8 @@
       <div class="panel">
         <h2>目前可展示</h2>
         <ul class="next-list">
-          <li>單一安全 Docker Compose 可啟動，隔離環境四服務均 healthy。</li>
-          <li>建立查詢會取得 Google Routes ETA，或明確降級。</li>
+          <li>Compose 只將 Web 發布至主機 loopback；API、MySQL、Redis 僅在內部網路。部署文件記錄 Hetzner 部署，但本輪未重驗遠端健康狀態。</li>
+          <li>有起點且 Routes 外部呼叫與伺服器設定有效時才取得 ETA；否則附近停車查詢仍可使用並明確降級。</li>
           <li>使用者查詢只讀 PUBLISHED snapshot，不讀 CANDIDATE 或 REJECTED。</li>
           <li>刷新失敗、品質拒絕或來源不完整時保留舊的已發布快照。</li>
           <li>條件符合時，路外單場可見實驗性 30／60 分鐘估計，並與官方目前觀測分開標示。</li>
@@ -406,7 +407,7 @@
       <div class="panel">
         <h2>目前不可宣稱</h2>
         <ul class="risk-list">
-          <li>完整新莊 catalog 尚未正式寫入 DB；S3-017 dry-run 已完成，但 recommendation 仍為 <code>REVIEW_ELIGIBILITY_RULES</code>。</li>
+          <li>完整新莊 catalog 尚未完成治理；目前 1,880 筆路邊格與 138 個路外場站是已審查子集，伺服器直接來源 dry-run 候選較少，仍需查明覆蓋與資格差異。</li>
           <li>端到端刷新寫入與發布已有單輪候選量測，但尚未形成正式 SLA。</li>
           <li>路外線上輸出目前只有實驗性預覽，尚非通過 S3-020 的可信模型；roadside 維持資料不足。</li>
           <li>訓練 collector 不參與使用者查詢。</li>
@@ -461,21 +462,21 @@
       <h2>前端體驗</h2>
       <span class="pill doing">下一步</span>
       <ul>
-        <li>接入 <code>GOOGLE_MAPS_BROWSER_API_KEY</code>。</li>
-        <li>使用 Maps JavaScript API 與 Places API (New)。</li>
-        <li>建立結果頁地圖、500 公尺圓與停車清單。</li>
-        <li>頁面可見時先只讀恢復，再受控自動刷新一次。</li>
+        <li>瀏覽器 Maps／Places 需要受限制的 browser key；未設定時地點搜尋不可用。</li>
+        <li>使用者可搜尋目的地、設定起點或選擇目前位置；目前只提供「立即」出發。</li>
+        <li>結果頁呈現地圖、附近清單與篩選；地圖 viewport 讀取不觸發官方來源刷新。</li>
+        <li>頁面恢復顯示時先讀取狀態，再依資料狀況受控刷新；仍待完整瀏覽器端到端驗收。</li>
       </ul>
     </article>
     <article class="lane">
       <h2>預測與資料</h2>
-      <span class="pill doing">首輪 80/10/10 已完成</span>
+        <span class="pill doing">離線實驗已完成；正式模型 gate 未通過</span>
       <ul>
-        <li>collector 匯出只供離線訓練，不進主查詢。</li>
-        <li>路外已進 baseline 回測；路邊已完成舊 ZIP 離線 re-label、500 公尺 dry-run 重跑與候選圓 baseline。</li>
-        <li>31 日資料已訓練 4 組 Logistic Regression；只有 roadside 60m validation 選中，test Brier 0.1094，仍待更多日期與正式 gate。</li>
-        <li>正式模型方向改為 ETA-aware：依出發地到目的地車程決定 label 時間。</li>
-        <li>新莊 MVP 即時資料路線已確認可用新北市官方全量資料本地篩選；S3-017 已量到 catalog 候選 2,037 筆，但 eligibility unknown 仍需審查。</li>
+        <li><code>parking-data-collector</code> 僅產生離線訓練／回測素材，不參與使用者查詢或主系統刷新。</li>
+        <li>首輪 31 天資料按時間切成 train／validation／test 25／3／3 天；test 日期已分析，不是新的 holdout。</li>
+        <li>路外校準 persistence 三日 test 的 30／60 分鐘 Brier 為 0.0115／0.0163，固定 persistence 為 0.0130／0.0178；證據不足以通過正式准入。</li>
+        <li>主系統目前只有路外 30／60 分鐘實驗性預覽；路邊維持 <code>INSUFFICIENT_DATA</code>。</li>
+        <li>下一步是補足 ETA-aware 標籤、資料品質盤點、正式回測與 S3-020 假陽性／near-full／校準／coverage gate。</li>
         <li>TDX 2026-09-17 至 2026-09-23 新北市路邊歷史 raw data 未下載：metadata 顯示全市 35,480,193 筆、5,403.07 MB；需另行確認是否願意消耗大量點數。</li>
         <li>正式預測仍未通過 gate；路外限定條件可以回傳 `EXPERIMENTAL`，不代表正式驗證。</li>
         <li>不可用隨機或假機率作展示。</li>
@@ -553,7 +554,7 @@
           <td>Sprint 3 下一批規劃</td>
           <td>S3-016、S3-017、S3-018、S3-019、S3-020、S3-009</td>
           <td><span class="pill doing">已建立 Issue</span></td>
-          <td>S3-016 已收斂 TDX／新北市來源覆蓋與 canonical 狀態對照；S3-017 舊一輪 dry-run 為 2,037 accepted／174 unknown。2026-10-25 依來源更新重新 dry-run 為 2,250 scoped rows、1,975 accepted、164 unknown、111 ineligible；已將 confirmed eligible reviewed subset 匯入 Compose 主 DB（路邊 1,880、路外 95），未知與不符合資格資料仍排除，完整新莊覆蓋仍需資格／範圍審查；S3-018 定義 PUBLISHED 觀測歷史匯出與 ML 橋接；S3-019 建立 ETA-aware query-like 訓練樣本；S3-020 建立假陽性、near-full、calibration、coverage 與拒絕率 gate；S3-009 只在前述證據足夠後處理模型版本化、離線推論與回滾。</td>
+          <td>S3-016 已收斂 TDX／新北市來源覆蓋與 canonical 狀態對照。2026-10-27 伺服器官方來源 dry-run 為 scoped rows 1,731、accepted candidates 1,583、unknown eligibility 78，recommendation 為 <code>REVIEW_ELIGIBILITY_RULES</code>，本次未寫入。另一方面，經審查的 1,880 筆路邊格與 138 個路外場站已同步至伺服器；兩者差異表示來源覆蓋及資格分類仍需治理，不能視為完整新莊 catalog。S3-018 定義 PUBLISHED 觀測歷史匯出與 ML 橋接；S3-019 建立 ETA-aware query-like 訓練樣本；S3-020 建立假陽性、near-full、calibration、coverage 與拒絕率 gate；S3-009 只在前述證據足夠後處理模型版本化、離線推論與回滾。</td>
         </tr>
       </tbody>
     </table>
@@ -570,7 +571,7 @@
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/85">S3-024</a> 遠端 HTTPS、同源 API、用量上限與備份還原演練。</li>
         <li><a href="https://github.com/liujiawei-tw/taiwan-parking-forecast/issues/86">S3-025</a> 固定版本、實際遠端人工驗收與發布交付。</li>
       </ol>
-      <p>首輪三段時間切分訓練與測試已完成，僅 roadside 60 分鐘候選在這批留出資料中優於 persistence；線上仍為空機率與資料不足。後續仍需 S3-018 匯出契約、S3-019 ETA-aware 樣本、S3-020 風險與校準 gate，再進 S3-026 擴大候選訓練、S3-009 版本化與 S3-027 線上推論。完整新莊覆蓋與正式抵達機率尚未完成。</p>
+      <p>離線資料已完成 25／3／3 天時間切分；目前路外 calibrated persistence 三日 test 指標較固定 persistence 低，但 test 日期已分析過，不能當新 holdout。線上只提供受護欄限制的路外實驗預覽，路邊仍為資料不足。後續依序治理 catalog／mapping 覆蓋、累積官方端到端量測、盤點 collector 資料與 ETA-aware 標籤，再完成 S3-020 風險與校準 gate；正式模型准入與完整新莊覆蓋尚未完成。</p>
       <h3>2026-10-04 舊建議（保留歷史）</h3>
       <ol class="next-list">
         <li>S3-016 已收斂：新莊 MVP 即時來源以新北市官方 Open Data 為主，TDX 暫作全臺擴充與交叉驗證。</li>

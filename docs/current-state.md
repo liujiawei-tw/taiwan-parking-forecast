@@ -1,6 +1,52 @@
 # 目前狀態
 
-更新日期：2026-10-27。
+更新日期：2026-11-03。
+
+## 2026-11-03 本機 Repo 複核與 README 改寫
+
+- **檢查範圍**：複核 `main`、最新進度文件、部署與 Sprint 3 文件，並讀取前後端查詢／刷新程式、Compose 設定、離線模型程式與 CI workflow。工作樹沒有後端、前端或 `ml-training` 程式碼變更；複核前最新產品／架構紀錄仍為 2026-10-29，最新 catalog／mapping 伺服器同步紀錄為 2026-10-27。
+- **已確認事實—產品與來源**：主系統目前以新北市 Open Data 作為新莊 MVP 即時來源；TDX 尚未接入主系統，是全臺擴充方向。查詢半徑為 500 公尺，前端出發時間固定為「立即」，起點可選；沒有起點時 API 不呼叫 Routes。Compose 預設停用 Routes 外部呼叫。Google Places 設施結果是補充地點，不能當作官方即時空位。
+- **已確認事實—目錄與刷新**：截至 2026-10-27，伺服器已同步本機審查過的 1,880 筆路邊格與 138 個路外場站，均為 `ACTIVE`／汽車資格 `CONFIRMED`／mapping `VERIFIED`。這是可用子集，不是完整新莊目錄；伺服器直接來源 dry-run 的候選較少，仍須治理來源覆蓋與資格分類。官方分頁須讀到空頁才算完整；未完成遍歷會拒絕發布，查詢只讀 `PUBLISHED` snapshot，刷新失敗保留舊快照。
+- **已確認事實—模型**：離線樣本日期為 2026-09-24 至 2026-10-24，時間切分為 train／validation／test 25／3／3 天。現行線上預覽只限路外 30／60 分鐘實驗參數，輸入 snapshot 年齡與 ETA 均有護欄；已分析的三日 test Brier 為 0.0115／0.0163，固定 persistence 為 0.0130／0.0178。由於 test 日期已分析、樣本僅三日，且產物標示 `EXPERIMENT_ONLY`，這些分數不足以證明正式模型能力。路邊仍為 `INSUFFICIENT_DATA`，S3-020 正式准入未通過。
+- **部署狀態與限制**：`docs/docker-deployment.md` 記錄使用者回報系統已部署至 Hetzner；根目錄 Compose 的 Web 僅發布至主機 loopback `127.0.0.1:8080`，API／MySQL／Redis 留在內部網路。本次 repo 複核未連線遠端主機，因此不把這份部署紀錄當成目前 DNS、HTTPS、服務健康或正式使用者流程驗收證據。
+- **進度文件同步**：保持 Sprint 3 預測前置與訓練資料治理階段。下一步仍是 catalog／mapping 覆蓋與資格治理、官方來源端到端量測、collector 訓練資料品質與 ETA-aware 標籤、baseline／第一版模型實驗及模型產物版本化。已把 `docs/project-status.html` 更新日期改為 2026-11-03，修正目錄筆數、前端進度與模型摘要；保留完整覆蓋、正式准入及遠端服務狀態尚未驗收的界線。
+- **README 與封存**：根目錄 `README.md` 依本次 repo 複核整理成面試用專案介紹，呈現現行功能、部署邊界、工程取捨、模型證據與限制；原 README 內容保留於 `docs/README-archive-2026-11-03.md`，並修正封存檔的相對連結。未執行專案測試套件、build 或遠端服務驗收。
+
+## 2026-11-03 文件明確標示新莊區試點
+
+- **產品目標與現況分開**：長期目標仍是逐步支援全臺有提供資料的停車場；目前主系統試點明確為新北市新莊區，官方即時來源採新北市 Open Data。TDX 尚未接入主系統，保留為全臺擴充方向。
+- **試點界線**：現行服務使用新莊 MVP 矩形支援區與 500 公尺查詢半徑；矩形邊界不等於完整行政區，資料目錄也未涵蓋新莊所有停車設施。2026-10-27 已同步的 1,880 筆路邊格與 138 個路外場站只是經審查子集。
+- **文件同步**：`README.md` 已直接標示目前的新莊試點；本次將過時且仍稱 Sprint 0 草案的 `docs/project-brief.md` 更新為目前產品目標、已確認試點和未完成範圍，與 `docs/PRODUCT.md`、`docs/requirements.md`、`docs/decisions.md` 及 `docs/roadmap.md` 的既有決定一致。`docs/project-status.html` 摘要也補上「新莊試點」措辭。
+- **工程審查與限制**：此項是文件範圍澄清，沒有改變產品優先順序、查詢區域、資料來源設定或 Sprint 階段。完整 catalog／mapping、來源端到端量測及模型准入仍未完成；本次未執行專案測試或 build。
+
+## 2026-10-29 系統架構簡報
+
+- 完成 `docs/presentations/system-architecture/index.html` 與大綱 `docs/presentations/system-architecture/outline.md`，共 9 頁：封面後兩頁說明產品需求與解決的問題；最後保留使用者選定的「官方分頁提早截斷」案例，移除另一個案例頁。未填入未提供的演講時間；不含 Sprint 或 Hetzner。
+- 瑞士國際主義版型沿用目前前端 `frontend/src/style.css` 配色：暖米白 `#f7f3e9`、深藍灰 `#20394e`、綠色 `#08784f`，並以停車場藍 `#3c6f9e` 標記路外類別。
+- 附近查詢頁列出 5 個實際端點；用途說明改為國三學生也容易理解的白話，保留 API 路徑，解釋送出查詢、查看進度、取得附近資料、依地圖畫面分批載入與受控更新。
+- 第 2、4、6、7 頁依大三學生的理解程度改寫：先說明查詢需要哪些資訊，再解釋網頁／後端／資料庫分工、六張 MySQL 表的用途，以及歷史資料如何檢查、切分與評估；必要技術名稱保留並補上白話解釋。
+- 開發案例依 2026-10-25 新北市來源分頁上限、空頁完成規則與三頁驗證結果；包含 138 筆已映射發布、1,243 筆未映射、0 筆失敗，並註明只代表已核對子集。
+- **工程審查與限制**：Swiss deck 靜態檢查通過 9 頁；演講者模式通過，9 份備註與頁面 ID 相符、0 警告；演講者 CSS／JavaScript 同步檢查通過，`git diff --check` 通過。Impeccable 首輪發現次要文字透明度造成低對比，已移除相關透明度並提高深色底文字；主要色組人工核算為 5.26:1–10.79:1。環境未安裝 Playwright，未完成瀏覽器尺寸量測或截圖目視驗收；未執行專案測試套件。
+
+## 2026-10-29 現行系統架構圖
+
+- 新增 `docs/system-architecture.svg` 與 `docs/system-architecture.md`，依目前 Vue、Spring Boot、Docker Compose、資料持久化、離線訓練與 GitHub 流程繪製；為主要技術與「使用者／網頁／API／外部服務」加圖示，將基礎設施細節標籤控制在 8 字內，並補上系統特色摘要。後續重新編排為 16:9 全景版面，讓線上流程、資料與基礎設施、離線訓練及系統特色可同頁檢視。
+- 使用者流程與地圖結果文案已精簡改寫；Docker Compose 卡片明列 `web`、`api`、`MySQL`、`Redis`，API 四個功能卡、新北市 Open Data 與 Redis 均使用對應圖示。
+- MySQL 卡片依 `V1__create_core_parking_schema.sql` 列出六張實際資料表，並在各名稱後加上 5 字內用途說明。
+- SVG 根畫布使用 16:9 viewBox、viewport 全幅與等比例呈現，增加獨立全圖檢視連結，避免裁切或變形。
+- GitHub 區塊呈現程式碼版本管理、Issue 與 Pull Request，以及 GitHub Actions 後端測試、前端測試／建置與 Docker image build；CI 不自動部署。
+- **工程審查重點**：圖中明確區分新北市官方即時觀測與模型估計、主系統查詢與獨立 collector；線上路外預測標示為 `EXPERIMENTAL`。
+- **驗證與限制**：圖面依 repo 程式、workflow 與目前狀態文件核對；SVG XML 可解析，根畫布為 1920×1080 且等比例顯示，內容標籤檢查與 `git diff --check` 通過。本機 SVG 的瀏覽器截圖受 file URL 安全規則阻擋，未完成截圖目視驗收；未執行測試或改動執行中的服務。
+- `docs/system-architecture.html` 含主架構圖與基礎設施圖；主圖後續依參考方向由原 9 個元件／11 條連線版改為查詢流程摘要、系統分層與離線訓練帶。基礎設施圖保留 Hetzner、Compose 私有網路、四個服務及 GitHub Actions。六張資料表和端點細節保留在完整 SVG 與其他工程文件。
+- `node-name`、`node-name-small` 節點標題加上相符的內嵌 SVG 圖示；圖示是裝飾用途並設為輔助科技隱藏。全頁字型改為和前端相同的 `Inter, "Noto Sans TC", "PingFang TC", system-ui, sans-serif`；說明改用大三學生容易理解的文句。
+- **基礎設施事實與界線**：依 `docs/docker-deployment.md` 標記 Hetzner 主機為目前部署環境；Docker Compose 的 Web 只發布到主機 loopback `127.0.0.1:8080`，API／MySQL／Redis 僅在 Compose 網路內。MySQL 使用 `mysql-data` named volume。GitHub Actions 跑後端／前端測試及 image build，不自動推送映像或部署。HTTPS proxy 軟體尚未由文件確認，圖面標示為依主機設定。
+- **Redis 職責說明校正**：程式目前由 API 分別使用 MySQL 和 Redis；MySQL 是持久資料來源，Redis 保存短期查詢狀態、防重送識別碼與來源刷新短鎖。一般附近結果快取仍是待量測設計選項，程式尚未實作；架構圖不再把 Redis 畫成 MySQL 前置快取。
+- **工程審查與驗證**：Diagram Design `self_check.py --offline` 通過；兩張 SVG 均有各自的 title／description、9／8 個節點與 11／6 條連線，並手動檢查正交連線、節點邊界與標籤間距。`git diff --check` 通過。Diagram Design 預覽的 `file://` 網址遭瀏覽器網址政策阻擋，未完成截圖目視驗收；沒有執行專案測試或改動執行中的服務。
+- **技術棧與官方品牌圖示補充**：HTML 架構圖的 Vue 3 + Vite、Spring Boot API、MySQL 與 Redis 節點改用各自品牌標誌，並保留兩張圖原有的節點數與資料流。版本依 `frontend/package-lock.json`、`backend/pom.xml`、Maven wrapper、Dockerfile、`docker-compose.yml` 和 CI workflow 核對：Vue 3.5.43、Vite 8.3.1、Node.js 24（建置）、Nginx 1.29、Java 21、Spring Boot 4.1.1、Maven Wrapper 3.9.16、MySQL 8.4、Redis 8；另標出 Spring Data JPA／Redis 與 Flyway。`ml-training` 標成 Python 3，並註明 Python 小版本尚未鎖定。
+- **圖示來源與驗證界線**：圖示以 inline SVG 嵌入 HTML，離線瀏覽不需另載圖片。Vue／Vite 使用 create-vite 範本標誌；Spring Boot 使用綠色六角 power mark（theSVG CC0）；MySQL／Redis 使用 Diagram Design 隨附的 log-z/logos MIT 圖示素材。前一版兩張圖各有 9／11 與 8／6 個節點／連線；本次主圖已重排，驗證結果以下列重新驗證項目為準。此前此環境沒有本機 SVG 轉圖工具，且瀏覽器 `file://` 預覽曾遭政策阻擋，未完成截圖目視驗收。本次不執行專案測試，也不改動執行中的服務。
+- **參考圖方向調整**：主圖上方加入五步使用者查詢流程，中段分成使用者、前端、API、外部服務、資料儲存與基礎設施六層，底部另列五階段離線訓練；第二張部署圖獨立保留 Hetzner／Compose／CI 細節。沿用網站暖米白、深藍灰、綠色焦點、前端字型與官方技術標誌，不照搬參考圖中未確認的 EC2、Prometheus／Grafana 或 Redis 通用快取。
+- **模型資料流界線**：API classpath 目前含路外實驗參數檔，符合條件時回傳 `EXPERIMENTAL`；這些產物仍是 `EXPERIMENT_ONLY`，尚未通過正式模型准入。圖上以虛線標示 API 載入實驗參數，不表示 `ml-training` 自動推送或部署；collector／訓練工作不服務查詢、不讀線上快照、不在查詢期間訓練。路邊目前沒有線上預測模型。
+- **重新驗證與限制**：Diagram Design `self_check.py --offline` 通過；兩個 inline SVG XML 可解析，viewBox 為 1600×900、1280×720；所有 SVG ID 唯一，`use` 引用均有目標。`git diff --check` 通過。此環境仍未完成截圖目視驗收，也未執行專案測試或更動執行中的服務。
 
 ## 2026-10-27 部署目錄資料升版方式盤點
 

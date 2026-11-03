@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>台灣停車空位系統架構</title>
+  <meta name="description" content="以白話說明台灣停車空位系統的線上服務、官方資料、離線訓練與部署基礎設施。">
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f7f3e9;
+      --surface: #fffefa;
+      --ink: #20394e;
+      --muted: #536982;
+      --rule: rgba(32, 57, 78, .18);
+      --accent: #08784f;
+      --accent-tint: rgba(8, 120, 79, .08);
+      --link: #3c6f9e;
+      --font-sans: Inter, "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+    .frame { max-width: 1400px; margin: 0 auto; padding: 32px 32px 48px; }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: .08em;
+    }
+    h1, h2 { color: var(--ink); font-family: var(--font-sans); }
+    h1 { margin: 0; font-size: 30px; font-weight: 700; line-height: 1.2; }
+    h2 { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.3; }
+    .lead {
+      max-width: 960px;
+      margin: 10px 0 20px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+    .diagram-section { margin-top: 36px; padding-top: 26px; border-top: 1px solid var(--rule); }
+    .section-lead {
+      max-width: 960px;
+      margin: 8px 0 18px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+    .diagram-container { width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; }
+    .diagram-container svg { display: block; width: 100%; height: auto; }
+    .diagram-container .system-diagram { min-width: 1280px; }
+    .diagram-container .infrastructure-diagram { min-width: 1280px; }
+    svg text { fill: var(--ink); font-family: var(--font-sans); }
+    .zone { fill: rgba(32, 57, 78, .025); stroke: rgba(32, 57, 78, .22); stroke-width: 1; }
+    .zone-offline { fill: rgba(32, 57, 78, .012); stroke: rgba(83, 105, 130, .48); stroke-width: 1; stroke-dasharray: 5 4; }
+    .zone-private { fill: rgba(60, 111, 158, .035); stroke: rgba(60, 111, 158, .52); stroke-width: 1; stroke-dasharray: 5 4; }
+    .zone-label { fill: var(--muted); font-size: 14px; font-weight: 650; }
+    .journey-step { fill: var(--surface); stroke: var(--rule); stroke-width: 1.1; }
+    .journey-step-focus { fill: var(--accent-tint); stroke: var(--accent); }
+    .journey-number { stroke: none; }
+    .journey-neutral { fill: var(--muted); }
+    .journey-web { fill: var(--accent); }
+    .journey-api { fill: var(--accent); }
+    .journey-source { fill: var(--link); }
+    .journey-result { fill: var(--ink); }
+    .journey-number-text { fill: var(--surface); font-size: 15px; font-weight: 700; }
+    .journey-title { fill: var(--ink); font-size: 15px; font-weight: 700; }
+    .journey-sub { fill: var(--muted); font-size: 12px; font-weight: 500; }
+    .layer { fill: var(--surface); stroke: rgba(32, 57, 78, .25); stroke-width: 1.1; }
+    .layer-focus { stroke: var(--accent); stroke-width: 1.5; }
+    .layer-head { stroke: none; }
+    .layer-head-client { fill: rgba(83, 105, 130, .10); }
+    .layer-head-web { fill: rgba(8, 120, 79, .10); }
+    .layer-head-api { fill: rgba(8, 120, 79, .12); }
+    .layer-head-external { fill: rgba(60, 111, 158, .10); }
+    .layer-head-data { fill: rgba(83, 105, 130, .10); }
+    .layer-head-infra { fill: rgba(32, 57, 78, .07); }
+    .layer-index { stroke: none; }
+    .layer-index-neutral { fill: var(--muted); }
+    .layer-index-web, .layer-index-api { fill: var(--accent); }
+    .layer-index-external { fill: var(--link); }
+    .layer-index-data, .layer-index-infra { fill: var(--ink); }
+    .layer-index-text { fill: var(--surface); font-size: 13px; font-weight: 700; }
+    .layer-title { fill: var(--ink); font-size: 14px; font-weight: 700; }
+    .component-card { fill: var(--surface); stroke: rgba(32, 57, 78, .20); stroke-width: 1; }
+    .component-card-focus { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 1.2; }
+    .component-card-experiment { fill: rgba(60, 111, 158, .045); stroke: var(--link); stroke-dasharray: 4 3; }
+    .component-title { fill: var(--ink); font-size: 14px; font-weight: 700; }
+    .component-kicker { fill: var(--muted); font-size: 12px; font-weight: 650; }
+    .component-copy { fill: var(--muted); font-size: 12px; font-weight: 450; }
+    .component-tech { fill: var(--muted); font-size: 10.5px; font-weight: 500; }
+    .component-rule { stroke: var(--rule); stroke-width: 1; }
+    .pipeline-zone { fill: rgba(83, 105, 130, .025); stroke: rgba(83, 105, 130, .50); stroke-width: 1.1; stroke-dasharray: 5 4; }
+    .pipeline-label-mask { fill: var(--paper); }
+    .pipeline-title { fill: var(--ink); font-size: 16px; font-weight: 700; }
+    .pipeline-subtitle { fill: var(--muted); font-size: 12px; font-weight: 500; }
+    .pipeline-card { fill: var(--surface); stroke: rgba(83, 105, 130, .30); stroke-width: 1; }
+    .pipeline-card-artifact { fill: var(--accent-tint); stroke: var(--accent); }
+    .pipeline-node-title { fill: var(--ink); font-size: 14px; font-weight: 700; }
+    .pipeline-node-copy { fill: var(--muted); font-size: 12px; font-weight: 450; }
+    .node { fill: var(--surface); stroke: rgba(32, 57, 78, .25); stroke-width: 1.2; }
+    .node-web { stroke: rgba(8, 120, 79, .42); }
+    .node-focus { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 1.5; }
+    .node-store { stroke: rgba(83, 105, 130, .50); }
+    .node-external { stroke: var(--link); stroke-width: 1.2; }
+    .node-offline { stroke: rgba(83, 105, 130, .58); stroke-dasharray: 4 3; }
+    .tag { fill: rgba(32, 57, 78, .07); }
+    .tag-web { fill: rgba(8, 120, 79, .10); }
+    .tag-api { fill: var(--accent); }
+    .tag-store { fill: rgba(83, 105, 130, .10); }
+    .tag-external { fill: rgba(60, 111, 158, .10); }
+    .tag-offline { fill: rgba(83, 105, 130, .08); }
+    .tag-text { fill: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+    .tag-text-on-accent { fill: var(--surface); font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+    .node-name { font-size: 16px; font-weight: 700; }
+    .node-name-small { font-size: 15px; font-weight: 700; }
+    .node-name-api { fill: var(--accent); }
+    .node-icon { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-muted { color: var(--muted); }
+    .icon-link { color: var(--link); }
+    .icon-accent { color: var(--accent); }
+    .node-sub { fill: var(--muted); font-size: 13px; font-weight: 450; }
+    .node-tech { fill: var(--muted); font-size: 11px; font-weight: 500; }
+    .arrow { fill: none; stroke: var(--muted); stroke-width: 1.35; }
+    .arrow-link { fill: none; stroke: var(--link); stroke-width: 1.35; }
+    .arrow-accent { fill: none; stroke: var(--accent); stroke-width: 1.45; stroke-dasharray: 4 3; }
+    .arrow-offline { fill: none; stroke: var(--muted); stroke-width: 1.15; stroke-dasharray: 4 3; }
+    .arrow-mask { fill: var(--paper); }
+    .arrow-label { fill: var(--muted); font-size: 12px; font-weight: 600; }
+    .legend-rule { stroke: var(--rule); stroke-width: 1; }
+    .legend-label { fill: var(--muted); font-size: 13px; font-weight: 500; }
+    .legend-tag { fill: var(--surface); stroke: rgba(32, 57, 78, .32); stroke-width: 1; }
+    .legend-tag-api { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 1.2; }
+    .diagram-note {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+    .diagram-note strong { color: var(--ink); font-weight: 700; }
+
+    @media (max-width: 700px) {
+      .frame { padding: 24px 16px 36px; }
+      h1 { font-size: 26px; }
+      h2 { font-size: 20px; }
+      .lead { font-size: 15px; }
+    }
+    @media print {
+      .frame { max-width: none; padding: 20px; }
+      .diagram-container { overflow-x: visible; }
+      .diagram-container svg { min-width: 0; }
+      .diagram-section { break-before: page; }
+    }
+  </style>
+</head>
+<body>
+  <main class="frame">
+    <p class="eyebrow">SYSTEM ARCHITECTURE · PROJECT OVERVIEW</p>
+    <h1>台灣停車空位系統架構</h1>
+    <p class="lead">上方按五步說明停車查詢，中間依系統層分工，底部另列離線訓練。線上 API 目前讀取的路外模型仍是實驗版；離線訓練不會在使用者查詢時執行。</p>
+
+    <div class="diagram-container">
+      <svg class="system-diagram" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="system-architecture-title system-architecture-desc">
+        <title id="system-architecture-title">台灣停車預測平台：查詢流程、系統分層與離線訓練</title>
+        <desc id="system-architecture-desc">上方以五步說明使用者查詢流程；中間由左至右呈現使用者、前端、Spring Boot API、外部資料、MySQL 與 Redis、Hetzner 部署；底部是獨立的離線資料收集、標籤、訓練、評估及模型產物流程。API classpath 目前含路外實驗參數檔，輸出仍標示實驗性，不代表正式模型通過驗證。</desc>
+        <defs>
+          <marker id="system-architecture-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#536982"/></marker>
+          <marker id="system-architecture-link-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3c6f9e"/></marker>
+                    <!-- Vue/Vite marks: create-vite template assets. Spring Boot power mark: theSVG CC0. -->
+          <!--
+            MySQL and Redis SVG paths adapted from https://github.com/log-z/logos/tree/main/website-logos.
+            MIT License
+            Copyright (c) 2021 log-Z
+
+            Permission is hereby granted, free of charge, to any person obtaining a copy
+            of this software and associated documentation files (the "Software"), to deal
+            in the Software without restriction, including without limitation the rights
+            to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+            copies of the Software, and to permit persons to whom the Software is
+            furnished to do so, subject to the following conditions:
+
+            The above copyright notice and this permission notice shall be included in all
+            copies or substantial portions of the Software.
+
+            THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+            IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+            FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+            AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+            LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+            OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+            SOFTWARE.
+          -->
+          <symbol id="system-brand-vue" viewBox="0 0 48 40"><path fill="#41b883" d="M3 4h11l10 16L34 4h11L24 39z"/><path fill="#35495e" d="M14 4h6l4 7 4-7h6L24 20z"/></symbol>
+<symbol id="system-brand-vite" viewBox="0 0 77 47"><path fill="#9135ff" d="M40.151 45.71c-.663.844-2.02.374-2.02-.699V34.708a2.26 2.26 0 0 0-2.262-2.262H24.493c-.92 0-1.457-1.04-.92-1.788l7.479-10.471c1.07-1.498 0-3.578-1.842-3.578H15.443c-.92 0-1.456-1.04-.92-1.788l9.696-13.576c.213-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.472c-1.07 1.497 0 3.578 1.842 3.578h11.376c.944 0 1.474 1.087.89 1.83L40.153 45.712z"/><path fill="#20394e" d="M6.919 0c-9.198 13.166-9.252 33.575 0 46.789h6.215c-9.25-13.214-9.196-33.623 0-46.789zm62.424 0h-6.215c9.198 13.166 9.252 33.575 0 46.789h6.215c9.25-13.214 9.196-33.623 0-46.789"/></symbol>
+<symbol id="system-brand-spring-boot" viewBox="0 0 24 24"><path fill="#6db33f" d="m23.693 10.7058-4.73-8.1844c-.4094-.7106-1.4166-1.2942-2.2402-1.2942H7.2725c-.819 0-1.8308.5836-2.2402 1.2942L.307 10.7058c-.4095.7106-.4095 1.873 0 2.5837l4.7252 8.189c.4094.7107 1.4166 1.2943 2.2402 1.2943h9.455c.819 0 1.826-.5836 2.2402-1.2942l4.7252-8.189c.4095-.7107.4095-1.8732 0-2.5838zM10.9763 5.7547c0-.5365.4377-.9742.9742-.9742s.9742.4377.9742.9742v5.8217c0 .5366-.4377.9742-.9742.9742s-.9742-.4376-.9742-.9742zm.9742 12.4294c-3.6427 0-6.6077-2.965-6.6077-6.6077.0047-2.0896.993-4.0521 2.6685-5.304a.8657.8657 0 0 1 1.2142.1788.8657.8657 0 0 1-.1788 1.2143c-2.1602 1.6048-2.612 4.6592-1.0072 6.8194 1.6049 2.1603 4.6593 2.612 6.8195 1.0072 1.2378-.9177 1.9673-2.372 1.9673-3.9157a4.8972 4.8972 0 0 0-1.9861-3.925c-.386-.2824-.466-.8284-.1836-1.2143.2824-.386.8283-.466 1.2143-.1835 1.6895 1.2471 2.6826 3.2238 2.6873 5.3228 0 3.6474-2.965 6.6077-6.6077 6.6077z"/></symbol>
+<symbol id="system-brand-mysql" viewBox="0 0 100 100"><path fill="#00758f" d="M87.9,74.2c-4.9-0.1-8.7,0.4-11.9,1.7c-0.9,0.4-2.4,0.4-2.5,1.5c0.5,0.5,0.6,1.3,1,2c0.7,1.2,2,2.9,3.2,3.7   c1.3,1,2.6,2,3.9,2.8c2.4,1.5,5.1,2.3,7.4,3.8c1.4,0.9,2.7,2,4,2.9c0.7,0.5,1.1,1.3,2,1.6v-0.2c-0.4-0.6-0.6-1.3-1-2   c-0.6-0.6-1.2-1.2-1.8-1.8c-1.8-2.4-4-4.5-6.4-6.2c-2-1.4-6.2-3.2-7-5.5c0,0-0.1-0.1-0.1-0.1c1.3-0.1,2.9-0.6,4.2-1   c2.1-0.6,4-0.4,6.1-1c1-0.2,2-0.6,2.9-0.9v-0.6c-1.1-1.1-1.9-2.6-3.1-3.6c-3.1-2.7-6.6-5.3-10.1-7.5c-1.9-1.2-4.3-2-6.4-3.1   c-0.7-0.4-2-0.6-2.4-1.2c-1.1-1.3-1.7-3.1-2.5-4.7c-1.8-3.4-3.5-7.1-5-10.7c-1.1-2.4-1.8-4.8-3.1-7c-6.3-10.4-13.2-16.8-23.7-23   c-2.3-1.3-5-1.8-7.8-2.5c-1.5-0.1-3.1-0.2-4.6-0.2c-1-0.4-2-1.6-2.8-2.2C17,7.3,8,2.5,5.4,8.9c-1.7,4,2.4,7.9,3.9,9.9   c1,1.4,2.4,3,3.1,4.6c0.4,1,0.6,2.2,1,3.3c1,2.7,1.9,5.7,3.2,8.2c0.7,1.3,1.4,2.6,2.3,3.8c0.5,0.7,1.3,1,1.5,2.1   c-0.9,1.2-0.9,3.1-1.4,4.6c-2.2,6.9-1.3,15.5,1.8,20.6c1,1.5,3.3,4.9,6.4,3.6c2.8-1.1,2.1-4.6,2.9-7.7c0.2-0.7,0.1-1.2,0.4-1.7v0.1   c0.9,1.7,1.7,3.4,2.5,5.1c1.9,3,5.2,6.1,8,8.2c1.5,1.1,2.6,3,4.5,3.7v-0.2h-0.1c-0.4-0.6-0.9-0.8-1.4-1.2c-1.1-1.1-2.3-2.5-3.2-3.7   c-2.6-3.4-4.8-7.2-6.9-11.2c-1-1.9-1.8-4-2.6-5.9c-0.4-0.7-0.4-1.8-1-2.2c-0.9,1.3-2.3,2.5-2.9,4.2c-1.2,2.6-1.3,5.9-1.7,9.3   c-0.2,0.1-0.1,0-0.2,0.1c-2-0.5-2.6-2.5-3.4-4.2C20.1,58,19.8,51,21.4,45.9c0.4-1.3,2.3-5.3,1.5-6.6c-0.4-1.2-1.6-1.8-2.3-2.8   c-0.8-1.2-1.7-2.6-2.2-3.9c-1.5-3.4-2.2-7.2-3.8-10.7c-0.7-1.6-2-3.3-3.1-4.7c-1.2-1.7-2.4-2.8-3.4-4.8C8,11.8,7.5,10.7,8,10   c0.1-0.5,0.4-0.7,0.9-0.8c0.8-0.7,3.1,0.2,3.9,0.6c2.3,0.9,4.2,1.8,6.1,3.1c0.9,0.6,1.8,1.8,2.9,2.1H23c2,0.4,4.2,0.1,6,0.7   c3.2,1,6.2,2.6,8.8,4.2c8,5.1,14.6,12.3,19.1,21c0.7,1.4,1,2.7,1.7,4.2c1.3,3,2.9,6.1,4.2,9c1.3,2.9,2.5,5.8,4.3,8.2   c0.9,1.3,4.6,2,6.2,2.6c1.2,0.6,3.1,1,4.2,1.7c2.1,1.3,4.2,2.8,6.1,4.2C84.7,71.5,87.7,73,87.9,74.2"/><path fill="#00758f" d="M25.5,20.9c-1,0-1.8,0.1-2.5,0.3v0.1h0.1c0.5,1,1.4,1.7,2,2.5c0.5,1,0.9,2,1.4,2.9c0.1-0.1,0.1-0.1,0.1-0.1   c0.9-0.6,1.3-1.6,1.3-3.1c-0.4-0.4-0.4-0.9-0.7-1.3C26.7,21.7,26,21.4,25.5,20.9"/></symbol>
+<symbol id="system-brand-redis" viewBox="0 0 100 100"><path fill="#912626" d="M91.5,70.8c-4.8,2.5-29.7,12.7-35,15.5C51.2,89,48.3,89,44.1,87c-4.2-2-30.7-12.7-35.4-15   C6.3,70.9,5,69.9,5,69v-9.1c0,0,34.5-7.5,40-9.5c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,33.1,6.8,37.7,8.6l0,9   C95,68.5,93.9,69.5,91.5,70.8"/><path fill="#c6302b" d="M91.5,61.7c-4.8,2.5-29.7,12.7-35,15.5C51.2,80,48.3,80,44.1,78c-4.2-2-30.7-12.7-35.4-15   c-4.8-2.3-4.9-3.8-0.2-5.7c4.7-1.8,31-12.2,36.6-14.2c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,29.5,11.6,34.1,13.3   C96.1,57.8,96.3,59.2,91.5,61.7"/><path fill="#912626" d="M91.5,56c-4.8,2.5-29.7,12.7-35,15.5c-5.3,2.8-8.2,2.7-12.4,0.7c-4.2-2-30.7-12.7-35.4-15   c-2.4-1.1-3.6-2.1-3.6-3v-9.1c0,0,34.5-7.5,40-9.5c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,33.1,6.8,37.7,8.6l0,9   C95,53.8,93.9,54.8,91.5,56"/><path fill="#c6302b" d="M91.5,47c-4.8,2.5-29.7,12.7-35,15.5c-5.3,2.8-8.2,2.7-12.4,0.7c-4.2-2-30.7-12.7-35.4-15   c-4.8-2.3-4.9-3.8-0.2-5.7c4.7-1.8,31-12.2,36.6-14.2c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,29.5,11.6,34.1,13.3   C96.1,43.1,96.3,44.5,91.5,47"/><path fill="#912626" d="M91.5,40.8c-4.8,2.5-29.7,12.7-35,15.5C51.2,59,48.3,59,44.1,57c-4.2-2-30.7-12.7-35.4-15   C6.3,40.9,5,39.9,5,39v-9.1c0,0,34.5-7.5,40-9.5c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,33.1,6.8,37.7,8.6l0,9   C95,38.5,93.9,39.5,91.5,40.8"/><path fill="#c6302b" d="M91.5,31.7c-4.8,2.5-29.7,12.7-35,15.5C51.2,50,48.3,50,44.1,48c-4.2-2-30.7-12.7-35.4-15   c-4.8-2.3-4.9-3.8-0.2-5.7c4.7-1.8,31-12.2,36.6-14.2c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,29.5,11.6,34.1,13.3   C96.1,27.8,96.3,29.2,91.5,31.7"/><path fill="#ffffff" d="M61,22.9l-7.7,0.8l-1.7,4.2l-2.8-4.7l-8.9-0.8l6.7-2.4l-2-3.7l6.2,2.4l5.9-1.9L55,20.6L61,22.9 M51.1,43.1   l-14.4-6l20.7-3.2L51.1,43.1 M31,25.2c6.1,0,11.1,1.9,11.1,4.3c0,2.4-5,4.3-11.1,4.3S20,31.9,20,29.5C20,27.1,24.9,25.2,31,25.2"/><path fill="#621b1c" d="M70.1,24l12.2,4.8l-12.2,4.8L70.1,24"/><path fill="#9a2928" d="M56.6,29.4L70.1,24l0,9.7l-1.3,0.5L56.6,29.4"/></symbol>
+          <symbol id="system-icon-person" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2z"/></symbol>
+          <symbol id="system-icon-official" viewBox="0 0 24 24"><path d="m3 8 9-5 9 5M4 10h16M6 10v9m4-9v9m4-9v9m4-9v9M3 21h18"/></symbol>
+          <symbol id="system-icon-map" viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+          <symbol id="system-icon-collector" viewBox="0 0 24 24"><path d="M5 4h9l5 5v11H5zM14 4v5h5M8 14h8M8 17h6"/></symbol>
+          <symbol id="system-icon-model" viewBox="0 0 24 24"><path d="M4 20V5m0 15h17M7 16l4-5 4 2 5-7"/><circle cx="7" cy="16" r="1"/><circle cx="11" cy="11" r="1"/><circle cx="15" cy="13" r="1"/><circle cx="20" cy="6" r="1"/></symbol>
+          <symbol id="system-icon-container" viewBox="0 0 24 24"><path d="M3 7h18v13H3zM3 11h18M8 7v4m4-4v4m4-4v4"/><path d="M6 15h3m3 0h3m3 0h1"/></symbol>
+          <symbol id="system-icon-browser" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="15" rx="2"/><path d="M3 8h18M7 6h.01M10 6h.01M9 22h6m-3-3v3"/></symbol>
+        </defs>
+
+        <rect width="1600" height="900" fill="#f7f3e9"/>
+
+        <!-- Five-step user journey -->
+        <g aria-label="步驟一：輸入查詢條件">
+          <rect class="journey-step" x="32" y="24" width="284" height="82" rx="6"/>
+          <circle class="journey-number journey-neutral" cx="60" cy="65" r="17"/><text class="journey-number-text" x="60" y="70" text-anchor="middle">1</text>
+          <text class="journey-title" x="86" y="61">輸入起點、目的地、出發時間</text>
+          <text class="journey-sub" x="86" y="84">由手機或桌機瀏覽器操作</text>
+        </g>
+        <g aria-label="步驟二：網頁送出查詢">
+          <rect class="journey-step" x="345" y="24" width="284" height="82" rx="6"/>
+          <circle class="journey-number journey-web" cx="373" cy="65" r="17"/><text class="journey-number-text" x="373" y="70" text-anchor="middle">2</text>
+          <text class="journey-title" x="399" y="61">網頁建立停車查詢</text>
+          <text class="journey-sub" x="399" y="84">Vue 3 + Vite，經同源 /api 傳送</text>
+        </g>
+        <g aria-label="步驟三：API 查詢附近資料與路線時間">
+          <rect class="journey-step journey-step-focus" x="658" y="24" width="284" height="82" rx="6"/>
+          <circle class="journey-number journey-api" cx="686" cy="65" r="17"/><text class="journey-number-text" x="686" y="70" text-anchor="middle">3</text>
+          <text class="journey-title" x="712" y="61">API 整合附近資料與 ETA</text>
+          <text class="journey-sub" x="712" y="84">MySQL 快照、Google Routes 路程時間</text>
+        </g>
+        <g aria-label="步驟四：需要時受控刷新官方來源">
+          <rect class="journey-step" x="971" y="24" width="284" height="82" rx="6"/>
+          <circle class="journey-number journey-source" cx="999" cy="65" r="17"/><text class="journey-number-text" x="999" y="70" text-anchor="middle">4</text>
+          <text class="journey-title" x="1025" y="61">需要時受控更新官方資料</text>
+          <text class="journey-sub" x="1025" y="84">刷新冷卻與 Redis 短鎖避免重複擷取</text>
+        </g>
+        <g aria-label="步驟五：回傳附近停車結果">
+          <rect class="journey-step" x="1284" y="24" width="284" height="82" rx="6"/>
+          <circle class="journey-number journey-result" cx="1312" cy="65" r="17"/><text class="journey-number-text" x="1312" y="70" text-anchor="middle">5</text>
+          <text class="journey-title" x="1338" y="61">回傳 500 m 附近結果</text>
+          <text class="journey-sub" x="1338" y="84">官方觀測與路外實驗預測分開標示</text>
+        </g>
+        <path class="arrow-link" d="M316 65 H345" marker-end="url(#system-architecture-link-arrow)"/>
+        <path class="arrow-link" d="M629 65 H658" marker-end="url(#system-architecture-link-arrow)"/>
+        <path class="arrow-link" d="M942 65 H971" marker-end="url(#system-architecture-link-arrow)"/>
+        <path class="arrow-link" d="M1255 65 H1284" marker-end="url(#system-architecture-link-arrow)"/>
+
+        <!-- System layers: background panels -->
+        <g aria-label="Client 使用者層">
+          <rect class="layer" x="32" y="154" width="165" height="438" rx="7"/>
+          <rect class="layer-head layer-head-client" x="32" y="154" width="165" height="50" rx="7"/>
+          <circle class="layer-index layer-index-neutral" cx="55" cy="179" r="15"/><text class="layer-index-text" x="55" y="184" text-anchor="middle">1</text>
+          <text class="layer-title" x="77" y="184">Client／使用者</text>
+        </g>
+        <g aria-label="Frontend 前端層">
+          <rect class="layer" x="213" y="154" width="230" height="438" rx="7"/>
+          <rect class="layer-head layer-head-web" x="213" y="154" width="230" height="50" rx="7"/>
+          <circle class="layer-index layer-index-web" cx="236" cy="179" r="15"/><text class="layer-index-text" x="236" y="184" text-anchor="middle">2</text>
+          <text class="layer-title" x="258" y="184">Frontend／前端</text>
+        </g>
+        <g aria-label="Backend API 後端服務層">
+          <rect class="layer layer-focus" x="459" y="154" width="292" height="438" rx="7"/>
+          <rect class="layer-head layer-head-api" x="459" y="154" width="292" height="50" rx="7"/>
+          <circle class="layer-index layer-index-api" cx="482" cy="179" r="15"/><text class="layer-index-text" x="482" y="184" text-anchor="middle">3</text>
+          <text class="layer-title" x="504" y="184">Backend API／後端服務</text>
+        </g>
+        <g aria-label="External Data 外部服務層">
+          <rect class="layer" x="767" y="154" width="238" height="438" rx="7"/>
+          <rect class="layer-head layer-head-external" x="767" y="154" width="238" height="50" rx="7"/>
+          <circle class="layer-index layer-index-external" cx="790" cy="179" r="15"/><text class="layer-index-text" x="790" y="184" text-anchor="middle">4</text>
+          <text class="layer-title" x="812" y="184">External／外部服務</text>
+        </g>
+        <g aria-label="Data and Storage 資料儲存層">
+          <rect class="layer" x="1021" y="154" width="260" height="438" rx="7"/>
+          <rect class="layer-head layer-head-data" x="1021" y="154" width="260" height="50" rx="7"/>
+          <circle class="layer-index layer-index-data" cx="1044" cy="179" r="15"/><text class="layer-index-text" x="1044" y="184" text-anchor="middle">5</text>
+          <text class="layer-title" x="1066" y="184">Data／資料儲存</text>
+        </g>
+        <g aria-label="Infrastructure 部署環境層">
+          <rect class="layer" x="1297" y="154" width="271" height="438" rx="7"/>
+          <rect class="layer-head layer-head-infra" x="1297" y="154" width="271" height="50" rx="7"/>
+          <circle class="layer-index layer-index-infra" cx="1320" cy="179" r="15"/><text class="layer-index-text" x="1320" y="184" text-anchor="middle">7</text>
+          <text class="layer-title" x="1342" y="184">Infrastructure／部署</text>
+        </g>
+
+        <!-- Layer connections are behind the component cards. -->
+        <path class="arrow-link" d="M197 565 H213" marker-end="url(#system-architecture-link-arrow)"/>
+        <path class="arrow-link" d="M443 565 H459" marker-end="url(#system-architecture-link-arrow)"/>
+        <path class="arrow-link" d="M751 559 H767" marker-end="url(#system-architecture-link-arrow)"/>
+        <path class="arrow-link" d="M767 575 H751" marker-end="url(#system-architecture-link-arrow)"/>
+        <path class="arrow" d="M751 566 H1021" marker-end="url(#system-architecture-arrow)"/>
+        <path class="arrow" d="M1021 580 H751" marker-end="url(#system-architecture-arrow)"/>
+
+        <!-- Client -->
+        <g>
+          <rect class="component-card" x="42" y="218" width="145" height="324" rx="5"/>
+          <use class="node-icon icon-muted" href="#system-icon-person" x="98" y="236" width="34" height="34" aria-hidden="true"/>
+          <text class="component-title" x="114" y="294" text-anchor="middle">駕駛／使用者</text>
+          <text class="component-copy" x="54" y="324">以手機或桌機瀏覽器</text>
+          <text class="component-copy" x="54" y="347">輸入起點、目的地，</text>
+          <text class="component-copy" x="54" y="370">並選擇出發時間。</text>
+          <line class="component-rule" x1="54" y1="390" x2="175" y2="390"/>
+          <text class="component-kicker" x="54" y="416">結果會分開呈現</text>
+          <text class="component-copy" x="54" y="440">官方停車觀測、路線 ETA</text>
+          <text class="component-copy" x="54" y="463">與實驗性預測。</text>
+          <text class="component-tech" x="54" y="512">地點由使用者確認</text>
+        </g>
+
+        <!-- Frontend -->
+        <g>
+          <rect class="component-card" x="223" y="218" width="210" height="152" rx="5"/>
+          <use href="#system-brand-vue" x="236" y="230" width="25" height="22" aria-hidden="true"/>
+          <use href="#system-brand-vite" x="263" y="230" width="27" height="22" aria-hidden="true"/>
+          <text class="component-title" x="298" y="246">Vue 3 + Vite</text>
+          <text class="component-tech" x="236" y="270">3.5.43 · 8.3.1</text>
+          <text class="component-copy" x="236" y="308">地圖、Places 地點搜尋</text>
+          <text class="component-copy" x="236" y="331">附近車位清單與 ETA</text>
+          <text class="component-copy" x="236" y="354">來源狀態與預測標示</text>
+        </g>
+        <g>
+          <rect class="component-card" x="223" y="382" width="210" height="160" rx="5"/>
+          <use class="node-icon icon-accent" href="#system-icon-browser" x="236" y="395" width="22" height="22" aria-hidden="true"/>
+          <text class="component-title" x="267" y="412">同源 API 請求</text>
+          <text class="component-copy" x="236" y="445">瀏覽器把查詢送到 /api</text>
+          <text class="component-copy" x="236" y="468">Nginx 再轉給 Spring API</text>
+          <text class="component-copy" x="236" y="503">前端不直接抓政府車位</text>
+          <text class="component-tech" x="236" y="526">Places／地圖由瀏覽器使用</text>
+        </g>
+
+        <!-- Backend API -->
+        <g>
+          <rect class="component-card component-card-focus" x="469" y="218" width="272" height="60" rx="5"/>
+          <use href="#system-brand-spring-boot" x="481" y="231" width="24" height="24" aria-hidden="true"/>
+          <text class="component-title" x="513" y="243">Spring Boot API</text>
+          <text class="component-tech" x="513" y="264">Java 21 · Spring Boot 4.1.1</text>
+        </g>
+        <g>
+          <rect class="component-card" x="469" y="290" width="272" height="56" rx="5"/>
+          <text class="component-title" x="483" y="313">查詢協調</text>
+          <text class="component-copy" x="483" y="335">驗證條件、維護 queryId 與防重送</text>
+        </g>
+        <g>
+          <rect class="component-card" x="469" y="354" width="272" height="56" rx="5"/>
+          <text class="component-title" x="483" y="377">附近停車資料</text>
+          <text class="component-copy" x="483" y="399">500 m 範圍、已核對來源 mapping</text>
+        </g>
+        <g>
+          <rect class="component-card" x="469" y="418" width="272" height="56" rx="5"/>
+          <text class="component-title" x="483" y="441">ETA 與官方刷新</text>
+          <text class="component-copy" x="483" y="463">Routes 估時；官方來源受控更新</text>
+        </g>
+        <g>
+          <rect class="component-card component-card-experiment" x="469" y="482" width="272" height="56" rx="5"/>
+          <text class="component-title" x="483" y="505">路外預測 · EXPERIMENTAL</text>
+          <text class="component-copy" x="483" y="527">API 讀取 classpath 路外實驗參數</text>
+        </g>
+
+        <!-- External services -->
+        <g>
+          <rect class="component-card" x="777" y="218" width="218" height="104" rx="5"/>
+          <use class="node-icon icon-link" href="#system-icon-official" x="790" y="231" width="26" height="26" aria-hidden="true"/>
+          <text class="component-title" x="824" y="247">新北市 Open Data</text>
+          <text class="component-copy" x="790" y="278">路邊格位、路外剩餘位</text>
+          <text class="component-copy" x="790" y="301">API 受控取得並發布快照</text>
+        </g>
+        <g>
+          <rect class="component-card" x="777" y="334" width="218" height="104" rx="5"/>
+          <use class="node-icon icon-link" href="#system-icon-map" x="790" y="347" width="26" height="26" aria-hidden="true"/>
+          <text class="component-title" x="824" y="363">Google Maps / Places</text>
+          <text class="component-copy" x="790" y="394">瀏覽器顯示地圖與候選</text>
+          <text class="component-copy" x="790" y="417">使用者選取後取得座標</text>
+        </g>
+        <g>
+          <rect class="component-card" x="777" y="450" width="218" height="104" rx="5"/>
+          <use class="node-icon icon-link" href="#system-icon-map" x="790" y="463" width="26" height="26" aria-hidden="true"/>
+          <text class="component-title" x="824" y="479">Google Routes API</text>
+          <text class="component-copy" x="790" y="510">後端估計路線所需時間</text>
+          <text class="component-copy" x="790" y="533">ETA 依起點、目的地與時間</text>
+        </g>
+
+        <!-- Data and storage -->
+        <g>
+          <rect class="component-card" x="1031" y="218" width="240" height="174" rx="5"/>
+          <use href="#system-brand-mysql" x="1045" y="231" width="28" height="28" aria-hidden="true"/>
+          <text class="component-title" x="1082" y="250">MySQL 8.4</text>
+          <text class="component-kicker" x="1045" y="283">長期保存的系統資料</text>
+          <text class="component-copy" x="1045" y="308">停車目錄與來源 ID 對照</text>
+          <text class="component-copy" x="1045" y="331">已發布快照與逐筆觀測</text>
+          <text class="component-copy" x="1045" y="354">來源冷卻與刷新紀錄</text>
+          <text class="component-tech" x="1045" y="377">查詢資料時 API 直接讀 MySQL</text>
+        </g>
+        <g>
+          <rect class="component-card" x="1031" y="404" width="240" height="150" rx="5"/>
+          <use href="#system-brand-redis" x="1045" y="417" width="28" height="28" aria-hidden="true"/>
+          <text class="component-title" x="1082" y="436">Redis 8</text>
+          <text class="component-copy" x="1045" y="469">短期 queryId 與防重送</text>
+          <text class="component-copy" x="1045" y="492">協調官方來源刷新短鎖</text>
+          <text class="component-copy" x="1045" y="515">不快取附近停車結果</text>
+          <text class="component-tech" x="1045" y="538">不是 MySQL 前置快取代理</text>
+        </g>
+
+        <!-- Infrastructure -->
+        <g>
+          <rect class="component-card" x="1307" y="218" width="251" height="60" rx="5"/>
+          <use class="node-icon icon-muted" href="#system-icon-container" x="1320" y="231" width="24" height="24" aria-hidden="true"/>
+          <text class="component-title" x="1353" y="243">Hetzner VPS</text>
+          <text class="component-copy" x="1353" y="265">Docker Compose 四個服務</text>
+        </g>
+        <g>
+          <rect class="component-card" x="1307" y="290" width="251" height="76" rx="5"/>
+          <text class="component-title" x="1321" y="313">Web · Nginx 1.29</text>
+          <text class="component-copy" x="1321" y="337">Node.js 24 建置</text>
+          <text class="component-tech" x="1321" y="357">web 綁定 127.0.0.1:8080</text>
+        </g>
+        <g>
+          <rect class="component-card" x="1307" y="378" width="251" height="76" rx="5"/>
+          <text class="component-title" x="1321" y="401">API／MySQL／Redis</text>
+          <text class="component-copy" x="1321" y="425">只在 Compose 私有網路</text>
+          <text class="component-tech" x="1321" y="445">MySQL 用 volume 保留資料</text>
+        </g>
+        <g>
+          <rect class="component-card" x="1307" y="466" width="251" height="88" rx="5"/>
+          <text class="component-title" x="1321" y="489">GitHub Actions</text>
+          <text class="component-copy" x="1321" y="513">執行檢查、建置 Docker image</text>
+          <text class="component-tech" x="1321" y="537">不會自動部署到主機</text>
+        </g>
+
+        <!-- Offline ML pipeline -->
+        <g aria-label="獨立離線訓練流程">
+          <rect class="pipeline-zone" x="32" y="620" width="1536" height="200" rx="8"/>
+          <rect class="pipeline-label-mask" x="48" y="610" width="388" height="22" rx="2"/>
+          <circle class="layer-index layer-index-infra" cx="64" cy="620" r="15"/><text class="layer-index-text" x="64" y="625" text-anchor="middle">6</text>
+          <text class="pipeline-title" x="88" y="625">ML / Prediction Pipeline · 離線訓練與模型實驗</text>
+          <text class="pipeline-subtitle" x="900" y="625">離線收集與訓練；模型產物不會自動發佈至 API</text>
+        </g>
+
+        <!-- Offline connectors behind the pipeline cards -->
+        <path class="arrow-offline" d="M322 724 H350" marker-end="url(#system-architecture-arrow)"/>
+        <path class="arrow-offline" d="M622 724 H650" marker-end="url(#system-architecture-arrow)"/>
+        <path class="arrow-offline" d="M922 724 H950" marker-end="url(#system-architecture-arrow)"/>
+        <path class="arrow-offline" d="M1222 724 H1250" marker-end="url(#system-architecture-arrow)"/>
+        <path class="arrow-offline" d="M1400 672 V604 H610 V538" marker-end="url(#system-architecture-arrow)"/>
+        <rect class="arrow-mask" x="801" y="591" width="264" height="18" rx="2"/>
+        <text class="arrow-label" x="933" y="604" text-anchor="middle">API classpath 載入路外實驗參數檔</text>
+
+        <g aria-label="獨立 parking-data-collector">
+          <rect class="pipeline-card" x="50" y="672" width="272" height="110" rx="5"/>
+          <use class="node-icon icon-muted" href="#system-icon-collector" x="64" y="688" width="22" height="22" aria-hidden="true"/>
+          <text class="pipeline-node-title" x="94" y="705">parking-data-collector</text>
+          <text class="pipeline-node-copy" x="64" y="738">獨立取得官方歷史資料</text>
+          <text class="pipeline-node-copy" x="64" y="760">不讀取線上 MySQL／Redis 快照</text>
+        </g>
+        <g aria-label="資料品質盤點與訓練標籤">
+          <rect class="pipeline-card" x="350" y="672" width="272" height="110" rx="5"/>
+          <text class="pipeline-node-title" x="366" y="705">品質盤點與標籤</text>
+          <text class="pipeline-node-copy" x="366" y="738">保留未知狀態與拒絕原因</text>
+          <text class="pipeline-node-copy" x="366" y="760">依已確認規則產生訓練標籤</text>
+        </g>
+        <g aria-label="按時間切分資料與 baseline">
+          <rect class="pipeline-card" x="650" y="672" width="272" height="110" rx="5"/>
+          <use class="node-icon icon-muted" href="#system-icon-model" x="664" y="688" width="22" height="22" aria-hidden="true"/>
+          <text class="pipeline-node-title" x="694" y="705">日期切分與 baseline</text>
+          <text class="pipeline-node-copy" x="664" y="738">依時間先後切分訓練／測試</text>
+          <text class="pipeline-node-copy" x="664" y="760">先和簡單基準模型比較</text>
+        </g>
+        <g aria-label="離線模型實驗與評估">
+          <rect class="pipeline-card" x="950" y="672" width="272" height="110" rx="5"/>
+          <use class="node-icon icon-muted" href="#system-icon-model" x="964" y="688" width="22" height="22" aria-hidden="true"/>
+          <text class="pipeline-node-title" x="994" y="705">模型實驗與評估</text>
+          <text class="pipeline-node-copy" x="964" y="738">檢查表現、校準與限制</text>
+          <text class="pipeline-node-copy" x="964" y="760">路邊／路外結果分開評估</text>
+        </g>
+        <g aria-label="版本化離線模型產物">
+          <rect class="pipeline-card pipeline-card-artifact" x="1250" y="672" width="300" height="110" rx="5"/>
+          <use class="node-icon icon-accent" href="#system-icon-model" x="1264" y="688" width="22" height="22" aria-hidden="true"/>
+          <text class="pipeline-node-title" x="1294" y="705">版本化模型產物</text>
+          <text class="pipeline-node-copy" x="1264" y="738">API 目前含路外實驗參數</text>
+          <text class="pipeline-node-copy" x="1264" y="760">尚未通過正式模型准入</text>
+        </g>
+
+        <!-- Legend and source/model distinction -->
+        <line class="legend-rule" x1="32" y1="844" x2="1568" y2="844"/>
+        <line class="arrow" x1="48" y1="872" x2="96" y2="872" marker-end="url(#system-architecture-arrow)"/>
+        <text class="legend-label" x="108" y="877">線上查詢／資料存取</text>
+        <line class="arrow-offline" x1="330" y1="872" x2="378" y2="872" marker-end="url(#system-architecture-arrow)"/>
+        <text class="legend-label" x="390" y="877">離線訓練／實驗產物</text>
+        <text class="legend-label" x="820" y="877">官方觀測 ≠ 模型估算</text>
+        <text class="legend-label" x="1560" y="877" text-anchor="end">技術版本依 repo 設定核對</text>
+      </svg>
+    </div>
+    <p class="diagram-note"><strong>Redis 與模型的界線：</strong>Redis 保存短期 queryId、防重送識別碼，並用短鎖協調官方來源刷新；MySQL 保存停車目錄、已發布快照與來源狀態，附近查詢由 API 直接讀 MySQL。底部 collector 與 `ml-training` 只處理離線資料；目前路外實驗參數檔已放在 API classpath，僅符合條件時輸出 `EXPERIMENTAL`，不代表正式模型通過驗證，也不會在查詢期間訓練或自動發布。</p>
+
+    <section class="diagram-section" aria-labelledby="infrastructure-heading">
+      <p class="eyebrow">DEPLOYMENT &amp; DELIVERY</p>
+      <h2 id="infrastructure-heading">基礎設施、技術棧與程式交付</h2>
+      <p class="section-lead">主系統目前部署在 Hetzner 主機（依部署文件記錄）。圖中列出程式與容器設定可確認的技術版本；離線訓練使用 Python 3，但 repo 尚未鎖定 Python 小版本。</p>
+
+      <div class="diagram-container">
+        <svg class="infrastructure-diagram" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="infrastructure-title infrastructure-desc">
+          <title id="infrastructure-title">部署主機、Docker Compose 與 GitHub Actions</title>
+          <desc id="infrastructure-desc">瀏覽器透過 HTTPS 入口和 Web 服務連到私有 Compose 網路內的 API、MySQL、Redis。GitHub Actions 獨立執行測試與建置，不自動部署到 Hetzner 主機。</desc>
+          <defs>
+            <marker id="infrastructure-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#536982"/></marker>
+            <marker id="infrastructure-link-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3c6f9e"/></marker>
+            <!-- Brand marks are embedded locally; no network image requests. -->
+            <symbol id="infra-brand-vue" viewBox="0 0 48 40"><path fill="#41b883" d="M3 4h11l10 16L34 4h11L24 39z"/><path fill="#35495e" d="M14 4h6l4 7 4-7h6L24 20z"/></symbol>
+<symbol id="infra-brand-vite" viewBox="0 0 77 47"><path fill="#9135ff" d="M40.151 45.71c-.663.844-2.02.374-2.02-.699V34.708a2.26 2.26 0 0 0-2.262-2.262H24.493c-.92 0-1.457-1.04-.92-1.788l7.479-10.471c1.07-1.498 0-3.578-1.842-3.578H15.443c-.92 0-1.456-1.04-.92-1.788l9.696-13.576c.213-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.472c-1.07 1.497 0 3.578 1.842 3.578h11.376c.944 0 1.474 1.087.89 1.83L40.153 45.712z"/><path fill="#20394e" d="M6.919 0c-9.198 13.166-9.252 33.575 0 46.789h6.215c-9.25-13.214-9.196-33.623 0-46.789zm62.424 0h-6.215c9.198 13.166 9.252 33.575 0 46.789h6.215c9.25-13.214 9.196-33.623 0-46.789"/></symbol>
+<symbol id="infra-brand-spring-boot" viewBox="0 0 24 24"><path fill="#6db33f" d="m23.693 10.7058-4.73-8.1844c-.4094-.7106-1.4166-1.2942-2.2402-1.2942H7.2725c-.819 0-1.8308.5836-2.2402 1.2942L.307 10.7058c-.4095.7106-.4095 1.873 0 2.5837l4.7252 8.189c.4094.7107 1.4166 1.2943 2.2402 1.2943h9.455c.819 0 1.826-.5836 2.2402-1.2942l4.7252-8.189c.4095-.7107.4095-1.8732 0-2.5838zM10.9763 5.7547c0-.5365.4377-.9742.9742-.9742s.9742.4377.9742.9742v5.8217c0 .5366-.4377.9742-.9742.9742s-.9742-.4376-.9742-.9742zm.9742 12.4294c-3.6427 0-6.6077-2.965-6.6077-6.6077.0047-2.0896.993-4.0521 2.6685-5.304a.8657.8657 0 0 1 1.2142.1788.8657.8657 0 0 1-.1788 1.2143c-2.1602 1.6048-2.612 4.6592-1.0072 6.8194 1.6049 2.1603 4.6593 2.612 6.8195 1.0072 1.2378-.9177 1.9673-2.372 1.9673-3.9157a4.8972 4.8972 0 0 0-1.9861-3.925c-.386-.2824-.466-.8284-.1836-1.2143.2824-.386.8283-.466 1.2143-.1835 1.6895 1.2471 2.6826 3.2238 2.6873 5.3228 0 3.6474-2.965 6.6077-6.6077 6.6077z"/></symbol>
+<symbol id="infra-brand-mysql" viewBox="0 0 100 100"><path fill="#00758f" d="M87.9,74.2c-4.9-0.1-8.7,0.4-11.9,1.7c-0.9,0.4-2.4,0.4-2.5,1.5c0.5,0.5,0.6,1.3,1,2c0.7,1.2,2,2.9,3.2,3.7   c1.3,1,2.6,2,3.9,2.8c2.4,1.5,5.1,2.3,7.4,3.8c1.4,0.9,2.7,2,4,2.9c0.7,0.5,1.1,1.3,2,1.6v-0.2c-0.4-0.6-0.6-1.3-1-2   c-0.6-0.6-1.2-1.2-1.8-1.8c-1.8-2.4-4-4.5-6.4-6.2c-2-1.4-6.2-3.2-7-5.5c0,0-0.1-0.1-0.1-0.1c1.3-0.1,2.9-0.6,4.2-1   c2.1-0.6,4-0.4,6.1-1c1-0.2,2-0.6,2.9-0.9v-0.6c-1.1-1.1-1.9-2.6-3.1-3.6c-3.1-2.7-6.6-5.3-10.1-7.5c-1.9-1.2-4.3-2-6.4-3.1   c-0.7-0.4-2-0.6-2.4-1.2c-1.1-1.3-1.7-3.1-2.5-4.7c-1.8-3.4-3.5-7.1-5-10.7c-1.1-2.4-1.8-4.8-3.1-7c-6.3-10.4-13.2-16.8-23.7-23   c-2.3-1.3-5-1.8-7.8-2.5c-1.5-0.1-3.1-0.2-4.6-0.2c-1-0.4-2-1.6-2.8-2.2C17,7.3,8,2.5,5.4,8.9c-1.7,4,2.4,7.9,3.9,9.9   c1,1.4,2.4,3,3.1,4.6c0.4,1,0.6,2.2,1,3.3c1,2.7,1.9,5.7,3.2,8.2c0.7,1.3,1.4,2.6,2.3,3.8c0.5,0.7,1.3,1,1.5,2.1   c-0.9,1.2-0.9,3.1-1.4,4.6c-2.2,6.9-1.3,15.5,1.8,20.6c1,1.5,3.3,4.9,6.4,3.6c2.8-1.1,2.1-4.6,2.9-7.7c0.2-0.7,0.1-1.2,0.4-1.7v0.1   c0.9,1.7,1.7,3.4,2.5,5.1c1.9,3,5.2,6.1,8,8.2c1.5,1.1,2.6,3,4.5,3.7v-0.2h-0.1c-0.4-0.6-0.9-0.8-1.4-1.2c-1.1-1.1-2.3-2.5-3.2-3.7   c-2.6-3.4-4.8-7.2-6.9-11.2c-1-1.9-1.8-4-2.6-5.9c-0.4-0.7-0.4-1.8-1-2.2c-0.9,1.3-2.3,2.5-2.9,4.2c-1.2,2.6-1.3,5.9-1.7,9.3   c-0.2,0.1-0.1,0-0.2,0.1c-2-0.5-2.6-2.5-3.4-4.2C20.1,58,19.8,51,21.4,45.9c0.4-1.3,2.3-5.3,1.5-6.6c-0.4-1.2-1.6-1.8-2.3-2.8   c-0.8-1.2-1.7-2.6-2.2-3.9c-1.5-3.4-2.2-7.2-3.8-10.7c-0.7-1.6-2-3.3-3.1-4.7c-1.2-1.7-2.4-2.8-3.4-4.8C8,11.8,7.5,10.7,8,10   c0.1-0.5,0.4-0.7,0.9-0.8c0.8-0.7,3.1,0.2,3.9,0.6c2.3,0.9,4.2,1.8,6.1,3.1c0.9,0.6,1.8,1.8,2.9,2.1H23c2,0.4,4.2,0.1,6,0.7   c3.2,1,6.2,2.6,8.8,4.2c8,5.1,14.6,12.3,19.1,21c0.7,1.4,1,2.7,1.7,4.2c1.3,3,2.9,6.1,4.2,9c1.3,2.9,2.5,5.8,4.3,8.2   c0.9,1.3,4.6,2,6.2,2.6c1.2,0.6,3.1,1,4.2,1.7c2.1,1.3,4.2,2.8,6.1,4.2C84.7,71.5,87.7,73,87.9,74.2"/><path fill="#00758f" d="M25.5,20.9c-1,0-1.8,0.1-2.5,0.3v0.1h0.1c0.5,1,1.4,1.7,2,2.5c0.5,1,0.9,2,1.4,2.9c0.1-0.1,0.1-0.1,0.1-0.1   c0.9-0.6,1.3-1.6,1.3-3.1c-0.4-0.4-0.4-0.9-0.7-1.3C26.7,21.7,26,21.4,25.5,20.9"/></symbol>
+<symbol id="infra-brand-redis" viewBox="0 0 100 100"><path fill="#912626" d="M91.5,70.8c-4.8,2.5-29.7,12.7-35,15.5C51.2,89,48.3,89,44.1,87c-4.2-2-30.7-12.7-35.4-15   C6.3,70.9,5,69.9,5,69v-9.1c0,0,34.5-7.5,40-9.5c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,33.1,6.8,37.7,8.6l0,9   C95,68.5,93.9,69.5,91.5,70.8"/><path fill="#c6302b" d="M91.5,61.7c-4.8,2.5-29.7,12.7-35,15.5C51.2,80,48.3,80,44.1,78c-4.2-2-30.7-12.7-35.4-15   c-4.8-2.3-4.9-3.8-0.2-5.7c4.7-1.8,31-12.2,36.6-14.2c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,29.5,11.6,34.1,13.3   C96.1,57.8,96.3,59.2,91.5,61.7"/><path fill="#912626" d="M91.5,56c-4.8,2.5-29.7,12.7-35,15.5c-5.3,2.8-8.2,2.7-12.4,0.7c-4.2-2-30.7-12.7-35.4-15   c-2.4-1.1-3.6-2.1-3.6-3v-9.1c0,0,34.5-7.5,40-9.5c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,33.1,6.8,37.7,8.6l0,9   C95,53.8,93.9,54.8,91.5,56"/><path fill="#c6302b" d="M91.5,47c-4.8,2.5-29.7,12.7-35,15.5c-5.3,2.8-8.2,2.7-12.4,0.7c-4.2-2-30.7-12.7-35.4-15   c-4.8-2.3-4.9-3.8-0.2-5.7c4.7-1.8,31-12.2,36.6-14.2c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,29.5,11.6,34.1,13.3   C96.1,43.1,96.3,44.5,91.5,47"/><path fill="#912626" d="M91.5,40.8c-4.8,2.5-29.7,12.7-35,15.5C51.2,59,48.3,59,44.1,57c-4.2-2-30.7-12.7-35.4-15   C6.3,40.9,5,39.9,5,39v-9.1c0,0,34.5-7.5,40-9.5c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,33.1,6.8,37.7,8.6l0,9   C95,38.5,93.9,39.5,91.5,40.8"/><path fill="#c6302b" d="M91.5,31.7c-4.8,2.5-29.7,12.7-35,15.5C51.2,50,48.3,50,44.1,48c-4.2-2-30.7-12.7-35.4-15   c-4.8-2.3-4.9-3.8-0.2-5.7c4.7-1.8,31-12.2,36.6-14.2c5.6-2,7.5-2.1,12.2-0.3c4.7,1.7,29.5,11.6,34.1,13.3   C96.1,27.8,96.3,29.2,91.5,31.7"/><path fill="#ffffff" d="M61,22.9l-7.7,0.8l-1.7,4.2l-2.8-4.7l-8.9-0.8l6.7-2.4l-2-3.7l6.2,2.4l5.9-1.9L55,20.6L61,22.9 M51.1,43.1   l-14.4-6l20.7-3.2L51.1,43.1 M31,25.2c6.1,0,11.1,1.9,11.1,4.3c0,2.4-5,4.3-11.1,4.3S20,31.9,20,29.5C20,27.1,24.9,25.2,31,25.2"/><path fill="#621b1c" d="M70.1,24l12.2,4.8l-12.2,4.8L70.1,24"/><path fill="#9a2928" d="M56.6,29.4L70.1,24l0,9.7l-1.3,0.5L56.6,29.4"/></symbol>
+            <symbol id="infra-icon-browser" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="15" rx="2"/><path d="M3 8h18M7 6h.01M10 6h.01M9 22h6m-3-3v3"/></symbol>
+            <symbol id="infra-icon-proxy" viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/><path d="M7 10h10m-3-3 3 3-3 3M17 15H7m3-3-3 3 3 3"/></symbol>
+            <symbol id="infra-icon-web" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="15" rx="2"/><path d="M3 8h18M7 6h.01M10 6h.01M9 22h6m-3-3v3"/></symbol>
+            <symbol id="infra-icon-repo" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="8" cy="19" r="2"/><path d="M6 7v10m2 0v-3a6 6 0 0 1 6-6h2"/></symbol>
+            <symbol id="infra-icon-actions" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></symbol>
+          </defs>
+
+          <rect width="1280" height="720" fill="#f7f3e9"/>
+          <rect class="zone" x="240" y="88" width="784" height="480" rx="8"/>
+          <rect class="arrow-mask" x="256" y="78" width="218" height="20" rx="2"/>
+          <text class="zone-label" x="264" y="94">Hetzner VPS · 部署主機</text>
+          <rect class="zone-private" x="492" y="128" width="512" height="372" rx="8"/>
+          <rect class="arrow-mask" x="508" y="118" width="226" height="20" rx="2"/>
+          <text class="zone-label" x="516" y="134">Docker Compose 私有網路</text>
+          <rect class="zone-offline" x="1052" y="144" width="204" height="352" rx="8"/>
+          <rect class="arrow-mask" x="1068" y="134" width="84" height="20" rx="2"/>
+          <text class="zone-label" x="1076" y="150">GitHub CI</text>
+
+          <!-- Runtime network and source-control flow. No deployment arrow leaves GitHub CI. -->
+          <path class="arrow-link" d="M192 228 H272" marker-end="url(#infrastructure-link-arrow)"/>
+          <path class="arrow-link" d="M448 228 H520" marker-end="url(#infrastructure-link-arrow)"/>
+          <path class="arrow" d="M720 228 H788" marker-end="url(#infrastructure-arrow)"/>
+          <path class="arrow" d="M788 244 H768 Q760 244 760 252 V392 Q760 400 752 400 H720" marker-end="url(#infrastructure-arrow)"/>
+          <path class="arrow" d="M888 276 V352" marker-end="url(#infrastructure-arrow)"/>
+          <path class="arrow-offline" d="M1152 280 V340" marker-end="url(#infrastructure-arrow)"/>
+
+          <rect class="arrow-mask" x="204" y="202" width="56" height="16" rx="2"/><text class="arrow-label" x="232" y="214" text-anchor="middle">HTTPS</text>
+          <rect class="arrow-mask" x="464" y="202" width="48" height="16" rx="2"/><text class="arrow-label" x="488" y="214" text-anchor="middle">回到主機</text>
+          <rect class="arrow-mask" x="736" y="202" width="36" height="16" rx="2"/><text class="arrow-label" x="754" y="214" text-anchor="middle">/api</text>
+          <rect class="arrow-mask" x="768" y="292" width="68" height="16" rx="2"/><text class="arrow-label" x="802" y="304" text-anchor="middle">保存快照</text>
+          <rect class="arrow-mask" x="898" y="294" width="68" height="16" rx="2"/><text class="arrow-label" x="932" y="306" text-anchor="middle">暫存進度</text>
+          <rect class="arrow-mask" x="1162" y="292" width="80" height="16" rx="2"/><text class="arrow-label" x="1202" y="304" text-anchor="middle">推送或 PR</text>
+
+          <g aria-label="使用者的瀏覽器">
+            <rect class="node" x="32" y="184" width="160" height="88" rx="6"/>
+            <rect class="tag" x="44" y="196" width="64" height="16" rx="2"/><text class="tag-text" x="76" y="208" text-anchor="middle">CLIENT</text>
+            <use class="node-icon icon-muted" href="#infra-icon-browser" x="44" y="218" width="18" height="18" aria-hidden="true"/>
+            <text class="node-name" x="66" y="233">瀏覽器</text>
+            <text class="node-sub" x="44" y="256">透過 HTTPS 開啟網站</text>
+          </g>
+          <g aria-label="主機上的 HTTPS 入口代理">
+            <rect class="node" x="272" y="184" width="176" height="88" rx="6"/>
+            <rect class="tag tag-external" x="284" y="196" width="64" height="16" rx="2"/><text class="tag-text" x="316" y="208" text-anchor="middle">INGRESS</text>
+            <use class="node-icon icon-link" href="#infra-icon-proxy" x="284" y="218" width="18" height="18" aria-hidden="true"/>
+            <text class="node-name-small" x="306" y="233">HTTPS 入口代理</text>
+            <text class="node-sub" x="284" y="256">公開網址的加密入口</text>
+            <text class="node-tech" x="284" y="270">代理軟體依主機設定</text>
+          </g>
+          <g aria-label="Nginx Web 容器">
+            <rect class="node node-web" x="520" y="184" width="200" height="92" rx="6"/>
+            <rect class="tag tag-web" x="536" y="196" width="48" height="16" rx="2"/><text class="tag-text" x="560" y="208" text-anchor="middle">WEB</text>
+            <use class="node-icon icon-accent" href="#infra-icon-web" x="536" y="218" width="18" height="18" aria-hidden="true"/>
+            <text class="node-name" x="558" y="233">Nginx Web</text>
+            <text class="node-sub" x="536" y="256">主機入口 127.0.0.1:8080</text>
+            <text class="node-tech" x="536" y="270">Node.js 24 建置 · Nginx 1.29</text>
+          </g>
+          <g aria-label="Spring Boot API 容器">
+            <rect class="node node-focus" x="788" y="184" width="200" height="92" rx="6"/>
+            <rect class="tag tag-api" x="804" y="196" width="44" height="16" rx="2"/><text class="tag-text-on-accent" x="826" y="208" text-anchor="middle">API</text>
+            <use href="#infra-brand-spring-boot" x="804" y="218" width="18" height="18" aria-hidden="true"/>
+            <text class="node-name" x="826" y="233">Spring Boot API</text>
+            <text class="node-sub" x="804" y="256">僅供 Compose 內部使用</text>
+            <text class="node-tech" x="804" y="270">Java 21 · Spring Boot 4.1.1</text>
+          </g>
+          <g aria-label="MySQL 8.4 與持久資料 volume">
+            <rect class="node node-store" x="520" y="352" width="200" height="96" rx="6"/>
+            <rect class="tag tag-store" x="536" y="364" width="56" height="16" rx="2"/><text class="tag-text" x="564" y="376" text-anchor="middle">STORE</text>
+            <use href="#infra-brand-mysql" x="536" y="386" width="18" height="18" aria-hidden="true"/>
+            <text class="node-name" x="558" y="401">MySQL 8.4</text>
+            <text class="node-sub" x="536" y="424">Spring Data JPA · Flyway</text>
+            <text class="node-tech" x="536" y="440">mysql-data volume · port 3306</text>
+          </g>
+          <g aria-label="Redis 暫存服務">
+            <rect class="node node-store" x="788" y="352" width="200" height="96" rx="6"/>
+            <rect class="tag tag-store" x="804" y="364" width="56" height="16" rx="2"/><text class="tag-text" x="832" y="376" text-anchor="middle">STORE</text>
+            <use href="#infra-brand-redis" x="804" y="386" width="18" height="18" aria-hidden="true"/>
+            <text class="node-name" x="826" y="401">Redis 8</text>
+            <text class="node-sub" x="804" y="424">查詢狀態、防重送與來源短鎖</text>
+            <text class="node-tech" x="804" y="440">Spring Data Redis · port 6379</text>
+          </g>
+          <g aria-label="GitHub 程式碼 repository">
+            <rect class="node" x="1072" y="192" width="164" height="88" rx="6"/>
+            <rect class="tag" x="1084" y="204" width="64" height="16" rx="2"/><text class="tag-text" x="1116" y="216" text-anchor="middle">SOURCE</text>
+            <use class="node-icon icon-muted" href="#infra-icon-repo" x="1084" y="226" width="18" height="18" aria-hidden="true"/>
+            <text class="node-name-small" x="1106" y="241">GitHub Repo</text>
+            <text class="node-sub" x="1084" y="264">程式、Issue 和 PR</text>
+          </g>
+          <g aria-label="GitHub Actions 持續整合工作">
+            <rect class="node node-offline" x="1072" y="340" width="164" height="128" rx="6"/>
+            <rect class="tag tag-offline" x="1084" y="352" width="76" height="16" rx="2"/><text class="tag-text" x="1122" y="364" text-anchor="middle">AUTOMATION</text>
+            <use class="node-icon icon-muted" href="#infra-icon-actions" x="1084" y="374" width="18" height="18" aria-hidden="true"/>
+            <text class="node-name-small" x="1106" y="389">GitHub Actions</text>
+            <text class="node-sub" x="1084" y="412">Java 21 · Node 24</text>
+            <text class="node-tech" x="1084" y="432">Maven Wrapper 3.9.16</text>
+            <text class="node-sub" x="1084" y="452">Docker 建置；不自動部署</text>
+          </g>
+
+          <line class="legend-rule" x1="32" y1="620" x2="1248" y2="620"/>
+          <text class="legend-label" x="32" y="658">圖例</text>
+          <line class="arrow-link" x1="88" y1="654" x2="136" y2="654"/><text class="legend-label" x="148" y="658">瀏覽器請求</text>
+          <line class="arrow" x1="288" y1="654" x2="336" y2="654"/><text class="legend-label" x="348" y="658">服務間資料</text>
+          <line class="arrow-offline" x1="496" y1="654" x2="544" y2="654"/><text class="legend-label" x="556" y="658">程式變更觸發 CI</text>
+          <rect class="zone-private" x="744" y="642" width="56" height="24" rx="3"/><text class="legend-label" x="812" y="658">虛線框代表隔離範圍</text>
+          <text class="legend-label" x="1000" y="658">GitHub CI 與主機分開</text>
+        </svg>
+      </div>
+      <p class="diagram-note"><strong>讀圖重點：</strong>只有 Web 的 `127.0.0.1:8080` 綁在主機 loopback；API、MySQL 和 Redis 不直接對外開埠。MySQL 用 `mysql-data` volume 保留資料。伺服器密碼和 Routes 金鑰放在主機私有 `.env`；瀏覽器地圖金鑰會出現在網頁，因此須限制可使用的網域。</p>
+    </section>
+  </main>
+</body>
+</html>
